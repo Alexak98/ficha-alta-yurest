@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Alta - Yurest</title>
+    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="page-header">
+    <div class="header-inner">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span class="brand-name">Yurest</span>
+        </div>
+        <a href="lista.html" class="back-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver al listado
+        </a>
+        <h1>Ficha cliente</h1>
+        <p class="header-sub">Completa los datos para registrar un nuevo cliente en el sistema</p>
+    </div>
+</header>
+
+<div class="container">
+
+    <div id="status-msg" class="status-msg hidden"></div>
+    <div id="alta-rapida-banner" style="display:none;align-items:center;gap:10px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:0.88rem;color:#166534;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span><strong>Alta rápida</strong> — Rellena los datos básicos y guarda. Para completar el resto de la ficha (JP, firmante, financiero, módulos…) pulsa <strong>Editar</strong> desde el listado.</span>
+    </div>
+
+    <div id="edit-banner" style="display:none;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:0.88rem;color:#1d4ed8;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>Modo edición — ficha <strong id="edit-banner-id"></strong>. Modifica los campos y pulsa <strong>Guardar</strong> para actualizar.</span>
+        <a href="lista.html" style="margin-left:auto;font-size:0.82rem;color:#2563eb;text-decoration:underline;">← Volver sin guardar</a>
+    </div>
+
+    <div class="comercial-bar">
+        <label for="comercial" class="comercial-label">Comercial</label>
+        <select id="comercial" class="comercial-select">
+            <option value="">— Selecciona —</option>
+            <option value="Pedro Martin">Pedro Martin</option>
+            <option value="Borja Pastor">Borja Pastor</option>
+            <option value="Santiago Gonzalez">Santiago Gonzalez</option>
+            <option value="Ivan Ramirez">Ivan Ramirez</option>
+            <option value="Springboard Monica">Springboard Monica</option>
+            <option value="Springboard Pau">Springboard Pau</option>
+            <option value="Ismael Calero">Ismael Calero</option>
+        </select>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="section-num">01</span>
+            <h3>Datos de Cliente</h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-6">
+                <label for="denominacion">Denominación Social *</label>
+                <input type="text" id="denominacion" placeholder="Nombre legal de la empresa">
+            </div>
+            <div class="form-group col-6">
+                <label for="nombreComercial">Nombre Comercial</label>
+                <input type="text" id="nombreComercial" placeholder="Nombre comercial" oninput="actualizarCredenciales()">
+            </div>
+
+            <div class="form-group col-8">
+                <label for="calle">Calle</label>
+                <input type="text" id="calle" placeholder="Nombre de la vía">
+            </div>
+            <div class="form-group col-2">
+                <label for="numero">Nº</label>
+                <input type="text" id="numero" placeholder="123">
+            </div>
+            <div class="form-group col-2">
+                <label for="cp">CP</label>
+                <input type="text" id="cp" placeholder="46000">
+            </div>
+
+            <div class="form-group">
+                <label for="municipio">Municipio</label>
+                <input type="text" id="municipio" placeholder="Valencia">
+            </div>
+            <div class="form-group">
+                <label for="provincia">Provincia</label>
+                <input type="text" id="provincia" placeholder="Valencia">
+            </div>
+            <div class="form-group">
+                <label for="cif">CIF / NIF</label>
+                <input type="text" id="cif" placeholder="A00000000">
+            </div>
+
+            <div class="form-group col-6">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="empresa@ejemplo.com">
+            </div>
+
+            <div class="form-group col-12" id="firmas-yn-row">
+                <label>Firmas contratadas</label>
+                <div class="yn-group">
+                    <input type="radio" id="firmas_no" name="firmas_yn" value="no" checked onchange="toggleFirmas(false)">
+                    <label for="firmas_no" class="yn-btn">No</label>
+                    <input type="radio" id="firmas_si" name="firmas_yn" value="si" onchange="toggleFirmas(true)">
+                    <label for="firmas_si" class="yn-btn yn-btn--si">Sí</label>
+                </div>
+            </div>
+
+            <div id="firmas-packs" class="form-group col-12 hidden">
+                <label>Pack de firmas</label>
+                <div class="pack-group">
+                    <input type="radio" id="pack100" name="firmas" value="100" onchange="recalcularCarrito()">
+                    <label for="pack100" class="pack-btn">
+                        <span class="pack-num">100</span>
+                        <span class="pack-sub">firmas · 30 €</span>
+                    </label>
+                    <input type="radio" id="pack200" name="firmas" value="200" onchange="recalcularCarrito()">
+                    <label for="pack200" class="pack-btn">
+                        <span class="pack-num">200</span>
+                        <span class="pack-sub">firmas · 60 €</span>
+                    </label>
+                    <input type="radio" id="pack300" name="firmas" value="300" onchange="recalcularCarrito()">
+                    <label for="pack300" class="pack-btn">
+                        <span class="pack-num">300</span>
+                        <span class="pack-sub">firmas · 90 €</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group col-12 toggles-row">
+                <div class="toggle-check-item">
+                    <input type="checkbox" id="dist_check" onchange="toggleSeccionDistribuidor(this.checked)">
+                    <label for="dist_check">A través de distribuidor</label>
+                </div>
+                <div class="toggle-check-item">
+                    <input type="checkbox" id="lite_check" onchange="toggleLite(this.checked)">
+                    <label for="lite_check">Cliente <span class="lite-badge">LITE</span></label>
+                </div>
+            </div>
+
+            <div id="tablet-question" class="form-group col-12 hidden">
+                <label>Necesita envio de tablet</label>
+                <div class="pct-group">
+                    <input type="radio" id="tablet_si" name="tablet" value="si" onchange="toggleTablet('si')">
+                    <label for="tablet_si" class="pct-btn">Sí</label>
+                    <input type="radio" id="tablet_no" name="tablet" value="no" onchange="toggleTablet('no')">
+                    <label for="tablet_no" class="pct-btn">No</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="lite-section" class="card hidden">
+        <div class="card-header">
+            <span class="section-num">07</span>
+            <h3>Dirección de Entrega y Contacto</h3>
+        </div>
+        <div class="form-grid">
+            <div class="col-12 subsection-label">Dirección de entrega</div>
+
+            <div class="form-group col-8">
+                <label for="entrega_calle">Calle</label>
+                <input type="text" id="entrega_calle" placeholder="Nombre de la vía">
+            </div>
+            <div class="form-group col-2">
+                <label for="entrega_numero">Nº</label>
+                <input type="text" id="entrega_numero" placeholder="123">
+            </div>
+            <div class="form-group col-2">
+                <label for="entrega_cp">CP</label>
+                <input type="text" id="entrega_cp" placeholder="46000">
+            </div>
+            <div class="form-group">
+                <label for="entrega_municipio">Municipio</label>
+                <input type="text" id="entrega_municipio" placeholder="Valencia">
+            </div>
+            <div class="form-group">
+                <label for="entrega_provincia">Provincia</label>
+                <input type="text" id="entrega_provincia" placeholder="Valencia">
+            </div>
+
+            <div class="col-12 subsection-label subsection-label--sep">Persona de contacto</div>
+
+            <div class="form-group col-4">
+                <label for="contacto_nombre">Nombre completo</label>
+                <input type="text" id="contacto_nombre" placeholder="Ana García López">
+            </div>
+            <div class="form-group col-4">
+                <label for="contacto_email">Email</label>
+                <input type="email" id="contacto_email" placeholder="ana@ejemplo.com">
+            </div>
+            <div class="form-group col-4">
+                <label for="contacto_telefono">Teléfono</label>
+                <input type="tel" id="contacto_telefono" placeholder="+34 600 000 000">
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="facturacion-section">
+        <div class="card-header">
+            <span class="section-num">02</span>
+            <h3>Datos de Facturación</h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-6">
+                <label for="email_factura">Email envío factura</label>
+                <input type="email" id="email_factura" placeholder="factura@ejemplo.com">
+            </div>
+            <div class="form-group col-6">
+                <label for="email_cc">Con copia</label>
+                <input type="email" id="email_cc" placeholder="cc@ejemplo.com">
+            </div>
+        </div>
+    </div>
+
+    <div class="card hidden" id="distribuidor-section">
+        <div class="card-header">
+            <span class="section-num">03</span>
+            <h3>Distribuidor</h3>
+        </div>
+        <div class="form-grid">
+                    <div class="form-group col-12">
+                        <label>Seleccionar distribuidor</label>
+                        <div class="pct-group">
+                            <input type="radio" id="dist_mrm"   name="dist_preset" value="mrm"          onchange="seleccionarDistribuidor('mrm')">
+                            <label for="dist_mrm"   class="pct-btn">MRM</label>
+                            <input type="radio" id="dist_db"    name="dist_preset" value="db_sistemas"  onchange="seleccionarDistribuidor('db_sistemas')">
+                            <label for="dist_db"    class="pct-btn">DB Sistemas</label>
+                            <input type="radio" id="dist_tpv"   name="dist_preset" value="tpv_valencia" onchange="seleccionarDistribuidor('tpv_valencia')">
+                            <label for="dist_tpv"   class="pct-btn">TPV Valencia</label>
+                            <input type="radio" id="dist_otro"  name="dist_preset" value="otro"         onchange="seleccionarDistribuidor('otro')">
+                            <label for="dist_otro"  class="pct-btn">Otro</label>
+                        </div>
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="dist_empresa">Empresa Distribución</label>
+                        <input type="text" id="dist_empresa" placeholder="Nombre de la empresa">
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="dist_cif">CIF</label>
+                        <input type="text" id="dist_cif" placeholder="A00000000">
+                    </div>
+                    <div class="form-group col-8">
+                        <label for="dist_direccion">Dirección</label>
+                        <input type="text" id="dist_direccion" placeholder="Calle y número">
+                    </div>
+                    <div class="form-group col-4">
+                        <label for="dist_cp">Código Postal</label>
+                        <input type="text" id="dist_cp" placeholder="46000">
+                    </div>
+                    <div class="form-group col-4">
+                        <label for="dist_contacto">Persona Contacto</label>
+                        <input type="text" id="dist_contacto" placeholder="Nombre completo">
+                    </div>
+                    <div class="form-group col-4">
+                        <label for="dist_mail">Mail</label>
+                        <input type="email" id="dist_mail" placeholder="contacto@distribuidora.com">
+                    </div>
+                    <div class="form-group col-4">
+                        <label for="dist_telefono">Teléfono</label>
+                        <input type="tel" id="dist_telefono" placeholder="+34 600 000 000">
+                    </div>
+                    <div class="form-group col-4">
+                        <label>Comisión distribuidor</label>
+                        <div class="pct-group">
+                            <input type="radio" id="pct_20" name="dist_comision_pct" value="20" onchange="actualizarComisionDistribuidor()">
+                            <label for="pct_20" class="pct-btn">20 %</label>
+                            <input type="radio" id="pct_30" name="dist_comision_pct" value="30" onchange="actualizarComisionDistribuidor()" checked>
+                            <label for="pct_30" class="pct-btn">30 %</label>
+                        </div>
+                        <div class="comision-display">
+                            <span id="dist_comision_calc">0,00 €</span>
+                        </div>
+                    </div>
+        </div>
+    </div>
+
+    <div class="card" id="jefe-proyecto-section">
+        <div class="card-header">
+            <span class="section-num">04</span>
+            <h3>Jefe de Proyecto <span style="font-weight:400;font-size:0.85em;color:#94a3b8;">(cliente)</span></h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-4">
+                <label for="jp_nombre">Nombre</label>
+                <input type="text" id="jp_nombre" placeholder="Nombre">
+            </div>
+            <div class="form-group col-4">
+                <label for="jp_apellidos">Apellidos</label>
+                <input type="text" id="jp_apellidos" placeholder="Apellidos">
+            </div>
+            <div class="form-group col-4">
+                <label for="jp_rol">Rol</label>
+                <input type="text" id="jp_rol" placeholder="Project Manager">
+            </div>
+            <div class="form-group col-6">
+                <label for="jp_telefono">Teléfono</label>
+                <input type="tel" id="jp_telefono" placeholder="+34 600 000 000">
+            </div>
+            <div class="form-group col-6">
+                <label for="jp_mail">Mail</label>
+                <input type="email" id="jp_mail" placeholder="jefe@empresa.com">
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="firmante-section">
+        <div class="card-header">
+            <span class="section-num">05</span>
+            <h3>Persona Firmante Contrato</h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-4">
+                <label for="firm_nombre">Nombre</label>
+                <input type="text" id="firm_nombre" placeholder="Nombre">
+            </div>
+            <div class="form-group col-4">
+                <label for="firm_apellidos">Apellidos</label>
+                <input type="text" id="firm_apellidos" placeholder="Apellidos">
+            </div>
+            <div class="form-group col-4">
+                <label for="firm_mail">Mail</label>
+                <input type="email" id="firm_mail" placeholder="firmante@empresa.com">
+            </div>
+            <div class="form-group col-4">
+                <label for="firm_dni">DNI</label>
+                <input type="text" id="firm_dni" placeholder="12345678A">
+            </div>
+            <div class="form-group col-4">
+                <label for="firm_puesto">Puesto</label>
+                <input type="text" id="firm_puesto" placeholder="Director General">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="section-num">06</span>
+            <h3>Integración TPV</h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-4">
+                <label for="tpv">Sistema TPV</label>
+                <select id="tpv">
+                    <option value="">— Selecciona un TPV —</option>
+                    <option value="Agora">Agora</option>
+                    <option value="BDP">BDP</option>
+                    <option value="Camarero10">Camarero10</option>
+                    <option value="Central Cash">Central Cash</option>
+                    <option value="DSTNet">DSTNet</option>
+                    <option value="Firesfot">Firesfot</option>
+                    <option value="Glop">Glop</option>
+                    <option value="Hosteltactil">Hosteltactil</option>
+                    <option value="Lastapp">Lastapp</option>
+                    <option value="Neo">Neo</option>
+                    <option value="Numier">Numier</option>
+                    <option value="Revo">Revo</option>
+                    <option value="Square">Square</option>
+                    <option value="Thac4">Thac4</option>
+                    <option value="Yantar">Yantar</option>
+                </select>
+            </div>
+            <div class="form-group col-4">
+                <label for="tpv_contacto">Persona de contacto</label>
+                <input type="text" id="tpv_contacto" placeholder="Nombre completo">
+            </div>
+            <div class="form-group col-4">
+                <label for="tpv_email">Email</label>
+                <input type="email" id="tpv_email" placeholder="contacto@tpv.com">
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="financiero-section">
+        <div class="card-header card-header--collapsible" onclick="toggleFinanciero()">
+            <div style="display:flex;align-items:center;gap:12px">
+                <span class="section-num">08</span>
+                <h3>Datos Financieros</h3>
+            </div>
+            <svg id="fin-chevron" class="fin-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="fin-body" class="fin-body">
+
+        <!-- ── Tipo de cliente (siempre visible) ────────────── -->
+        <div class="form-grid" style="margin-bottom:20px">
+            <div class="form-group col-12">
+                <label>Tipo de cliente</label>
+                <div class="tipo-group">
+                    <input type="radio" id="tipo_lite"       name="tipo_cliente" value="lite"       onchange="seleccionarTipo('lite')">
+                    <label for="tipo_lite"       class="tipo-btn"><span class="tipo-icon">⚡</span>Lite</label>
+
+                    <input type="radio" id="tipo_planes"     name="tipo_cliente" value="planes"     onchange="seleccionarTipo('planes')">
+                    <label for="tipo_planes"     class="tipo-btn"><span class="tipo-icon">📦</span>Planes</label>
+
+                    <input type="radio" id="tipo_corporate"  name="tipo_cliente" value="corporate"  onchange="seleccionarTipo('corporate')">
+                    <label for="tipo_corporate"  class="tipo-btn"><span class="tipo-icon">🏢</span>Corporate</label>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Contenido visible solo tras seleccionar tipo ─── -->
+        <div id="fin-tipo-content" class="hidden">
+
+            <!-- Corporate: Setup separado -->
+            <div id="corp-setup-cart" class="tipo-cart hidden" style="margin-bottom:24px">
+                <div class="tipo-cart-hd"><strong>Setup</strong></div>
+                <div class="corp-setup-body">
+                    <div class="corp-setup-inline">
+                        <span class="corp-setup-label"><strong>Importe</strong></span>
+                        <div class="cart-item-precio-wrap">
+                            <input type="number" class="cart-item-precio-input" id="corp_setup_precio"
+                                   value="" min="0" step="1" placeholder="0"
+                                   onchange="recalcularCarrito('corporate')"
+                                   onclick="event.stopPropagation()">
+                            <span class="cart-item-euro">€</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="corp-discount-row">
+                    <span class="corp-setup-periodo-label">Descuento</span>
+                    <div class="cart-item-precio-wrap">
+                        <input type="number" id="corp_setup_descuento" class="cart-item-precio-input"
+                               value="0" min="0" max="100" step="0.1" placeholder="0"
+                               onchange="recalcularCarrito('corporate')"
+                               onclick="event.stopPropagation()">
+                        <span class="cart-item-euro">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carrito de paquetes / módulos -->
+            <div id="tipo-cart" class="tipo-cart" style="margin-bottom:24px">
+                <div class="tipo-cart-hd">
+                    <span id="tipo-cart-prefix">Paquetes disponibles — </span><strong id="tipo-cart-label">—</strong>
+                </div>
+                <div class="corp-setup-periodo hidden" id="corp-periodo-row">
+                    <span class="corp-setup-periodo-label">Recurrencia</span>
+                    <div class="pct-group" style="margin-bottom:0">
+                        <input type="radio" id="corp_periodo_mensual" name="corp_periodo" value="mensual"
+                               checked onchange="onPeriodoChange()">
+                        <label for="corp_periodo_mensual" class="pct-btn">Mensual</label>
+                        <input type="radio" id="corp_periodo_anual" name="corp_periodo" value="anual"
+                               onchange="onPeriodoChange()">
+                        <label for="corp_periodo_anual" class="pct-btn">Anualizada (×10)</label>
+                    </div>
+                </div>
+                <div id="tipo-cart-items"></div>
+                <div class="tipo-cart-footer">
+                    <span>Subtotal</span>
+                    <span id="tipo-cart-subtotal">0,00 €</span>
+                </div>
+                <div class="corp-discount-row hidden" id="planes-setup-descuento-row">
+                    <span class="corp-setup-periodo-label">Descuento</span>
+                    <div class="cart-item-precio-wrap">
+                        <input type="number" id="planes_setup_descuento" class="cart-item-precio-input"
+                               value="0" min="0" max="100" step="0.1" placeholder="0"
+                               onchange="recalcularCarrito('planes')"
+                               onclick="event.stopPropagation()">
+                        <span class="cart-item-euro">%</span>
+                    </div>
+                </div>
+                <div class="tipo-cart-footer tipo-cart-footer--neto hidden" id="planes-setup-neto-row">
+                    <span><strong>Neto</strong></span>
+                    <span id="tipo-cart-planes-neto"><strong>0,00 €</strong></span>
+                </div>
+                <div class="tipo-cart-footer tipo-cart-footer--neto hidden" id="corp-setup-neto-row">
+                    <span><strong>Neto</strong></span>
+                    <span id="tipo-cart-neto"><strong>0,00 €</strong></span>
+                </div>
+            </div>
+
+            <!-- Corporate: Recurrencia por módulos -->
+            <div id="corp-recurrencia-cart" class="tipo-cart tipo-cart--mensual hidden" style="margin-bottom:24px">
+                <div class="tipo-cart-hd">Recurrencia</div>
+                <div id="corp-recurrencia-items"></div>
+                <div class="corp-discount-row">
+                    <span class="corp-setup-periodo-label">Descuento</span>
+                    <div class="cart-item-precio-wrap">
+                        <input type="number" id="corp_recur_descuento" class="cart-item-precio-input"
+                               value="0" min="0" max="100" step="0.1" placeholder="0"
+                               onchange="recalcularCorpRecurrencia()"
+                               onclick="event.stopPropagation()">
+                        <span class="cart-item-euro">%</span>
+                    </div>
+                </div>
+                <div class="tipo-cart-footer tipo-cart-footer--total tipo-cart-footer--mensual-total">
+                    <span id="corp-recur-total-label">Total mensual</span>
+                    <span id="corp-recurrencia-total">0,00 €/mes</span>
+                </div>
+            </div>
+
+            <!-- Planes: Recurrencia por plan -->
+            <div id="planes-recurrencia-cart" class="tipo-cart tipo-cart--mensual hidden" style="margin-bottom:24px">
+                <div class="tipo-cart-hd">Recurrencia</div>
+                <div class="corp-setup-periodo">
+                    <span class="corp-setup-periodo-label">Periodo</span>
+                    <div class="pct-group" style="margin-bottom:0">
+                        <input type="radio" id="planes_periodo_mensual" name="planes_periodo" value="mensual"
+                               checked onchange="onPlanesPeriodoChange()">
+                        <label for="planes_periodo_mensual" class="pct-btn">Mensual</label>
+                        <input type="radio" id="planes_periodo_anual" name="planes_periodo" value="anual"
+                               onchange="onPlanesPeriodoChange()">
+                        <label for="planes_periodo_anual" class="pct-btn">Anualizada (×10)</label>
+                    </div>
+                </div>
+                <div id="planes-recurrencia-items"></div>
+                <div class="corp-discount-row">
+                    <span class="corp-setup-periodo-label">Descuento</span>
+                    <div class="cart-item-precio-wrap">
+                        <input type="number" id="planes_recur_descuento" class="cart-item-precio-input"
+                               value="0" min="0" max="100" step="0.1" placeholder="0"
+                               onchange="recalcularPlanesRecurrencia()"
+                               onclick="event.stopPropagation()">
+                        <span class="cart-item-euro">%</span>
+                    </div>
+                </div>
+                <div class="tipo-cart-footer tipo-cart-footer--total tipo-cart-footer--mensual-total">
+                    <span id="planes-recur-total-label">Total mensual</span>
+                    <span id="planes-recurrencia-total">0,00 €/mes</span>
+                </div>
+            </div>
+
+            <!-- Recurrencia mensual (Lite) -->
+            <div id="mensual-cart-wrapper" class="tipo-cart tipo-cart--mensual" style="margin-bottom:24px">
+                <div class="tipo-cart-hd">Recurrencia mensual</div>
+                <div id="tipo-cart-mensual-items"></div>
+                <div class="tipo-cart-footer tipo-cart-footer--anualizada">
+                    <label class="anualizada-label">
+                        <input type="checkbox" id="mensual_anualizada" onchange="recalcularMensual()">
+                        Mensualidad anualizada (×10)
+                    </label>
+                </div>
+                <div class="tipo-cart-footer tipo-cart-footer--descuento tipo-cart-footer--mensual-desc">
+                    <label for="cart_descuento">Descuento</label>
+                    <div class="cart-descuento-wrap">
+                        <span class="cart-descuento-minus">−</span>
+                        <input type="number" id="cart_descuento" class="cart-descuento-input"
+                               value="0" min="0" max="100" step="0.1" onchange="recalcularMensual()">
+                        <span class="cart-descuento-euro">%</span>
+                    </div>
+                </div>
+                <div class="tipo-cart-footer tipo-cart-footer--total tipo-cart-footer--mensual-total">
+                    <span>Total mensual</span>
+                    <span id="tipo-cart-mensual-subtotal">0,00 €/mes</span>
+                </div>
+                <div class="tipo-cart-footer tipo-cart-footer--anual hidden" id="anual-row">
+                    <span>Total anualizado</span>
+                    <span id="tipo-cart-anual">0,00 €/año</span>
+                </div>
+            </div>
+
+        </div><!-- /fin-tipo-content -->
+        </div><!-- /fin-body -->
+    </div>
+
+    <div class="card" id="credenciales-section">
+        <div class="card-header">
+            <span class="section-num">09</span>
+            <h3>Credenciales</h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-6">
+                <label for="cred_master">Credenciales Master</label>
+                <input type="email" id="cred_master" class="cred-input" placeholder="masterempresa@yurest.com">
+            </div>
+            <div class="form-group col-6">
+                <label for="cred_yurest">Credenciales Yurest</label>
+                <input type="email" id="cred_yurest" class="cred-input" placeholder="adminempresa@yurest.com">
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="modulos-section">
+        <div class="card-header">
+            <span class="section-num">10</span>
+            <h3>Módulos</h3>
+        </div>
+        <div class="modulos-grid">
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Compras"><span>Compras</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Cocina"><span>Cocina</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Stock"><span>Stock</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Analítica de Ventas"><span>Analítica de Ventas</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Finanzas"><span>Finanzas</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="RRHH"><span>RRHH</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Gestor Documental"><span>Gestor Documental</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Checklists"><span>Checklists</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Auditorías"><span>Auditorías</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="APPCC"><span>APPCC</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Comunicación y averías"><span>Comunicación y averías</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Etiquetado"><span>Etiquetado</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Lector Óptico OCR"><span>Lector Óptico OCR</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Paneles BI (Dashboards Dinámicos)"><span>Paneles BI (Dashboards Dinámicos)</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Firma Digital"><span>Firma Digital</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Cocina de Producción"><span>Cocina de Producción</span></label>
+            <label class="modulo-item"><input type="checkbox" name="modulo" value="Almacén Central"><span>Almacén Central</span></label>
+        </div>
+    </div>
+
+    <div id="locales-container"></div>
+
+    <div class="card" id="comentarios-section">
+        <div class="card-header">
+            <span class="section-num">11</span>
+            <h3>Comentarios</h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-12">
+                <textarea id="comentarios" placeholder="Añade aquí cualquier observación o información adicional relevante..." rows="5" style="resize:vertical;"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <div class="main-btns">
+            <button class="btn btn-secondary" onclick="cancelar()">Cancelar</button>
+            <button class="btn btn-primary" id="submitBtn" onclick="guardarCambios()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<template id="local-template">
+    <div class="card local-card">
+        <div class="card-header local-header">
+            <div class="local-header-left">
+                <span class="section-num local-num-badge">01</span>
+                <h3>Local <span class="local-num"></span></h3>
+            </div>
+            <button type="button" class="btn-remove" title="Eliminar local" onclick="eliminarLocal(this)">✕</button>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-6">
+                <label>Nombre del Local *</label>
+                <input type="text" data-field="nombre" placeholder="Ej: Sucursal Centro" oninput="sincronizarRecurrenciaMensual(); actualizarCorpModuleLocales()">
+            </div>
+            <div class="form-group col-6">
+                <label>Email de contacto</label>
+                <input type="email" data-field="email" placeholder="local@ejemplo.com">
+            </div>
+
+            <div class="form-group col-8">
+                <label>Calle</label>
+                <input type="text" data-field="calle">
+            </div>
+            <div class="form-group col-2">
+                <label>Nº</label>
+                <input type="text" data-field="numero">
+            </div>
+            <div class="form-group col-2">
+                <label>CP</label>
+                <input type="text" data-field="cp">
+            </div>
+            <div class="form-group col-6">
+                <label>Municipio</label>
+                <input type="text" data-field="municipio" placeholder="Valencia">
+            </div>
+            <div class="form-group col-6">
+                <label>Provincia</label>
+                <input type="text" data-field="provincia" placeholder="Valencia">
+            </div>
+
+            <div class="col-12 subsection-label subsection-label--sep sociedad-label-row">
+                <span>Sociedad</span>
+                <button type="button" class="btn-copy-cliente" onclick="copiarDatosCliente(this)">Copiar de datos de cliente</button>
+            </div>
+
+            <div class="form-group col-6">
+                <label>CIF / NIF</label>
+                <input type="text" data-field="sociedad_cif" placeholder="A00000000">
+            </div>
+            <div class="form-group col-6">
+                <label>Denominación Social</label>
+                <input type="text" data-field="sociedad_denominacion" placeholder="Nombre legal de la empresa">
+            </div>
+            <div class="form-group col-8">
+                <label>Calle</label>
+                <input type="text" data-field="sociedad_calle" placeholder="Nombre de la vía">
+            </div>
+            <div class="form-group col-2">
+                <label>Nº</label>
+                <input type="text" data-field="sociedad_numero" placeholder="123">
+            </div>
+            <div class="form-group col-2">
+                <label>CP</label>
+                <input type="text" data-field="sociedad_cp" placeholder="46000">
+            </div>
+            <div class="form-group col-6">
+                <label>Municipio</label>
+                <input type="text" data-field="sociedad_municipio" placeholder="Valencia">
+            </div>
+            <div class="form-group col-6">
+                <label>Provincia</label>
+                <input type="text" data-field="sociedad_provincia" placeholder="Valencia">
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    // ─── CONFIGURACIÓN ───────────────────────────────────────────────────────
+    const WEBHOOK_GUARDAR = 'https://n8n-soporte.data.yurest.dev/webhook/57e04029-bae4-4124-8c43-c535e831a147';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function agregarLocal() {
+        const container = document.getElementById('locales-container');
+        const clone = document.getElementById('local-template').content.cloneNode(true);
+        container.appendChild(clone);
+        actualizarNumeracion();
+    }
+
+    function eliminarLocal(btn) {
+        btn.closest('.local-card').remove();
+        actualizarNumeracion();
+    }
+
+    function actualizarNumeracion() {
+        document.querySelectorAll('.local-card').forEach((card, i) => {
+            const numEl = card.querySelector('.local-num');
+            const badgeEl = card.querySelector('.local-num-badge');
+            if (numEl) numEl.textContent = `#${i + 1}`;
+            if (badgeEl) badgeEl.textContent = String(i + 1).padStart(2, '0');
+        });
+        sincronizarRecurrenciaMensual();
+        actualizarCorpModuleLocales();
+        const _tipoActual = (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value;
+        if (_tipoActual === 'corporate') recalcularCarrito('corporate');
+    }
+
+    function toggleFinanciero() {
+        const body = document.getElementById('fin-body');
+        const chevron = document.getElementById('fin-chevron');
+        const collapsed = body.classList.toggle('fin-body--collapsed');
+        chevron.classList.toggle('fin-chevron--up', !collapsed);
+    }
+
+    function actualizarCredenciales() {
+        const nombre = document.getElementById('nombreComercial').value;
+        const slug = nombre.toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]/g, '');
+        document.getElementById('cred_master').value = slug ? `master${slug}@yurest.com` : '';
+        document.getElementById('cred_yurest').value = slug ? `admin${slug}@yurest.com`  : '';
+    }
+
+    function toggleSeccionDistribuidor(show) {
+        document.getElementById('distribuidor-section').classList.toggle('hidden', !show);
+    }
+
+    function getComisionRate() {
+        const rateEl = document.querySelector('input[name="dist_comision_pct"]:checked');
+        return rateEl ? parseFloat(rateEl.value) / 100 : 0.30;
+    }
+
+    function actualizarComisionDistribuidor(total) {
+        if (total === undefined) {
+            total = 0;
+            document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked').forEach(cb => {
+                const pi = document.getElementById('precio_' + cb.value);
+                if (pi) total += parseFloat(pi.value) || 0;
+            });
+        }
+        const comision = total * getComisionRate();
+        document.getElementById('dist_comision_calc').textContent =
+            comision > 0
+                ? comision.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+                : '0,00 €';
+    }
+
+    // ── Tipo de cliente / Carrito ─────────────────────────────────────────────
+    // Precios pendientes de configuración — se añadirán en próxima iteración.
+    // Estructura: { id, nombre, precio }
+    const PAQUETES = {
+        lite: [
+            {
+                id: 'lite_setup',
+                nombre: 'Setup',
+                precio: 490,
+                pago: 'único',
+                modulos: []
+            },
+            {
+                id: 'lite_mensual',
+                nombre: 'Pago Mensual',
+                precio: 79,
+                pago: 'mes',
+                modulos: []
+            }
+        ],
+        planes: [
+            {
+                id: 'plan_basic',
+                nombre: 'Plan Producto BASIC',
+                precio: 1280,
+                pago: 'único',
+                modulos: ['Compras', 'Lector Óptico OCR', 'Finanzas', 'Paneles BI (Dashboards Dinámicos)', 'Conexión TPV']
+            },
+            {
+                id: 'plan_pro',
+                nombre: 'Plan Producto PRO',
+                precio: 1580,
+                pago: 'único',
+                modulos: ['Compras', 'Lector Óptico OCR', 'Finanzas', 'Paneles BI (Dashboards Dinámicos)', 'Conexión TPV', 'Cocina', 'Etiquetado', 'Stock']
+            },
+            {
+                id: 'plan_operaciones',
+                nombre: 'Plan Operaciones',
+                precio: 197,
+                pago: 'único',
+                modulos: ['Checklists', 'Auditorías', 'APPCC', 'Etiquetado', 'Comunicación y averías']
+            },
+            {
+                id: 'plan_rrhh',
+                nombre: 'Plan RRHH',
+                precio: 390,
+                pago: 'único',
+                modulos: ['Gestor Documental', 'Comunicación y averías', 'RRHH']
+            }
+        ],
+        corporate: [
+            { id: 'corp_compras',       nombre: 'Compras',                          precio: 55, pago: 'único', modulos: ['Compras'] },
+            { id: 'corp_cocina',        nombre: 'Cocina',                           precio: 43, pago: 'único', modulos: ['Cocina'] },
+            { id: 'corp_stock',         nombre: 'Stock',                            precio: 43, pago: 'único', modulos: ['Stock'] },
+            { id: 'corp_analitica',     nombre: 'Analítica de Ventas',              precio: 37, pago: 'único', modulos: ['Analítica de Ventas'] },
+            { id: 'corp_finanzas',      nombre: 'Finanzas',                         precio: 43, pago: 'único', modulos: ['Finanzas'] },
+            { id: 'corp_rrhh',          nombre: 'RRHH',                             precio: 59, pago: 'único', modulos: ['RRHH'] },
+            { id: 'corp_documental',    nombre: 'Gestor Documental',                precio: 24, pago: 'único', modulos: ['Gestor Documental'] },
+            { id: 'corp_checklists',    nombre: 'Checklists',                       precio: 43, pago: 'único', modulos: ['Checklists'] },
+            { id: 'corp_auditorias',    nombre: 'Auditorías',                       precio: 24, pago: 'único', modulos: ['Auditorías'] },
+            { id: 'corp_appcc',         nombre: 'APPCC',                            precio: 24, pago: 'único', modulos: ['APPCC'] },
+            { id: 'corp_comunicacion',  nombre: 'Comunicación y averías',           precio: 24, pago: 'único', modulos: ['Comunicación y averías'] },
+            { id: 'corp_etiquetado',    nombre: 'Etiquetado',                       precio: 24, pago: 'único', modulos: ['Etiquetado'] },
+            { id: 'corp_ocr',           nombre: 'Lector Óptico OCR',                precio: 39, pago: 'único', modulos: ['Lector Óptico OCR'] },
+            { id: 'corp_bi',            nombre: 'Paneles BI (Dashboards Dinámicos)',precio: 10, pago: 'único', modulos: ['Paneles BI (Dashboards Dinámicos)'] },
+            { id: 'corp_firma',         nombre: 'Firma Digital',                    precio: 10, pago: 'único', modulos: ['Firma Digital'] },
+            { id: 'corp_cocina_prod',   nombre: 'Cocina de Producción',             precio: 10, pago: 'único', modulos: ['Cocina de Producción'] },
+            { id: 'corp_almacen',       nombre: 'Almacén Central',                  precio: 10, pago: 'único', modulos: ['Almacén Central'] }
+        ]
+    };
+    const TIPO_LABELS = { lite: 'Lite', planes: 'Planes', corporate: 'Corporate' };
+
+    // ── Costes de recurrencia por plan (Planes) ───────────────────────────────
+    const PLAN_MONTHLY_COSTS = {
+        'Plan Producto BASIC':  99,
+        'Plan Producto PRO':    136,
+        'Plan Operaciones':     20,
+        'Plan RRHH':            59
+    };
+
+    // ── Costes de recurrencia por módulo (Corporate) ──────────────────────────
+    const CORP_MODULE_COSTS = {
+        'Compras':                 55,
+        'Lector Óptico OCR':       39,
+        'Cocina':                  43,
+        'Stock':                   43,
+        'Analítica de Ventas':     37,
+        'Finanzas':                43,
+        'RRHH':                    59,
+        'Checklists':              43,
+        'APPCC':                   24,
+        'Auditorías':              24,
+        'Comunicación y averías':  24,
+        'Etiquetado':              24,
+        'Gestor Documental':       24
+    };
+
+    // ── Distribuidores predefinidos ───────────────────────────────────────────
+    const DISTRIBUIDORES = {
+        mrm: {
+            empresa:   'MRM Distribución S.L.',
+            cif:       'B12345678',
+            direccion: 'Calle Gran Vía, 45',
+            cp:        '28013',
+            contacto:  'Carlos Rodríguez',
+            mail:      'carlos@mrm-distribucion.com',
+            telefono:  '+34 910 123 456'
+        },
+        db_sistemas: {
+            empresa:   'DB Sistemas Informáticos S.L.',
+            cif:       'B87654321',
+            direccion: 'Avda. de la Constitución, 12',
+            cp:        '41001',
+            contacto:  'Laura Martínez',
+            mail:      'laura@dbsistemas.es',
+            telefono:  '+34 954 987 654'
+        },
+        tpv_valencia: {
+            empresa:   'TPV Valencia S.A.',
+            cif:       'A11223344',
+            direccion: 'Calle Colón, 22',
+            cp:        '46004',
+            contacto:  'Javier López',
+            mail:      'javier@tpvvalencia.com',
+            telefono:  '+34 963 456 789'
+        },
+        otro: {
+            empresa:   '',
+            cif:       '',
+            direccion: '',
+            cp:        '',
+            contacto:  '',
+            mail:      '',
+            telefono:  ''
+        }
+    };
+
+    function seleccionarDistribuidor(key) {
+        const d = DISTRIBUIDORES[key];
+        if (!d) return;
+        document.getElementById('dist_empresa').value   = d.empresa;
+        document.getElementById('dist_cif').value       = d.cif;
+        document.getElementById('dist_direccion').value = d.direccion;
+        document.getElementById('dist_cp').value        = d.cp;
+        document.getElementById('dist_contacto').value  = d.contacto;
+        document.getElementById('dist_mail').value      = d.mail;
+        document.getElementById('dist_telefono').value  = d.telefono;
+    }
+
+    function seleccionarTipo(tipo) {
+        const prefix = document.getElementById('tipo-cart-prefix');
+        const label  = document.getElementById('tipo-cart-label');
+        if (tipo === 'corporate') {
+            if (prefix) prefix.textContent = '';
+            if (label)  label.textContent  = 'Módulos';
+        } else if (tipo === 'planes') {
+            if (prefix) prefix.textContent = '';
+            if (label)  label.textContent  = 'Coste implementación';
+        } else {
+            if (prefix) prefix.textContent = '';
+            if (label)  label.textContent  = '';
+        }
+        // Secciones exclusivas de corporate / planes
+        document.getElementById('corp-setup-cart').classList.toggle('hidden', tipo !== 'corporate');
+        document.getElementById('corp-recurrencia-cart').classList.toggle('hidden', tipo !== 'corporate');
+        document.getElementById('planes-recurrencia-cart').classList.toggle('hidden', tipo !== 'planes');
+        document.getElementById('planes-setup-descuento-row').classList.toggle('hidden', tipo !== 'planes');
+        document.getElementById('corp-periodo-row').classList.toggle('hidden', tipo !== 'corporate');
+        document.getElementById('mensual-cart-wrapper').classList.toggle('hidden', tipo === 'corporate' || tipo === 'planes');
+        document.getElementById('fin-tipo-content').classList.remove('hidden');
+        document.getElementById('modulos-section').classList.toggle('hidden', tipo === 'lite');
+        renderCarrito(tipo);
+    }
+
+    function getLocales() {
+        return Array.from(document.querySelectorAll('.local-card')).map((card, i) => ({
+            idx: i,
+            nombre: (card.querySelector('[data-field="nombre"]')?.value || '').trim() || `Local ${i + 1}`
+        }));
+    }
+
+    function renderModuleLocalesPillsHTML(moduleId, locales, checkedVals) {
+        if (!locales || locales.length === 0) return '';
+        return locales.map((loc, i) => {
+            const isChecked = checkedVals.has(String(i));
+            return `<input type="checkbox" id="corp_ml_${moduleId}_${i}" name="corp_ml_${moduleId}" value="${i}"${isChecked ? ' checked' : ''} onchange="recalcularCarrito()"><label for="corp_ml_${moduleId}_${i}" class="pct-btn pct-btn--xs">${loc.nombre}</label>`;
+        }).join('');
+    }
+
+    function getModuleLocalsMult(moduleId) {
+        const locales = getLocales();
+        if (locales.length === 0) return 1;
+        return document.querySelectorAll(`input[name="corp_ml_${moduleId}"]:checked`).length;
+    }
+
+    function actualizarCorpModuleLocales() {
+        const isCorporate = !document.getElementById('corp-setup-cart')?.classList.contains('hidden');
+        if (!isCorporate) return;
+        const locales = getLocales();
+        PAQUETES.corporate.forEach(p => {
+            const el = document.getElementById('corp_mod_locs_' + p.id);
+            if (!el) return;
+            const checkedVals = new Set(
+                Array.from(el.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)
+            );
+            el.innerHTML = renderModuleLocalesPillsHTML(p.id, locales, checkedVals);
+        });
+        recalcularCarrito();
+    }
+
+    function renderCartItem(p, tipo, pagotipo) {
+        const isCorp = tipo === 'corporate';
+        const localesPills = isCorp
+            ? `<div class="corp-module-locales" id="corp_mod_locs_${p.id}">${renderModuleLocalesPillsHTML(p.id, getLocales(), new Set())}</div>`
+            : '';
+        return `
+            <label class="cart-item">
+                <input type="checkbox" name="cart_item" value="${p.id}" data-pago="${pagotipo}" onchange="recalcularCarrito('${tipo}')">
+                <div class="cart-item-info">
+                    <span class="cart-item-nombre">${p.nombre}</span>
+                    ${p.modulos && p.modulos.length > 0 && tipo !== 'planes' && tipo !== 'corporate' ? `<span class="cart-item-modulos">${p.modulos.join(' · ')}</span>` : ''}
+                    ${localesPills}
+                </div>
+                <div class="cart-item-pricing">
+                    <div class="cart-item-precio-wrap">
+                        <input type="number" class="cart-item-precio-input" id="precio_${p.id}"
+                               value="${p.precio}" min="0" step="1"
+                               onclick="event.stopPropagation()"
+                               onchange="recalcularCarrito()">
+                        <span class="cart-item-euro">€</span>
+                    </div>
+                    ${p.pago ? `<span class="cart-item-pago">pago ${p.pago}</span>` : ''}
+                </div>
+            </label>`;
+    }
+
+    function renderCarrito(tipo) {
+        const paquetes = PAQUETES[tipo] || [];
+        const uniItems = paquetes.filter(p => p.pago !== 'mes');
+        const itemsEl  = document.getElementById('tipo-cart-items');
+
+        itemsEl.innerHTML = uniItems.length === 0
+            ? '<div class="tipo-cart-empty">⚙️ Paquetes pendientes de configuración para el tipo <strong>' + (TIPO_LABELS[tipo] || tipo) + '</strong>.</div>'
+            : uniItems.map(p => renderCartItem(p, tipo, 'unico')).join('');
+
+        sincronizarRecurrenciaMensual();
+        recalcularCarrito(tipo);
+    }
+
+    function getFirmasCost() {
+        const firmasVal = (document.querySelector('input[name="firmas"]:checked') || {}).value;
+        return firmasVal ? (parseInt(firmasVal) / 100) * 30 : 0;
+    }
+
+    function getCorpLocalesMultiplier() {
+        const checked = document.querySelector('input[name="corp_locales_mult"]:checked');
+        return checked ? parseInt(checked.value) : 1;
+    }
+
+    function renderCorpLocalesMultiplicador() {
+        const el = document.getElementById('corp-locales-selector');
+        if (!el) return;
+        const corpSetupEl = document.getElementById('corp-setup-cart');
+        const isCorporate = corpSetupEl && !corpSetupEl.classList.contains('hidden');
+        if (!isCorporate) { el.classList.add('hidden'); return; }
+        const count      = Math.max(1, document.querySelectorAll('.local-card').length);
+        const currentVal = parseInt((document.querySelector('input[name="corp_locales_mult"]:checked') || {}).value || '1');
+        const selected   = Math.min(currentVal, count);
+        const pills = [];
+        for (let i = 1; i <= count; i++) {
+            pills.push(`<input type="radio" id="corp_loc_mult_${i}" name="corp_locales_mult" value="${i}"${selected === i ? ' checked' : ''} onchange="recalcularCarrito()"><label for="corp_loc_mult_${i}" class="pct-btn">×${i}</label>`);
+        }
+        el.innerHTML = `<span class="corp-loc-label">Nº locales</span><div class="pct-group" style="margin-bottom:0;flex-wrap:wrap">${pills.join('')}</div>`;
+        el.classList.remove('hidden');
+    }
+
+    function recalcularCarrito(tipo) {
+        let subtotal = 0;
+        const _corpSetupEl = document.getElementById('corp-setup-cart');
+        const _isCorporate = _corpSetupEl && !_corpSetupEl.classList.contains('hidden');
+        const _planesIds = getPlanesCheckedIds();
+        const _planesProductoActivo = _planesIds.has('plan_basic') || _planesIds.has('plan_pro');
+        // Actualizar visualmente los precios de RRHH y Operaciones según si BASIC/PRO están activos
+        ['plan_rrhh', 'plan_operaciones'].forEach(function(pid) {
+            const pi = document.getElementById('precio_' + pid);
+            if (!pi) return;
+            const originalPrice = (PAQUETES.planes.find(function(p) { return p.id === pid; }) || {}).precio || 0;
+            pi.value = _planesProductoActivo ? 0 : originalPrice;
+        });
+        document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked').forEach(cb => {
+            // En planes: si BASIC o PRO están activos, no sumar el setup de RRHH ni Operaciones
+            if (_planesProductoActivo && (cb.value === 'plan_rrhh' || cb.value === 'plan_operaciones')) return;
+            const pi = document.getElementById('precio_' + cb.value);
+            if (pi) {
+                const mult = _isCorporate ? getModuleLocalsMult(cb.value) : 1;
+                subtotal += (parseFloat(pi.value) || 0) * mult;
+            }
+        });
+        subtotal += getFirmasCost();
+        // Añadir setup corporate solo cuando esa sección está visible
+        const corpSetupCart = document.getElementById('corp-setup-cart');
+        if (corpSetupCart && !corpSetupCart.classList.contains('hidden')) {
+            const corpSetupEl = document.getElementById('corp_setup_precio');
+            if (corpSetupEl) subtotal += parseFloat(corpSetupEl.value) || 0;
+        }
+        document.getElementById('tipo-cart-subtotal').textContent =
+            subtotal.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+        // Descuento setup
+        let setupNeto = subtotal;
+        const _isPlanes = !_isCorporate && document.getElementById('planes-recurrencia-cart') && !document.getElementById('planes-recurrencia-cart').classList.contains('hidden');
+        if (_isCorporate) {
+            const setupDesc = parseFloat(document.getElementById('corp_setup_descuento')?.value) || 0;
+            setupNeto = Math.max(0, subtotal * (1 - setupDesc / 100));
+            const netoRow = document.getElementById('corp-setup-neto-row');
+            const netoEl  = document.getElementById('tipo-cart-neto');
+            if (netoRow) netoRow.classList.toggle('hidden', setupDesc === 0);
+            if (netoEl)  netoEl.innerHTML = '<strong>' + setupNeto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €</strong>';
+            document.getElementById('planes-setup-neto-row')?.classList.add('hidden');
+        } else if (_isPlanes) {
+            const planesDesc = parseFloat(document.getElementById('planes_setup_descuento')?.value) || 0;
+            setupNeto = Math.max(0, subtotal * (1 - planesDesc / 100));
+            const netoRow = document.getElementById('planes-setup-neto-row');
+            const netoEl  = document.getElementById('tipo-cart-planes-neto');
+            if (netoRow) netoRow.classList.toggle('hidden', planesDesc === 0);
+            if (netoEl)  netoEl.innerHTML = '<strong>' + setupNeto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €</strong>';
+            document.getElementById('corp-setup-neto-row')?.classList.add('hidden');
+        } else {
+            document.getElementById('corp-setup-neto-row')?.classList.add('hidden');
+            document.getElementById('planes-setup-neto-row')?.classList.add('hidden');
+        }
+        actualizarComisionDistribuidor(setupNeto);
+        // Bloquear/limpiar selectores de locales de módulos no marcados
+        if (_isCorporate) {
+            document.querySelectorAll('input[name="cart_item"][data-pago="unico"]').forEach(cb => {
+                const localesEl = document.getElementById('corp_mod_locs_' + cb.value);
+                if (!localesEl) return;
+                localesEl.querySelectorAll('input[type="checkbox"]').forEach(lcb => {
+                    if (!cb.checked) { lcb.checked = false; lcb.disabled = true; }
+                    else { lcb.disabled = false; }
+                });
+            });
+        }
+        sincronizarModulos();
+        const corpRecCart = document.getElementById('corp-recurrencia-cart');
+        if (corpRecCart && !corpRecCart.classList.contains('hidden')) sincronizarCorpRecurrencia();
+        sincronizarPlanesRecurrencia();
+        actualizarResumenFlotante();
+    }
+
+    // Genera una fila por local en la sección de recurrencia mensual
+    function sincronizarRecurrenciaMensual() {
+        const tipo      = (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value;
+        const mensualEl = document.getElementById('tipo-cart-mensual-items');
+        if (!mensualEl) return;
+
+        const mesItems = tipo ? (PAQUETES[tipo] || []).filter(p => p.pago === 'mes') : [];
+
+        if (mesItems.length === 0) {
+            mensualEl.innerHTML = '<div class="tipo-cart-empty tipo-cart-empty--sm">Sin elementos de recurrencia</div>';
+            recalcularMensual();
+            return;
+        }
+
+        const locales = document.querySelectorAll('.local-card');
+        if (locales.length === 0) {
+            mensualEl.innerHTML = '<div class="tipo-cart-empty tipo-cart-empty--sm">Sin locales creados</div>';
+            recalcularMensual();
+            return;
+        }
+
+        const basePrice     = mesItems[0].precio;
+        const prevPrices    = Array.from(document.querySelectorAll('.mensual-local-precio'))
+                                   .map(i => parseFloat(i.value) || basePrice);
+
+        mensualEl.innerHTML = Array.from(locales).map((card, i) => {
+            const nombre = (card.querySelector('[data-field="nombre"]')?.value || '').trim() || `Local #${i + 1}`;
+            const price  = prevPrices[i] !== undefined ? prevPrices[i] : basePrice;
+            return `<div class="mensual-local-row">
+                <span class="mensual-local-nombre">${nombre}</span>
+                <div class="cart-item-precio-wrap">
+                    <input type="number" class="cart-item-precio-input mensual-local-precio"
+                           value="${price}" min="0" step="1" onchange="recalcularMensual()">
+                    <span class="cart-item-euro">€/mes</span>
+                </div>
+            </div>`;
+        }).join('');
+
+        recalcularMensual();
+    }
+
+    // Recalcula totales de la sección mensual (sin re-renderizar filas)
+    function recalcularMensual() {
+        let totalMensual = 0;
+        document.querySelectorAll('.mensual-local-precio').forEach(i => {
+            totalMensual += parseFloat(i.value) || 0;
+        });
+        const descuento   = parseFloat(document.getElementById('cart_descuento')?.value) || 0;
+        const mensualNeto = Math.max(0, totalMensual * (1 - descuento / 100));
+        const anualizada  = document.getElementById('mensual_anualizada')?.checked;
+
+        document.getElementById('tipo-cart-mensual-subtotal').textContent =
+            mensualNeto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €/mes';
+
+        const anualRow = document.getElementById('anual-row');
+        if (anualRow) {
+            if (anualizada) {
+                document.getElementById('tipo-cart-anual').textContent =
+                    (mensualNeto * 10).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €/año';
+                anualRow.classList.remove('hidden');
+            } else {
+                anualRow.classList.add('hidden');
+            }
+        }
+        actualizarResumenFlotante();
+    }
+
+    // Renderiza las filas de recurrencia corporate según módulos seleccionados
+    function sincronizarCorpRecurrencia() {
+        const itemsEl = document.getElementById('corp-recurrencia-items');
+        if (!itemsEl) return;
+        const isAnual    = document.querySelector('input[name="corp_periodo"]:checked')?.value === 'anual';
+        const multiplier = isAnual ? 10 : 1;
+        const suffix     = isAnual ? '€/año' : '€/mes';
+        const totalLabel = document.getElementById('corp-recur-total-label');
+        if (totalLabel) totalLabel.textContent = isAnual ? 'Total anual' : 'Total mensual';
+
+        const checkedItems = Array.from(document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked'));
+        const rows = [];
+        checkedItems.forEach(cb => {
+            const paquete = PAQUETES.corporate.find(p => p.id === cb.value);
+            if (!paquete) return;
+            const moduleName = paquete.modulos[0];
+            const cost = CORP_MODULE_COSTS[moduleName];
+            if (cost === undefined) return;
+            const localesMult = getModuleLocalsMult(cb.value);
+            const display = (cost * multiplier * localesMult).toLocaleString('es-ES', { minimumFractionDigits: 2 });
+            rows.push(`<div class="corp-recur-item">
+                <span class="corp-recur-item-nombre">${paquete.nombre}</span>
+                <div class="cart-item-precio-wrap">
+                    <span class="corp-recur-item-precio">${display}</span>
+                    <span class="cart-item-euro">${suffix}</span>
+                </div>
+            </div>`);
+        });
+        itemsEl.innerHTML = rows.length > 0
+            ? rows.join('')
+            : '<div class="tipo-cart-empty tipo-cart-empty--sm">Selecciona módulos para ver la recurrencia</div>';
+        recalcularCorpRecurrencia();
+    }
+
+    function recalcularCorpRecurrencia() {
+        const isAnual     = document.querySelector('input[name="corp_periodo"]:checked')?.value === 'anual';
+        const multiplier  = isAnual ? 10 : 1;
+        const suffix      = isAnual ? '€/año' : '€/mes';
+        let total = 0;
+        Array.from(document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked')).forEach(cb => {
+            const paquete = PAQUETES.corporate.find(p => p.id === cb.value);
+            if (!paquete) return;
+            const cost = CORP_MODULE_COSTS[paquete.modulos[0]];
+            const localesMult = getModuleLocalsMult(cb.value);
+            if (cost !== undefined) total += cost * multiplier * localesMult;
+        });
+        const recurDesc = parseFloat(document.getElementById('corp_recur_descuento')?.value) || 0;
+        const recurNeto = Math.max(0, total * (1 - recurDesc / 100));
+        const totalEl = document.getElementById('corp-recurrencia-total');
+        if (totalEl) totalEl.textContent = recurNeto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' ' + suffix;
+        actualizarResumenFlotante();
+    }
+
+    function onPeriodoChange() {
+        sincronizarCorpRecurrencia();
+    }
+
+    function onPlanesPeriodoChange() {
+        sincronizarPlanesRecurrencia();
+    }
+
+    function getPlanesCheckedIds() {
+        const ids = new Set();
+        PAQUETES.planes.forEach(function(p) {
+            var chk = document.querySelector('input[name="cart_item"][value="' + p.id + '"]');
+            if (chk && chk.checked) { ids.add(p.id); }
+        });
+        return ids;
+    }
+
+    function sincronizarPlanesRecurrencia() {
+        const itemsEl = document.getElementById('planes-recurrencia-items');
+        if (!itemsEl) return;
+        const isAnual    = document.querySelector('input[name="planes_periodo"]:checked')?.value === 'anual';
+        const multiplier = isAnual ? 10 : 1;
+        const suffix     = isAnual ? '€/año' : '€/mes';
+        const totalLabel = document.getElementById('planes-recur-total-label');
+        if (totalLabel) totalLabel.textContent = isAnual ? 'Total anual' : 'Total mensual';
+
+        const checkedIds = getPlanesCheckedIds();
+        const rows = [];
+        PAQUETES.planes.forEach(p => {
+            if (!checkedIds.has(p.id)) return;
+            const cost = PLAN_MONTHLY_COSTS[p.nombre];
+            if (!cost) return;
+            const display = (cost * multiplier).toLocaleString('es-ES', { minimumFractionDigits: 2 });
+            rows.push(`<div class="corp-recur-item">
+                <span class="corp-recur-item-nombre">${p.nombre}</span>
+                <div class="cart-item-precio-wrap">
+                    <span class="corp-recur-item-precio">${display}</span>
+                    <span class="cart-item-euro">${suffix}</span>
+                </div>
+            </div>`);
+        });
+        itemsEl.innerHTML = rows.length > 0
+            ? rows.join('')
+            : '<div class="tipo-cart-empty tipo-cart-empty--sm">Selecciona planes para ver la recurrencia</div>';
+        recalcularPlanesRecurrencia();
+    }
+
+    function recalcularPlanesRecurrencia() {
+        const isAnual    = document.querySelector('input[name="planes_periodo"]:checked')?.value === 'anual';
+        const multiplier = isAnual ? 10 : 1;
+        const suffix     = isAnual ? '€/año' : '€/mes';
+        const checkedIds = getPlanesCheckedIds();
+        let total = 0;
+        PAQUETES.planes.forEach(p => {
+            if (!checkedIds.has(p.id)) return;
+            const cost = PLAN_MONTHLY_COSTS[p.nombre];
+            if (cost && cost > 0) total += cost * multiplier;
+        });
+        const recurDesc = parseFloat(document.getElementById('planes_recur_descuento')?.value) || 0;
+        const neto = Math.max(0, total * (1 - recurDesc / 100));
+        const totalEl = document.getElementById('planes-recurrencia-total');
+        if (totalEl) totalEl.textContent = neto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' ' + suffix;
+        actualizarResumenFlotante();
+    }
+
+    function parseEsNumber(str) {
+        if (!str || str === '—') return 0;
+        return parseFloat(str.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
+    }
+
+    function actualizarResumenFlotante() {
+        const setupEl    = document.getElementById('resumen-setup');
+        const mensualEl  = document.getElementById('resumen-mensual');
+        const firmasEl   = document.getElementById('resumen-firmas');
+        const firmasFila = document.getElementById('resumen-firmas-fila');
+        if (setupEl) {
+            const corpSetupCart  = document.getElementById('corp-setup-cart');
+            const isCorporate    = corpSetupCart && !corpSetupCart.classList.contains('hidden');
+            const planesNetoRow  = document.getElementById('planes-setup-neto-row');
+            const planesNetoVisible = planesNetoRow && !planesNetoRow.classList.contains('hidden');
+            if (isCorporate) {
+                // Corporate: mostrar solo el importe de setup manual (no los módulos)
+                const setupBruto = parseFloat(document.getElementById('corp_setup_precio')?.value) || 0;
+                const setupDesc  = parseFloat(document.getElementById('corp_setup_descuento')?.value) || 0;
+                const setupNeto  = Math.max(0, setupBruto * (1 - setupDesc / 100));
+                if (setupBruto > 0 && setupDesc > 0) {
+                    setupEl.textContent = setupNeto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+                } else if (setupBruto > 0) {
+                    setupEl.textContent = setupBruto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+                } else {
+                    setupEl.textContent = '—';
+                }
+            } else if (planesNetoVisible) {
+                setupEl.textContent = document.getElementById('tipo-cart-planes-neto')?.innerText || '—';
+            } else {
+                setupEl.textContent = document.getElementById('tipo-cart-subtotal')?.textContent || '—';
+            }
+        }
+        if (mensualEl) {
+            const corpRecCart   = document.getElementById('corp-recurrencia-cart');
+            const planesRecCart = document.getElementById('planes-recurrencia-cart');
+            const esCorporate   = corpRecCart   && !corpRecCart.classList.contains('hidden');
+            const esPlanes      = planesRecCart && !planesRecCart.classList.contains('hidden');
+            const resumenLbl    = document.getElementById('resumen-mensual-label');
+            if (esCorporate) {
+                const isAnual = document.querySelector('input[name="corp_periodo"]:checked')?.value === 'anual';
+                mensualEl.textContent = document.getElementById('corp-recurrencia-total')?.textContent || '—';
+                if (resumenLbl) resumenLbl.textContent = isAnual ? 'Anual' : 'Mensual';
+            } else if (esPlanes) {
+                const isAnual = document.querySelector('input[name="planes_periodo"]:checked')?.value === 'anual';
+                mensualEl.textContent = document.getElementById('planes-recurrencia-total')?.textContent || '—';
+                if (resumenLbl) resumenLbl.textContent = isAnual ? 'Anual' : 'Mensual';
+            } else {
+                mensualEl.textContent = document.getElementById('tipo-cart-mensual-subtotal')?.textContent || '—';
+                if (resumenLbl) resumenLbl.textContent = 'Mensual';
+            }
+        }
+        const firmasCost = getFirmasCost();
+        if (firmasEl && firmasFila) {
+            if (firmasCost > 0) {
+                firmasEl.textContent = firmasCost.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+                firmasFila.classList.remove('hidden');
+            } else {
+                firmasFila.classList.add('hidden');
+            }
+        }
+        // Total anual = setup + recurrencia (solo cuando modo anualizado activo)
+        const totalFilaEl = document.getElementById('resumen-total-fila');
+        const totalSepEl  = document.getElementById('resumen-total-sep');
+        const totalValEl  = document.getElementById('resumen-total');
+        const corpRecCart2   = document.getElementById('corp-recurrencia-cart');
+        const planesRecCart2 = document.getElementById('planes-recurrencia-cart');
+        const tieneRecurrencia = (corpRecCart2 && !corpRecCart2.classList.contains('hidden'))
+                              || (planesRecCart2 && !planesRecCart2.classList.contains('hidden'));
+        const isAnualCorp   = corpRecCart2   && !corpRecCart2.classList.contains('hidden')
+            && document.querySelector('input[name="corp_periodo"]:checked')?.value === 'anual';
+        const isAnualPlanes = planesRecCart2 && !planesRecCart2.classList.contains('hidden')
+            && document.querySelector('input[name="planes_periodo"]:checked')?.value === 'anual';
+        const isAnualTotal = isAnualCorp || isAnualPlanes;
+        if (totalFilaEl && totalSepEl && totalValEl) {
+            if (isAnualTotal) {
+                const setupVal  = parseEsNumber(setupEl?.textContent);
+                const recurVal  = parseEsNumber(mensualEl?.textContent);
+                const firmasVal = firmasCost;
+                const total     = setupVal + recurVal + firmasVal;
+                totalValEl.textContent = total.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+                totalFilaEl.classList.remove('hidden');
+                totalSepEl.classList.remove('hidden');
+            } else {
+                totalFilaEl.classList.add('hidden');
+                totalSepEl.classList.add('hidden');
+            }
+        }
+    }
+
+    function sincronizarModulos() {
+        const checkedIds = Array.from(document.querySelectorAll('input[name="cart_item"]:checked')).map(cb => cb.value);
+        const modulosActivos = new Set();
+        Object.values(PAQUETES).flat().forEach(p => {
+            if (checkedIds.includes(p.id)) p.modulos.forEach(m => modulosActivos.add(m));
+        });
+        document.querySelectorAll('input[name="modulo"]').forEach(cb => {
+            cb.checked = modulosActivos.has(cb.value);
+        });
+    }
+
+    function formatIban(input) {
+        let val = input.value.replace(/\s+/g, '').toUpperCase();
+        input.value = val.match(/.{1,4}/g)?.join(' ') || val;
+    }
+
+    function copiarDatosCliente(btn) {
+        const card = btn.closest('.local-card');
+        card.querySelector('[data-field="sociedad_cif"]').value         = document.getElementById('cif').value;
+        card.querySelector('[data-field="sociedad_denominacion"]').value = document.getElementById('denominacion').value;
+        card.querySelector('[data-field="sociedad_calle"]').value        = document.getElementById('calle').value;
+        card.querySelector('[data-field="sociedad_numero"]').value       = document.getElementById('numero').value;
+        card.querySelector('[data-field="sociedad_cp"]').value           = document.getElementById('cp').value;
+        card.querySelector('[data-field="sociedad_municipio"]').value    = document.getElementById('municipio').value;
+        card.querySelector('[data-field="sociedad_provincia"]').value    = document.getElementById('provincia').value;
+    }
+
+    function toggleFirmas(show) {
+        document.getElementById('firmas-packs').classList.toggle('hidden', !show);
+        if (!show) {
+            document.querySelectorAll('input[name="firmas"]').forEach(r => r.checked = false);
+            recalcularCarrito();
+        }
+    }
+
+    function toggleLite(isLite) {
+        // Mostrar/ocultar pregunta de tablet
+        document.getElementById('tablet-question').classList.toggle('hidden', !isLite);
+        // Resetear selección de tablet y ocultar sección de entrega
+        document.querySelectorAll('input[name="tablet"]').forEach(r => r.checked = false);
+        document.getElementById('lite-section').classList.add('hidden');
+        // Sección módulos: ocultar si es lite
+        document.getElementById('modulos-section').classList.toggle('hidden', isLite);
+
+        if (isLite) {
+            // Pre-seleccionar tipo Lite en datos financieros
+            document.getElementById('tipo_lite').checked = true;
+            seleccionarTipo('lite');
+            // Pre-marcar Setup (la mensualidad se gestiona por local en recurrencia mensual)
+            const setupCb = document.querySelector('input[name="cart_item"][value="lite_setup"]');
+            if (setupCb) setupCb.checked = true;
+            recalcularCarrito('lite');
+        } else {
+            // Revertir selección de tipo y ocultar contenido financiero
+            document.querySelectorAll('input[name="tipo_cliente"]').forEach(r => r.checked = false);
+            document.getElementById('fin-tipo-content').classList.add('hidden');
+            document.querySelectorAll('input[name="cart_item"]').forEach(cb => cb.checked = false);
+        }
+    }
+
+    function toggleTablet(value) {
+        document.getElementById('lite-section').classList.toggle('hidden', value !== 'si');
+    }
+
+    function collectFormData() {
+        const isLite = document.getElementById('lite_check').checked;
+        const hasTablet = (document.querySelector('input[name="tablet"]:checked') || {}).value === 'si';
+        const data = {
+            'Comercial':      document.getElementById('comercial').value,
+            'Nombre Sociedad':document.getElementById('denominacion').value.trim(),
+            'Nombre Comercial':document.getElementById('nombreComercial').value.trim(),
+            'Calle':          document.getElementById('calle').value.trim(),
+            'Número':         document.getElementById('numero').value.trim(),
+            'CP':             document.getElementById('cp').value.trim(),
+            'Municipio':      document.getElementById('municipio').value.trim(),
+            'Provincia':      document.getElementById('provincia').value.trim(),
+            'CIF/NIF':        document.getElementById('cif').value.trim(),
+            'Email':          document.getElementById('email').value.trim(),
+            'Email Factura':  document.getElementById('email_factura').value.trim(),
+            'Email CC':       document.getElementById('email_cc').value.trim(),
+            'Firmas Contratadas': (document.querySelector('input[name="firmas"]:checked') || {}).value || '',
+            'JP Nombre':      document.getElementById('jp_nombre').value.trim(),
+            'JP Apellidos':   document.getElementById('jp_apellidos').value.trim(),
+            'JP Rol':         document.getElementById('jp_rol').value.trim(),
+            'JP Teléfono':    document.getElementById('jp_telefono').value.trim(),
+            'JP Mail':        document.getElementById('jp_mail').value.trim(),
+            'Firmante Nombre':    document.getElementById('firm_nombre').value.trim(),
+            'Firmante Apellidos': document.getElementById('firm_apellidos').value.trim(),
+            'Firmante Mail':      document.getElementById('firm_mail').value.trim(),
+            'Firmante DNI':       document.getElementById('firm_dni').value.trim(),
+            'Firmante Puesto':    document.getElementById('firm_puesto').value.trim(),
+            'TPV':            document.getElementById('tpv').value,
+            'TPV Contacto':   document.getElementById('tpv_contacto').value.trim(),
+            'TPV Email':      document.getElementById('tpv_email').value.trim(),
+            'Lite':           isLite ? 'Sí' : '',
+            'Distribuidor':   document.getElementById('dist_check').checked ? 'Sí' : '',
+            'Dist. Empresa':  document.getElementById('dist_empresa').value.trim(),
+            'Dist. CIF':      document.getElementById('dist_cif').value.trim(),
+            'Dist. Dirección':document.getElementById('dist_direccion').value.trim(),
+            'Dist. CP':       document.getElementById('dist_cp').value.trim(),
+            'Dist. Contacto': document.getElementById('dist_contacto').value.trim(),
+            'Dist. Mail':     document.getElementById('dist_mail').value.trim(),
+            'Dist. Teléfono': document.getElementById('dist_telefono').value.trim(),
+            'Dist. Comisión Implementación (%)': (() => {
+                                let cartTotal = 0;
+                                document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked').forEach(cb => {
+                                    const pi = document.getElementById('precio_' + cb.value);
+                                    if (pi) cartTotal += parseFloat(pi.value) || 0;
+                                });
+                                return Math.round(cartTotal * getComisionRate() * 100) / 100;
+                            })(),
+            'Tipo Cliente':   (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value || '',
+            'ImporteSetup':   (parseFloat(document.getElementById('corp_setup_precio')?.value) || ''),
+            'Descuentosetup': (parseFloat(document.getElementById('corp_setup_descuento')?.value) || ''),
+            'Credencial Master': document.getElementById('cred_master').value.trim(),
+            'Credencial Yurest': document.getElementById('cred_yurest').value.trim(),
+            'Comentarios':    document.getElementById('comentarios').value.trim(),
+            'Mensualidad Total Locales': (() => {
+                                let t = 0;
+                                document.querySelectorAll('.mensual-local-precio').forEach(i => { t += parseFloat(i.value) || 0; });
+                                const desc = parseFloat(document.getElementById('cart_descuento')?.value) || 0;
+                                return Math.max(0, t * (1 - desc / 100));
+                            })(),
+            locales: [],
+            'Módulos': []
+        };
+
+        document.querySelectorAll('input[name="modulo"]:checked').forEach(cb => {
+            data['Módulos'].push(cb.value);
+        });
+
+        document.querySelectorAll('.local-card').forEach(card => {
+            const local = {};
+            card.querySelectorAll('[data-field]').forEach(input => {
+                const field = input.getAttribute('data-field');
+                local[field] = input.type === 'checkbox' ? input.checked : input.value.trim();
+            });
+            data.locales.push(local);
+        });
+
+        return data;
+    }
+
+    function validateForm(data) {
+        if (!data['Nombre Sociedad']) {
+            showStatus('La Denominación Social es obligatoria.', 'error');
+            document.getElementById('denominacion').focus();
+            return false;
+        }
+        for (let i = 0; i < data.locales.length; i++) {
+            if (!data.locales[i].nombre) {
+                showStatus(`El Local #${i + 1} requiere un nombre.`, 'error');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    async function guardarCambios() {
+        const data = collectFormData();
+        if (!validateForm(data)) return;
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        showStatus('', '');
+
+        // Recuperar credenciales de la sesión activa
+        const _session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        const _headers = { 'Content-Type': 'application/json' };
+        if (_session.basicAuth) _headers['Authorization'] = 'Basic ' + _session.basicAuth;
+
+        // En modo edición incluir el ID para que n8n actualice la fila correcta
+        if (_editId) data.id = _editId;
+
+        try {
+            const res = await fetch(WEBHOOK_GUARDAR, {
+                method: 'POST',
+                headers: _headers,
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                const msg = _editId ? '✅ Ficha actualizada correctamente. Redirigiendo al listado…'
+                                    : '✅ Ficha guardada correctamente. Redirigiendo al listado…';
+                showStatus(msg, 'success');
+                sessionStorage.removeItem('yurest_edit_ficha');
+                sessionStorage.setItem('yurest_refresh_lista', '1');
+                resetForm();
+                setTimeout(() => { window.location.href = 'lista.html'; }, 1800);
+            } else {
+                let msg = '';
+                try { const r = await res.json(); msg = r.error || r.message || ''; } catch (_) { msg = await res.text().catch(() => ''); }
+                showStatus('Error al guardar (' + res.status + ')' + (msg ? ': ' + msg : '.'), 'error');
+            }
+        } catch (err) {
+            showStatus('Error de conexión: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Guardar';
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('comercial').value = '';
+        ['denominacion','nombreComercial','calle','numero','cp','municipio','provincia','cif',
+         'email','email_factura','email_cc',
+         'jp_nombre','jp_apellidos','jp_rol','jp_telefono','jp_mail',
+         'firm_nombre','firm_apellidos','firm_mail','firm_dni','firm_puesto',
+         'tpv_contacto','tpv_email',
+         'entrega_calle','entrega_numero','entrega_cp','entrega_municipio','entrega_provincia',
+         'contacto_nombre','contacto_email','contacto_telefono',
+         'dist_empresa','dist_cif','dist_direccion','dist_cp','dist_contacto','dist_mail','dist_telefono',
+         'comentarios'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('firmas_no').checked = true;
+        toggleFirmas(false);
+        document.querySelectorAll('input[name="firmas"]').forEach(r => r.checked = false);
+        document.getElementById('tpv').value = '';
+        document.getElementById('dist_check').checked = false;
+        toggleSeccionDistribuidor(false);
+        document.getElementById('lite_check').checked = false;
+        toggleLite(false);
+        document.getElementById('pct_30').checked = true;
+        document.querySelectorAll('input[name="dist_preset"]').forEach(r => r.checked = false);
+        const corpPeriodoEl = document.getElementById('corp_periodo_mensual');
+        if (corpPeriodoEl) corpPeriodoEl.checked = true;
+        actualizarComisionDistribuidor(0);
+        actualizarCredenciales();
+        document.querySelectorAll('input[name="modulo"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('input[name="tipo_cliente"]').forEach(r => r.checked = false);
+        document.querySelectorAll('input[name="cart_item"]').forEach(cb => cb.checked = false);
+        const descEl = document.getElementById('cart_descuento');
+        if (descEl) descEl.value = '0';
+        const anualEl = document.getElementById('mensual_anualizada');
+        if (anualEl) anualEl.checked = false;
+        document.getElementById('anual-row')?.classList.add('hidden');
+        document.getElementById('fin-tipo-content').classList.add('hidden');
+        const corpSetup = document.getElementById('corp_setup_precio');
+        if (corpSetup) corpSetup.value = '';
+        document.getElementById('locales-container').innerHTML = '';
+    }
+
+    function cancelar() {
+        if (confirm('¿Descartar todos los datos del formulario?')) {
+            window.location.href = 'lista.html';
+        }
+    }
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('status-msg');
+        el.textContent = msg;
+        el.className = 'status-msg ' + (msg ? type : 'hidden');
+        if (msg) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ── Modo Edición ──────────────────────────────────────────────────────────
+    let _editId = null;
+
+    function cargarModoEdicion(f) {
+        // Acepta tanto fichas (ID) como solicitudes (ID Solicitud)
+        _editId = f['ID'] || f['id'] || f['ID Solicitud'] || f['id_solicitud'] || null;
+
+        // Banner
+        const banner = document.getElementById('edit-banner');
+        document.getElementById('edit-banner-id').textContent = _editId ? '#' + _editId : '';
+        banner.style.display = 'flex';
+
+        // ── Helper: asigna el primer valor no vacío entre varias claves ───────
+        const set = (id, ...keys) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            for (const k of keys) {
+                const v = f[k];
+                if (v != null && v !== '') { el.value = v; return; }
+            }
+        };
+
+        // ── Campos simples ────────────────────────────────────────────────────
+        set('comercial',      'Comercial', 'comercial');
+        set('denominacion',   'Nombre Sociedad', 'nombre_sociedad', 'Denominacion', 'Razón Social');
+        set('nombreComercial','Nombre Comercial', 'nombre_comercial');
+        set('calle',          'Calle', 'calle');
+        set('numero',         'Número', 'Numero', 'numero');
+        set('cp',             'CP', 'cp', 'Código Postal');
+        set('municipio',      'Municipio', 'municipio', 'Ciudad');
+        set('provincia',      'Provincia', 'provincia');
+        set('cif',            'CIF/NIF', 'CIF', 'NIF', 'cif');
+        set('email',          'Email', 'email', 'Email contacto');
+        set('email_factura',  'Email Factura', 'email_factura');
+        set('email_cc',       'Email CC', 'email_cc');
+        set('jp_nombre',      'JP Nombre', 'jp_nombre');
+        set('jp_apellidos',   'JP Apellidos', 'jp_apellidos');
+        set('jp_rol',         'JP Rol', 'jp_rol');
+        set('jp_telefono',    'JP Teléfono', 'JP Telefono', 'jp_telefono');
+        set('jp_mail',        'JP Mail', 'jp_mail');
+        set('firm_nombre',    'Firmante Nombre', 'firm_nombre');
+        set('firm_apellidos', 'Firmante Apellidos', 'firm_apellidos');
+        set('firm_mail',      'Firmante Mail', 'firm_mail');
+        set('firm_dni',       'Firmante DNI', 'firm_dni');
+        set('firm_puesto',    'Firmante Puesto', 'firm_puesto');
+        set('tpv',            'TPV', 'tpv');
+        set('tpv_contacto',   'TPV Contacto', 'tpv_contacto');
+        set('tpv_email',      'TPV Email', 'tpv_email');
+        set('dist_empresa',   'Dist. Empresa', 'dist_empresa');
+        set('dist_cif',       'Dist. CIF', 'dist_cif');
+        set('dist_direccion', 'Dist. Dirección', 'Dist. Direccion', 'dist_direccion');
+        set('dist_cp',        'Dist. CP', 'dist_cp');
+        set('dist_contacto',  'Dist. Contacto', 'dist_contacto');
+        set('dist_mail',      'Dist. Mail', 'dist_mail');
+        set('dist_telefono',  'Dist. Teléfono', 'Dist. Telefono', 'dist_telefono');
+        set('cred_master',      'Credencial Master', 'cred_master');
+        set('cred_yurest',      'Credencial Yurest', 'cred_yurest');
+        set('comentarios',      'Comentarios', 'comentarios');
+        set('corp_setup_precio',    'ImporteSetup', 'Setup Importe', 'setup_importe', 'corp_setup_precio');
+        set('corp_setup_descuento', 'Descuentosetup', 'Setup Descuento', 'setup_descuento', 'corp_setup_descuento');
+
+        // ── Distribuidor ──────────────────────────────────────────────────────
+        if (f['Distribuidor'] === 'Sí') {
+            document.getElementById('dist_check').checked = true;
+            toggleSeccionDistribuidor(true);
+        }
+
+        // ── Lite ──────────────────────────────────────────────────────────────
+        if (f['Lite'] === 'Sí') {
+            document.getElementById('lite_check').checked = true;
+            toggleLite(true);
+        }
+
+        // ── Tipo cliente ──────────────────────────────────────────────────────
+        const tipo = (f['Tipo Cliente'] || f['tipoCliente'] || f['Tipo de cliente'] || f['tipo_cliente'] || '').toLowerCase().trim();
+        if (tipo) {
+            const radio = document.getElementById('tipo_' + tipo);
+            if (radio) { radio.checked = true; seleccionarTipo(tipo); }
+        }
+
+        // ── Módulos ───────────────────────────────────────────────────────────
+        if (f['Módulos']) {
+            const mods = String(f['Módulos']).split(',').map(m => m.trim().toLowerCase());
+            document.querySelectorAll('input[name="modulo"]').forEach(cb => {
+                if (mods.includes(cb.value.toLowerCase())) cb.checked = true;
+            });
+        }
+
+        // ── Locales ───────────────────────────────────────────────────────────
+        try {
+            const rawL = f['Locales'] || f['locales'] || '';
+            const locales = typeof rawL === 'string' && rawL.startsWith('[') ? JSON.parse(rawL) : (Array.isArray(rawL) ? rawL : []);
+            locales.forEach(l => {
+                agregarLocal();
+                const cards = document.querySelectorAll('.local-card');
+                const card  = cards[cards.length - 1];
+                Object.keys(l).forEach(field => {
+                    const input = card.querySelector(`[data-field="${field}"]`);
+                    if (input) input.value = l[field] === true ? '' : (l[field] || '');
+                });
+            });
+        } catch (_) {}
+
+        recalcularCarrito();
+
+        // Si las credenciales están vacías, generarlas a partir del Nombre Comercial precargado
+        const credMaster = document.getElementById('cred_master');
+        const credYurest = document.getElementById('cred_yurest');
+        if (credMaster && credYurest && !credMaster.value && !credYurest.value) {
+            actualizarCredenciales();
+        }
+    }
+
+    // ── Bloquear selector de tipo (completar ficha desde solicitud) ──────────
+    function bloquearTipoCliente() {
+        const grupo = document.querySelector('.tipo-group');
+        if (grupo) grupo.classList.add('tipo-group--locked');
+        // Deshabilitar también los inputs por si algún script los lee
+        document.querySelectorAll('input[name="tipo_cliente"]').forEach(r => r.disabled = true);
+    }
+
+    // ── Modo Alta Rápida ──────────────────────────────────────────────────────
+    function activarModoAltaRapida() {
+        // Mostrar banner informativo
+        const banner = document.getElementById('alta-rapida-banner');
+        if (banner) banner.style.display = 'flex';
+
+        // Actualizar subtítulo del header
+        const sub = document.querySelector('.header-sub');
+        if (sub) sub.textContent = 'Rellena los datos básicos para crear la ficha inicial del cliente';
+
+        // Secciones a ocultar completamente
+        [
+            '#lite-section',
+            '#distribuidor-section',
+            '#jefe-proyecto-section',
+            '#firmante-section',
+            '#financiero-section',
+            '#credenciales-section',
+            '#modulos-section',
+            '#locales-container',
+            '#comentarios-section'
+        ].forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) el.classList.add('hidden');
+        });
+
+        // Ocultar campos no esenciales dentro de Datos de Cliente
+        ['#firmas-yn-row', '#firmas-packs', '.toggles-row', '#tablet-question'].forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) el.classList.add('hidden');
+        });
+    }
+
+    // ── Completar ficha desde solicitud (carga webhook al abrir) ──────────────
+    async function completarFichaDesdeWebhook(solId) {
+        const WEBHOOK_COMPLETAR_FICHA = 'https://n8n-soporte.data.yurest.dev/webhook/5a304fcd-ae1d-49e6-92d1-c5a5e007bbfd';
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+
+        // Mostrar spinner de carga en el formulario
+        const statusEl = document.getElementById('status-msg');
+        if (statusEl) {
+            statusEl.textContent = 'Cargando datos del cliente…';
+            statusEl.className = 'status-msg info';
+        }
+
+        try {
+            const url = WEBHOOK_COMPLETAR_FICHA + '?id=' + encodeURIComponent(solId);
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
+            });
+            if (!res.ok) throw new Error('Error ' + res.status);
+            const data = await res.json();
+            const ficha = Array.isArray(data) ? data[0] : data;
+            if (!ficha) throw new Error('Sin datos');
+            cargarModoEdicion(ficha);
+            bloquearTipoCliente();
+            if (statusEl) { statusEl.textContent = ''; statusEl.className = 'status-msg hidden'; }
+        } catch (err) {
+            if (statusEl) {
+                statusEl.textContent = 'No se pudieron cargar los datos: ' + err.message;
+                statusEl.className = 'status-msg error';
+            }
+        }
+    }
+
+    // Detectar modo al cargar
+    (function() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('edit') === '1') {
+            try {
+                const raw = sessionStorage.getItem('yurest_edit_ficha');
+                if (raw) { cargarModoEdicion(JSON.parse(raw)); }
+            } catch(e) { console.error('Error cargando ficha edición', e); }
+        } else if (params.get('completar') === '1') {
+            const solId = sessionStorage.getItem('yurest_completar_id');
+            if (solId) {
+                sessionStorage.removeItem('yurest_completar_id');
+                completarFichaDesdeWebhook(solId);
+            }
+        } else if (params.get('completa') !== '1') {
+            activarModoAltaRapida();
+        }
+        // Si completa=1 → formulario completo tal cual, sin ocultaciones
+    })();
+</script>
+
+
+<button id="add-local-float" type="button" onclick="agregarLocal()">+ Añadir Local</button>
+
+<div id="resumen-flotante">
+    <div class="resumen-titulo">Resumen</div>
+    <div class="resumen-fila">
+        <span class="resumen-label">Setup</span>
+        <span class="resumen-valor" id="resumen-setup">—</span>
+    </div>
+    <div class="resumen-fila resumen-fila--firmas hidden" id="resumen-firmas-fila">
+        <span class="resumen-label resumen-label--firmas">Firmas</span>
+        <span class="resumen-valor resumen-valor--firmas" id="resumen-firmas">—</span>
+    </div>
+    <div class="resumen-sep"></div>
+    <div class="resumen-fila">
+        <span class="resumen-label resumen-label--mensual" id="resumen-mensual-label">Mensual</span>
+        <span class="resumen-valor resumen-valor--mensual" id="resumen-mensual">—</span>
+    </div>
+    <div class="resumen-sep hidden" id="resumen-total-sep"></div>
+    <div class="resumen-fila hidden" id="resumen-total-fila">
+        <span class="resumen-label resumen-label--total">Total 1er pago</span>
+        <span class="resumen-valor resumen-valor--total" id="resumen-total">—</span>
+    </div>
+</div>
+
+</body>
+</html>

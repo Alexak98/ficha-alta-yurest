@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fichas de Clientes - Yurest</title>
+    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── Sidebar ── */
+        .sidebar-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.45);
+            z-index: 500;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: 248px; height: 100vh;
+            background: #fff;
+            z-index: 600;
+            transform: translateX(-100%);
+            transition: transform 0.26s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.13);
+            display: flex; flex-direction: column;
+        }
+        .sidebar.open { transform: translateX(0); }
+        .sidebar-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 18px 16px;
+            border-bottom: 1.5px solid #f1f5f9;
+        }
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.78rem; font-weight: 800;
+            letter-spacing: 0.13em; text-transform: uppercase; color: #fc5858;
+        }
+        .sidebar-brand-dot {
+            width: 8px; height: 8px; background: #fc5858; border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.25);
+        }
+        .sidebar-close {
+            width: 28px; height: 28px; border-radius: 8px;
+            border: 1.5px solid #e2e8f0; background: #f8fafc;
+            color: #64748b; font-size: 0.9rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .sidebar-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+        .sidebar-label {
+            padding: 16px 18px 6px;
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; color: #94a3b8;
+        }
+        .sidebar-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 18px; margin: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.88rem; font-weight: 500; color: #334155;
+            text-decoration: none; cursor: pointer;
+            transition: background 0.14s, color 0.14s;
+        }
+        .sidebar-item:hover { background: #f8fafc; color: #1e293b; }
+        .sidebar-item.active {
+            background: #fff1f1; color: #fc5858; font-weight: 700;
+        }
+        .sidebar-item svg { flex-shrink: 0; opacity: 0.7; }
+        .sidebar-item.active svg { opacity: 1; }
+        .sidebar-ft {
+            margin-top: auto; padding: 16px 18px;
+            border-top: 1.5px solid #f1f5f9;
+        }
+        .sidebar-ft button {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 10px 14px; border-radius: 10px;
+            border: 1.5px solid #fecaca; background: #fff5f5;
+            color: #dc2626; font-size: 0.85rem; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .sidebar-ft button:hover { background: #fee2e2; }
+
+        /* ── Botón hamburguesa ── */
+        .btn-menu {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; flex-shrink: 0;
+            background: #fff; border: 1.5px solid #e2e8f0;
+            border-radius: 10px; cursor: pointer; color: #64748b;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+        }
+        .btn-menu:hover { border-color: #fc5858; color: #fc5858; background: #fff1f1; }
+
+        /* ── Toolbar ── */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 28px 0 18px;
+        }
+        .search-wrap {
+            flex: 1;
+            position: relative;
+        }
+        .search-wrap .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            pointer-events: none;
+        }
+        .search-input {
+            width: 100%;
+            padding: 11px 16px 11px 44px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #fc5858;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.12);
+        }
+        .search-input::placeholder { color: #cbd5e1; }
+
+        /* ── Stats ── */
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-chip {
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 8px 18px;
+            font-size: 0.82rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .stat-chip strong {
+            color: #1e293b;
+            font-size: 1rem;
+        }
+        .stat-chip--red strong { color: #fc5858; }
+
+        /* ── Table ── */
+        .table-wrap {
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04);
+        }
+        .fichas-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .fichas-table thead th {
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1.5px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .fichas-table thead th.th-center { text-align: center; }
+        .fichas-table tbody tr {
+            cursor: pointer;
+            transition: background 0.12s;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .fichas-table tbody tr:last-child { border-bottom: none; }
+        .fichas-table tbody tr:hover { background: #fff8f8; }
+        .fichas-table tbody td {
+            padding: 13px 16px;
+            font-size: 0.88rem;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .td-denom { font-weight: 600; color: #1e293b; }
+        .td-comercial { color: #64748b; }
+        .td-fecha { color: #94a3b8; font-size: 0.8rem; white-space: nowrap; }
+        .td-cif { font-family: monospace; font-size: 0.83rem; color: #64748b; }
+        .td-center { text-align: center; }
+
+        .mod-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            height: 22px;
+            padding: 0 8px;
+            background: #fee2e2;
+            color: #fc5858;
+            border-radius: 20px;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+        .mod-badge--empty {
+            background: #f1f5f9;
+            color: #cbd5e1;
+        }
+        .td-actions { display: flex; gap: 5px; align-items: center; }
+        .btn-ver, .btn-edit, .btn-del {
+            padding: 5px 10px;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn-ver  { border: 1.5px solid #e2e8f0; background: #fff; color: #64748b; }
+        .btn-ver:hover  { border-color: #fc5858; color: #fc5858; }
+        .btn-edit { border: 1.5px solid #dbeafe; background: #eff6ff; color: #2563eb; }
+        .btn-edit:hover { border-color: #2563eb; background: #dbeafe; }
+        .btn-del  { border: 1.5px solid #fecaca; background: #fff5f5; color: #dc2626; }
+        .btn-del:hover  { border-color: #dc2626; background: #fee2e2; }
+
+        /* ── Dropdown Ver ── */
+        .btn-ver-wrap { position: relative; display: inline-block; }
+        .btn-ver-toggle::after { content: ' ▾'; font-size: 0.65rem; }
+        .btn-ver-menu {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 9px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            min-width: 150px;
+            padding: 4px 0;
+        }
+        .btn-ver-menu.open { display: block; }
+        .btn-ver-menu a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 14px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #1e293b;
+            text-decoration: none;
+            transition: background 0.12s;
+        }
+        .btn-ver-menu a:hover { background: #f8fafc; color: #fc5858; }
+        .btn-ver-menu a .vm-icon { font-size: 0.9rem; }
+
+        /* ── Modal confirmación eliminar ── */
+        .confirm-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.6);
+            z-index: 400;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .confirm-modal-overlay.active { display: flex; }
+        .confirm-modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px 28px 24px;
+            width: min(420px, calc(100vw - 32px));
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            animation: fadeSlideDown 0.18s ease;
+        }
+        .confirm-modal h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 10px;
+        }
+        .confirm-modal p {
+            font-size: 0.86rem;
+            color: #64748b;
+            margin: 0 0 14px;
+            line-height: 1.5;
+        }
+        .confirm-modal .del-entity-name { font-weight: 700; color: #dc2626; }
+        .confirm-modal-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .confirm-modal-input:focus { outline: none; border-color: #fc5858; box-shadow: 0 0 0 3px rgba(252,88,88,0.12); }
+        .confirm-modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-del-confirm {
+            background: #dc2626;
+            border: none;
+            color: #fff;
+            padding: 9px 20px;
+            border-radius: 9px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-del-confirm:hover:not(:disabled) { background: #b91c1c; }
+        .btn-del-confirm:disabled { background: #fca5a5; cursor: not-allowed; }
+        .btn-cancel-del {
+            background: #f1f5f9;
+            border: none;
+            color: #475569;
+            padding: 9px 20px;
+            border-radius: 9px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-cancel-del:hover { background: #e2e8f0; }
+
+        /* ── Loading ── */
+        .loading-state {
+            text-align: center;
+            padding: 64px 20px;
+            color: #94a3b8;
+        }
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #fee2e2;
+            border-top-color: #fc5858;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Empty ── */
+        .empty-state {
+            text-align: center;
+            padding: 64px 20px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 1.1rem; color: #334155; margin: 0 0 8px; }
+        .empty-state p { color: #94a3b8; font-size: 0.9rem; margin: 0 0 20px; }
+
+        /* ── Error ── */
+        .error-banner {
+            background: #fff5f5;
+            border: 1.5px solid #fecaca;
+            border-radius: 12px;
+            padding: 14px 20px;
+            color: #991b1b;
+            margin-bottom: 20px;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .error-banner code {
+            font-family: monospace;
+            background: #fee2e2;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.82rem;
+        }
+
+        /* ── Overlay ── */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.45);
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .overlay.active { opacity: 1; pointer-events: all; }
+
+        /* ── Detail panel ── */
+        .detail-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100vh;
+            width: min(580px, 100vw);
+            background: #f8fafc;
+            z-index: 201;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -8px 0 48px rgba(0,0,0,0.18);
+        }
+        .detail-panel.active { transform: translateX(0); }
+
+        .panel-hd {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #fff;
+            padding: 22px 24px 18px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        .panel-hd-info h2 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin: 0 0 4px;
+            line-height: 1.3;
+        }
+        .panel-hd-info p { font-size: 0.8rem; color: #94a3b8; margin: 0; }
+        .panel-hd-badges { display: flex; gap: 6px; margin-top: 8px; }
+        .hd-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 9px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.12);
+            color: #e2e8f0;
+        }
+        .hd-badge--lite { background: rgba(252,88,88,0.35); color: #fca5a5; }
+        .btn-close-panel {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.15s;
+            line-height: 1;
+        }
+        .btn-close-panel:hover { background: rgba(255,255,255,0.2); }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px 20px 24px;
+        }
+
+        .ps { /* panel section */
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .ps-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 12px;
+            padding-bottom: 9px;
+            border-bottom: 1.5px solid #f1f5f9;
+        }
+        .ps-title .section-num {
+            width: 24px;
+            height: 24px;
+            font-size: 0.68rem;
+            flex-shrink: 0;
+        }
+        .ps-title h4 { font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; }
+        .ps-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 18px;
+        }
+        .ps-fields.single { grid-template-columns: 1fr; }
+        .pf { /* panel field */ }
+        .pf.full { grid-column: 1 / -1; }
+        .pf label {
+            display: block;
+            font-size: 0.67rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 2px;
+        }
+        .pf span {
+            display: block;
+            font-size: 0.86rem;
+            color: #1e293b;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+        .pf span.vacio { color: #cbd5e1; font-style: italic; font-size: 0.82rem; }
+        .pf .mono { font-family: monospace; font-size: 0.83rem; }
+
+        .modulos-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 2px;
+        }
+        .mtag {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* ── Tarjetas de local ── */
+        .locales-list { display: flex; flex-direction: column; gap: 10px; }
+        .local-card-panel {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .local-card-header {
+            background: #f8fafc;
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .local-card-header strong {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .local-card-header span {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+        .local-card-body {
+            padding: 10px 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 18px;
+        }
+
+        /* ── Info inline (icono + texto) ── */
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            color: #475569;
+        }
+        .info-row svg { flex-shrink: 0; color: #94a3b8; }
+
+        /* ── Pill de tipo en header panel ── */
+        .panel-tipo-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+        .panel-tipo-lite      { background:#fee2e2; color:#dc2626; }
+        .panel-tipo-planes    { background:#dbeafe; color:#2563eb; }
+        .panel-tipo-corporate { background:#ede9fe; color:#7c3aed; }
+
+        .fin-mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+        .fin-mini-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+        .fin-mini-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+        .fin-mini-table tr:last-child td { border-bottom: none; }
+        .fin-mini-table .total-row td { font-weight: 700; color: #fc5858; border-top: 1.5px solid #e2e8f0; }
+
+        .panel-ft {
+            padding: 14px 20px;
+            border-top: 1.5px solid #e2e8f0;
+            background: #fff;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .panel-ft-date { font-size: 0.78rem; color: #94a3b8; }
+
+        /* ── Barra de filtros ── */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .filter-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+        .filter-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .chip {
+            padding: 5px 13px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            color: #64748b;
+            transition: all 0.15s;
+        }
+        .chip:hover { border-color: #94a3b8; color: #1e293b; }
+        .chip.active { background: #1e293b; border-color: #1e293b; color: #fff; }
+        .chip.active-lite      { background: #ef4444; border-color: #ef4444; color: #fff; }
+        .chip.active-planes    { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .chip.active-corporate { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
+        .chip.active-pendiente { background: #d97706; border-color: #d97706; color: #fff; }
+        .chip.active-rellenado { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .chip-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(0,0,0,0.1);
+            margin-left: 2px;
+        }
+        .chip.active           .chip-count,
+        .chip.active-lite      .chip-count,
+        .chip.active-planes    .chip-count,
+        .chip.active-corporate .chip-count,
+        .chip.active-pendiente .chip-count,
+        .chip.active-rellenado .chip-count,
+        .chip.active-docs-si   .chip-count,
+        .chip.active-docs-no   .chip-count { background: rgba(255,255,255,0.25); }
+        .chip.active-docs-si { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .chip.active-docs-no { background: #d97706; border-color: #d97706; color: #fff; }
+
+        /* ── Toggle docs subidos ── */
+        .docs-toggle { display:inline-flex; border-radius:6px; overflow:hidden; border:1.5px solid #e2e8f0; }
+        .docs-toggle button {
+            padding:3px 9px; font-size:0.75rem; font-weight:600; border:none;
+            background:#f8fafc; color:#94a3b8; cursor:pointer; transition:all 0.15s;
+        }
+        .docs-toggle button:first-child { border-right:1px solid #e2e8f0; }
+        .docs-toggle button.docs-on.active  { background:#dcfce7; color:#16a34a; }
+        .docs-toggle button.docs-off.active { background:#fef9c3; color:#d97706; }
+        .docs-toggle button:hover:not(.active) { background:#f1f5f9; color:#475569; }
+
+        .filter-sep { width: 1px; height: 24px; background: #e2e8f0; margin: 0 4px; }
+
+        .filter-select {
+            padding: 5px 28px 5px 10px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: #64748b;
+            background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+            appearance: none;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        .filter-select:focus { outline: none; border-color: #94a3b8; }
+        .filter-select.active { border-color: #1e293b; color: #1e293b; }
+
+        /* ── Badges tipo cliente en tabla ── */
+        .badge-tipo {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .badge-lite       { background: #fee2e2; color: #dc2626; }
+        .badge-planes     { background: #dbeafe; color: #2563eb; }
+        .badge-corporate  { background: #ede9fe; color: #7c3aed; }
+        .badge-desconocido{ background: #f1f5f9; color: #94a3b8; }
+
+        /* ── Botón secundario ── */
+        .btn-secondary {
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            color: #475569;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            border-color: #94a3b8;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+        .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        @keyframes spin-icon { to { transform: rotate(360deg); } }
+
+        /* ── Botón toolbar solicitar ── */
+        .btn-solicitar-toolbar {
+            background: #fff;
+            border: 1.5px solid #86efac;
+            color: #16a34a;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-solicitar-toolbar:hover,
+        .btn-solicitar-toolbar.open {
+            background: #f0fdf4;
+            border-color: #22c55e;
+            color: #15803d;
+        }
+
+        /* ── Panel solicitar ficha ── */
+        .solicitud-panel {
+            background: #fff;
+            border: 1.5px solid #bbf7d0;
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: none;
+            animation: fadeSlideDown 0.18s ease;
+        }
+        .solicitud-panel.open { display: block; }
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .solicitud-panel-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #15803d;
+            margin: 0 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .solicitud-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+        @media (max-width: 650px) {
+            .solicitud-row { grid-template-columns: 1fr; }
+        }
+        .solicitud-field label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+        .solicitud-field input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+        .solicitud-field input:focus {
+            outline: none;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+        }
+        .solicitud-field input.sol-error,
+        .solicitud-field select.sol-error {
+            border-color: #fc5858 !important;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.12) !important;
+        }
+        .solicitud-field label.sol-error-label { color: #fc5858; }
+        .btn-enviar-solicitud {
+            background: #22c55e;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-enviar-solicitud:hover { background: #16a34a; }
+
+        /* ── Pestañas de vista ── */
+        .page-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0;
+        }
+        .page-tab {
+            padding: 9px 20px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: #64748b;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2.5px solid transparent;
+            margin-bottom: -2px;
+            border-radius: 8px 8px 0 0;
+            transition: color 0.15s, border-color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .page-tab:hover { color: #1e293b; }
+        .page-tab.active { color: #fc5858; border-bottom-color: #fc5858; }
+        .tab-count {
+            background: #f1f5f9;
+            color: #94a3b8;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 10px;
+        }
+        .page-tab.active .tab-count { background: #fee2e2; color: #fc5858; }
+
+        /* ── Tabla solicitudes ── */
+        .badge-estado-pendiente  { background: #fef3c7; color: #d97706; }
+        .badge-estado-rellenado  { background: #dcfce7; color: #16a34a; }
+        .sol-empty {
+            text-align: center;
+            padding: 48px 20px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .sol-empty p { color: #94a3b8; font-size: 0.9rem; margin: 8px 0 0; }
+
+        /* ── Responsive ── */
+        @media (max-width: 700px) {
+            /* Ocultar Nombre Comercial (col 4) y Comercial (col 5) en móvil */
+            .fichas-table thead th:nth-child(4),
+            .fichas-table tbody td:nth-child(4),
+            .fichas-table thead th:nth-child(5),
+            .fichas-table tbody td:nth-child(5) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="page-header">
+    <div class="header-inner">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span class="brand-name">Yurest</span>
+        </div>
+        <h1>Fichas de Clientes</h1>
+        <p class="header-sub">Consulta y gestiona todas las fichas de alta registradas en el sistema</p>
+        <button onclick="cerrarSesion()" style="
+            position:absolute;top:20px;right:24px;
+            background:rgba(255,255,255,0.15);
+            border:1.5px solid rgba(255,255,255,0.35);
+            color:#fff;
+            padding:7px 16px;
+            border-radius:8px;
+            font-size:0.82rem;
+            font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            display:flex;align-items:center;gap:6px;
+            transition:background 0.2s;
+        " onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+           onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar sesión
+        </button>
+    </div>
+</header>
+
+<!-- ── Sidebar navegación ── -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-hd">
+        <div class="sidebar-brand">
+            <span class="sidebar-brand-dot"></span>
+            Yurest
+        </div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
+    <div class="sidebar-label">Secciones</div>
+    <a href="lista.html" class="sidebar-item active">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Fichas de cliente
+    </a>
+    <a href="distribucion.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            <circle cx="19" cy="6" r="2.5"/><circle cx="5" cy="6" r="2.5"/>
+        </svg>
+        Implementadores
+    </a>
+    <div class="sidebar-ft">
+        <button onclick="closeSidebar();cerrarSesion()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar sesión
+        </button>
+    </div>
+</nav>
+
+<div class="container">
+
+    <div id="error-container" class="hidden"></div>
+
+    <div class="toolbar">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+        <div class="search-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="search-input" class="search-input" type="search" placeholder="Buscar por nombre, CIF, municipio…" oninput="filtrar(this.value)">
+        </div>
+        <button id="btn-solicitar" class="btn-solicitar-toolbar" onclick="toggleSolicitud()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Solicitar ficha
+        </button>
+        <a href="index.html?completa=1" class="btn btn-primary" style="white-space:nowrap;">+ Nueva ficha</a>
+    </div>
+
+    <!-- Panel solicitar ficha -->
+    <div id="solicitud-panel" class="solicitud-panel">
+        <p class="solicitud-panel-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Solicitar ficha de alta
+        </p>
+        <div class="solicitud-row">
+            <div class="solicitud-field">
+                <label for="sol-sociedad">Nombre de Sociedad</label>
+                <input type="text" id="sol-sociedad" placeholder="Empresa S.L." autocomplete="off" oninput="solClearErrors()">
+            </div>
+            <div class="solicitud-field">
+                <label for="sol-nombre">Nombre del cliente</label>
+                <input type="text" id="sol-nombre" placeholder="Ana García López" autocomplete="off" oninput="solClearErrors()">
+            </div>
+            <div class="solicitud-field">
+                <label for="sol-email">Email del cliente</label>
+                <input type="email" id="sol-email" placeholder="ana@empresa.com" autocomplete="off" oninput="solClearErrors()">
+            </div>
+            <div class="solicitud-field">
+                <label for="sol-comercial">Comercial</label>
+                <select id="sol-comercial" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;font-family:inherit;" onchange="solClearErrors()">
+                    <option value="">— Selecciona —</option>
+                    <option value="Pedro Martin">Pedro Martin</option>
+                    <option value="Borja Pastor">Borja Pastor</option>
+                    <option value="Santiago Gonzalez">Santiago Gonzalez</option>
+                    <option value="Ivan Ramirez">Ivan Ramirez</option>
+                    <option value="Springboard Monica">Springboard Monica</option>
+                    <option value="Springboard Pau">Springboard Pau</option>
+                    <option value="Ismael Calero">Ismael Calero</option>
+                </select>
+            </div>
+            <div class="solicitud-field">
+                <label for="sol-tipo">Tipo de plan</label>
+                <select id="sol-tipo" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.9rem;font-family:inherit;" onchange="solClearErrors()">
+                    <option value="">— Selecciona —</option>
+                    <option value="lite">Lite</option>
+                    <option value="planes">Planes</option>
+                    <option value="corporate">Corporate</option>
+                </select>
+            </div>
+            <button class="btn-enviar-solicitud" id="btn-enviar-sol" onclick="enviarSolicitud()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor"
+                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                Enviar solicitud
+            </button>
+        </div>
+        <div id="sol-panel-msg" style="display:none;margin-top:12px;font-size:0.85rem;padding:9px 14px;border-radius:8px;"></div>
+    </div>
+
+    <!-- Pestañas -->
+    <div class="page-tabs">
+        <button class="page-tab active" data-tab="fichas" onclick="switchTab('fichas')">
+            Fichas
+            <span class="tab-count" id="tab-count-fichas">0</span>
+        </button>
+        <button class="page-tab" data-tab="rellenado-cliente" onclick="switchTab('rellenado-cliente')">
+            Rellenado cliente
+            <span class="tab-count" id="tab-count-rellenado">0</span>
+        </button>
+        <button class="page-tab" data-tab="solicitudes" onclick="switchTab('solicitudes')">
+            Solicitudes
+            <span class="tab-count" id="tab-count-solicitudes">0</span>
+        </button>
+    </div>
+
+    <!-- ── SECCIÓN FICHAS ── -->
+    <div id="section-fichas">
+        <div id="stats-bar" class="stats-bar hidden">
+        <div class="stat-chip"><strong id="stat-total">0</strong>&nbsp;fichas</div>
+        <div class="stat-chip"><strong id="stat-mes">0</strong>&nbsp;este mes</div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-bar" id="filter-bar" style="display:none;">
+        <span class="filter-label">Tipo</span>
+        <div class="filter-chips">
+            <button class="chip active" data-tipo="" onclick="setFiltroTipo(this, '')">Todos <span class="chip-count" id="count-todos">0</span></button>
+            <button class="chip" data-tipo="lite"      onclick="setFiltroTipo(this, 'lite')">Lite <span class="chip-count" id="count-lite">0</span></button>
+            <button class="chip" data-tipo="planes"    onclick="setFiltroTipo(this, 'planes')">Planes <span class="chip-count" id="count-planes">0</span></button>
+            <button class="chip" data-tipo="corporate" onclick="setFiltroTipo(this, 'corporate')">Enterprise <span class="chip-count" id="count-corporate">0</span></button>
+        </div>
+        <div class="filter-sep"></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span class="filter-label">Comercial</span>
+            <select class="filter-select" id="filtro-comercial" onchange="setFiltroComercial(this)">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="filter-sep"></div>
+        <span class="filter-label">Documentos</span>
+        <div class="filter-chips filter-chips--docs">
+            <button class="chip active" data-docs="" onclick="setFiltroDocumentos(this, '')">Todos</button>
+            <button class="chip" data-docs="si" onclick="setFiltroDocumentos(this, 'si')">✓ Completos</button>
+            <button class="chip" data-docs="no" onclick="setFiltroDocumentos(this, 'no')">✗ Pendientes</button>
+        </div>
+    </div>
+
+    <div id="loading-state" class="loading-state">
+        <div class="spinner"></div>
+        <p>Cargando fichas…</p>
+    </div>
+
+    <div id="table-container" class="hidden">
+        <div class="table-wrap">
+            <table class="fichas-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Nombre Sociedad</th>
+                        <th>Nombre Comercial</th>
+                        <th>Comercial</th>
+                        <th class="th-center">Tipo</th>
+                        <th class="th-center">Estado</th>
+                        <th class="th-center">Docs subidos</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+        <div id="empty-state" class="empty-state hidden">
+            <div class="empty-icon">📋</div>
+            <h3>No hay fichas registradas</h3>
+            <p>Aún no se ha guardado ninguna ficha de cliente en el sistema.</p>
+            <a href="index.html?completa=1" class="btn btn-primary">+ Crear primera ficha</a>
+        </div>
+    </div><!-- /section-fichas -->
+
+    <!-- ── SECCIÓN RELLENADO CLIENTE ── -->
+    <div id="section-rellenado-cliente" style="display:none;">
+        <div id="rc-loading" class="loading-state" style="display:none;">
+            <div class="spinner"></div>
+            <p>Cargando…</p>
+        </div>
+
+        <!-- Filtros rellenado cliente -->
+        <div class="filter-bar" id="rc-filter-bar" style="display:none;">
+            <div class="search-wrap" style="flex:1;max-width:340px;">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="rc-search-input" class="search-input" type="search" placeholder="Buscar por nombre, email…" oninput="aplicarFiltrosRC()">
+            </div>
+            <div class="filter-sep"></div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span class="filter-label">Comercial</span>
+                <select class="filter-select" id="rc-filtro-comercial" onchange="setFiltroRCComercial(this)">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="rc-table-wrap" class="table-wrap hidden">
+            <table class="fichas-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha rellenado</th>
+                        <th>Sociedad / Cliente</th>
+                        <th>Comercial</th>
+                        <th class="th-center">Tipo</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="rc-tbody"></tbody>
+            </table>
+        </div>
+
+        <div id="rc-empty" class="sol-empty hidden">
+            <div style="font-size:2.5rem;margin-bottom:12px">📝</div>
+            <p>Aún no hay clientes que hayan rellenado su ficha.</p>
+        </div>
+    </div><!-- /section-rellenado-cliente -->
+
+    <!-- ── SECCIÓN SOLICITUDES ── -->
+    <div id="section-solicitudes" style="display:none;">
+        <div id="sol-loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>Cargando solicitudes…</p>
+        </div>
+
+        <!-- Filtros solicitudes -->
+        <div class="filter-bar" id="sol-filter-bar" style="display:none;">
+            <div class="search-wrap" style="flex:1;max-width:340px;">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="sol-search-input" class="search-input" type="search" placeholder="Buscar por nombre, email, ID…" oninput="aplicarFiltrosSol()">
+            </div>
+            <div class="filter-sep"></div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span class="filter-label">Comercial</span>
+                <select class="filter-select" id="sol-filtro-comercial" onchange="setFiltroSolComercial(this)">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="sol-table-wrap" class="table-wrap hidden">
+            <table class="fichas-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Sociedad / Cliente</th>
+                        <th>Email</th>
+                        <th>Comercial</th>
+                        <th class="th-center">Tipo</th>
+                        <th class="th-center">Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="sol-tbody"></tbody>
+            </table>
+        </div>
+
+        <div id="sol-empty" class="sol-empty hidden">
+            <div style="font-size:2.5rem;margin-bottom:12px">📬</div>
+            <p>Aún no hay solicitudes enviadas.</p>
+        </div>
+    </div><!-- /section-solicitudes -->
+
+
+</div>
+
+<!-- Modal confirmación eliminar -->
+<div class="confirm-modal-overlay" id="confirm-del-overlay">
+    <div class="confirm-modal">
+        <h3 id="del-modal-title">⚠️ Eliminar ficha</h3>
+        <p>Estás a punto de eliminar <span id="del-modal-desc">la ficha</span> de <span class="del-entity-name" id="del-entity-name">—</span>. Esta acción no se puede deshacer.</p>
+        <p>Escribe <strong>eliminar</strong> para confirmar:</p>
+        <input type="text" class="confirm-modal-input" id="del-confirm-input"
+               placeholder="eliminar" autocomplete="off" oninput="onDelInput(this.value)">
+        <div class="confirm-modal-btns">
+            <button class="btn-cancel-del" onclick="cerrarModalEliminar()">Cancelar</button>
+            <button class="btn-del-confirm" id="btn-del-confirm" onclick="confirmarEliminar()" disabled>Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay" onclick="cerrarPanel()"></div>
+
+<!-- Detail Panel -->
+<div class="detail-panel" id="detail-panel">
+    <div class="panel-hd">
+        <div class="panel-hd-info">
+            <h2 id="panel-title">—</h2>
+            <p id="panel-subtitle">—</p>
+            <div class="panel-hd-badges" id="panel-badges"></div>
+        </div>
+        <button class="btn-close-panel" onclick="cerrarPanel()" title="Cerrar">✕</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+    <div class="panel-ft">
+        <span class="panel-ft-date" id="panel-fecha"></span>
+        <a href="index.html?completa=1" class="btn btn-primary" style="font-size:0.85rem;padding:8px 18px;">+ Nueva ficha</a>
+    </div>
+</div>
+
+<script>
+    // ── Sidebar ──────────────────────────────────────────────────────────────
+    function openSidebar() {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sidebar-overlay').classList.add('open');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-overlay').classList.remove('open');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
+    let todasFichas = [];
+    let fichasFiltradas = [];
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function fv(ficha, key) {
+        const v = ficha[key];
+        if (v === null || v === undefined || v === '' || v === false) return null;
+        if (typeof v === 'number' && v === 0) return null;
+        return String(v).trim();
+    }
+
+    function formatFecha(val) {
+        if (!val) return '—';
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return String(val);
+        return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function formatFechaLarga(val) {
+        if (!val) return '—';
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return String(val);
+        return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function contarModulos(val) {
+        if (!val || String(val).trim() === '') return 0;
+        return String(val).split(',').filter(m => m.trim()).length;
+    }
+
+    function esc(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Cerrar sesión ─────────────────────────────────────────────────────────
+    function cerrarSesion() {
+        sessionStorage.clear();
+        window.location.replace('login.html');
+    }
+
+    // ── Normalizar claves del objeto (trim espacios) ──────────────────────────
+    function normalizarFicha(f) {
+        const out = {};
+        Object.keys(f).forEach(k => {
+            const key = k.trim();
+            let val = f[k];
+            // Normalizar Lite: boolean false → '', true → 'Sí'
+            if (key === 'Lite') val = (val === true || val === 'Sí') ? 'Sí' : '';
+            // Normalizar Módulos: JSON array string → comma separated
+            if (key === 'Módulos' && typeof val === 'string' && val.startsWith('[')) {
+                try { val = JSON.parse(val).join(', '); } catch (_) {}
+            }
+            out[key] = val;
+        });
+
+        // ── Normalizar Setup Importe / Descuento desde columnas del sheet ────
+        if (!out['Setup Importe']   && out['ImporteSetup'])    out['Setup Importe']   = out['ImporteSetup'];
+        if (!out['Setup Descuento'] && out['Descuentosetup'])  out['Setup Descuento'] = out['Descuentosetup'];
+
+        return out;
+    }
+
+    // ── Recarga fichas desde el webhook ──────────────────────────────────────
+    async function recargarFichas(signal) {
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        const WEBHOOK_LOGIN = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
+
+        try {
+            const res = await fetch(WEBHOOK_LOGIN, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Basic ' + (session.basicAuth || '')
+                },
+                signal
+            });
+
+            if (!res.ok) throw new Error('Error ' + res.status);
+
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+
+            const fichas = Array.isArray(data) ? data
+                         : Array.isArray(data.clientes) ? data.clientes
+                         : Array.isArray(data.data) ? data.data
+                         : [];
+
+            sessionStorage.setItem('yurest_fichas', JSON.stringify(fichas));
+            // Reset filtros
+            filtroTipo = ''; filtroComercial = '';
+            document.querySelectorAll('.filter-chips .chip').forEach((c,i) => { c.className = 'chip' + (i===0?' active':''); });
+            document.getElementById('filtro-comercial').value = '';
+            document.getElementById('search-input').value = '';
+            cargarFichas();
+        } catch (err) {
+            if (err.name !== 'AbortError') mostrarError('No se pudo recargar: ' + err.message);
+        }
+    }
+
+    // ── Carga fichas desde sessionStorage (devueltas en el login) ────────────
+    function cargarFichas() {
+        try {
+            const raw = sessionStorage.getItem('yurest_fichas');
+            const fichas = raw ? JSON.parse(raw) : [];
+
+            if (!Array.isArray(fichas) || fichas.length === 0) {
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('empty-state').classList.remove('hidden');
+                return;
+            }
+
+            // Normalizar claves (elimina espacios sobrantes como "Nombre Sociedad ")
+            const fichasNorm = fichas.map(normalizarFicha);
+
+            todasFichas = [...fichasNorm].reverse(); // más reciente primero
+            fichasFiltradas = [...todasFichas];
+            actualizarStats(todasFichas);
+            const fichasVisibles = todasFichas.filter(f => { const e = (f['Estado'] || '').trim(); return e === 'Rellenado' || e === ''; });
+            poblarFiltroComercial(fichasVisibles);
+            document.getElementById('filter-bar').style.display = 'flex';
+            renderTabla(fichasFiltradas);
+        } catch (err) {
+            mostrarError('Error al leer las fichas: ' + err.message);
+        } finally {
+            document.getElementById('loading-state').classList.add('hidden');
+        }
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────────────
+    function actualizarStats(fichas) {
+        // Solo contar fichas rellenadas (excluir Pendientes)
+        const fichasRellenadas = fichas.filter(f => {
+            const estado = (f['Estado'] || '').trim();
+            return estado === 'Rellenado' || estado === '';
+        });
+
+        const ahora      = new Date();
+        const mesActual  = ahora.getMonth();
+        const anioActual = ahora.getFullYear();
+
+        const esteMes = fichasRellenadas.filter(f => {
+            const d = new Date(f['Fecha']);
+            return !isNaN(d) && d.getMonth() === mesActual && d.getFullYear() === anioActual;
+        }).length;
+
+        document.getElementById('stat-total').textContent = fichasRellenadas.length;
+        document.getElementById('stat-mes').textContent   = esteMes;
+        document.getElementById('stats-bar').classList.remove('hidden');
+        document.getElementById('tab-count-fichas').textContent = fichasRellenadas.length;
+
+        // Contadores en los chips de tipo (solo rellenadas)
+        const contarTipo = t => fichasRellenadas.filter(f =>
+            (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim() === t
+        ).length;
+
+        document.getElementById('count-todos').textContent     = fichasRellenadas.length;
+        document.getElementById('count-lite').textContent      = contarTipo('lite');
+        document.getElementById('count-planes').textContent    = contarTipo('planes');
+        document.getElementById('count-corporate').textContent = contarTipo('corporate');
+    }
+
+    // ── Estado de filtros ─────────────────────────────────────────────────────
+    let filtroTipo       = '';
+    let filtroComercial  = '';
+    let filtroDocumentos = '';
+
+    // ── Webhook docs subidos ───────────────────────────────────────────────────
+    const WEBHOOK_DOCS_SUBIDOS = 'https://n8n-soporte.data.yurest.dev/webhook/bdef8517-9b76-4640-8f82-d940fd0ab96b';
+
+    // ── Badge tipo cliente ────────────────────────────────────────────────────
+    function tipoBadge(f) {
+        const t = (f['Tipo Cliente'] || f['tipoCliente'] || f['Tipo de cliente'] || f['tipo_cliente'] || '').toLowerCase().trim();
+        if (t === 'lite')      return `<span class="badge-tipo badge-lite">Lite</span>`;
+        if (t === 'planes')    return `<span class="badge-tipo badge-planes">Planes</span>`;
+        if (t === 'corporate') return `<span class="badge-tipo badge-corporate">Corporate</span>`;
+        return `<span class="badge-tipo badge-desconocido">—</span>`;
+    }
+
+    function estadoBadge(f) {
+        const estado = (f['Estado'] || '').trim();
+        if (estado === 'Rellenado') return `<span class="badge-tipo badge-estado-rellenado">Rellenado</span>`;
+        if (estado === 'Pendiente') return `<span class="badge-tipo badge-estado-pendiente">Pendiente</span>`;
+        // Sin estado: ficha antigua, se considera completa
+        return `<span class="badge-tipo badge-estado-rellenado">Rellenado</span>`;
+    }
+
+    function renderTabla(fichas) {
+        const tbody          = document.getElementById('tabla-body');
+        const tableContainer = document.getElementById('table-container');
+        const emptyState     = document.getElementById('empty-state');
+
+        // Solo mostrar fichas rellenadas (o sin estado, por compatibilidad)
+        const fichasRellenadas = fichas.filter(f => {
+            const estado = (f['Estado'] || '').trim();
+            return estado === 'Rellenado' || estado === '';
+        });
+
+        if (fichasRellenadas.length === 0) {
+            tableContainer.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            return;
+        }
+
+        emptyState.classList.add('hidden');
+        tableContainer.classList.remove('hidden');
+
+        tbody.innerHTML = fichasRellenadas.map(f => {
+            // Usar el índice real en fichasFiltradas para que verFicha/editarFicha/eliminarFicha
+            // apunten siempre al objeto correcto, independientemente del filtrado previo.
+            const idx = fichasFiltradas.indexOf(f);
+            return `
+            <tr onclick="verFicha(${idx})">
+                <td style="font-family:monospace;font-size:0.82rem;color:#64748b">${esc(f['ID'] || f['id'] || '—')}</td>
+                <td class="td-fecha">${formatFecha(f['Fecha'])}</td>
+                <td class="td-denom">${esc(f['Nombre Sociedad'] || '—')}</td>
+                <td class="td-comercial">${esc(f['Nombre Comercial'] || '—')}</td>
+                <td>${esc(getComercial(f) || '—')}</td>
+                <td class="td-center">${tipoBadge(f)}</td>
+                <td class="td-center">${estadoBadge(f)}</td>
+                <td class="td-center" onclick="event.stopPropagation()">${docsToggleHtml(f, idx)}</td>
+                <td class="td-actions">
+                    <div class="btn-ver-wrap">
+                        <button class="btn-ver btn-ver-toggle" onclick="event.stopPropagation();toggleVerMenu(this, ${idx})">Ver</button>
+                        <div class="btn-ver-menu">
+                            <a href="#" onclick="event.stopPropagation();abrirDrive(${idx});return false;"><span class="vm-icon">📁</span> Ver Drive</a>
+                            <a href="#" onclick="event.stopPropagation();cerrarVerMenus();verFicha(${idx});return false;"><span class="vm-icon">📋</span> Ver ficha</a>
+                            <a href="#" onclick="event.stopPropagation()"><span class="vm-icon">📌</span> Ver proyecto</a>
+                        </div>
+                    </div>
+                    <button class="btn-edit" onclick="event.stopPropagation();editarFicha(${idx})">Editar</button>
+                    <button class="btn-del"  onclick="event.stopPropagation();eliminarFicha(${idx})">Eliminar</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ── Helper: obtener el campo comercial independientemente del case ─────────
+    function getComercial(f) {
+        return (f['Comercial'] || f['comercial'] || '').trim();
+    }
+
+    // ── Ver Drive: consulta webhook para obtener el ID de carpeta ────────────
+    function abrirDrive(idx) {
+        cerrarVerMenus();
+        const ficha     = fichasFiltradas[idx];
+        const carpeta   = (ficha['Carpeta Drive'] || ficha['carpeta_drive'] || '').toString().trim();
+        if (!carpeta) { alert('Esta ficha no tiene carpeta de Drive asignada.'); return; }
+        // Si ya es una URL completa la abrimos directamente, si no construimos la URL de Drive
+        const driveUrl = carpeta.startsWith('http')
+            ? carpeta
+            : 'https://drive.google.com/drive/u/1/folders/' + carpeta;
+        window.open(driveUrl, '_blank');
+    }
+
+    // ── Dropdown Ver ──────────────────────────────────────────────────────────
+    function toggleVerMenu(btn, idx) {
+        const menu = btn.nextElementSibling;
+        const isOpen = menu.classList.contains('open');
+        cerrarVerMenus();
+        if (!isOpen) {
+            const rect = btn.getBoundingClientRect();
+            menu.style.top  = (rect.bottom + 4) + 'px';
+            menu.style.left = rect.left + 'px';
+            menu.classList.add('open');
+        }
+    }
+
+    function cerrarVerMenus() {
+        document.querySelectorAll('.btn-ver-menu.open').forEach(m => m.classList.remove('open'));
+    }
+
+    document.addEventListener('click', cerrarVerMenus);
+
+    // ── Aplicar todos los filtros activos ─────────────────────────────────────
+    function aplicarFiltros() {
+        const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+
+        fichasFiltradas = todasFichas.filter(f => {
+            // Búsqueda de texto
+            if (q) {
+                const hayTexto =
+                    (f['Nombre Sociedad']  || '').toLowerCase().includes(q) ||
+                    (f['Nombre Comercial'] || '').toLowerCase().includes(q) ||
+                    getComercial(f).toLowerCase().includes(q);
+                if (!hayTexto) return false;
+            }
+            // Filtro tipo
+            if (filtroTipo) {
+                const t = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+                if (t !== filtroTipo) return false;
+            }
+            // Filtro comercial
+            if (filtroComercial) {
+                if (getComercial(f) !== filtroComercial) return false;
+            }
+            // Filtro documentos
+            if (filtroDocumentos) {
+                if (getDocsVal(f) !== filtroDocumentos) return false;
+            }
+            return true;
+        });
+
+        renderTabla(fichasFiltradas);
+    }
+
+    // ── Handlers de filtros ───────────────────────────────────────────────────
+    function filtrar(query) { aplicarFiltros(); }
+
+    function setFiltroTipo(btn, tipo) {
+        filtroTipo = tipo;
+        document.querySelectorAll('.filter-chips .chip').forEach(c => {
+            c.className = 'chip';
+            if (c.dataset.tipo === tipo) {
+                c.classList.add(tipo ? 'active-' + tipo : 'active');
+            }
+        });
+        aplicarFiltros();
+    }
+
+    function setFiltroComercial(sel) {
+        filtroComercial = sel.value;
+        sel.classList.toggle('active', !!sel.value);
+        aplicarFiltros();
+    }
+
+    // ── Filtro documentos ─────────────────────────────────────────────────────
+    function setFiltroDocumentos(btn, val) {
+        filtroDocumentos = val;
+        document.querySelectorAll('.filter-chips--docs .chip').forEach(c => {
+            c.className = 'chip';
+            if (c.dataset.docs === val) {
+                c.classList.add(val === 'si' ? 'active-docs-si' : val === 'no' ? 'active-docs-no' : 'active');
+            }
+        });
+        aplicarFiltros();
+    }
+
+    // ── Helper: normaliza el valor de documentos subidos ─────────────────────
+    function getDocsVal(f) {
+        const raw = f['Documentos subidos'] ?? f['documentos_subidos'] ?? f['Documentos Subidos'] ?? f['DOCUMENTOS SUBIDOS'] ?? '';
+        const v = raw.toString().toLowerCase().trim();
+        if (v === 'true' || v === 'sí' || v === 'si' || v === '1') return 'si';
+        // Sin valor o false → No por defecto
+        return 'no';
+    }
+
+    // ── Render del toggle de docs en la tabla ─────────────────────────────────
+    function docsToggleHtml(f, idx) {
+        const val = getDocsVal(f);
+        return `<div class="docs-toggle">
+            <button class="docs-on${val === 'si' ? ' active' : ''}"  onclick="event.stopPropagation();toggleDocumentos(${idx},'si')">✓ Sí</button>
+            <button class="docs-off${val === 'no' ? ' active' : ''}" onclick="event.stopPropagation();toggleDocumentos(${idx},'no')">✗ No</button>
+        </div>`;
+    }
+
+    // ── Toggle documentos: guarda en memoria y llama webhook ──────────────────
+    async function toggleDocumentos(idx, val) {
+        const ficha = fichasFiltradas[idx];
+        if (!ficha) return;
+
+        const anterior = getDocsVal(ficha);
+        if (anterior === val) return; // sin cambio
+
+        // Actualizar en memoria
+        ficha['Documentos subidos'] = val === 'si' ? 'true' : 'false';
+
+        // Actualizar también en todasFichas
+        const idxGlobal = todasFichas.findIndex(f => f === ficha || f['row_number'] === ficha['row_number']);
+        if (idxGlobal !== -1) todasFichas[idxGlobal]['Documentos subidos'] = ficha['Documentos subidos'];
+
+        // Re-renderizar la fila (solo el toggle)
+        const rows = document.querySelectorAll('#tabla-body tr');
+        const fichasRellenadas = fichasFiltradas.filter(f => { const e = (f['Estado']||'').trim(); return e==='Rellenado'||e===''; });
+        const rowIdx = fichasRellenadas.indexOf(ficha);
+        if (rows[rowIdx]) {
+            const cell = rows[rowIdx].querySelectorAll('td')[7]; // columna Docs
+            if (cell) cell.innerHTML = docsToggleHtml(ficha, idx);
+        }
+
+        // Llamar al webhook si está configurado y el valor es "si"
+        if (WEBHOOK_DOCS_SUBIDOS && val === 'si') {
+            const session         = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+            const fichaId         = ficha['ID'] || ficha['Id'] || ficha['id'] || ficha['row_number'] || '';
+            const nombreComercial = ficha['Nombre comercial'] || ficha['nombre_comercial'] || ficha['Nombre Comercial'] || '';
+            const tipoCliente     = ficha['Tipo de cliente'] || ficha['tipo_de_cliente'] || ficha['Tipo cliente'] || ficha['tipo_cliente'] || '';
+            try {
+                await fetch(WEBHOOK_DOCS_SUBIDOS, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + (session.basicAuth || '')
+                    },
+                    body: JSON.stringify({ id: fichaId, nombre_comercial: nombreComercial, tipo_cliente: tipoCliente, documentos_subidos: true })
+                });
+            } catch (err) {
+                console.warn('[docs] Error llamando webhook:', err.message);
+            }
+        }
+    }
+
+    // ── Poblar selector de comerciales ───────────────────────────────────────
+    function poblarFiltroComercial(fichas) {
+        const sel = document.getElementById('filtro-comercial');
+        const comerciales = [...new Set(fichas.map(f => getComercial(f)).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">Todos</option>' +
+            comerciales.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    }
+
+    // ── Editar ficha ──────────────────────────────────────────────────────────
+    function editarFicha(idx) {
+        const f = fichasFiltradas[idx];
+        if (!f) return;
+        sessionStorage.setItem('yurest_edit_ficha', JSON.stringify(f));
+        window.location.href = 'index.html?edit=1';
+    }
+
+    // ── Panel de detalle ──────────────────────────────────────────────────────
+    function verFicha(idx) {
+        const f = fichasFiltradas[idx];
+        if (!f) return;
+        rellenarPanel(f);
+        document.getElementById('overlay').classList.add('active');
+        document.getElementById('detail-panel').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarPanel() {
+        document.getElementById('overlay').classList.remove('active');
+        document.getElementById('detail-panel').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+
+    function campo(label, valor, full = false, mono = false) {
+        const v = valor ? esc(valor) : null;
+        return `<div class="pf${full ? ' full' : ''}">
+            <label>${label}</label>
+            <span class="${v ? (mono ? 'mono' : '') : 'vacio'}">${v || '—'}</span>
+        </div>`;
+    }
+
+    function rellenarPanel(f) {
+        // ── Tipo cliente ──────────────────────────────────────────────────────
+        const tipo = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+        const tipoLabel = tipo === 'lite' ? 'Lite' : tipo === 'planes' ? 'Planes' : tipo === 'corporate' ? 'Enterprise' : '';
+        const tipoPillClass = tipo === 'lite' ? 'panel-tipo-lite' : tipo === 'planes' ? 'panel-tipo-planes' : tipo === 'corporate' ? 'panel-tipo-corporate' : '';
+        const tipoPill = tipoLabel ? `<span class="panel-tipo-pill ${tipoPillClass}">${tipoLabel}</span>` : '';
+
+        // ── Header ────────────────────────────────────────────────────────────
+        document.getElementById('panel-title').innerHTML = esc(f['Nombre Sociedad'] || '—') + tipoPill;
+        document.getElementById('panel-subtitle').textContent =
+            [f['Nombre Comercial'], f['CIF/NIF'], f['Comercial'] ? '👤 ' + f['Comercial'] : ''].filter(Boolean).join(' · ');
+        document.getElementById('panel-fecha').textContent = 'Alta: ' + formatFechaLarga(f['Fecha']);
+
+        // ── Badges ────────────────────────────────────────────────────────────
+        const badges = [];
+        if (f['Distribuidor'] === 'Sí') badges.push(`<span class="hd-badge">Distribuidor</span>`);
+        if (f['Firmas Contratadas']) badges.push(`<span class="hd-badge">✍ ${esc(f['Firmas Contratadas'])}</span>`);
+        document.getElementById('panel-badges').innerHTML = badges.join('');
+
+        // ── Dirección ─────────────────────────────────────────────────────────
+        const dir = [f['Calle'], f['Número'] ? 'Nº ' + f['Número'] : '', f['CP'], f['Municipio'], f['Provincia']].filter(Boolean).join(', ');
+
+        // ── Locales ───────────────────────────────────────────────────────────
+        let locales = [];
+        try {
+            const raw = f['Locales'] || f['locales'] || '';
+            locales = typeof raw === 'string' && raw.startsWith('[') ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+        } catch (_) { locales = []; }
+
+        const localesHtml = locales.length ? `<div class="locales-list">${locales.map((l, i) => {
+            const dirLocal = [l.calle, l.numero ? 'Nº ' + l.numero : '', l.cp, l.municipio, l.provincia].filter(Boolean).join(', ');
+            const dirSociedad = [l.sociedad_calle, l.sociedad_numero ? 'Nº ' + l.sociedad_numero : '', l.sociedad_cp, l.sociedad_municipio, l.sociedad_provincia].filter(Boolean).join(', ');
+            return `<div class="local-card-panel">
+                <div class="local-card-header">
+                    <strong>${esc(l.nombre || 'Local ' + (i + 1))}</strong>
+                    ${l.email ? `<span>${esc(l.email)}</span>` : ''}
+                </div>
+                <div class="local-card-body">
+                    ${dirLocal ? `<div class="pf full">${campo('Dirección', dirLocal)}</div>` : ''}
+                    ${l.sociedad_cif ? campo('CIF sociedad', l.sociedad_cif) : ''}
+                    ${l.sociedad_denominacion ? campo('Denominación sociedad', l.sociedad_denominacion) : ''}
+                    ${dirSociedad ? `<div class="pf full">${campo('Dirección sociedad', dirSociedad)}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('')}</div>` : `<span class="vacio">Sin locales registrados</span>`;
+
+        // ── Módulos ───────────────────────────────────────────────────────────
+        const modArray = f['Módulos'] ? String(f['Módulos']).split(',').map(m => m.trim()).filter(Boolean) : [];
+        const modulosHtml = modArray.length
+            ? `<div class="modulos-tags">${modArray.map(m => `<span class="mtag">${esc(m)}</span>`).join('')}</div>`
+            : `<span class="vacio">—</span>`;
+
+        // ── Financiero ────────────────────────────────────────────────────────
+        const fmt = v => parseFloat(v).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+        const conceptos = [
+            ['Proyecto Implementación', f['Proyecto de Implementación']],
+            ['Plan BASIC',              f['Plan Producto BASIC']],
+            ['Plan PRO',                f['Plan Producto PRO']],
+            ['Plan RRHH',               f['Plan RRHH']],
+            ['Plan Operaciones',        f['Plan Operaciones']],
+            ['Yurest Lite',             f['Yurest Lite']],
+            ['Integraciones',           f['Integraciones']],
+            ['Mensualidad anualizada',  f['Mensualidad Anualizada']],
+        ].filter(([, v]) => v && parseFloat(v) > 0);
+        const totalFin = conceptos.reduce((s, [, v]) => s + (parseFloat(v) || 0), 0);
+        const finTablaHtml = conceptos.length
+            ? `<table class="fin-mini-table">
+                ${conceptos.map(([l, v]) => `<tr><td>${esc(l)}</td><td>${fmt(v)}</td></tr>`).join('')}
+                <tr class="total-row"><td>Total 1er pago</td><td>${fmt(totalFin)}</td></tr>
+               </table>`
+            : '';
+
+        // ── Construir HTML ────────────────────────────────────────────────────
+        let html = '';
+        let n = 1;
+
+        // 01 Datos de Cliente
+        html += `<div class="ps">
+            <div class="ps-title"><span class="section-num">0${n++}</span><h4>Datos de Cliente</h4></div>
+            <div class="ps-fields">
+                ${campo('Nombre Sociedad', f['Nombre Sociedad'], true)}
+                ${campo('Nombre Comercial', f['Nombre Comercial'])}
+                ${campo('CIF / NIF', f['CIF/NIF'])}
+                ${campo('Email', f['Email'])}
+                ${dir ? campo('Dirección', dir, true) : ''}
+            </div>
+        </div>`;
+
+        // 02 Locales
+        html += `<div class="ps">
+            <div class="ps-title"><span class="section-num">0${n++}</span><h4>Locales <span style="font-size:0.75rem;font-weight:500;color:#94a3b8;">(${locales.length})</span></h4></div>
+            ${localesHtml}
+        </div>`;
+
+        // 03 Facturación
+        if (f['Email Factura'] || f['Email CC']) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Datos de Facturación</h4></div>
+                <div class="ps-fields">
+                    ${campo('Email envío factura', f['Email Factura'])}
+                    ${campo('Con copia', f['Email CC'])}
+                    ${campo('IBAN', f['IBAN'], true, true)}
+                </div>
+            </div>`;
+        } else if (f['IBAN']) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Datos de Facturación</h4></div>
+                <div class="ps-fields">${campo('IBAN', f['IBAN'], true, true)}</div>
+            </div>`;
+        }
+
+        // 04 Jefe de Proyecto
+        if (f['JP Nombre'] || f['JP Mail']) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Jefe de Proyecto <span style="font-weight:400;font-size:0.85em;color:#94a3b8;">(cliente)</span></h4></div>
+                <div class="ps-fields">
+                    ${campo('Nombre', f['JP Nombre'])}
+                    ${campo('Apellidos', f['JP Apellidos'])}
+                    ${campo('Rol', f['JP Rol'])}
+                    ${campo('Teléfono', f['JP Teléfono'])}
+                    ${campo('Mail', f['JP Mail'])}
+                </div>
+            </div>`;
+        }
+
+        // 05 Firmante
+        if (f['Firmante Nombre'] || f['Firmante DNI']) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Persona Firmante Contrato</h4></div>
+                <div class="ps-fields">
+                    ${campo('Nombre', f['Firmante Nombre'])}
+                    ${campo('Apellidos', f['Firmante Apellidos'])}
+                    ${campo('Mail', f['Firmante Mail'])}
+                    ${campo('DNI', f['Firmante DNI'])}
+                    ${campo('Puesto', f['Firmante Puesto'])}
+                    ${f['Firmante Mensualidad'] ? campo('Mensualidad firmada', fmt(f['Firmante Mensualidad'])) : ''}
+                </div>
+            </div>`;
+        }
+
+        // 06 Distribuidor
+        if (f['Distribuidor'] === 'Sí') {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Distribuidor</h4></div>
+                <div class="ps-fields">
+                    ${campo('Empresa', f['Dist. Empresa'])}
+                    ${campo('CIF', f['Dist. CIF'])}
+                    ${campo('Dirección', f['Dist. Dirección'])}
+                    ${campo('CP', f['Dist. CP'])}
+                    ${campo('Persona contacto', f['Dist. Contacto'])}
+                    ${campo('Mail', f['Dist. Mail'])}
+                    ${campo('Teléfono', f['Dist. Teléfono'])}
+                    ${f['Dist. Comisión Implementación (%)'] ? campo('Comisión implementación', f['Dist. Comisión Implementación (%)'] + ' %') : ''}
+                </div>
+            </div>`;
+        }
+
+        // 07 TPV
+        if (f['TPV']) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Integración TPV</h4></div>
+                <div class="ps-fields">
+                    ${campo('Sistema TPV', f['TPV'])}
+                    ${campo('Persona contacto', f['TPV Contacto'])}
+                    ${campo('Email', f['TPV Email'])}
+                </div>
+            </div>`;
+        }
+
+        // 08 Módulos
+        if (modArray.length) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Módulos</h4></div>
+                <div class="ps-fields single"><div class="pf full">${modulosHtml}</div></div>
+            </div>`;
+        }
+
+        // 09 Credenciales
+        if (f['Credencial Master'] || f['Credencial Yurest']) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Credenciales</h4></div>
+                <div class="ps-fields">
+                    ${campo('Master', f['Credencial Master'], false, true)}
+                    ${campo('Yurest', f['Credencial Yurest'], false, true)}
+                </div>
+            </div>`;
+        }
+
+        // 10 Datos Financieros
+        const setupImporte   = parseFloat(f['Setup Importe']  || f['setup_importe']  || 0);
+        const setupDescuento = parseFloat(f['Setup Descuento'] || f['setup_descuento'] || 0);
+        const setupNeto = setupImporte > 0 && setupDescuento > 0
+            ? Math.max(0, setupImporte * (1 - setupDescuento / 100))
+            : setupImporte;
+        const hayDatosFinancieros = setupImporte > 0 || conceptos.length > 0 || !!f['Mensualidad Total Locales'];
+        html += `<div class="ps">
+            <div class="ps-title"><span class="section-num">${n < 10 ? '0' : ''}${n++}</span><h4>Datos Financieros</h4></div>
+            <div class="ps-fields">
+                ${setupImporte > 0 ? campo('Setup Importe', fmt(setupImporte)) : ''}
+                ${setupDescuento > 0 ? campo('Setup Descuento', setupDescuento + ' %') : ''}
+                ${setupImporte > 0 && setupDescuento > 0 ? campo('Setup Neto', fmt(setupNeto), true) : ''}
+                ${f['Mensualidad Total Locales'] ? campo('Mensualidad total locales (sin IVA)', fmt(f['Mensualidad Total Locales']), true) : ''}
+                ${!hayDatosFinancieros ? '<span class="vacio">Sin datos financieros</span>' : ''}
+            </div>
+            ${finTablaHtml}
+        </div>`;
+
+        // 11 Comentarios
+        if (f['Comentarios']) {
+            html += `<div class="ps">
+                <div class="ps-title"><span class="section-num">${n < 10 ? '0' : ''}${n++}</span><h4>Comentarios</h4></div>
+                <div class="ps-fields single">
+                    <div class="pf full"><span style="white-space:pre-wrap;font-size:0.86rem;color:#334155;">${esc(f['Comentarios'])}</span></div>
+                </div>
+            </div>`;
+        }
+
+        document.getElementById('panel-body').innerHTML = html;
+        document.getElementById('panel-body').scrollTop = 0;
+    }
+
+    // ── Error ─────────────────────────────────────────────────────────────────
+    function mostrarError(msg) {
+        const el = document.getElementById('error-container');
+        el.innerHTML = `<div class="error-banner">${msg}</div>`;
+        el.classList.remove('hidden');
+    }
+
+    // ─── WEBHOOKS SOLICITUDES ─────────────────────────────────────────────────
+    const WEBHOOK_CREAR_SOLICITUD            = 'https://n8n-soporte.data.yurest.dev/webhook/b0629324-e611-47d4-835f-3ac9bcd4dc9b';
+    const WEBHOOK_LISTA_SOLICITUDES          = 'https://n8n-soporte.data.yurest.dev/webhook/1757fdcc-7fa7-4cb9-93b9-eb8118adaa1e';
+    const WEBHOOK_LISTA_RELLENADO            = 'https://n8n-soporte.data.yurest.dev/webhook/fa16b994-5af1-4368-ba6b-592e633937c3';
+    const WEBHOOK_ELIMINAR_FICHA             = 'https://n8n-soporte.data.yurest.dev/webhook/a2b1b1d6-a1dc-4366-b60e-b5e4506faa3d';
+    const WEBHOOK_ELIMINAR_SOLICITUD         = 'https://n8n-soporte.data.yurest.dev/webhook/a2b1b1d6-a1dc-4366-b60e-b5e4506faa3d';
+    const WEBHOOK_GET_DRIVE                  = 'https://n8n-soporte.data.yurest.dev/webhook/2010bb2b-72e9-4bae-afb1-d5a937c59009';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Eliminar ficha / solicitud ────────────────────────────────────────────
+    let fichaParaEliminar      = null;
+    let solicitudParaEliminar  = null;
+
+    function _abrirModalEliminar(titulo, desc, nombre) {
+        document.getElementById('del-modal-title').textContent  = titulo;
+        document.getElementById('del-modal-desc').textContent   = desc;
+        document.getElementById('del-entity-name').textContent  = nombre;
+        document.getElementById('del-confirm-input').value      = '';
+        document.getElementById('btn-del-confirm').disabled     = true;
+        document.getElementById('confirm-del-overlay').classList.add('active');
+        setTimeout(() => document.getElementById('del-confirm-input').focus(), 50);
+    }
+
+    function eliminarFicha(idx) {
+        const f = fichasFiltradas[idx];
+        if (!f) return;
+        fichaParaEliminar = { idx, ficha: f };
+        _abrirModalEliminar('⚠️ Eliminar ficha', 'la ficha', f['Nombre Sociedad'] || '—');
+    }
+
+    function eliminarSolicitud(idx) {
+        const s = solicitudesFiltradas[idx];
+        if (!s) return;
+        solicitudParaEliminar = { idx, solicitud: s };
+        _abrirModalEliminar('⚠️ Eliminar solicitud', 'la solicitud', s['Nombre Sociedad'] || s['Nombre'] || '—');
+    }
+
+    function onDelInput(val) {
+        document.getElementById('btn-del-confirm').disabled = val.trim().toLowerCase() !== 'eliminar';
+    }
+
+    function cerrarModalEliminar() {
+        document.getElementById('confirm-del-overlay').classList.remove('active');
+        fichaParaEliminar     = null;
+        solicitudParaEliminar = null;
+    }
+
+    async function confirmarEliminar() {
+        const btn = document.getElementById('btn-del-confirm');
+        btn.disabled = true;
+        btn.textContent = 'Eliminando…';
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+
+        try {
+            if (fichaParaEliminar) {
+                const { ficha } = fichaParaEliminar;
+                const rowNum = ficha['row_number'] || ficha['ID'] || ficha['id'] || '';
+                console.log('[eliminar] Ficha completa:', ficha);
+                console.log('[eliminar] row_number enviado:', rowNum);
+                const res = await fetch(WEBHOOK_ELIMINAR_FICHA, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
+                    body: JSON.stringify({ row_number: rowNum })
+                });
+                const txt = await res.text();
+                console.log('[eliminar] Respuesta status:', res.status, '| body:', txt);
+                if (!res.ok) throw new Error('Error ' + res.status);
+                cerrarModalEliminar();
+                recargarFichas();
+            } else if (solicitudParaEliminar) {
+                const { solicitud } = solicitudParaEliminar;
+                const rowNum = solicitud['row_number'] || solicitud['ID'] || solicitud['id'] || '';
+                console.log('[eliminar] Solicitud completa:', solicitud);
+                console.log('[eliminar] row_number enviado:', rowNum);
+                const res = await fetch(WEBHOOK_ELIMINAR_SOLICITUD, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
+                    body: JSON.stringify({ row_number: rowNum })
+                });
+                const txt = await res.text();
+                console.log('[eliminar] Respuesta status:', res.status, '| body:', txt);
+                if (!res.ok) throw new Error('Error ' + res.status);
+                cerrarModalEliminar();
+                loadSolicitudes();
+            }
+        } catch (err) {
+            mostrarError('No se pudo eliminar: ' + err.message);
+            btn.textContent = 'Eliminar';
+            btn.disabled = false;
+            cerrarModalEliminar();
+        }
+    }
+
+    // Cerrar modal con Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            cerrarPanel();
+            cerrarModalEliminar();
+        }
+    });
+
+    // ── Pestañas ──────────────────────────────────────────────────────────────
+    let tabActual = 'fichas';
+    function switchTab(tab) {
+        // Cancelar cualquier petición pendiente de la pestaña anterior
+        if (tabAbortController) tabAbortController.abort();
+        tabAbortController = new AbortController();
+
+        tabActual = tab;
+        document.querySelectorAll('.page-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tab);
+        });
+        document.getElementById('section-fichas').style.display            = tab === 'fichas'            ? '' : 'none';
+        document.getElementById('section-rellenado-cliente').style.display = tab === 'rellenado-cliente' ? '' : 'none';
+        document.getElementById('section-solicitudes').style.display       = tab === 'solicitudes'       ? '' : 'none';
+        if (tab === 'fichas')            recargarFichas(tabAbortController.signal);
+        if (tab === 'solicitudes')       loadSolicitudes(tabAbortController.signal);
+        if (tab === 'rellenado-cliente') loadRellenadoCliente(tabAbortController.signal);
+    }
+
+    // ── AbortController para cancelar peticiones al cambiar de pestaña ───────
+    let tabAbortController = null;
+
+    // ── Estado de filtros: solicitudes ───────────────────────────────────────
+    let todasSolicitudes       = [];
+    let solicitudesFiltradas   = [];
+    let filtroSolComercial     = '';
+
+    // ── Estado de filtros: rellenado cliente ──────────────────────────────────
+    let todasRC           = [];
+    let filtroRCComercial = '';
+
+    // ── Solicitudes: cargar ───────────────────────────────────────────────────
+    async function loadSolicitudes(signal) {
+        document.getElementById('sol-loading').style.display   = '';
+        document.getElementById('sol-table-wrap').classList.add('hidden');
+        document.getElementById('sol-empty').classList.add('hidden');
+
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        try {
+            const res = await fetch(WEBHOOK_LISTA_SOLICITUDES, {
+                method: 'GET',
+                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') },
+                signal
+            });
+            if (!res.ok) throw new Error('Error ' + res.status);
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+            const raw = Array.isArray(data) ? data
+                : Array.isArray(data.solicitudes) ? data.solicitudes
+                : Array.isArray(data.data) ? data.data : [];
+            const solicitudes = raw.map(normalizarFicha);
+            renderSolicitudes(solicitudes);
+        } catch (err) {
+            if (err.name !== 'AbortError') mostrarError('No se pudieron cargar las solicitudes: ' + err.message);
+        } finally {
+            if (!signal?.aborted) document.getElementById('sol-loading').style.display = 'none';
+        }
+    }
+
+    // ── Solicitudes: render ───────────────────────────────────────────────────
+    function renderSolicitudes(items) {
+        todasSolicitudes = items;
+        document.getElementById('tab-count-solicitudes').textContent = items.length;
+
+        // Resetear filtros al recargar
+        filtroSolComercial = '';
+        const solSelCom = document.getElementById('sol-filtro-comercial');
+        if (solSelCom) { solSelCom.value = ''; solSelCom.classList.remove('active'); }
+        const solSearchEl = document.getElementById('sol-search-input');
+        if (solSearchEl) solSearchEl.value = '';
+
+        // Poblar comerciales
+        poblarSolFiltroComercial(items);
+
+        // Mostrar barra de filtros
+        document.getElementById('sol-filter-bar').style.display = items.length ? 'flex' : 'none';
+
+        aplicarFiltrosSol();
+    }
+
+    // ── Solicitudes: aplicar filtros ──────────────────────────────────────────
+    function aplicarFiltrosSol() {
+        const q = (document.getElementById('sol-search-input')?.value || '').toLowerCase().trim();
+        const result = todasSolicitudes.filter(s => {
+            if (q) {
+                const sociedad = (s['Nombre Sociedad'] || '').toLowerCase();
+                const nombre   = (s['Nombre'] || '').toLowerCase();
+                const email    = (s['Email'] || '').toLowerCase();
+                const solId    = String(s['ID Solicitud'] || s['ID'] || '').toLowerCase();
+                if (!sociedad.includes(q) && !nombre.includes(q) && !email.includes(q) && !solId.includes(q)) return false;
+            }
+            if (filtroSolComercial) {
+                if ((s['Comercial'] || '').trim() !== filtroSolComercial) return false;
+            }
+            return true;
+        });
+        solicitudesFiltradas = result;
+        _renderSolRows(result);
+    }
+
+    function _renderSolRows(items) {
+        const wrap  = document.getElementById('sol-table-wrap');
+        const empty = document.getElementById('sol-empty');
+        wrap.classList.add('hidden');
+        empty.classList.add('hidden');
+
+        if (!items.length) { empty.classList.remove('hidden'); return; }
+
+        const tbody = document.getElementById('sol-tbody');
+        tbody.innerHTML = items.map((s, i) => {
+            const estado    = (s['Estado'] || 'Pendiente').trim();
+            const badgeCls  = estado === 'Rellenado' ? 'badge-tipo badge-estado-rellenado' : 'badge-tipo badge-estado-pendiente';
+            const solId     = s['ID Solicitud'] || s['ID'] || s['id'] || s['row_number'] || '';
+            const sociedad  = s['Nombre Sociedad'] || '';
+            const nombre    = s['Nombre'] || '';
+            const email     = s['Email'] || '';
+            const comercial = s['Comercial'] || '';
+            const tipoBadgeHtml = tipoBadge(s);
+            const nombreCell = sociedad
+                ? `${esc(sociedad)}${nombre ? `<br><span style="font-weight:400;font-size:0.78rem;color:#94a3b8;">${esc(nombre)}</span>` : ''}`
+                : esc(nombre || '—');
+            return `<tr>
+                <td style="font-family:monospace;font-size:0.82rem;color:#64748b">${esc(solId || '—')}</td>
+                <td class="td-fecha">${formatFecha(s['Fecha Solicitud'] || s['Fecha solicitud'] || s['fecha_solicitud'] || s['Fecha'])}</td>
+                <td class="td-denom">${nombreCell}</td>
+                <td style="color:#64748b;font-size:0.85rem">${esc(email || '—')}</td>
+                <td>${esc(comercial || '—')}</td>
+                <td class="td-center">${tipoBadgeHtml}</td>
+                <td class="td-center"><span class="${badgeCls}">${esc(estado)}</span></td>
+                <td class="td-actions">
+                    <button class="btn-ver" onclick="event.stopPropagation();reenviarSolicitud('${esc(solId)}','${esc(nombre)}','${esc(email)}','${esc(comercial)}','${esc(sociedad)}')" title="Reenviar email">✉</button>
+                    <button class="btn-del" onclick="event.stopPropagation();eliminarSolicitud(${i})">Eliminar</button>
+                </td>
+            </tr>`;
+        }).join('');
+        wrap.classList.remove('hidden');
+    }
+
+    function setFiltroSolComercial(sel) {
+        filtroSolComercial = sel.value;
+        sel.classList.toggle('active', !!sel.value);
+        aplicarFiltrosSol();
+    }
+
+    function poblarSolFiltroComercial(items) {
+        const sel = document.getElementById('sol-filtro-comercial');
+        const comerciales = [...new Set(items.map(s => (s['Comercial'] || '').trim()).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">Todos</option>' +
+            comerciales.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    }
+
+    // ── Rellenado cliente: cargar ─────────────────────────────────────────────
+    async function loadRellenadoCliente(signal) {
+        document.getElementById('rc-loading').style.display = '';
+        document.getElementById('rc-table-wrap').classList.add('hidden');
+        document.getElementById('rc-empty').classList.add('hidden');
+
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        try {
+            const res = await fetch(WEBHOOK_LISTA_RELLENADO, {
+                method: 'GET',
+                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') },
+                signal
+            });
+            if (!res.ok) throw new Error('Error ' + res.status);
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+            const raw = Array.isArray(data) ? data
+                : Array.isArray(data.solicitudes) ? data.solicitudes
+                : Array.isArray(data.data) ? data.data : [];
+            renderRellenadoCliente(raw.map(normalizarFicha));
+        } catch (err) {
+            if (err.name !== 'AbortError') mostrarError('No se pudo cargar Rellenado cliente: ' + err.message);
+        } finally {
+            if (!signal?.aborted) document.getElementById('rc-loading').style.display = 'none';
+        }
+    }
+
+    // ── Rellenado cliente: render ─────────────────────────────────────────────
+    function renderRellenadoCliente(items) {
+        todasRC = items;
+        document.getElementById('tab-count-rellenado').textContent = items.length;
+
+        // Resetear filtros al recargar
+        filtroRCComercial = '';
+        const rcSelCom = document.getElementById('rc-filtro-comercial');
+        if (rcSelCom) { rcSelCom.value = ''; rcSelCom.classList.remove('active'); }
+        const rcSearchEl = document.getElementById('rc-search-input');
+        if (rcSearchEl) rcSearchEl.value = '';
+
+        // Poblar comerciales
+        poblarRCFiltroComercial(items);
+
+        // Mostrar barra de filtros
+        document.getElementById('rc-filter-bar').style.display = items.length ? 'flex' : 'none';
+
+        aplicarFiltrosRC();
+    }
+
+    // ── Rellenado cliente: aplicar filtros ────────────────────────────────────
+    function aplicarFiltrosRC() {
+        const q = (document.getElementById('rc-search-input')?.value || '').toLowerCase().trim();
+        const result = todasRC.filter(s => {
+            if (q) {
+                const sociedad = (s['Nombre Sociedad'] || '').toLowerCase();
+                const nombre   = (s['Nombre'] || '').toLowerCase();
+                const email    = (s['Email'] || '').toLowerCase();
+                const solId    = String(s['ID Solicitud'] || s['ID'] || '').toLowerCase();
+                if (!sociedad.includes(q) && !nombre.includes(q) && !email.includes(q) && !solId.includes(q)) return false;
+            }
+            if (filtroRCComercial) {
+                if ((s['Comercial'] || '').trim() !== filtroRCComercial) return false;
+            }
+            return true;
+        });
+        _renderRCRows(result);
+    }
+
+    function _renderRCRows(items) {
+        const wrap  = document.getElementById('rc-table-wrap');
+        const empty = document.getElementById('rc-empty');
+        wrap.classList.add('hidden');
+        empty.classList.add('hidden');
+
+        if (!items.length) { empty.classList.remove('hidden'); return; }
+
+        const tbody = document.getElementById('rc-tbody');
+        tbody.innerHTML = items.map(s => {
+            const solId         = s['ID Solicitud'] || s['ID'] || s['id'] || s['row_number'] || '';
+            const nombreComercial = s['Nombre Comercial'] || s['nombre_comercial'] || '';
+            const sociedad      = s['Nombre Sociedad'] || s['nombre_sociedad'] || '';
+            const comercial     = s['Comercial'] || '';
+            const tipoBadgeHtml = tipoBadge(s);
+            // Nombre Comercial destacado, Nombre Sociedad debajo más pequeño
+            const clienteCell = `<span style="font-weight:600;color:#1e293b">${esc(nombreComercial || sociedad || '—')}</span>`
+                + (sociedad && nombreComercial ? `<br><span style="font-weight:400;font-size:0.78rem;color:#94a3b8;">${esc(sociedad)}</span>` : '');
+            return `<tr>
+                <td style="font-family:monospace;font-size:0.82rem;color:#64748b">${esc(solId || '—')}</td>
+                <td class="td-fecha">${formatFecha(s['Fecha rellenado'] || s['Fecha Rellenado'] || s['Fecha'])}</td>
+                <td class="td-denom">${clienteCell}</td>
+                <td>${esc(comercial || '—')}</td>
+                <td class="td-center">${tipoBadgeHtml}</td>
+                <td class="td-actions">
+                    <button class="btn-edit" onclick="editarSolicitud('${esc(solId)}')">Completar ficha</button>
+                </td>
+            </tr>`;
+        }).join('');
+        wrap.classList.remove('hidden');
+    }
+
+    function setFiltroRCComercial(sel) {
+        filtroRCComercial = sel.value;
+        sel.classList.toggle('active', !!sel.value);
+        aplicarFiltrosRC();
+    }
+
+    function poblarRCFiltroComercial(items) {
+        const sel = document.getElementById('rc-filtro-comercial');
+        const comerciales = [...new Set(items.map(s => (s['Comercial'] || '').trim()).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">Todos</option>' +
+            comerciales.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    }
+
+
+    // ── Editar solicitud rellenada (abrir formulario completo) ─────────────────
+    function editarSolicitud(solId) {
+        sessionStorage.setItem('yurest_completar_id', String(solId));
+        window.location.href = 'index.html?completar=1';
+    }
+
+    // ── Solicitar ficha ───────────────────────────────────────────────────────
+    // Semilla local: garantiza que IDs sean siempre crecientes dentro de la sesión,
+    // aunque el webhook no devuelva aún la fila recién creada.
+    let _lastUsedSolicitudId = 0;
+
+    async function getNextSolicitudId(session) {
+        const fetchItems = async (url) => {
+            try {
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
+                });
+                if (!res.ok) return [];
+                let data = {};
+                try { data = await res.json(); } catch (_) {}
+                const items = Array.isArray(data) ? data
+                    : Array.isArray(data.solicitudes) ? data.solicitudes
+                    : Array.isArray(data.data) ? data.data : [];
+                return items.map(normalizarFicha);
+            } catch (_) { return []; }
+        };
+
+        const [pendientes, rellenados] = await Promise.all([
+            fetchItems(WEBHOOK_LISTA_SOLICITUDES),
+            fetchItems(WEBHOOK_LISTA_RELLENADO)
+        ]);
+
+        // Partir del mayor entre: último ID asignado en esta sesión + máximo del sheet
+        let maxId = _lastUsedSolicitudId;
+        [...pendientes, ...rellenados].forEach(s => {
+            const raw = s['ID Solicitud'] || s['ID'] || s['id'] || s['row_number'] || '';
+            const num = parseInt(String(raw).replace(/\D/g, ''), 10);
+            if (!isNaN(num) && num > maxId) maxId = num;
+        });
+
+        const nextId = maxId + 1;
+        _lastUsedSolicitudId = nextId; // recordar para la siguiente llamada
+        return nextId;
+    }
+
+    function toggleSolicitud() {
+        const panel = document.getElementById('solicitud-panel');
+        const btn   = document.getElementById('btn-solicitar');
+        const open  = panel.classList.toggle('open');
+        btn.classList.toggle('open', open);
+        if (open) setTimeout(() => document.getElementById('sol-nombre').focus(), 50);
+        document.getElementById('sol-panel-msg').style.display = 'none';
+    }
+
+    function solClearErrors() {
+        ['sol-sociedad','sol-nombre','sol-email','sol-comercial','sol-tipo'].forEach(id => {
+            const el = document.getElementById(id);
+            el.classList.remove('sol-error');
+            const lbl = el.closest('.solicitud-field')?.querySelector('label');
+            if (lbl) lbl.classList.remove('sol-error-label');
+        });
+        const msg = document.getElementById('sol-panel-msg');
+        msg.style.display = 'none';
+    }
+
+    async function enviarSolicitud() {
+        const sociedad  = document.getElementById('sol-sociedad').value.trim();
+        const nombre    = document.getElementById('sol-nombre').value.trim();
+        const email     = document.getElementById('sol-email').value.trim();
+        const comercial = document.getElementById('sol-comercial').value;
+        const tipo      = document.getElementById('sol-tipo').value;
+
+        // Validación con feedback visual
+        let hasError = false;
+        solClearErrors();
+        if (!sociedad) {
+            const el = document.getElementById('sol-sociedad');
+            el.classList.add('sol-error');
+            el.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+            hasError = true;
+        }
+        if (!nombre) {
+            const el = document.getElementById('sol-nombre');
+            el.classList.add('sol-error');
+            el.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+            hasError = true;
+        }
+        if (!email) {
+            const el = document.getElementById('sol-email');
+            el.classList.add('sol-error');
+            el.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+            hasError = true;
+        }
+        if (!comercial) {
+            const el = document.getElementById('sol-comercial');
+            el.classList.add('sol-error');
+            el.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+            hasError = true;
+        }
+        if (!tipo) {
+            const el = document.getElementById('sol-tipo');
+            el.classList.add('sol-error');
+            el.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+            hasError = true;
+        }
+        if (hasError) {
+            const msg = document.getElementById('sol-panel-msg');
+            msg.textContent = 'Por favor, rellena todos los campos obligatorios.';
+            msg.style.cssText = 'display:block;background:#fff5f5;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
+            document.querySelector('#solicitud-panel .sol-error')?.focus();
+            return;
+        }
+
+        const btn = document.getElementById('btn-enviar-sol');
+        btn.disabled = true;
+        btn.textContent = 'Creando solicitud…';
+
+        const session     = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        const solicitudId = await getNextSolicitudId(session);
+        const fecha       = new Date().toISOString().slice(0, 10);
+
+        // Construir URL y cuerpo del email ANTES del POST para incluirlos en el body
+        const baseUrl = window.location.href.split('?')[0].replace(/lista\.html$/, 'solicitud.html');
+        const formUrl = `${baseUrl}?id=${encodeURIComponent(solicitudId)}&nombre=${encodeURIComponent(nombre)}&email=${encodeURIComponent(email)}&sociedad=${encodeURIComponent(sociedad)}`;
+        const emailAsunto = 'Solicitud de creación de ficha de alta';
+        const emailCuerpo =
+            `Hola ${nombre},\n\n` +
+            `Te mando este formulario para empezar la creación de tu alta con Yurest. ` +
+            `Por favor, rellénalo cuando puedas:\n\n` +
+            `${formUrl}\n\n` +
+            `Si tienes cualquier duda no dudes en contactarme.\n\n` +
+            `Un saludo,\n${comercial}`;
+
+        try {
+            const res = await fetch(WEBHOOK_CREAR_SOLICITUD, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    'ID Solicitud':  solicitudId,
+                    'Nombre Sociedad': sociedad,
+                    'Nombre':        nombre,
+                    'Email':         email,
+                    'Comercial':     comercial,
+                    'Tipo Cliente':  tipo,
+                    'Fecha':         fecha,
+                    'Estado':        'Pendiente',
+                    'email_to':      email,
+                    'email_subject': emailAsunto,
+                    'email_body':    emailCuerpo,
+                    'form_url':      formUrl
+                })
+            });
+            if (!res.ok) {
+                let detalle = '';
+                try { const rb = await res.text(); detalle = rb ? ' — ' + rb.slice(0, 200) : ''; } catch (_) {}
+                throw new Error('Error ' + res.status + detalle);
+            }
+        } catch (err) {
+            const msg = document.getElementById('sol-panel-msg');
+            msg.textContent = 'No se pudo registrar la solicitud: ' + err.message;
+            msg.style.cssText = 'display:block;background:#fff5f5;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
+            btn.disabled = false;
+            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar solicitud`;
+            return;
+        }
+
+        // Feedback visual + limpiar
+        const msg = document.getElementById('sol-panel-msg');
+        msg.textContent = `✓ Solicitud ${solicitudId} creada. Email enviado a ${email}.`;
+        msg.style.cssText = 'display:block;background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
+        document.getElementById('sol-sociedad').value  = '';
+        document.getElementById('sol-nombre').value    = '';
+        document.getElementById('sol-email').value     = '';
+        document.getElementById('sol-comercial').value = '';
+        document.getElementById('sol-tipo').value      = '';
+        btn.disabled = false;
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar solicitud`;
+
+        // Refrescar la tabla de solicitudes para mostrar la nueva entrada
+        loadSolicitudes();
+    }
+
+    // ── Reenviar solicitud por email ──────────────────────────────────────────
+    async function reenviarSolicitud(solId, nombre, email, comercial, sociedad = '') {
+        if (!email) { alert('Esta solicitud no tiene email registrado.'); return; }
+
+        const baseUrl      = window.location.href.split('?')[0].replace(/lista\.html$/, 'solicitud.html');
+        const formUrl      = `${baseUrl}?id=${encodeURIComponent(solId)}&nombre=${encodeURIComponent(nombre)}&email=${encodeURIComponent(email)}&sociedad=${encodeURIComponent(sociedad)}`;
+        const emailAsunto  = 'Solicitud de creación de ficha de alta';
+        const emailCuerpo  =
+            `Hola ${nombre},\n\n` +
+            `Te reenvío este formulario para que puedas completar tu alta con Yurest. ` +
+            `Por favor, rellénalo cuando puedas:\n\n` +
+            `${formUrl}\n\n` +
+            `Si tienes cualquier duda no dudes en contactarme.\n\n` +
+            `Un saludo,\n${comercial}`;
+
+        try {
+            const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+            const res = await fetch(WEBHOOK_CREAR_SOLICITUD, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    'ID Solicitud':  solId,
+                    'Nombre':        nombre,
+                    'Email':         email,
+                    'Comercial':     comercial,
+                    'Accion':        'Reenvio',
+                    'email_to':      email,
+                    'email_subject': emailAsunto,
+                    'email_body':    emailCuerpo,
+                    'form_url':      formUrl
+                })
+            });
+            if (!res.ok) throw new Error('Error ' + res.status);
+            alert(`✓ Email reenviado a ${email}`);
+        } catch (err) {
+            alert('No se pudo reenviar el email: ' + err.message);
+        }
+    }
+
+    // ── Init — cargar fichas y solicitudes en paralelo ────────────────────────
+    sessionStorage.removeItem('yurest_refresh_lista');
+    document.getElementById('tab-count-fichas').textContent = '…';
+    document.getElementById('tab-count-rellenado').textContent = '…';
+    document.getElementById('tab-count-solicitudes').textContent = '…';
+    recargarFichas();
+    loadSolicitudes();
+    loadRellenadoCliente();
+</script>
+
+</body>
+</html>

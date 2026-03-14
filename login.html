@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso — Yurest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ── Header igual que el resto de la app ── */
+        .page-header {
+            padding: 32px 24px 80px;
+        }
+
+        /* ── Wrapper centrado ── */
+        .login-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 0 16px 48px;
+            margin-top: -52px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* ── Card de login ── */
+        .login-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 40px 40px 36px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-icon {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(252,88,88,0.35);
+        }
+
+        .login-icon svg {
+            color: #fff;
+        }
+
+        .login-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .login-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+
+        /* ── Campos ── */
+        .login-field {
+            margin-bottom: 18px;
+        }
+
+        .login-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 7px;
+            letter-spacing: 0.02em;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-family: inherit;
+            color: var(--text);
+            background: #fafafa;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+            outline: none;
+        }
+
+        .login-input:focus {
+            border-color: var(--primary);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.12);
+        }
+
+        .login-input::placeholder {
+            color: #b0bec5;
+        }
+
+        /* ── Error ── */
+        .login-error {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.83rem;
+            color: #c0392b;
+            margin-bottom: 18px;
+        }
+
+        .login-error.visible {
+            display: flex;
+        }
+
+        /* ── Botón ── */
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(252,88,88,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            box-shadow: 0 6px 18px rgba(252,88,88,0.4);
+        }
+
+        .login-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* ── Spinner ── */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        .login-btn.loading .spinner { display: block; }
+        .login-btn.loading .btn-text { display: none; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-inner">
+            <div class="brand">
+                <span class="brand-dot"></span>
+                <span class="brand-name">Yurest</span>
+            </div>
+            <h1 class="page-title">Portal de alta de clientes</h1>
+        </div>
+    </header>
+
+    <!-- Login Card -->
+    <div class="login-wrapper">
+        <div class="login-card">
+
+            <div class="login-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+            </div>
+
+            <h2 class="login-title">Iniciar sesión</h2>
+            <p class="login-subtitle">Introduce tus credenciales para acceder</p>
+
+            <div class="login-error" id="login-error">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none"
+                     stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span id="login-error-msg">Usuario o contraseña incorrectos.</span>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="login-field">
+                    <label class="login-label" for="login-user">Usuario</label>
+                    <input class="login-input" type="text" id="login-user"
+                           placeholder="Nombre de usuario" autocomplete="username" required>
+                </div>
+
+                <div class="login-field">
+                    <label class="login-label" for="login-pass">Contraseña</label>
+                    <input class="login-input" type="password" id="login-pass"
+                           placeholder="••••••••" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" class="login-btn" id="login-btn">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Entrar</span>
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+        // Si ya hay sesión activa, redirigir directamente
+        if (sessionStorage.getItem('yurest_auth')) {
+            window.location.replace('lista.html');
+        }
+
+        const WEBHOOK_URL = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
+
+        async function handleLogin(e) {
+            e.preventDefault();
+
+            const btn      = document.getElementById('login-btn');
+            const errorEl  = document.getElementById('login-error');
+            const errorMsg = document.getElementById('login-error-msg');
+            const user     = document.getElementById('login-user').value.trim();
+            const pass     = document.getElementById('login-pass').value;
+
+            // Estado cargando
+            btn.classList.add('loading');
+            btn.disabled = true;
+            errorEl.classList.remove('visible');
+
+            try {
+                const basicAuth = btoa(user + ':' + pass);
+                const res = await fetch(WEBHOOK_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Basic ' + basicAuth
+                    }
+                });
+
+                if (res.ok) {
+                    let data = {};
+                    try { data = await res.json(); } catch (_) {}
+
+                    // Guardar sesión (incluye basicAuth para reutilizarlo en otras llamadas)
+                    sessionStorage.setItem('yurest_auth', JSON.stringify({
+                        user,
+                        token: data.token || data.access_token || 'authenticated',
+                        basicAuth: basicAuth,
+                        ts: Date.now()
+                    }));
+
+                    // Guardar fichas devueltas por el webhook
+                    const fichas = Array.isArray(data) ? data
+                                 : Array.isArray(data.clientes) ? data.clientes
+                                 : Array.isArray(data.data) ? data.data
+                                 : [];
+                    sessionStorage.setItem('yurest_fichas', JSON.stringify(fichas));
+
+                    // Redirigir al listado
+                    window.location.replace('lista.html');
+                } else {
+                    const body = await res.text();
+                    errorMsg.textContent = body || 'Usuario o contraseña incorrectos.';
+                    errorEl.classList.add('visible');
+                    btn.classList.remove('loading');
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                errorMsg.textContent = 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
+                errorEl.classList.add('visible');
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>

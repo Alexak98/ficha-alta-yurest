@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha de Alta - Yurest</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .sol-success {
+            text-align: center;
+            padding: 64px 24px;
+        }
+        .sol-success-icon {
+            width: 64px;
+            height: 64px;
+            background: #dcfce7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .sol-success h2 {
+            font-size: 1.3rem;
+            color: #15803d;
+            margin: 0 0 10px;
+        }
+        .sol-success p {
+            color: #64748b;
+            font-size: 0.92rem;
+            margin: 0;
+        }
+        .sol-error-page {
+            text-align: center;
+            padding: 64px 24px;
+        }
+        .sol-error-page h2 { color: #dc2626; margin: 0 0 10px; }
+        .sol-error-page p  { color: #64748b; font-size: 0.92rem; }
+        .sol-id-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+<header class="page-header">
+    <div class="header-inner">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span class="brand-name">Yurest</span>
+        </div>
+        <h1>Ficha de Alta</h1>
+        <p class="header-sub" id="header-sub">Rellena los datos de tu empresa para comenzar el proceso de alta</p>
+    </div>
+</header>
+
+<div class="container">
+
+    <div id="status-msg" class="status-msg hidden"></div>
+
+    <!-- Error: enlace inválido -->
+    <div id="invalid-state" class="hidden">
+        <div class="sol-error-page">
+            <div style="font-size:3rem;margin-bottom:16px">⚠️</div>
+            <h2>Enlace no válido</h2>
+            <p>Este enlace de solicitud no es válido o ha caducado. Contacta con tu comercial de Yurest.</p>
+        </div>
+    </div>
+
+    <!-- Éxito tras envío -->
+    <div id="success-state" class="hidden">
+        <div class="sol-success">
+            <div class="sol-success-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="#16a34a"
+                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <h2>¡Formulario enviado!</h2>
+            <p>Hemos recibido tus datos correctamente. Tu comercial de Yurest se pondrá en contacto contigo próximamente.</p>
+        </div>
+    </div>
+
+    <!-- Formulario principal -->
+    <div id="form-state" class="hidden">
+
+        <div id="sol-id-badge" class="sol-id-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Solicitud <span id="sol-id-text"></span>
+        </div>
+
+        <!-- 01 Datos de Cliente -->
+        <div class="card">
+            <div class="card-header">
+                <span class="section-num">01</span>
+                <h3>Datos de la Empresa</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group col-6">
+                    <label for="denominacion">Denominación Social *</label>
+                    <input type="text" id="denominacion" placeholder="Nombre legal de la empresa">
+                </div>
+                <div class="form-group col-6">
+                    <label for="nombreComercial">Nombre Comercial</label>
+                    <input type="text" id="nombreComercial" placeholder="Nombre comercial">
+                </div>
+
+                <div class="form-group col-8">
+                    <label for="calle">Calle</label>
+                    <input type="text" id="calle" placeholder="Nombre de la vía">
+                </div>
+                <div class="form-group col-2">
+                    <label for="numero">Nº</label>
+                    <input type="text" id="numero" placeholder="123">
+                </div>
+                <div class="form-group col-2">
+                    <label for="cp">CP</label>
+                    <input type="text" id="cp" placeholder="46000">
+                </div>
+
+                <div class="form-group">
+                    <label for="municipio">Municipio</label>
+                    <input type="text" id="municipio" placeholder="Valencia">
+                </div>
+                <div class="form-group">
+                    <label for="provincia">Provincia</label>
+                    <input type="text" id="provincia" placeholder="Valencia">
+                </div>
+                <div class="form-group">
+                    <label for="cif">CIF / NIF</label>
+                    <input type="text" id="cif" placeholder="A00000000">
+                </div>
+
+                <div class="form-group col-6">
+                    <label for="email">Email de contacto</label>
+                    <input type="email" id="email" placeholder="empresa@ejemplo.com">
+                </div>
+            </div>
+        </div>
+
+        <!-- 02 Facturación -->
+        <div class="card">
+            <div class="card-header">
+                <span class="section-num">02</span>
+                <h3>Datos de Facturación</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group col-6">
+                    <label for="email_factura">Email envío factura</label>
+                    <input type="email" id="email_factura" placeholder="factura@ejemplo.com">
+                </div>
+                <div class="form-group col-6">
+                    <label for="email_cc">Con copia</label>
+                    <input type="email" id="email_cc" placeholder="cc@ejemplo.com">
+                </div>
+            </div>
+        </div>
+
+        <!-- 03 TPV -->
+        <div class="card">
+            <div class="card-header">
+                <span class="section-num">03</span>
+                <h3>Integración TPV</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group col-4">
+                    <label for="tpv">Sistema TPV</label>
+                    <select id="tpv">
+                        <option value="">— Selecciona un TPV —</option>
+                        <option value="Agora">Agora</option>
+                        <option value="BDP">BDP</option>
+                        <option value="Camarero10">Camarero10</option>
+                        <option value="Central Cash">Central Cash</option>
+                        <option value="DSTNet">DSTNet</option>
+                        <option value="Firesfot">Firesfot</option>
+                        <option value="Glop">Glop</option>
+                        <option value="Hosteltactil">Hosteltactil</option>
+                        <option value="Lastapp">Lastapp</option>
+                        <option value="Neo">Neo</option>
+                        <option value="Numier">Numier</option>
+                        <option value="Revo">Revo</option>
+                        <option value="Square">Square</option>
+                        <option value="Thac4">Thac4</option>
+                        <option value="Yantar">Yantar</option>
+                    </select>
+                </div>
+                <div class="form-group col-4">
+                    <label for="tpv_contacto">Persona de contacto</label>
+                    <input type="text" id="tpv_contacto" placeholder="Nombre completo">
+                </div>
+                <div class="form-group col-4">
+                    <label for="tpv_email">Email</label>
+                    <input type="email" id="tpv_email" placeholder="contacto@tpv.com">
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <div class="main-btns">
+                <button class="btn btn-primary" id="submitBtn" onclick="enviarFormulario()">Enviar datos</button>
+            </div>
+        </div>
+
+    </div><!-- /form-state -->
+
+</div>
+
+<script>
+    // ─── CONFIGURACIÓN ────────────────────────────────────────────────────────
+    const WEBHOOK_RESPONDER_SOLICITUD = 'https://n8n-soporte.data.yurest.dev/webhook/6da4274f-5a6d-4981-a92a-f9d7eb734144';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('status-msg');
+        el.textContent = msg;
+        el.className = 'status-msg ' + (type === 'error' ? 'status-error' : type === 'ok' ? 'status-ok' : '');
+        el.classList.toggle('hidden', !msg);
+    }
+
+    // ── Leer parámetros de la URL ─────────────────────────────────────────────
+    const params      = new URLSearchParams(window.location.search);
+    const solicitudId = params.get('id');
+    const preNombre   = params.get('nombre')   || '';
+    const preEmail    = params.get('email')    || '';
+    const preSociedad = params.get('sociedad') || '';
+
+    if (!solicitudId) {
+        document.getElementById('invalid-state').classList.remove('hidden');
+    } else {
+        document.getElementById('form-state').classList.remove('hidden');
+        document.getElementById('sol-id-text').textContent = solicitudId;
+
+        // Pre-rellenar con los datos que vienen en la URL
+        if (preSociedad) document.getElementById('denominacion').value = preSociedad;
+        if (preEmail)    document.getElementById('email').value        = preEmail;
+    }
+
+    // ── Enviar formulario ─────────────────────────────────────────────────────
+    async function enviarFormulario() {
+        const denominacion = document.getElementById('denominacion').value.trim();
+        if (!denominacion) {
+            showStatus('La Denominación Social es obligatoria.', 'error');
+            document.getElementById('denominacion').focus();
+            return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+        showStatus('', '');
+
+        const data = {
+            'ID Solicitud':     solicitudId,
+            'Estado':           'Rellenado cliente',
+            'Nombre Sociedad':  denominacion,
+            'Nombre Comercial': document.getElementById('nombreComercial').value.trim(),
+            'Calle':            document.getElementById('calle').value.trim(),
+            'Número':           document.getElementById('numero').value.trim(),
+            'CP':               document.getElementById('cp').value.trim(),
+            'Municipio':        document.getElementById('municipio').value.trim(),
+            'Provincia':        document.getElementById('provincia').value.trim(),
+            'CIF/NIF':          document.getElementById('cif').value.trim(),
+            'Email':            document.getElementById('email').value.trim(),
+            'Email Factura':    document.getElementById('email_factura').value.trim(),
+            'Email CC':         document.getElementById('email_cc').value.trim(),
+            'TPV':              document.getElementById('tpv').value,
+            'TPV Contacto':     document.getElementById('tpv_contacto').value.trim(),
+            'TPV Email':        document.getElementById('tpv_email').value.trim(),
+        };
+
+        try {
+            const res = await fetch(WEBHOOK_RESPONDER_SOLICITUD, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!res.ok) throw new Error('Error ' + res.status);
+
+            document.getElementById('form-state').classList.add('hidden');
+            document.getElementById('success-state').classList.remove('hidden');
+        } catch (err) {
+            showStatus('Error al enviar el formulario: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Enviar datos';
+        }
+    }
+</script>
+
+</body>
+</html>

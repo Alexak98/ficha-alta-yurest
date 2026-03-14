@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distribución Implementadores - Yurest</title>
+    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── Sidebar ── */
+        .sidebar-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.45);
+            z-index: 500;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: 248px; height: 100vh;
+            background: #fff;
+            z-index: 600;
+            transform: translateX(-100%);
+            transition: transform 0.26s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.13);
+            display: flex; flex-direction: column;
+        }
+        .sidebar.open { transform: translateX(0); }
+        .sidebar-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 18px 16px;
+            border-bottom: 1.5px solid #f1f5f9;
+        }
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.78rem; font-weight: 800;
+            letter-spacing: 0.13em; text-transform: uppercase; color: #fc5858;
+        }
+        .sidebar-brand-dot {
+            width: 8px; height: 8px; background: #fc5858; border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.25);
+        }
+        .sidebar-close {
+            width: 28px; height: 28px; border-radius: 8px;
+            border: 1.5px solid #e2e8f0; background: #f8fafc;
+            color: #64748b; font-size: 0.9rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .sidebar-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+        .sidebar-label {
+            padding: 16px 18px 6px;
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; color: #94a3b8;
+        }
+        .sidebar-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 18px; margin: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.88rem; font-weight: 500; color: #334155;
+            text-decoration: none; cursor: pointer;
+            transition: background 0.14s, color 0.14s;
+        }
+        .sidebar-item:hover { background: #f8fafc; color: #1e293b; }
+        .sidebar-item.active {
+            background: #fff1f1; color: #fc5858; font-weight: 700;
+        }
+        .sidebar-item svg { flex-shrink: 0; opacity: 0.7; }
+        .sidebar-item.active svg { opacity: 1; }
+        .sidebar-ft {
+            margin-top: auto; padding: 16px 18px;
+            border-top: 1.5px solid #f1f5f9;
+        }
+        .sidebar-ft button {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 10px 14px; border-radius: 10px;
+            border: 1.5px solid #fecaca; background: #fff5f5;
+            color: #dc2626; font-size: 0.85rem; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .sidebar-ft button:hover { background: #fee2e2; }
+        .btn-menu {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; flex-shrink: 0;
+            background: #fff; border: 1.5px solid #e2e8f0;
+            border-radius: 10px; cursor: pointer; color: #64748b;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+        }
+        .btn-menu:hover { border-color: #fc5858; color: #fc5858; background: #fff1f1; }
+
+        /* ── Filter bar ── */
+        .filter-bar {
+            display: flex; align-items: center;
+            gap: 10px; flex-wrap: wrap;
+            padding: 12px 16px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+            margin-bottom: 14px;
+        }
+        .filter-label {
+            font-size: 0.76rem; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+            min-width: 90px;
+        }
+        .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .chip {
+            padding: 5px 13px; border-radius: 20px;
+            font-size: 0.8rem; font-weight: 600; font-family: inherit;
+            cursor: pointer; border: 1.5px solid #e2e8f0;
+            background: #fff; color: #64748b; transition: all 0.15s;
+        }
+        .chip:hover { border-color: #94a3b8; color: #1e293b; }
+        .chip.active           { background: #1e293b; border-color: #1e293b; color: #fff; }
+        .chip.active-lite      { background: #ef4444; border-color: #ef4444; color: #fff; }
+        .chip.active-planes    { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .chip.active-corporate { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
+        .chip-count {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            border-radius: 9px; font-size: 0.7rem; font-weight: 700;
+            background: rgba(0,0,0,0.1); margin-left: 2px;
+        }
+        .chip.active .chip-count,
+        .chip.active-lite .chip-count,
+        .chip.active-planes .chip-count,
+        .chip.active-corporate .chip-count { background: rgba(255,255,255,0.25); }
+        .filter-sep { width: 100%; height: 1px; background: #f1f5f9; margin: 4px 0; }
+
+        /* ── Toolbar ── */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 28px 0 20px;
+            flex-wrap: wrap;
+        }
+        /* ── Search ── */
+        .search-wrap {
+            flex: 1;
+            position: relative;
+            max-width: 340px;
+        }
+        .search-wrap .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            pointer-events: none;
+        }
+        .search-input {
+            width: 100%;
+            padding: 11px 16px 11px 44px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #fc5858;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.12);
+        }
+        .search-input::placeholder { color: #cbd5e1; }
+
+        /* ── Table ── */
+        .table-wrap {
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04);
+        }
+        .dist-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .dist-table thead th {
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1.5px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .dist-table thead th.th-center { text-align: center; }
+        .dist-table tbody tr {
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.12s;
+        }
+        .dist-table tbody tr:last-child { border-bottom: none; }
+        .dist-table tbody tr:hover { background: #fff8f8; }
+        .dist-table tbody td {
+            padding: 12px 16px;
+            font-size: 0.88rem;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .td-denom  { font-weight: 600; color: #1e293b; }
+        .td-sub    { font-size: 0.78rem; color: #94a3b8; font-weight: 400; margin-top: 2px; }
+        .td-fecha  { color: #94a3b8; font-size: 0.8rem; white-space: nowrap; }
+        .td-center { text-align: center; }
+
+        /* ── Badges ── */
+        .badge-tipo {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        .badge-lite      { background: #fee2e2; color: #dc2626; }
+        .badge-planes    { background: #dbeafe; color: #2563eb; }
+        .badge-corporate { background: #ede9fe; color: #7c3aed; }
+        .badge-desconocido { background: #f1f5f9; color: #64748b; }
+
+        /* ── Implementador select ── */
+        .sel-impl {
+            width: 100%;
+            min-width: 165px;
+            padding: 8px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 9px;
+            font-size: 0.85rem;
+            font-family: inherit;
+            color: #334155;
+            background: #fff;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 30px;
+        }
+        .sel-impl:focus {
+            outline: none;
+            border-color: #fc5858;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.12);
+        }
+        .sel-impl.asignado {
+            border-color: #bbf7d0;
+            background-color: #f0fdf4;
+            color: #15803d;
+        }
+
+        /* ── Loading / Empty ── */
+        .loading-state {
+            text-align: center;
+            padding: 64px 20px;
+            color: #94a3b8;
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #fee2e2;
+            border-top-color: #fc5858;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state {
+            text-align: center;
+            padding: 64px 20px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .empty-state h3 { font-size: 1.1rem; color: #334155; margin: 0 0 8px; }
+        .empty-state p  { color: #94a3b8; font-size: 0.9rem; }
+
+        /* ── Indicador inline por fila ── */
+        .impl-cell { display: flex; align-items: center; gap: 8px; }
+        .impl-status {
+            font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+            opacity: 0; transition: opacity 0.3s;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .impl-status.visible { opacity: 1; }
+        .impl-status.ok  { color: #16a34a; }
+        .impl-status.err { color: #dc2626; }
+        .impl-spinner {
+            width: 13px; height: 13px;
+            border: 2px solid #e2e8f0; border-top-color: #64748b;
+            border-radius: 50%; animation: spin 0.6s linear infinite;
+            display: inline-block; flex-shrink: 0;
+        }
+
+        /* ── Status msg ── */
+        .status-banner {
+            display: none;
+            padding: 11px 16px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+        .status-banner.ok  { display: block; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .status-banner.err { display: block; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+
+        /* ── Counter chip ── */
+        .count-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .count-chip strong { color: #1e293b; }
+
+        /* ── Error banner ── */
+        .error-banner {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<header class="page-header">
+    <div class="header-inner">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span class="brand-name">Yurest</span>
+        </div>
+        <h1>Distribución de implementadores</h1>
+        <p class="header-sub">Asigna un implementador a cada ficha de alta completada</p>
+        <button onclick="cerrarSesion()" style="
+            position:absolute;top:20px;right:24px;
+            background:rgba(255,255,255,0.15);
+            border:1.5px solid rgba(255,255,255,0.35);
+            color:#fff;
+            padding:7px 16px;
+            border-radius:8px;
+            font-size:0.82rem;
+            font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            display:flex;align-items:center;gap:6px;
+            transition:background 0.2s;
+        " onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+           onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar sesión
+        </button>
+    </div>
+</header>
+
+<!-- ── Sidebar navegación ── -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-hd">
+        <div class="sidebar-brand">
+            <span class="sidebar-brand-dot"></span>
+            Yurest
+        </div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
+    <div class="sidebar-label">Secciones</div>
+    <a href="lista.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Fichas de cliente
+    </a>
+    <a href="distribucion.html" class="sidebar-item active">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            <circle cx="19" cy="6" r="2.5"/><circle cx="5" cy="6" r="2.5"/>
+        </svg>
+        Implementadores
+    </a>
+    <div class="sidebar-ft">
+        <button onclick="closeSidebar();cerrarSesion()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar sesión
+        </button>
+    </div>
+</nav>
+
+<div class="container">
+
+    <div id="error-container"></div>
+    <div id="status-banner" class="status-banner"></div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+        <div class="search-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input id="search-input" class="search-input" type="search"
+                   placeholder="Buscar por nombre, sociedad…" oninput="aplicarFiltro()">
+        </div>
+        <span class="count-chip" id="count-chip" style="display:none;">
+            <strong id="count-num">0</strong> fichas
+        </span>
+    </div>
+
+    <!-- Filtros -->
+    <div id="filter-bar" class="filter-bar" style="display:none;">
+        <span class="filter-label">Tipo</span>
+        <div class="filter-chips" id="tipo-chips">
+            <button class="chip active" data-tipo=""          onclick="setFiltroTipo(this,'')">Todos <span class="chip-count" id="count-tipo-todos">0</span></button>
+            <button class="chip"        data-tipo="lite"      onclick="setFiltroTipo(this,'lite')">Lite <span class="chip-count" id="count-tipo-lite">0</span></button>
+            <button class="chip"        data-tipo="planes"    onclick="setFiltroTipo(this,'planes')">Planes <span class="chip-count" id="count-tipo-planes">0</span></button>
+            <button class="chip"        data-tipo="corporate" onclick="setFiltroTipo(this,'corporate')">Corporate <span class="chip-count" id="count-tipo-corp">0</span></button>
+        </div>
+        <!-- Cocina Producción: solo visible con filtro Corporate -->
+        <div class="filter-sep" id="sep-cocina" style="display:none;"></div>
+        <span class="filter-label" id="label-cocina" style="display:none;">Cocina Prod.</span>
+        <div class="filter-chips" id="cocina-chips" style="display:none;">
+            <button class="chip active" data-cocina="" onclick="setFiltroCocina(this,'')">Todos</button>
+            <button class="chip"        data-cocina="si" onclick="setFiltroCocina(this,'si')">Sí</button>
+            <button class="chip"        data-cocina="no" onclick="setFiltroCocina(this,'no')">No</button>
+        </div>
+        <div class="filter-sep"></div>
+        <span class="filter-label">Implementador</span>
+        <div class="filter-chips" id="impl-chips">
+            <button class="chip active" data-impl=""                  onclick="setFiltroImpl(this,'')">Todos <span class="chip-count" id="count-impl-todos">0</span></button>
+            <button class="chip"        data-impl="Carlos Aparicio"   onclick="setFiltroImpl(this,'Carlos Aparicio')">Carlos Aparicio <span class="chip-count" id="count-impl-carlos">0</span></button>
+            <button class="chip"        data-impl="Hugo Zalazar"      onclick="setFiltroImpl(this,'Hugo Zalazar')">Hugo Zalazar <span class="chip-count" id="count-impl-hugo">0</span></button>
+            <button class="chip"        data-impl="Mario Labrandero"  onclick="setFiltroImpl(this,'Mario Labrandero')">Mario Labrandero <span class="chip-count" id="count-impl-mario">0</span></button>
+            <button class="chip"        data-impl="Javier Feliu"      onclick="setFiltroImpl(this,'Javier Feliu')">Javier Feliu <span class="chip-count" id="count-impl-javier">0</span></button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-state" class="loading-state">
+        <div class="spinner"></div>
+        <p>Cargando fichas…</p>
+    </div>
+
+    <!-- Table -->
+    <div id="table-wrap" class="table-wrap hidden">
+        <table class="dist-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cliente / Sociedad</th>
+                    <th class="th-center">Tipo</th>
+                    <th class="th-center">Nº Locales</th>
+                    <th class="th-center">Cocina Prod.</th>
+                    <th>Implementador</th>
+                </tr>
+            </thead>
+            <tbody id="dist-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- Empty -->
+    <div id="empty-state" class="empty-state hidden">
+        <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+        <h3>Sin fichas rellenadas</h3>
+        <p>No hay fichas con estado Rellenado disponibles.</p>
+    </div>
+
+
+</div><!-- /container -->
+
+<script>
+    // ── Sidebar ──────────────────────────────────────────────────────────────
+    function openSidebar() {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sidebar-overlay').classList.add('open');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-overlay').classList.remove('open');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
+    const WEBHOOK_LOGIN           = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
+    const WEBHOOK_GUARDAR_DIST    = 'https://n8n-soporte.data.yurest.dev/webhook/6d3ed726-c86a-4b86-a2ae-7f07da9630a5';
+    const IMPLEMENTADORES         = ['Carlos Aparicio', 'Hugo Zalazar', 'Mario Labrandero', 'Javier Feliu'];
+
+    let todasFichas     = [];   // todas las rellenadas
+    let fichasFiltradas = [];  // tras filtros
+    let filtroTipo      = '';
+    let filtroImpl      = '';
+    let filtroCocina    = '';
+
+    // ── Auth ────────────────────────────────────────────────────────────────────
+    function cerrarSesion() {
+        sessionStorage.clear();
+        window.location.replace('login.html');
+    }
+
+    function esc(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function formatFecha(val) {
+        if (!val) return '—';
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return String(val);
+        return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function normalizarFicha(f) {
+        const out = {};
+        Object.keys(f).forEach(k => {
+            const key = k.trim();
+            let val = f[k];
+            if (key === 'Lite') val = (val === true || val === 'Sí') ? 'Sí' : '';
+            out[key] = val;
+        });
+        return out;
+    }
+
+    // ── Cargar fichas ───────────────────────────────────────────────────────────
+    async function cargarFichas() {
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+
+        // Siempre fetch fresco para tener los implementadores actualizados
+        let fichas = [];
+        try {
+            const res = await fetch(WEBHOOK_LOGIN, {
+                method: 'GET',
+                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
+            });
+            if (!res.ok) throw new Error('Error ' + res.status);
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+            fichas = Array.isArray(data) ? data
+                   : Array.isArray(data.clientes) ? data.clientes
+                   : Array.isArray(data.data) ? data.data : [];
+        } catch (err) {
+            mostrarError('No se pudieron cargar las fichas: ' + err.message);
+            document.getElementById('loading-state').style.display = 'none';
+            return;
+        }
+
+        // Normalizar y filtrar solo Rellenadas
+        const norm = fichas.map(normalizarFicha).reverse();
+        todasFichas = norm.filter(f => {
+            const estado = (f['Estado'] || '').trim();
+            return estado === 'Rellenado' || estado === '';
+        });
+
+        document.getElementById('loading-state').style.display = 'none';
+
+        if (!todasFichas.length) {
+            document.getElementById('empty-state').classList.remove('hidden');
+            return;
+        }
+
+        fichasFiltradas = [...todasFichas];
+        poblarContadores(todasFichas);
+        document.getElementById('filter-bar').style.display = 'flex';
+        renderTabla(fichasFiltradas);
+    }
+
+    // ── Renderizar tabla ────────────────────────────────────────────────────────
+    function renderTabla(fichas) {
+        const tbody     = document.getElementById('dist-tbody');
+        const wrap      = document.getElementById('table-wrap');
+        const empty     = document.getElementById('empty-state');
+        const countChip = document.getElementById('count-chip');
+
+        if (!fichas.length) {
+            wrap.classList.add('hidden');
+            countChip.style.display = 'none';
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        empty.classList.add('hidden');
+        wrap.classList.remove('hidden');
+        countChip.style.display = '';
+        document.getElementById('count-num').textContent = fichas.length;
+
+        tbody.innerHTML = fichas.map((f, i) => {
+            const id       = esc(f['ID'] || f['id'] || '');
+            const sociedad = esc(f['Nombre Sociedad'] || '—');
+            const nombre   = esc(f['Nombre'] || f['Nombre Comercial'] || '');
+            const fecha    = formatFecha(f['Fecha']);
+            const tipoRaw  = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+            const locales  = f['Nº Locales'] || f['Número de Locales'] || f['num_locales'] || '—';
+            const modulos   = (f['Módulos'] || f['Modulos'] || '').toString().toLowerCase();
+            const cocinaVal = (modulos.includes('cocina de producción') || modulos.includes('cocina de produccion')) ? 'si' : (tipoRaw === 'corporate' ? 'no' : '');
+            const cocinaBadge = cocinaVal === 'si'
+                ? `<span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">Sí</span>`
+                : cocinaVal === 'no'
+                ? `<span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;">No</span>`
+                : `<span style="color:#cbd5e1">—</span>`;
+
+            const tipoBadge = tipoRaw === 'lite'      ? `<span class="badge-tipo badge-lite">Lite</span>`
+                            : tipoRaw === 'planes'    ? `<span class="badge-tipo badge-planes">Planes</span>`
+                            : tipoRaw === 'corporate' ? `<span class="badge-tipo badge-corporate">Corporate</span>`
+                            : tipoRaw                ? `<span class="badge-tipo badge-desconocido">${esc(tipoRaw)}</span>`
+                            : `<span style="color:#cbd5e1">—</span>`;
+
+            const implActual = (f['Implementador'] || '').trim();
+            const implOptions = IMPLEMENTADORES.map(imp =>
+                `<option value="${esc(imp)}"${imp === implActual ? ' selected' : ''}>${esc(imp)}</option>`
+            ).join('');
+            const selClass = implActual ? 'sel-impl asignado' : 'sel-impl';
+
+            return `<tr>
+                <td class="td-fecha">${fecha}</td>
+                <td>
+                    <div class="td-denom">${nombre || sociedad}</div>
+                    ${nombre ? `<div class="td-sub">${sociedad}</div>` : ''}
+                </td>
+                <td class="td-center">${tipoBadge}</td>
+                <td class="td-center" style="color:#94a3b8;">${esc(String(locales))}</td>
+                <td class="td-center">${cocinaBadge}</td>
+                <td>
+                    <div class="impl-cell">
+                        <select class="${selClass}" data-id="${id}" data-idx="${i}"
+                                onchange="onImplChange(this)">
+                            <option value="">— Sin asignar —</option>
+                            ${implOptions}
+                        </select>
+                        <span class="impl-status" id="impl-status-${i}"></span>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+    }
+
+    // ── Auto-guardado al cambiar implementador ───────────────────────────────────
+    function onImplChange(sel) {
+        sel.classList.toggle('asignado', sel.value !== '');
+        autoGuardar(sel);
+    }
+
+    async function autoGuardar(sel) {
+        const idx    = parseInt(sel.dataset.idx);
+        const f      = fichasFiltradas[idx];
+        const status = document.getElementById('impl-status-' + idx);
+        if (!f || !status) return;
+
+        // Spinner mientras guarda
+        sel.disabled = true;
+        status.className = 'impl-status visible';
+        status.innerHTML = `<span class="impl-spinner"></span>`;
+
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        try {
+            const payload = {
+                row_number:      f['row_number'] || f['Row Number'] || '',
+                id:              f['ID'] || f['id'] || '',
+                nombre_sociedad: f['Nombre Sociedad'] || '',
+                nombre_cliente:  f['Nombre'] || f['Nombre Comercial'] || '',
+                tipo_cliente:    f['Tipo Cliente'] || f['tipoCliente'] || '',
+                fecha:           f['Fecha'] || '',
+                implementador:   sel.value
+            };
+            const res = await fetch(WEBHOOK_GUARDAR_DIST, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic ' + (session.basicAuth || '')
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Error ' + res.status);
+
+            // Actualizar el array en memoria para que los filtros no pierdan el valor
+            fichasFiltradas[idx]['Implementador'] = sel.value;
+            const fichaId = f['ID'] || f['id'];
+            const enTodas = todasFichas.find(tf => (tf['ID'] || tf['id']) === fichaId);
+            if (enTodas) enTodas['Implementador'] = sel.value;
+
+            status.className = 'impl-status visible ok';
+            status.innerHTML = '✓ Guardado';
+        } catch (err) {
+            status.className = 'impl-status visible err';
+            status.innerHTML = '✗ Error';
+        } finally {
+            sel.disabled = false;
+            // Desvanecer el indicador tras 3s
+            setTimeout(() => { status.classList.remove('visible'); }, 3000);
+        }
+    }
+
+    // ── Poblar contadores de chips ───────────────────────────────────────────────
+    function poblarContadores(fichas) {
+        document.getElementById('count-tipo-todos').textContent  = fichas.length;
+        document.getElementById('count-tipo-lite').textContent   = fichas.filter(f => (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim() === 'lite').length;
+        document.getElementById('count-tipo-planes').textContent = fichas.filter(f => (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim() === 'planes').length;
+        document.getElementById('count-tipo-corp').textContent   = fichas.filter(f => (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim() === 'corporate').length;
+
+        document.getElementById('count-impl-todos').textContent  = fichas.length;
+        document.getElementById('count-impl-carlos').textContent = fichas.filter(f => (f['Implementador'] || '').trim() === 'Carlos Aparicio').length;
+        document.getElementById('count-impl-hugo').textContent   = fichas.filter(f => (f['Implementador'] || '').trim() === 'Hugo Zalazar').length;
+        document.getElementById('count-impl-mario').textContent  = fichas.filter(f => (f['Implementador'] || '').trim() === 'Mario Labrandero').length;
+        document.getElementById('count-impl-javier').textContent = fichas.filter(f => (f['Implementador'] || '').trim() === 'Javier Feliu').length;
+    }
+
+    // ── Filtros ──────────────────────────────────────────────────────────────────
+    function setFiltroTipo(btn, tipo) {
+        filtroTipo = tipo;
+        document.querySelectorAll('#tipo-chips .chip').forEach(c => {
+            c.className = 'chip';
+            if (c.dataset.tipo === tipo) {
+                c.classList.add(tipo ? 'active-' + tipo : 'active');
+            }
+        });
+        // Mostrar filtro Cocina Producción solo cuando tipo = corporate
+        const mostrarCocina = tipo === 'corporate';
+        document.getElementById('sep-cocina').style.display   = mostrarCocina ? '' : 'none';
+        document.getElementById('label-cocina').style.display = mostrarCocina ? '' : 'none';
+        document.getElementById('cocina-chips').style.display = mostrarCocina ? '' : 'none';
+        if (!mostrarCocina) {
+            filtroCocina = '';
+            document.querySelectorAll('#cocina-chips .chip').forEach(c => {
+                c.className = 'chip' + (c.dataset.cocina === '' ? ' active' : '');
+            });
+        }
+        aplicarFiltro();
+    }
+
+    function setFiltroImpl(btn, impl) {
+        filtroImpl = impl;
+        document.querySelectorAll('#impl-chips .chip').forEach(c => {
+            c.className = 'chip' + (c.dataset.impl === impl ? ' active' : '');
+        });
+        aplicarFiltro();
+    }
+
+    function setFiltroCocina(btn, cocina) {
+        filtroCocina = cocina;
+        document.querySelectorAll('#cocina-chips .chip').forEach(c => {
+            c.className = 'chip' + (c.dataset.cocina === cocina ? ' active' : '');
+        });
+        aplicarFiltro();
+    }
+
+    // ── Búsqueda + filtros combinados ────────────────────────────────────────────
+    function getCocinaVal(f) {
+        const modulos  = (f['Módulos'] || f['Modulos'] || '').toString().toLowerCase();
+        const tipoRaw  = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+        return (modulos.includes('cocina de producción') || modulos.includes('cocina de produccion')) ? 'si' : (tipoRaw === 'corporate' ? 'no' : '');
+    }
+
+    function aplicarFiltro() {
+        const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+        fichasFiltradas = todasFichas.filter(f => {
+            // Filtro tipo
+            if (filtroTipo) {
+                const t = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+                if (t !== filtroTipo) return false;
+            }
+            // Filtro implementador
+            if (filtroImpl) {
+                const imp = (f['Implementador'] || '').trim();
+                if (imp !== filtroImpl) return false;
+            }
+            // Filtro cocina producción (solo activo en corporate)
+            if (filtroCocina) {
+                if (getCocinaVal(f) !== filtroCocina) return false;
+            }
+            // Búsqueda libre
+            if (q) {
+                return (f['Nombre Sociedad'] || '').toLowerCase().includes(q) ||
+                       (f['Nombre'] || '').toLowerCase().includes(q) ||
+                       (f['Nombre Comercial'] || '').toLowerCase().includes(q) ||
+                       (f['ID'] || '').toLowerCase().includes(q);
+            }
+            return true;
+        });
+        renderTabla(fichasFiltradas);
+    }
+
+
+    // ── Helpers ─────────────────────────────────────────────────────────────────
+    function mostrarError(msg) {
+        document.getElementById('error-container').innerHTML =
+            `<div class="error-banner">${esc(msg)}</div>`;
+    }
+
+    function mostrarStatus(msg, tipo) {
+        const el = document.getElementById('status-banner');
+        el.textContent = msg;
+        el.className   = 'status-banner ' + tipo;
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (tipo === 'ok') setTimeout(() => { el.className = 'status-banner'; }, 5000);
+    }
+
+    // ── Init ────────────────────────────────────────────────────────────────────
+    cargarFichas();
+</script>
+</body>
+</html>
