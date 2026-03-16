@@ -21,7 +21,7 @@ function doPost(e) {
     if (!clientesSheet) {
       clientesSheet = ss.insertSheet('Clientes');
       clientesSheet.appendRow([
-        'Fecha', 'Denominación Social', 'Nombre Comercial', 'CIF/NIF', 'Email', 'Email Factura', 'Email CC',
+        'ID', 'Fecha', 'Denominación Social', 'Nombre Comercial', 'CIF/NIF', 'Email', 'Email Factura', 'Email CC',
         'JP Nombre', 'JP Apellidos', 'JP Rol', 'JP Teléfono', 'JP Mail',
         'Firmante Nombre', 'Firmante Apellidos', 'Firmante Mail', 'Firmante DNI', 'Firmante Puesto', 'Firmante Mensualidad',
         'Calle', 'Número', 'CP', 'Municipio', 'Provincia', 'Firmas Contratadas', 'OCR Activo',
@@ -36,11 +36,12 @@ function doPost(e) {
         'Credencial Master', 'Credencial Yurest',
         'Tipo de Cliente', 'Paquetes Carrito', 'Comentarios'
       ]);
-      clientesSheet.getRange(1, 1, 1, 62).setFontWeight('bold');
+      clientesSheet.getRange(1, 1, 1, 63).setFontWeight('bold');
     }
 
     const fechaHoy = new Date();
     clientesSheet.appendRow([
+      data.id            || '',
       fechaHoy,
       data.denominacion     || '',
       data.nombreComercial  || '',
@@ -149,6 +150,28 @@ function doGet(e) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Clientes');
+
+    // ── Acción: siguiente ID disponible ─────────────────────────────────────
+    if (e && e.parameter && e.parameter.action === 'nextId') {
+      if (!sheet || sheet.getLastRow() <= 1) {
+        return buildResponse({ success: true, nextId: 1 });
+      }
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const idCol = headers.indexOf('ID');
+      if (idCol === -1) {
+        // Sin columna ID: usar recuento de filas (fila 1 = cabecera, siguientes = datos)
+        return buildResponse({ success: true, nextId: sheet.getLastRow() });
+      }
+      const idValues = sheet.getRange(2, idCol + 1, sheet.getLastRow() - 1, 1).getValues();
+      var maxId = 0;
+      idValues.forEach(function(row) {
+        var v = parseInt(row[0]);
+        if (!isNaN(v) && v > maxId) maxId = v;
+      });
+      return buildResponse({ success: true, nextId: maxId + 1 });
+    }
+
+    // ── Acción por defecto: listar clientes ──────────────────────────────────
     if (!sheet || sheet.getLastRow() <= 1) {
       return buildResponse({ success: true, clientes: [] });
     }
