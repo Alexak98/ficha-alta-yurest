@@ -558,6 +558,36 @@
             gap: 8px 18px;
         }
 
+        /* ── Credenciales fichador ── */
+        .cred-row {
+            grid-column: 1 / -1;
+            display: flex; flex-direction: column; gap: 3px;
+        }
+        .cred-label {
+            font-size: 0.68rem; font-weight: 700; color: #64748b;
+            letter-spacing: 0.06em; text-transform: uppercase;
+        }
+        .cred-box {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: #f1f5f9; border: 1.5px solid #e2e8f0;
+            border-radius: 7px; padding: 5px 10px;
+            max-width: 100%; overflow: hidden;
+        }
+        .cred-icon { font-size: 0.8rem; flex-shrink: 0; }
+        .cred-value {
+            font-family: 'Courier New', monospace; font-size: 0.82rem;
+            color: #334155; font-weight: 600; flex: 1;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .cred-copy {
+            background: none; border: none; cursor: pointer; padding: 2px 4px;
+            color: #94a3b8; border-radius: 4px; font-size: 0.7rem;
+            flex-shrink: 0; transition: background 0.12s, color 0.12s;
+            display: flex; align-items: center;
+        }
+        .cred-copy:hover { background: #e2e8f0; color: #334155; }
+        .cred-copy.copied { color: #16a34a; }
+
         /* ── Info inline (icono + texto) ── */
         .info-row {
             display: flex;
@@ -901,6 +931,100 @@
             .fichas-table thead th:nth-child(5),
             .fichas-table tbody td:nth-child(5) { display: none; }
         }
+        /* ══════════════════════════════════════
+           WIDGET COMPARATIVO POR TIPO
+        ══════════════════════════════════════ */
+        .cmp-widget {
+            background: #fff; border: 1.5px solid #e2e8f0;
+            border-radius: 14px; margin-bottom: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: none;
+        }
+        .cmp-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 18px; cursor: pointer; user-select: none;
+            transition: background 0.12s;
+        }
+        .cmp-hd:hover { background: #f8fafc; }
+        .cmp-hd-left  { display: flex; align-items: center; gap: 9px; }
+        .cmp-hd-title { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
+        .cmp-hd-sub   { font-size: 0.73rem; color: #94a3b8; margin-left: 4px; }
+        .cmp-arrow {
+            width: 18px; height: 18px; color: #94a3b8;
+            transition: transform 0.22s; flex-shrink: 0;
+        }
+        .cmp-arrow.open { transform: rotate(180deg); }
+        .cmp-body {
+            border-top: 1.5px solid #f1f5f9;
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .cmp-body.open { max-height: 500px; }
+        .cmp-inner { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+        /* Barra proporcional global */
+        .cmp-stack-wrap { display: flex; flex-direction: column; gap: 5px; }
+        .cmp-stack-label { font-size: 0.68rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.07em; text-transform: uppercase; }
+        .cmp-stack {
+            display: flex; height: 10px; border-radius: 6px;
+            overflow: hidden; background: #f1f5f9;
+        }
+        .cmp-stack-seg { height: 100%; transition: width 0.5s ease; }
+        .cmp-stack-seg-lite      { background: #fc5858; }
+        .cmp-stack-seg-planes    { background: #3b82f6; }
+        .cmp-stack-seg-corporate { background: #8b5cf6; }
+        .cmp-stack-seg-otro      { background: #e2e8f0; }
+
+        /* Cards por tipo */
+        .cmp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        @media (max-width: 560px) { .cmp-cards { grid-template-columns: 1fr; } }
+        .cmp-card {
+            border: 1.5px solid #f1f5f9; border-radius: 10px;
+            padding: 12px 14px; background: #fafafa;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .cmp-card-hd { display: flex; align-items: center; justify-content: space-between; }
+        .cmp-card-badge {
+            font-size: 0.7rem; font-weight: 700; padding: 3px 9px;
+            border-radius: 20px; letter-spacing: 0.02em;
+        }
+        .cmp-badge-lite      { background: #fee2e2; color: #dc2626; }
+        .cmp-badge-planes    { background: #dbeafe; color: #2563eb; }
+        .cmp-badge-corporate { background: #ede9fe; color: #7c3aed; }
+        .cmp-card-pct {
+            font-size: 1.25rem; font-weight: 800; line-height: 1;
+        }
+        .cmp-pct-lite      { color: #fc5858; }
+        .cmp-pct-planes    { color: #3b82f6; }
+        .cmp-pct-corporate { color: #8b5cf6; }
+        .cmp-card-count { font-size: 0.8rem; color: #64748b; }
+        .cmp-card-count strong { color: #1e293b; }
+        .cmp-bar-track {
+            height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden;
+        }
+        .cmp-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+        .cmp-fill-lite      { background: #fc5858; }
+        .cmp-fill-planes    { background: #3b82f6; }
+        .cmp-fill-corporate { background: #8b5cf6; }
+
+        /* Fila de docs */
+        .cmp-docs-row {
+            display: flex; gap: 8px; flex-wrap: wrap;
+        }
+        .cmp-docs-pill {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 0.74rem; padding: 4px 10px;
+            border-radius: 20px; background: #f1f5f9; color: #475569;
+        }
+        .cmp-docs-pill .dot {
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+        }
+        .dot-lite      { background: #fc5858; }
+        .dot-planes    { background: #3b82f6; }
+        .dot-corporate { background: #8b5cf6; }
+        .cmp-docs-ok  { color: #16a34a; font-weight: 700; }
+        .cmp-docs-pct { color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -964,6 +1088,13 @@
         </svg>
         Implementadores
     </a>
+    <a href="bajas.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+        Bajas
+    </a>
     <div class="sidebar-ft">
         <button onclick="closeSidebar();cerrarSesion()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -997,7 +1128,6 @@
             </svg>
             Solicitar ficha
         </button>
-        <a href="index.html?completa=1" class="btn btn-primary" style="white-space:nowrap;">+ Nueva ficha</a>
     </div>
 
     <!-- Panel solicitar ficha -->
@@ -1079,6 +1209,36 @@
         <div class="stat-chip"><strong id="stat-mes">0</strong>&nbsp;este mes</div>
     </div>
 
+    <!-- Widget comparativo por tipo -->
+    <div class="cmp-widget" id="cmp-widget">
+        <div class="cmp-hd" onclick="toggleCmp()">
+            <div class="cmp-hd-left">
+                <span style="font-size:1rem;">📈</span>
+                <span class="cmp-hd-title">Comparativo por tipo</span>
+                <span class="cmp-hd-sub" id="cmp-hd-sub"></span>
+            </div>
+            <svg class="cmp-arrow" id="cmp-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </div>
+        <div class="cmp-body" id="cmp-body">
+            <div class="cmp-inner">
+                <!-- Barra proporcional -->
+                <div class="cmp-stack-wrap">
+                    <span class="cmp-stack-label">Distribución total</span>
+                    <div class="cmp-stack" id="cmp-stack"></div>
+                </div>
+                <!-- Cards por tipo -->
+                <div class="cmp-cards" id="cmp-cards"></div>
+                <!-- Documentos subidos por tipo -->
+                <div>
+                    <div class="cmp-stack-label" style="margin-bottom:6px;">Documentos completos</div>
+                    <div class="cmp-docs-row" id="cmp-docs-row"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filtros -->
     <div class="filter-bar" id="filter-bar" style="display:none;">
         <span class="filter-label">Tipo</span>
@@ -1134,7 +1294,7 @@
             <div class="empty-icon">📋</div>
             <h3>No hay fichas registradas</h3>
             <p>Aún no se ha guardado ninguna ficha de cliente en el sistema.</p>
-            <a href="index.html?completa=1" class="btn btn-primary">+ Crear primera ficha</a>
+            <p style="font-size:0.85rem;color:#94a3b8;margin-top:12px;">Crea una solicitud para que el cliente rellene su ficha.</p>
         </div>
     </div><!-- /section-fichas -->
 
@@ -1232,6 +1392,31 @@
 </div>
 
 <!-- Modal confirmación eliminar -->
+<!-- Modal reenviar solicitud -->
+<div class="confirm-modal-overlay" id="reenvio-modal-overlay">
+    <div class="confirm-modal">
+        <h3>✉ Reenviar solicitud</h3>
+        <p>¿A qué dirección quieres reenviar el email de solicitud?</p>
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.86rem;color:#334155;cursor:pointer;">
+                <input type="radio" name="reenvio_dest" value="mismo" checked onchange="toggleReenvioInput(false)">
+                Mismo email (<span id="reenvio-email-label" style="font-family:monospace;color:#64748b"></span>)
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.86rem;color:#334155;cursor:pointer;">
+                <input type="radio" name="reenvio_dest" value="otro" onchange="toggleReenvioInput(true)">
+                Otro email
+            </label>
+        </div>
+        <input type="email" class="confirm-modal-input" id="reenvio-email-alt"
+               placeholder="nuevo@email.com" autocomplete="off"
+               style="display:none;margin-bottom:14px;">
+        <div class="confirm-modal-btns">
+            <button class="btn-cancel-del" onclick="cerrarModalReenvio()">Cancelar</button>
+            <button class="btn btn-primary" style="font-size:0.85rem;padding:8px 18px;" onclick="confirmarReenvio()">Reenviar</button>
+        </div>
+    </div>
+</div>
+
 <div class="confirm-modal-overlay" id="confirm-del-overlay">
     <div class="confirm-modal">
         <h3 id="del-modal-title">⚠️ Eliminar ficha</h3>
@@ -1262,7 +1447,6 @@
     <div class="panel-body" id="panel-body"></div>
     <div class="panel-ft">
         <span class="panel-ft-date" id="panel-fecha"></span>
-        <a href="index.html?completa=1" class="btn btn-primary" style="font-size:0.85rem;padding:8px 18px;">+ Nueva ficha</a>
     </div>
 </div>
 
@@ -1406,6 +1590,101 @@
     }
 
     // ── Stats ─────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
+    //  WIDGET COMPARATIVO POR TIPO
+    // ══════════════════════════════════════════════════════════════
+    let _cmpOpen = false;
+
+    function toggleCmp() {
+        _cmpOpen = !_cmpOpen;
+        document.getElementById('cmp-body').classList.toggle('open', _cmpOpen);
+        document.getElementById('cmp-arrow').classList.toggle('open', _cmpOpen);
+    }
+
+    function renderComparativo(fichasRellenadas) {
+        const widget = document.getElementById('cmp-widget');
+        if (!fichasRellenadas.length) { widget.style.display = 'none'; return; }
+        widget.style.display = 'block';
+
+        const total = fichasRellenadas.length;
+        const tipos = [
+            { key: 'lite',      label: 'Lite',       badgeCls: 'cmp-badge-lite',      pctCls: 'cmp-pct-lite',      fillCls: 'cmp-fill-lite',      segCls: 'cmp-stack-seg-lite',      dotCls: 'dot-lite' },
+            { key: 'planes',    label: 'Planes',     badgeCls: 'cmp-badge-planes',    pctCls: 'cmp-pct-planes',    fillCls: 'cmp-fill-planes',    segCls: 'cmp-stack-seg-planes',    dotCls: 'dot-planes' },
+            { key: 'corporate', label: 'Enterprise', badgeCls: 'cmp-badge-corporate', pctCls: 'cmp-pct-corporate', fillCls: 'cmp-fill-corporate', segCls: 'cmp-stack-seg-corporate', dotCls: 'dot-corporate' },
+        ];
+
+        const counts = {};
+        const docsOk = {};
+        tipos.forEach(t => { counts[t.key] = 0; docsOk[t.key] = 0; });
+        let sinTipo = 0;
+
+        fichasRellenadas.forEach(f => {
+            const t = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+            const docs = (f['Documentos subidos'] === true || f['Documentos subidos'] === 'true' || f['Documentos subidos'] === 'TRUE');
+            if (counts[t] !== undefined) {
+                counts[t]++;
+                if (docs) docsOk[t]++;
+            } else {
+                sinTipo++;
+            }
+        });
+
+        // Header sub
+        const partes = tipos.filter(t => counts[t.key] > 0)
+            .map(t => `${counts[t.key]} ${t.label}`);
+        document.getElementById('cmp-hd-sub').textContent = partes.join(' · ');
+
+        // Barra proporcional
+        const stackSegs = tipos.map(t => {
+            const pct = total > 0 ? (counts[t.key] / total * 100).toFixed(1) : 0;
+            return pct > 0 ? `<div class="cmp-stack-seg ${t.segCls}" style="width:${pct}%" title="${t.label}: ${pct}%"></div>` : '';
+        });
+        if (sinTipo > 0) {
+            const pct = (sinTipo / total * 100).toFixed(1);
+            stackSegs.push(`<div class="cmp-stack-seg cmp-stack-seg-otro" style="width:${pct}%" title="Sin tipo: ${pct}%"></div>`);
+        }
+        document.getElementById('cmp-stack').innerHTML = stackSegs.join('');
+
+        // Cards
+        document.getElementById('cmp-cards').innerHTML = tipos.map(t => {
+            const n   = counts[t.key];
+            const pct = total > 0 ? Math.round(n / total * 100) : 0;
+            const barW = pct;
+
+            // Este mes
+            const ahora = new Date();
+            const nMes  = fichasRellenadas.filter(f => {
+                const tipo = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+                const d = new Date(f['Fecha']);
+                return tipo === t.key && !isNaN(d) && d.getMonth() === ahora.getMonth() && d.getFullYear() === ahora.getFullYear();
+            }).length;
+
+            return `
+            <div class="cmp-card">
+                <div class="cmp-card-hd">
+                    <span class="cmp-card-badge ${t.badgeCls}">${t.label}</span>
+                    <span class="cmp-card-pct ${t.pctCls}">${pct}%</span>
+                </div>
+                <div class="cmp-bar-track"><div class="cmp-bar-fill ${t.fillCls}" style="width:${barW}%"></div></div>
+                <div class="cmp-card-count"><strong>${n}</strong> clientes${nMes > 0 ? ` · <span style="color:#16a34a;font-weight:700;">+${nMes} este mes</span>` : ''}</div>
+            </div>`;
+        }).join('');
+
+        // Docs por tipo
+        document.getElementById('cmp-docs-row').innerHTML = tipos.map(t => {
+            const n = counts[t.key];
+            if (n === 0) return '';
+            const ok  = docsOk[t.key];
+            const pct = Math.round(ok / n * 100);
+            return `<div class="cmp-docs-pill">
+                <span class="dot ${t.dotCls}"></span>
+                ${t.label}:
+                <span class="cmp-docs-ok">${ok}/${n}</span>
+                <span class="cmp-docs-pct">(${pct}%)</span>
+            </div>`;
+        }).filter(Boolean).join('');
+    }
+
     function actualizarStats(fichas) {
         // Solo contar fichas rellenadas (excluir Pendientes)
         const fichasRellenadas = fichas.filter(f => {
@@ -1436,6 +1715,8 @@
         document.getElementById('count-lite').textContent      = contarTipo('lite');
         document.getElementById('count-planes').textContent    = contarTipo('planes');
         document.getElementById('count-corporate').textContent = contarTipo('corporate');
+
+        renderComparativo(fichasRellenadas);
     }
 
     // ── Estado de filtros ─────────────────────────────────────────────────────
@@ -1710,6 +1991,26 @@
     }
 
 
+    function copiarCred(id, btn) {
+        const txt = document.getElementById(id)?.textContent || '';
+        navigator.clipboard.writeText(txt).then(() => {
+            btn.classList.add('copied');
+            btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            }, 2000);
+        });
+    }
+
+    function sanitizarNombreLocal(nombre) {
+        return (nombre || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // quitar tildes
+            .replace(/\s+/g, '')                                 // quitar espacios
+            .replace(/[^a-z0-9]/g, '');                         // solo alfanumérico
+    }
+
     function campo(label, valor, full = false, mono = false) {
         const v = valor ? esc(valor) : null;
         return `<div class="pf${full ? ' full' : ''}">
@@ -1750,9 +2051,12 @@
         const localesHtml = locales.length ? `<div class="locales-list">${locales.map((l, i) => {
             const dirLocal = [l.calle, l.numero ? 'Nº ' + l.numero : '', l.cp, l.municipio, l.provincia].filter(Boolean).join(', ');
             const dirSociedad = [l.sociedad_calle, l.sociedad_numero ? 'Nº ' + l.sociedad_numero : '', l.sociedad_cp, l.sociedad_municipio, l.sociedad_provincia].filter(Boolean).join(', ');
+            const nombreLocal  = l.nombre || 'Local ' + (i + 1);
+            const credFichador = `fichador@${sanitizarNombreLocal(nombreLocal)}.com`;
+            const credId       = `cred-${i}`;
             return `<div class="local-card-panel">
                 <div class="local-card-header">
-                    <strong>${esc(l.nombre || 'Local ' + (i + 1))}</strong>
+                    <strong>${esc(nombreLocal)}</strong>
                     ${l.email ? `<span>${esc(l.email)}</span>` : ''}
                 </div>
                 <div class="local-card-body">
@@ -1760,6 +2064,16 @@
                     ${l.sociedad_cif ? campo('CIF sociedad', l.sociedad_cif) : ''}
                     ${l.sociedad_denominacion ? campo('Denominación sociedad', l.sociedad_denominacion) : ''}
                     ${dirSociedad ? `<div class="pf full">${campo('Dirección sociedad', dirSociedad)}</div>` : ''}
+                    <div class="cred-row">
+                        <span class="cred-label">Credenciales fichador</span>
+                        <div class="cred-box">
+                            <span class="cred-icon">🔑</span>
+                            <span class="cred-value" id="${credId}">${esc(credFichador)}</span>
+                            <button class="cred-copy" onclick="copiarCred('${credId}', this)" title="Copiar">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>`;
         }).join('')}</div>` : `<span class="vacio">Sin locales registrados</span>`;
@@ -2495,13 +2809,45 @@
     }
 
     // ── Reenviar solicitud por email ──────────────────────────────────────────
-    async function reenviarSolicitud(solId, nombre, email, comercial, sociedad = '') {
-        if (!email) { alert('Esta solicitud no tiene email registrado.'); return; }
+    let _reenvioData = {};
 
-        const baseUrl      = window.location.href.split('?')[0].replace(/lista\.html$/, 'solicitud.html');
-        const formUrl      = `${baseUrl}?id=${encodeURIComponent(solId)}&nombre=${encodeURIComponent(nombre)}&email=${encodeURIComponent(email)}&sociedad=${encodeURIComponent(sociedad)}`;
-        const emailAsunto  = 'Solicitud de creación de ficha de alta';
-        const emailCuerpo  =
+    function reenviarSolicitud(solId, nombre, email, comercial, sociedad = '') {
+        if (!email) { alert('Esta solicitud no tiene email registrado.'); return; }
+        _reenvioData = { solId, nombre, email, comercial, sociedad };
+
+        document.getElementById('reenvio-email-label').textContent = email;
+        document.querySelector('input[name="reenvio_dest"][value="mismo"]').checked = true;
+        const altInput = document.getElementById('reenvio-email-alt');
+        altInput.style.display = 'none';
+        altInput.value = '';
+        document.getElementById('reenvio-modal-overlay').classList.add('active');
+    }
+
+    function toggleReenvioInput(show) {
+        const altInput = document.getElementById('reenvio-email-alt');
+        altInput.style.display = show ? 'block' : 'none';
+        if (show) altInput.focus();
+    }
+
+    function cerrarModalReenvio() {
+        document.getElementById('reenvio-modal-overlay').classList.remove('active');
+    }
+
+    async function confirmarReenvio() {
+        const { solId, nombre, email, comercial, sociedad } = _reenvioData;
+        const usarOtro = document.querySelector('input[name="reenvio_dest"]:checked').value === 'otro';
+        const emailDestino = usarOtro
+            ? document.getElementById('reenvio-email-alt').value.trim()
+            : email;
+
+        if (!emailDestino) { alert('Introduce un email alternativo.'); return; }
+
+        cerrarModalReenvio();
+
+        const baseUrl     = window.location.href.split('?')[0].replace(/lista\.html$/, 'solicitud.html');
+        const formUrl     = `${baseUrl}?id=${encodeURIComponent(solId)}&nombre=${encodeURIComponent(nombre)}&email=${encodeURIComponent(emailDestino)}&sociedad=${encodeURIComponent(sociedad)}`;
+        const emailAsunto = 'Solicitud de creación de ficha de alta';
+        const emailCuerpo =
             `Hola ${nombre},\n\n` +
             `Te reenvío este formulario para que puedas completar tu alta con Yurest. ` +
             `Por favor, rellénalo cuando puedas:\n\n` +
@@ -2510,24 +2856,23 @@
             `Un saludo,\n${comercial}`;
 
         try {
-            const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
             const res = await fetch(WEBHOOK_CREAR_SOLICITUD, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     'ID Solicitud':  solId,
                     'Nombre':        nombre,
-                    'Email':         email,
+                    'Email':         emailDestino,
                     'Comercial':     comercial,
                     'Accion':        'Reenvio',
-                    'email_to':      email,
+                    'email_to':      emailDestino,
                     'email_subject': emailAsunto,
                     'email_body':    emailCuerpo,
                     'form_url':      formUrl
                 })
             });
             if (!res.ok) throw new Error('Error ' + res.status);
-            alert(`✓ Email reenviado a ${email}`);
+            alert(`✓ Email reenviado a ${emailDestino}`);
         } catch (err) {
             alert('No se pudo reenviar el email: ' + err.message);
         }

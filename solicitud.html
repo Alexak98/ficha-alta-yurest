@@ -170,10 +170,70 @@
             </div>
         </div>
 
-        <!-- 03 TPV -->
+        <!-- 03 Jefe de Proyecto -->
         <div class="card">
             <div class="card-header">
                 <span class="section-num">03</span>
+                <h3>Jefe de Proyecto <span style="font-weight:400;font-size:0.85em;color:#94a3b8;">(cliente)</span></h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group col-4">
+                    <label for="jp_nombre">Nombre</label>
+                    <input type="text" id="jp_nombre" placeholder="Nombre">
+                </div>
+                <div class="form-group col-4">
+                    <label for="jp_apellidos">Apellidos</label>
+                    <input type="text" id="jp_apellidos" placeholder="Apellidos">
+                </div>
+                <div class="form-group col-4">
+                    <label for="jp_rol">Rol</label>
+                    <input type="text" id="jp_rol" placeholder="Project Manager">
+                </div>
+                <div class="form-group col-6">
+                    <label for="jp_telefono">Teléfono</label>
+                    <input type="tel" id="jp_telefono" placeholder="+34 600 000 000">
+                </div>
+                <div class="form-group col-6">
+                    <label for="jp_mail">Mail</label>
+                    <input type="email" id="jp_mail" placeholder="jefe@empresa.com">
+                </div>
+            </div>
+        </div>
+
+        <!-- 04 Firmante Contrato -->
+        <div class="card">
+            <div class="card-header">
+                <span class="section-num">04</span>
+                <h3>Persona Firmante Contrato</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group col-4">
+                    <label for="firm_nombre">Nombre</label>
+                    <input type="text" id="firm_nombre" placeholder="Nombre">
+                </div>
+                <div class="form-group col-4">
+                    <label for="firm_apellidos">Apellidos</label>
+                    <input type="text" id="firm_apellidos" placeholder="Apellidos">
+                </div>
+                <div class="form-group col-4">
+                    <label for="firm_mail">Mail</label>
+                    <input type="email" id="firm_mail" placeholder="firmante@empresa.com">
+                </div>
+                <div class="form-group col-4">
+                    <label for="firm_dni">DNI</label>
+                    <input type="text" id="firm_dni" placeholder="12345678A">
+                </div>
+                <div class="form-group col-4">
+                    <label for="firm_puesto">Puesto</label>
+                    <input type="text" id="firm_puesto" placeholder="Director General">
+                </div>
+            </div>
+        </div>
+
+        <!-- 05 TPV -->
+        <div class="card">
+            <div class="card-header">
+                <span class="section-num">05</span>
                 <h3>Integración TPV</h3>
             </div>
             <div class="form-grid">
@@ -277,6 +337,16 @@
             'Email':            document.getElementById('email').value.trim(),
             'Email Factura':    document.getElementById('email_factura').value.trim(),
             'Email CC':         document.getElementById('email_cc').value.trim(),
+            'JP Nombre':        document.getElementById('jp_nombre').value.trim(),
+            'JP Apellidos':     document.getElementById('jp_apellidos').value.trim(),
+            'JP Rol':           document.getElementById('jp_rol').value.trim(),
+            'JP Teléfono':      document.getElementById('jp_telefono').value.trim(),
+            'JP Mail':          document.getElementById('jp_mail').value.trim(),
+            'Firmante Nombre':    document.getElementById('firm_nombre').value.trim(),
+            'Firmante Apellidos': document.getElementById('firm_apellidos').value.trim(),
+            'Firmante Mail':      document.getElementById('firm_mail').value.trim(),
+            'Firmante DNI':       document.getElementById('firm_dni').value.trim(),
+            'Firmante Puesto':    document.getElementById('firm_puesto').value.trim(),
             'TPV':              document.getElementById('tpv').value,
             'TPV Contacto':     document.getElementById('tpv_contacto').value.trim(),
             'TPV Email':        document.getElementById('tpv_email').value.trim(),

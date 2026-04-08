@@ -333,6 +333,122 @@
             font-size: 0.88rem;
             margin-bottom: 16px;
         }
+        /* ── Widget carga de trabajo ── */
+        .workload-widget {
+            background: #fff; border: 1.5px solid #e2e8f0;
+            border-radius: 14px; margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: none;
+        }
+        .workload-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 13px 18px; cursor: pointer; user-select: none;
+            transition: background 0.12s;
+        }
+        .workload-hd:hover { background: #f8fafc; }
+        .workload-hd-left  { display: flex; align-items: center; gap: 9px; }
+        .workload-hd-title { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
+        .workload-hd-sub   { font-size: 0.73rem; color: #94a3b8; margin-left: 4px; }
+        .workload-arrow {
+            width: 18px; height: 18px; color: #94a3b8;
+            transition: transform 0.22s; flex-shrink: 0;
+        }
+        .workload-arrow.open { transform: rotate(180deg); }
+        .workload-body {
+            border-top: 1.5px solid #f1f5f9;
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.28s ease;
+        }
+        .workload-body.open { max-height: 1200px; }
+        /* Barra apilada tipo burn */
+        .workload-chart { padding: 18px 18px 4px; }
+        .workload-chart-hd {
+            display: flex; align-items: baseline; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .workload-chart-hd-label {
+            font-size: 0.7rem; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.1em;
+        }
+        .workload-chart-hd-total {
+            font-size: 1.05rem; font-weight: 800; color: #1e293b;
+        }
+        .workload-chart-hd-total small {
+            font-size: 0.72rem; font-weight: 600; color: #94a3b8; margin-left: 4px;
+        }
+        .workload-stack {
+            display: flex; width: 100%; height: 22px;
+            border-radius: 6px; overflow: hidden;
+            background: #f1f5f9;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .workload-stack-seg {
+            height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: 800; color: #fff;
+            transition: width 0.5s ease;
+            border-right: 1.5px solid #fff;
+            overflow: hidden;
+        }
+        .workload-stack-seg:last-child { border-right: 0; }
+        .workload-legend {
+            display: flex; flex-wrap: wrap; gap: 8px 16px;
+            margin-top: 12px;
+        }
+        .workload-legend-row {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.78rem; color: #334155;
+        }
+        .workload-legend-dot {
+            width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0;
+        }
+        .workload-legend-name { font-weight: 600; }
+        .workload-legend-pct  { font-weight: 700; color: #1e293b; font-variant-numeric: tabular-nums; }
+        .workload-legend-count { color: #94a3b8; font-size: 0.72rem; }
+        .workload-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px; padding: 16px 18px;
+        }
+        @media (max-width: 640px) { .workload-grid { grid-template-columns: 1fr; } }
+        .workload-card {
+            border: 1.5px solid #f1f5f9; border-radius: 10px;
+            padding: 12px 14px; background: #fafafa;
+        }
+        .workload-card-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .workload-name { font-size: 0.83rem; font-weight: 700; color: #1e293b; }
+        .workload-total {
+            font-size: 0.75rem; font-weight: 700; color: #fff;
+            background: #334155; border-radius: 20px; padding: 2px 9px;
+        }
+        .workload-total.zero { background: #e2e8f0; color: #94a3b8; }
+        .workload-bar-track {
+            width: 100%; height: 7px; background: #e2e8f0; border-radius: 4px;
+            margin-bottom: 9px; overflow: hidden;
+        }
+        .workload-bar-fill {
+            height: 100%; border-radius: 4px;
+            background: linear-gradient(90deg,#6366f1,#8b5cf6);
+            transition: width 0.5s ease;
+        }
+        .workload-breakdown { display: flex; gap: 5px; flex-wrap: wrap; }
+        .wbadge {
+            font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
+            border-radius: 20px; white-space: nowrap;
+        }
+        .wbadge-lite      { background: #fee2e2; color: #dc2626; }
+        .wbadge-planes    { background: #dbeafe; color: #2563eb; }
+        .wbadge-corporate { background: #ede9fe; color: #7c3aed; }
+        .wbadge-sin       { background: #f1f5f9; color: #94a3b8; }
+        .workload-unassigned {
+            margin: 0 18px 16px; padding: 9px 14px;
+            background: #fffbeb; border: 1.5px solid #fde68a;
+            border-radius: 9px; font-size: 0.8rem; color: #92400e;
+            display: flex; align-items: center; gap: 7px;
+        }
     </style>
 </head>
 <body>
@@ -396,6 +512,13 @@
         </svg>
         Implementadores
     </a>
+    <a href="bajas.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+        Bajas
+    </a>
     <div class="sidebar-ft">
         <button onclick="closeSidebar();cerrarSesion()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -457,6 +580,27 @@
             <button class="chip"        data-impl="Hugo Zalazar"      onclick="setFiltroImpl(this,'Hugo Zalazar')">Hugo Zalazar <span class="chip-count" id="count-impl-hugo">0</span></button>
             <button class="chip"        data-impl="Mario Labrandero"  onclick="setFiltroImpl(this,'Mario Labrandero')">Mario Labrandero <span class="chip-count" id="count-impl-mario">0</span></button>
             <button class="chip"        data-impl="Javier Feliu"      onclick="setFiltroImpl(this,'Javier Feliu')">Javier Feliu <span class="chip-count" id="count-impl-javier">0</span></button>
+        </div>
+    </div>
+
+    <!-- Widget carga de trabajo -->
+    <div class="workload-widget" id="workload-widget">
+        <div class="workload-hd" onclick="toggleWorkload()">
+            <div class="workload-hd-left">
+                <span style="font-size:1rem;">🏋️</span>
+                <span class="workload-hd-title">Carga de trabajo</span>
+                <span class="workload-hd-sub" id="workload-hd-sub"></span>
+            </div>
+            <svg class="workload-arrow" id="workload-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </div>
+        <div class="workload-body" id="workload-body">
+            <div class="workload-chart" id="workload-chart"></div>
+            <div class="workload-grid" id="workload-grid">
+                <!-- Se rellena por JS -->
+            </div>
+            <div id="workload-unassigned-wrap"></div>
         </div>
     </div>
 
@@ -583,6 +727,7 @@
         fichasFiltradas = [...todasFichas];
         poblarContadores(todasFichas);
         document.getElementById('filter-bar').style.display = 'flex';
+        renderWorkload(todasFichas);
         renderTabla(fichasFiltradas);
     }
 
@@ -798,9 +943,115 @@
             }
             return true;
         });
+        renderWorkload(fichasFiltradas);
         renderTabla(fichasFiltradas);
     }
 
+
+    // ── Widget carga de trabajo ──────────────────────────────────────────────────
+    let _workloadOpen = false;
+
+    function renderWorkload(fichas) {
+        const widget = document.getElementById('workload-widget');
+        if (!fichas || !fichas.length) { widget.style.display = 'none'; return; }
+        widget.style.display = 'block';
+
+        const total = fichas.length;
+        const stats = {};
+        IMPLEMENTADORES.forEach(name => {
+            stats[name] = { total: 0, lite: 0, planes: 0, corporate: 0, otro: 0 };
+        });
+        let sinAsignar = 0;
+
+        fichas.forEach(f => {
+            const name = (f['Implementador'] || '').trim();
+            const tipo = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
+            if (!name || !stats[name]) { sinAsignar++; return; }
+            stats[name].total++;
+            if      (tipo === 'lite')      stats[name].lite++;
+            else if (tipo === 'planes')    stats[name].planes++;
+            else if (tipo === 'corporate') stats[name].corporate++;
+            else                           stats[name].otro++;
+        });
+
+        const maxTotal = Math.max(...IMPLEMENTADORES.map(n => stats[n].total), 1);
+
+        // Subtitle
+        const asignados = total - sinAsignar;
+        document.getElementById('workload-hd-sub').textContent =
+            `${asignados} asignadas · ${sinAsignar} pendientes`;
+
+        // ── Donut de distribución ──
+        const PALETTE = ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#f43f5e','#84cc16'];
+        const segmentos = IMPLEMENTADORES
+            .map((name, i) => ({ name, count: stats[name].total, color: PALETTE[i % PALETTE.length] }))
+            .filter(s => s.count > 0);
+        if (sinAsignar > 0) segmentos.push({ name: 'Sin asignar', count: sinAsignar, color: '#e2e8f0' });
+
+        const stack = total > 0 ? segmentos.map(s => {
+            const pct = (s.count / total) * 100;
+            const label = pct >= 8 ? `${Math.round(pct)}%` : '';
+            const textColor = s.name === 'Sin asignar' ? '#64748b' : '#fff';
+            return `<div class="workload-stack-seg" style="width:${pct}%;background:${s.color};color:${textColor};" title="${esc(s.name)}: ${s.count} (${Math.round(pct)}%)">${label}</div>`;
+        }).join('') : '';
+
+        const legend = segmentos.map(s => {
+            const pct = total > 0 ? Math.round((s.count / total) * 100) : 0;
+            return `
+            <div class="workload-legend-row">
+                <span class="workload-legend-dot" style="background:${s.color};"></span>
+                <span class="workload-legend-name">${esc(s.name)}</span>
+                <span class="workload-legend-pct">${pct}%</span>
+                <span class="workload-legend-count">(${s.count})</span>
+            </div>`;
+        }).join('');
+
+        document.getElementById('workload-chart').innerHTML = `
+            <div class="workload-chart-hd">
+                <span class="workload-chart-hd-label">Distribución de clientes</span>
+                <span class="workload-chart-hd-total">${total}<small>total</small></span>
+            </div>
+            <div class="workload-stack">${stack}</div>
+            <div class="workload-legend">${legend || '<div class="workload-legend-row" style="color:#94a3b8;">Sin datos</div>'}</div>
+        `;
+
+        // Cards por implementador
+        document.getElementById('workload-grid').innerHTML = IMPLEMENTADORES.map(name => {
+            const s = stats[name];
+            const pct = Math.round((s.total / maxTotal) * 100);
+            const breakdown = [
+                s.lite      ? `<span class="wbadge wbadge-lite">${s.lite} Lite</span>` : '',
+                s.planes    ? `<span class="wbadge wbadge-planes">${s.planes} Planes</span>` : '',
+                s.corporate ? `<span class="wbadge wbadge-corporate">${s.corporate} Corp.</span>` : '',
+                s.otro      ? `<span class="wbadge wbadge-sin">${s.otro} Otro</span>` : '',
+            ].filter(Boolean).join('');
+            return `
+            <div class="workload-card">
+                <div class="workload-card-hd">
+                    <span class="workload-name">${esc(name.split(' ')[0])} <span style="font-weight:400;color:#64748b;">${esc(name.split(' ').slice(1).join(' '))}</span></span>
+                    <span class="workload-total${s.total === 0 ? ' zero' : ''}">${s.total}</span>
+                </div>
+                <div class="workload-bar-track">
+                    <div class="workload-bar-fill" style="width:${pct}%"></div>
+                </div>
+                <div class="workload-breakdown">
+                    ${breakdown || '<span class="wbadge wbadge-sin">Sin asignar</span>'}
+                </div>
+            </div>`;
+        }).join('');
+
+        // Aviso sin asignar
+        const uWrap = document.getElementById('workload-unassigned-wrap');
+        uWrap.innerHTML = sinAsignar > 0
+            ? `<div class="workload-unassigned">⚠️ <strong>${sinAsignar}</strong> ficha${sinAsignar > 1 ? 's' : ''} sin implementador asignado</div>`
+            : '';
+    }
+
+    function toggleWorkload() {
+        _workloadOpen = !_workloadOpen;
+        document.getElementById('workload-body').classList.toggle('open', _workloadOpen);
+        document.getElementById('workload-arrow').classList.toggle('open', _workloadOpen);
+    }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
     function mostrarError(msg) {

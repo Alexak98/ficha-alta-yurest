@@ -701,6 +701,7 @@
 <script>
     // ─── CONFIGURACIÓN ───────────────────────────────────────────────────────
     const WEBHOOK_GUARDAR = 'https://n8n-soporte.data.yurest.dev/webhook/57e04029-bae4-4124-8c43-c535e831a147';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz86m5MUshH_xzvH4JTITkMhm61P8M4KhOFJb35IlUjJccZfaFo-DSFvz6UEbcmN3Iq/exec';
     // ─────────────────────────────────────────────────────────────────────────
 
     function agregarLocal() {
@@ -1515,6 +1516,7 @@
                                 const desc = parseFloat(document.getElementById('cart_descuento')?.value) || 0;
                                 return Math.max(0, t * (1 - desc / 100));
                             })(),
+            'Baja':           'No',
             locales: [],
             'Módulos': []
         };
@@ -1550,6 +1552,18 @@
         return true;
     }
 
+    async function getNextId() {
+        if (!APPS_SCRIPT_URL) return null;
+        try {
+            const res = await fetch(APPS_SCRIPT_URL + '?action=nextId');
+            if (!res.ok) return null;
+            const json = await res.json();
+            return (json.success && json.nextId) ? json.nextId : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     async function guardarCambios() {
         const data = collectFormData();
         if (!validateForm(data)) return;
@@ -1565,7 +1579,19 @@
         if (_session.basicAuth) _headers['Authorization'] = 'Basic ' + _session.basicAuth;
 
         // En modo edición incluir el ID para que n8n actualice la fila correcta
-        if (_editId) data.id = _editId;
+        if (_editId) {
+            data.id = _editId;
+        } else {
+            // Alta nueva: obtener el siguiente ID disponible desde Sheets
+            const nextId = await getNextId();
+            if (nextId === null) {
+                showStatus('No se pudo obtener el siguiente ID. Verifica APPS_SCRIPT_URL en la configuración.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Guardar';
+                return;
+            }
+            data.id = nextId;
+        }
 
         try {
             const res = await fetch(WEBHOOK_GUARDAR, {
