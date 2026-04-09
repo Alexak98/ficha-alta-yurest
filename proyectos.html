@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestor de Proyectos</title>
     <link rel="stylesheet" href="css-gestor/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 </head>
 <body>
 
@@ -243,8 +246,8 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Fecha de entrega</label>
-                        <input type="date" id="tarea-fecha" class="form-control">
+                        <label>Fecha de reunion</label>
+                        <input type="text" id="tarea-fecha" class="form-control" placeholder="Seleccionar fecha" readonly>
                     </div>
                     <div class="form-group">
                         <label>Tiempo estimado (min)</label>
@@ -341,8 +344,8 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Fecha de entrega</label>
-                        <input type="date" id="subtarea-fecha" class="form-control">
+                        <label>Fecha de reunion</label>
+                        <input type="text" id="subtarea-fecha" class="form-control" placeholder="Seleccionar fecha" readonly>
                     </div>
                     <div class="form-group">
                         <label>Tiempo estimado (min)</label>

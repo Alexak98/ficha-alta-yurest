@@ -1497,6 +1497,78 @@ body {
     flex-shrink: 0;
 }
 
+/* ==========================================
+   PROJECTS GROUPED BY TYPE
+   ========================================== */
+
+#cards-grid:has(.tipo-group) {
+    display: block;
+}
+
+.tipo-group {
+    margin-bottom: 24px;
+}
+
+.tipo-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 4px;
+    border-bottom: 2px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition);
+    border-radius: 6px 6px 0 0;
+}
+
+.tipo-group-header:hover {
+    background: var(--bg-hover);
+}
+
+.tipo-group-chevron {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.tipo-group.open .tipo-group-chevron {
+    transform: rotate(90deg);
+}
+
+.tipo-group-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tipo-group-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+}
+
+.tipo-group-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.tipo-group-cards {
+    display: none;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+    padding-top: 14px;
+}
+
+.tipo-group.open .tipo-group-cards {
+    display: grid;
+}
+
 /* Toggle dashboard */
 .dashboard-toggle {
     display: flex;
@@ -2358,6 +2430,15 @@ textarea.form-control {
 .task-name.completed {
     text-decoration: line-through;
     color: var(--text-muted);
+}
+
+.task-name.clickable {
+    cursor: pointer;
+}
+
+.task-name.clickable:hover {
+    color: #4F46E5;
+    text-decoration: underline;
 }
 
 .task-show-badge {

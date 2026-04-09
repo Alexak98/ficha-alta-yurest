@@ -24,6 +24,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     inicializarFiltros();
     refrescarTodo();
 
+    // Inicializar flatpickr en los campos de fecha
+    const fpConfig = { locale: 'es', dateFormat: 'Y-m-d', altInput: true, altFormat: 'j M Y', allowInput: false };
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr('#tarea-fecha', fpConfig);
+        flatpickr('#subtarea-fecha', fpConfig);
+    }
+
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) overlay.classList.remove('active');
@@ -412,7 +419,39 @@ function renderizarDashboard() {
         return;
     }
 
-    grid.innerHTML = filtrados.map(p => renderCard(p)).join('');
+    // Agrupar por tipo de cliente
+    const grupos = {};
+    TIPOS_PROYECTO.forEach(tipo => { grupos[tipo] = []; });
+    filtrados.forEach(p => {
+        const tipo = TIPOS_PROYECTO.includes(p.tipo) ? p.tipo : 'Otros';
+        if (!grupos[tipo]) grupos[tipo] = [];
+        grupos[tipo].push(p);
+    });
+
+    const coloresTipo = {
+        'Planes': '#8b5cf6',
+        'Corporate con cocina': '#059669',
+        'Corporate sin cocina': '#D97706'
+    };
+
+    let html = '';
+    for (const tipo of [...TIPOS_PROYECTO, 'Otros']) {
+        const lista = grupos[tipo];
+        if (!lista || lista.length === 0) continue;
+        html += `
+            <div class="tipo-group open">
+                <div class="tipo-group-header" onclick="this.parentElement.classList.toggle('open')">
+                    <svg class="tipo-group-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    <span class="tipo-group-dot" style="background:${coloresTipo[tipo] || '#6366f1'}"></span>
+                    <span class="tipo-group-name">${escapeHtml(tipo)}</span>
+                    <span class="tipo-group-count">${lista.length}</span>
+                </div>
+                <div class="tipo-group-cards">
+                    ${lista.map(p => renderCard(p)).join('')}
+                </div>
+            </div>`;
+    }
+    grid.innerHTML = html;
 }
 
 function renderCard(proyecto) {
@@ -450,10 +489,10 @@ function renderCard(proyecto) {
                     <strong>${resumen.sesionesCompletadas}/${resumen.totalSesiones}</strong> sesiones
                 </span>
                 ${(() => {
-                    const ultimaSesion = obtenerUltimaSesionAgendada(proyecto);
-                    return ultimaSesion ? `<span class="card-sesion-fecha">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        ${formatearFechaCorta(ultimaSesion)}
+                    const ultimaComp = obtenerUltimaSubtareaCompletada(proyecto);
+                    return ultimaComp ? `<span class="card-sesion-fecha">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                        ${formatearFechaCorta(ultimaComp)}
                     </span>` : '';
                 })()}
             </div>
@@ -1052,7 +1091,7 @@ function renderSeccion(proyectoId, seccion, seccionIndex) {
                         <span></span>
                         <span>Tarea</span>
                         <span>Estado</span>
-                        <span>Entrega</span>
+                        <span>Reunion</span>
                         <span>Tiempo</span>
                         <span></span>
                     </div>
@@ -1092,7 +1131,7 @@ function renderTareaRow(proyectoId, seccionNombre, tarea) {
             </span>
             <div class="task-check ${estaTerminada ? 'checked' : ''}"
                  onclick="toggleTareaCompletada('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')"></div>
-            <span class="task-name ${estaTerminada ? 'completed' : ''}">
+            <span class="task-name clickable ${estaTerminada ? 'completed' : ''}" onclick="abrirModalTarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')">
                 ${escapeHtml(tarea.nombre)}
                 ${hasSubtareas ? `<span class="subtask-count">${subCompleted}/${subCount}</span>` : ''}
             </span>
@@ -1125,7 +1164,7 @@ function renderSubtareaRow(proyectoId, seccionNombre, tareaId, subtarea) {
             </span>
             <div class="task-check ${subtarea.completada ? 'checked' : ''}"
                  onclick="toggleSubtareaCompletada('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')"></div>
-            <span class="task-name ${subtarea.completada ? 'completed' : ''}">
+            <span class="task-name clickable ${subtarea.completada ? 'completed' : ''}" onclick="abrirModalSubtarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')">
                 ${escapeHtml(subtarea.nombre)}
                 ${partCount > 0 ? `<span class="subtask-participantes-badge" title="${(subtarea.participantes||[]).join(', ')}">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>

@@ -27,8 +27,8 @@ const IMPLEMENTADORES = [
 
 const TIPOS_PROYECTO = [
     'Planes',
-    'Corporate con cocina',
-    'Corporate sin cocina'
+    'Corporate sin cocina',
+    'Corporate con cocina'
 ];
 
 const ESTADOS_PROYECTO = ['activo', 'completado', 'pausado'];
@@ -489,6 +489,23 @@ function obtenerUltimaSesionAgendada(proyecto) {
             if (tarea.subtareas) {
                 tarea.subtareas.forEach(sub => {
                     if (sub.fechaEntrega) {
+                        if (!maxFecha || sub.fechaEntrega > maxFecha) maxFecha = sub.fechaEntrega;
+                    }
+                });
+            }
+        });
+    });
+    return maxFecha;
+}
+
+// Obtiene la fecha mas reciente de subtareas COMPLETADAS
+function obtenerUltimaSubtareaCompletada(proyecto) {
+    let maxFecha = null;
+    proyecto.secciones.forEach(sec => {
+        sec.tareas.forEach(tarea => {
+            if (tarea.subtareas) {
+                tarea.subtareas.forEach(sub => {
+                    if (sub.completada && sub.fechaEntrega) {
                         if (!maxFecha || sub.fechaEntrega > maxFecha) maxFecha = sub.fechaEntrega;
                     }
                 });
