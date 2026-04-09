@@ -3,6 +3,7 @@
 // ==========================================
 
 const STORAGE_KEY = 'gestor_proyectos_v3';
+const STORAGE_KEY_PLANTILLAS = 'gestor_plantillas_v1';
 
 // ==========================================
 // WEBHOOK ENDPOINTS (n8n backend)
@@ -11,6 +12,8 @@ const STORAGE_KEY = 'gestor_proyectos_v3';
 const WEBHOOK_BASE = 'https://n8n-soporte.data.yurest.dev/webhook';
 const WEBHOOK_PROYECTOS = `${WEBHOOK_BASE}/proyectos`;
 const WEBHOOK_PROYECTOS_TAREA = `${WEBHOOK_BASE}/proyectos/tarea`;
+const WEBHOOK_PROYECTOS_TAREA_MOVER = `${WEBHOOK_BASE}/proyectos/tarea/mover`;
+const WEBHOOK_PLANTILLAS = `${WEBHOOK_BASE}/plantillas`;
 
 const IMPLEMENTADORES = [
     'Carlos Aparicio',
@@ -109,7 +112,8 @@ function crearEstructuraProyecto() {
                 show: null, // null = sin asignar, 'Show', 'No Show'
                 fechaEntrega: null,
                 tiempoEstimado: null,
-                notas: ''
+                notas: '',
+                subtareas: []
             }));
         } else if (seccion === 'Puesta en Marcha / Finalización') {
             tareas = TAREAS_PUESTA_EN_MARCHA.map(nombre => ({
@@ -119,7 +123,8 @@ function crearEstructuraProyecto() {
                 show: null,
                 fechaEntrega: null,
                 tiempoEstimado: null,
-                notas: ''
+                notas: '',
+                subtareas: []
             }));
         } else if (seccion === 'Carga de Datos Yuload') {
             tareas = TAREAS_CARGA_DATOS.map(nombre => ({
@@ -129,7 +134,8 @@ function crearEstructuraProyecto() {
                 show: null,
                 fechaEntrega: null,
                 tiempoEstimado: null,
-                notas: ''
+                notas: '',
+                subtareas: []
             }));
         } else if (seccion === 'Proyecto Finalizado') {
             tareas = TAREAS_PROYECTO_FINALIZADO.map(nombre => ({
@@ -139,7 +145,8 @@ function crearEstructuraProyecto() {
                 show: null,
                 fechaEntrega: null,
                 tiempoEstimado: null,
-                notas: ''
+                notas: '',
+                subtareas: []
             }));
         }
         return {
@@ -325,6 +332,13 @@ async function actualizarTareaAPI(proyectoId, seccionNombre, tarea) {
     return result;
 }
 
+async function moverTareaAPI(proyectoId, tareaId, seccionOrigen, seccionDestino) {
+    const result = await apiRequest(WEBHOOK_PROYECTOS_TAREA_MOVER, 'PUT', {
+        proyectoId, tareaId, seccionOrigen, seccionDestino
+    });
+    return result;
+}
+
 async function resetearDatosAPI() {
     try {
         // Enviar todos los datos ejemplo al backend
@@ -334,6 +348,95 @@ async function resetearDatosAPI() {
     }
     localStorage.removeItem(STORAGE_KEY);
     return DATOS_EJEMPLO;
+}
+
+// ==========================================
+// PLANTILLAS (Templates)
+// ==========================================
+
+// Genera la plantilla default a partir de las constantes actuales
+function obtenerPlantillaDefault() {
+    return {
+        id: 'default',
+        nombre: 'Default',
+        descripcion: 'Plantilla estandar con sesiones, puesta en marcha y carga de datos',
+        secciones: SECCIONES.map(nombre => {
+            let tareas = [];
+            if (nombre === 'Planificación de sesiones') tareas = [...SESIONES_PLANTILLA];
+            else if (nombre === 'Puesta en Marcha / Finalización') tareas = [...TAREAS_PUESTA_EN_MARCHA];
+            else if (nombre === 'Carga de Datos Yuload') tareas = [...TAREAS_CARGA_DATOS];
+            else if (nombre === 'Proyecto Finalizado') tareas = [...TAREAS_PROYECTO_FINALIZADO];
+            return { nombre, tareas };
+        })
+    };
+}
+
+let plantillas = [];
+
+async function cargarPlantillas() {
+    try {
+        const data = await apiRequest(WEBHOOK_PLANTILLAS, 'GET');
+        const lista = Array.isArray(data) ? data
+            : Array.isArray(data.plantillas) ? data.plantillas
+            : Array.isArray(data.data) ? data.data : [];
+        if (lista.length > 0) {
+            plantillas = lista;
+            guardarPlantillasLocal(plantillas);
+            return plantillas;
+        }
+    } catch (err) {
+        console.warn('Error cargando plantillas del backend:', err.message);
+    }
+    // Fallback a localStorage
+    const datos = localStorage.getItem(STORAGE_KEY_PLANTILLAS);
+    if (datos) {
+        plantillas = JSON.parse(datos);
+        if (plantillas.length > 0) return plantillas;
+    }
+    // Sin datos: crear plantilla default
+    plantillas = [obtenerPlantillaDefault()];
+    guardarPlantillasLocal(plantillas);
+    return plantillas;
+}
+
+function guardarPlantillasLocal(lista) {
+    localStorage.setItem(STORAGE_KEY_PLANTILLAS, JSON.stringify(lista));
+}
+
+async function crearPlantillaAPI(plantilla) {
+    return await apiRequest(WEBHOOK_PLANTILLAS, 'POST', { plantilla });
+}
+
+async function actualizarPlantillaAPI(plantilla) {
+    return await apiRequest(WEBHOOK_PLANTILLAS, 'PUT', { plantilla });
+}
+
+async function eliminarPlantillaAPI(id) {
+    return await apiRequest(WEBHOOK_PLANTILLAS, 'DELETE', { id });
+}
+
+// Genera estructura de secciones+tareas a partir de una plantilla
+function crearEstructuraDesdePlantilla(plantillaId) {
+    const pl = plantillas.find(p => p.id === plantillaId);
+    if (!pl) return crearEstructuraProyecto(); // fallback
+
+    return SECCIONES.map(secNombre => {
+        const secPlantilla = pl.secciones.find(s => s.nombre === secNombre);
+        const nombresTareas = secPlantilla ? secPlantilla.tareas : [];
+        return {
+            nombre: secNombre,
+            tareas: nombresTareas.map(nombre => ({
+                id: generarId(),
+                nombre,
+                completada: false,
+                show: null,
+                fechaEntrega: null,
+                tiempoEstimado: null,
+                notas: '',
+                subtareas: []
+            }))
+        };
+    });
 }
 
 // ==========================================
@@ -414,6 +517,103 @@ function generarEstadisticasDashboard(proyectos) {
     return { totales, porImplementador, clientesParados };
 }
 
+// Calcula dias laborables entre dos fechas (excluye sabados y domingos)
+function calcularDiasLaborables(fechaInicioStr, fechaFinStr) {
+    const inicio = new Date(fechaInicioStr + 'T00:00:00');
+    const fin = new Date(fechaFinStr + 'T00:00:00');
+    if (isNaN(inicio) || isNaN(fin) || fin <= inicio) return 0;
+    let dias = 0;
+    const current = new Date(inicio);
+    while (current <= fin) {
+        const dow = current.getDay();
+        if (dow !== 0 && dow !== 6) dias++;
+        current.setDate(current.getDate() + 1);
+    }
+    return dias;
+}
+
+function calcularMediana(arr) {
+    if (arr.length === 0) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+function calcularMedia(arr) {
+    if (arr.length === 0) return 0;
+    return Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10;
+}
+
+// Genera estadisticas de duracion media de implementaciones
+function generarEstadisticasDuracion(proyectos) {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const porTipo = {};
+    const porImpl = {};
+    const todosDias = [];
+
+    proyectos.forEach(p => {
+        if (!p.fechaInicio) return;
+        // Para completados usar ultimaActividad, para el resto usar hoy
+        const fechaFin = p.estado === 'completado' && p.ultimaActividad ? p.ultimaActividad : hoyStr;
+        const dias = calcularDiasLaborables(p.fechaInicio, fechaFin);
+        if (dias <= 0) return;
+
+        todosDias.push(dias);
+
+        // Por tipo
+        if (!porTipo[p.tipo]) porTipo[p.tipo] = { dias: [], count: 0 };
+        porTipo[p.tipo].dias.push(dias);
+        porTipo[p.tipo].count++;
+
+        // Por implementador
+        if (!porImpl[p.implementador]) porImpl[p.implementador] = { dias: [], count: 0 };
+        porImpl[p.implementador].dias.push(dias);
+        porImpl[p.implementador].count++;
+    });
+
+    const mediaGlobal = calcularMedia(todosDias);
+    const medianaGlobal = calcularMediana(todosDias);
+
+    const tiposStats = Object.entries(porTipo).map(([tipo, data]) => ({
+        tipo,
+        count: data.count,
+        mediaDias: calcularMedia(data.dias),
+        mediaSem: calcularMedia(data.dias.map(d => d / 5)),
+        medianaDias: calcularMediana(data.dias),
+        medianaSem: calcularMedia([calcularMediana(data.dias) / 5])
+    })).sort((a, b) => b.mediaDias - a.mediaDias);
+
+    const implStats = Object.entries(porImpl).map(([impl, data]) => ({
+        impl,
+        count: data.count,
+        mediaDias: calcularMedia(data.dias),
+        mediaSem: calcularMedia(data.dias.map(d => d / 5))
+    })).sort((a, b) => b.mediaDias - a.mediaDias);
+
+    return {
+        totalAnalizados: todosDias.length,
+        mediaGlobal,
+        mediaGlobalSem: Math.round(mediaGlobal / 5 * 10) / 10,
+        medianaGlobal,
+        medianaGlobalSem: Math.round(medianaGlobal / 5 * 10) / 10,
+        porTipo: tiposStats,
+        porImplementador: implStats
+    };
+}
+
+// Mueve una tarea de una seccion a otra dentro del mismo proyecto
+function moverTareaEntreSecciones(proyecto, tareaId, seccionOrigenNombre, seccionDestinoNombre) {
+    if (seccionOrigenNombre === seccionDestinoNombre) return false;
+    const origen = proyecto.secciones.find(s => s.nombre === seccionOrigenNombre);
+    const destino = proyecto.secciones.find(s => s.nombre === seccionDestinoNombre);
+    if (!origen || !destino) return false;
+    const idx = origen.tareas.findIndex(t => t.id === tareaId);
+    if (idx === -1) return false;
+    const [tarea] = origen.tareas.splice(idx, 1);
+    destino.tareas.push(tarea);
+    return true;
+}
+
 function obtenerResumenProyecto(proyecto) {
     let totalTareas = 0;
     let tareasCompletadas = 0;
@@ -426,6 +626,13 @@ function obtenerResumenProyecto(proyecto) {
         seccion.tareas.forEach(tarea => {
             totalTareas++;
             if (tarea.completada) tareasCompletadas++;
+            // Contar subtareas
+            if (tarea.subtareas && tarea.subtareas.length > 0) {
+                tarea.subtareas.forEach(sub => {
+                    totalTareas++;
+                    if (sub.completada) tareasCompletadas++;
+                });
+            }
         });
 
         if (seccion.nombre === 'Planificación de sesiones') {

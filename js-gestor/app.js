@@ -13,9 +13,10 @@ let dashboardFiltroActivo = null; // null, 'parados', 'avanzando', 'terminados',
 document.addEventListener('DOMContentLoaded', async () => {
     showLoading();
     try {
+        await cargarPlantillas();
         proyectos = await cargarProyectos();
     } catch (err) {
-        mostrarToast('Error cargando proyectos: ' + err.message, 'error');
+        mostrarToast('Error cargando datos: ' + err.message, 'error');
         proyectos = [];
     } finally {
         hideLoading();
@@ -124,6 +125,7 @@ function cambiarVista(vista) {
 
 function renderizarEstadisticas() {
     const stats = generarEstadisticasDashboard(proyectos);
+    const duracion = generarEstadisticasDuracion(proyectos);
     const container = document.getElementById('dashboard-stats');
 
     container.innerHTML = `
@@ -220,6 +222,77 @@ function renderizarEstadisticas() {
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <div class="stats-panel duracion-panel">
+            <div class="stats-panel-header duracion-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Duracion media de implementaciones — dias laborables
+            </div>
+            <div class="duracion-globals">
+                <div class="duracion-global-item">
+                    <span class="duracion-global-label">Media global</span>
+                    <span class="duracion-global-value">${duracion.mediaGlobal} dias lab</span>
+                    <span class="duracion-global-sub">(${duracion.mediaGlobalSem} semanas)</span>
+                </div>
+                <div class="duracion-global-item">
+                    <span class="duracion-global-label">Mediana global</span>
+                    <span class="duracion-global-value">${duracion.medianaGlobal} dias lab</span>
+                    <span class="duracion-global-sub">(${duracion.medianaGlobalSem} semanas)</span>
+                </div>
+                <div class="duracion-global-item">
+                    <span class="duracion-global-label">Proyectos analizados</span>
+                    <span class="duracion-global-value">${duracion.totalAnalizados}</span>
+                </div>
+            </div>
+            <table class="duracion-table">
+                <thead>
+                    <tr>
+                        <th>Tipo de proyecto</th>
+                        <th>Proyectos</th>
+                        <th>Media (dias)</th>
+                        <th>Media (sem)</th>
+                        <th>Mediana (dias)</th>
+                        <th>Mediana (sem)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${duracion.porTipo.map(t => `
+                        <tr>
+                            <td class="duracion-tipo"><strong>${escapeHtml(t.tipo)}</strong></td>
+                            <td>${t.count}</td>
+                            <td class="duracion-highlight">${t.mediaDias}</td>
+                            <td>${t.mediaSem}</td>
+                            <td>${t.medianaDias}</td>
+                            <td>${t.medianaSem}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <table class="duracion-table duracion-table-impl">
+                <thead>
+                    <tr>
+                        <th>Implementador</th>
+                        <th>Proyectos</th>
+                        <th>Media (dias)</th>
+                        <th>Media (sem)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${duracion.porImplementador.map(i => {
+                        const color = COLORES_IMPLEMENTADOR[i.impl] || '#6366f1';
+                        return `<tr>
+                            <td><span style="color:${color};font-weight:700">${escapeHtml(i.impl.split(' ')[0])}</span></td>
+                            <td>${i.count}</td>
+                            <td class="duracion-highlight">${i.mediaDias}</td>
+                            <td>${i.mediaSem}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+            <div class="duracion-footer">
+                Basado en ${duracion.totalAnalizados} proyectos con fecha de inicio. En curso: dias desde inicio hasta hoy. Sin tipo excluidos.
             </div>
         </div>
     `;
@@ -408,6 +481,13 @@ function abrirModalProyecto(id) {
     const selectTipo = document.getElementById('proyecto-tipo');
     const selectEstado = document.getElementById('proyecto-estado');
     const inputFecha = document.getElementById('proyecto-fecha');
+    const plantillaGroup = document.getElementById('proyecto-plantilla-group');
+    const selectPlantilla = document.getElementById('proyecto-plantilla');
+
+    // Populate plantilla dropdown
+    selectPlantilla.innerHTML = plantillas.map(p =>
+        `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`
+    ).join('');
 
     if (id) {
         const p = proyectos.find(pr => pr.id === id);
@@ -419,6 +499,7 @@ function abrirModalProyecto(id) {
         selectTipo.value = p.tipo;
         selectEstado.value = p.estado;
         inputFecha.value = p.fechaInicio;
+        plantillaGroup.style.display = 'none'; // No cambiar plantilla al editar
     } else {
         titulo.textContent = 'Nuevo Proyecto';
         inputId.value = '';
@@ -427,6 +508,7 @@ function abrirModalProyecto(id) {
         selectTipo.selectedIndex = 0;
         selectEstado.selectedIndex = 0;
         inputFecha.value = new Date().toISOString().split('T')[0];
+        plantillaGroup.style.display = '';
     }
 
     abrirModal('modal-proyecto');
@@ -440,6 +522,7 @@ async function guardarProyecto() {
     const tipo = document.getElementById('proyecto-tipo').value;
     const estado = document.getElementById('proyecto-estado').value;
     const fechaInicio = document.getElementById('proyecto-fecha').value;
+    const plantillaId = document.getElementById('proyecto-plantilla').value;
 
     if (!cliente) {
         document.getElementById('proyecto-cliente').focus();
@@ -467,7 +550,7 @@ async function guardarProyecto() {
                 estado,
                 fechaInicio,
                 ultimaActividad: new Date().toISOString().split('T')[0],
-                secciones: crearEstructuraProyecto()
+                secciones: plantillaId ? crearEstructuraDesdePlantilla(plantillaId) : crearEstructuraProyecto()
             };
             await crearProyectoAPI(nuevoProyecto);
             proyectos.push(nuevoProyecto);
@@ -565,24 +648,31 @@ function abrirDetalle(id) {
 
 function renderSeccion(proyectoId, seccion, seccionIndex) {
     const completadas = seccion.tareas.filter(t => t.completada).length;
+    const subtareasTotal = seccion.tareas.reduce((acc, t) => acc + (t.subtareas ? t.subtareas.length : 0), 0);
+    const subtareasComp = seccion.tareas.reduce((acc, t) => acc + (t.subtareas ? t.subtareas.filter(s => s.completada).length : 0), 0);
     const total = seccion.tareas.length;
+    const totalConSub = total + subtareasTotal;
+    const compConSub = completadas + subtareasComp;
     const isOpen = seccion.nombre === 'Planificación de sesiones' || total > 0;
 
     return `
-        <div class="section-block ${isOpen ? 'open' : ''}" id="section-${seccionIndex}">
+        <div class="section-block ${isOpen ? 'open' : ''}" id="section-${seccionIndex}"
+             data-seccion="${escapeAttr(seccion.nombre)}" data-proyecto="${proyectoId}"
+             ondragover="onDragOver(event)" ondragenter="onDragEnter(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
             <div class="section-header" onclick="toggleSeccion(${seccionIndex})">
                 <div class="section-header-left">
                     <svg class="section-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                     <span class="section-name">${escapeHtml(seccion.nombre)}</span>
                 </div>
-                <span class="section-count">${completadas}/${total}</span>
+                <span class="section-count">${compConSub}/${totalConSub}</span>
             </div>
-            <div class="section-body">
+            <div class="section-body" data-seccion="${escapeAttr(seccion.nombre)}">
                 ${total > 0 ? `
                     <div class="task-header-row">
                         <span></span>
+                        <span></span>
                         <span>Tarea</span>
-                        <span>Show</span>
+                        <span>Estado</span>
                         <span>Entrega</span>
                         <span>Tiempo</span>
                         <span></span>
@@ -600,18 +690,60 @@ function renderSeccion(proyectoId, seccion, seccionIndex) {
 }
 
 function renderTareaRow(proyectoId, seccionNombre, tarea) {
-    const showClass = tarea.show === 'Show' ? 'show' : tarea.show === 'No Show' ? 'no-show' : 'none';
-    const showText = tarea.show || '—';
+    const subtareas = tarea.subtareas || [];
+    const subCount = subtareas.length;
+    const subCompleted = subtareas.filter(s => s.completada).length;
+    const hasSubtareas = subCount > 0;
+
+    // Estado derivado: terminado solo si tiene subtareas y TODAS estan completadas
+    const estaTerminada = hasSubtareas ? (subCount === subCompleted) : tarea.completada;
+    const estadoClass = hasSubtareas
+        ? (estaTerminada ? 'terminado' : 'no-terminado')
+        : (tarea.completada ? 'terminado' : 'none');
+    const estadoText = hasSubtareas
+        ? (estaTerminada ? 'Terminado' : 'No terminado')
+        : (tarea.completada ? 'Terminado' : '—');
 
     return `
-        <div class="task-row">
-            <div class="task-check ${tarea.completada ? 'checked' : ''}"
+        <div class="task-row" draggable="true"
+             data-tarea-id="${tarea.id}" data-seccion="${escapeAttr(seccionNombre)}" data-proyecto="${proyectoId}"
+             ondragstart="onDragStart(event)" ondragend="onDragEnd(event)">
+            <span class="drag-handle" title="Arrastrar">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="4" r="2"/><circle cx="16" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="20" r="2"/><circle cx="16" cy="20" r="2"/></svg>
+            </span>
+            <div class="task-check ${estaTerminada ? 'checked' : ''}"
                  onclick="toggleTareaCompletada('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')"></div>
-            <span class="task-name ${tarea.completada ? 'completed' : ''}">${escapeHtml(tarea.nombre)}</span>
-            <span class="task-show-badge ${showClass}">${showText}</span>
+            <span class="task-name ${estaTerminada ? 'completed' : ''}">
+                ${escapeHtml(tarea.nombre)}
+                ${hasSubtareas ? `<span class="subtask-count">${subCompleted}/${subCount}</span>` : ''}
+            </span>
+            <span class="task-estado-badge ${estadoClass}">${estadoText}</span>
             <span class="task-date">${tarea.fechaEntrega ? formatearFechaCorta(tarea.fechaEntrega) : '—'}</span>
             <span class="task-time">${tarea.tiempoEstimado ? tarea.tiempoEstimado + ' min' : '—'}</span>
-            <button class="task-edit-btn" onclick="abrirModalTarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')">
+            <div class="task-actions">
+                <button class="task-subtask-btn" onclick="event.stopPropagation(); abrirModalSubtarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')" title="Agregar subtarea">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <button class="task-edit-btn" onclick="abrirModalTarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+            </div>
+        </div>
+        ${hasSubtareas ? `<div class="subtask-container">${subtareas.map(sub => renderSubtareaRow(proyectoId, seccionNombre, tarea.id, sub)).join('')}</div>` : ''}`;
+}
+
+function renderSubtareaRow(proyectoId, seccionNombre, tareaId, subtarea) {
+    return `
+        <div class="subtask-row">
+            <span class="subtask-indent">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"><polyline points="9 6 15 12 9 18"/></svg>
+            </span>
+            <div class="task-check ${subtarea.completada ? 'checked' : ''}"
+                 onclick="toggleSubtareaCompletada('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')"></div>
+            <span class="task-name ${subtarea.completada ? 'completed' : ''}">${escapeHtml(subtarea.nombre)}</span>
+            <span class="task-date">${subtarea.fechaEntrega ? formatearFechaCorta(subtarea.fechaEntrega) : '—'}</span>
+            <span class="task-time">${subtarea.tiempoEstimado ? subtarea.tiempoEstimado + ' min' : '—'}</span>
+            <button class="task-edit-btn" onclick="abrirModalSubtarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
         </div>`;
@@ -634,9 +766,9 @@ async function toggleTareaCompletada(proyectoId, seccionNombre, tareaId) {
     const tarea = seccion.tareas.find(t => t.id === tareaId);
     if (!tarea) return;
 
-    // No se puede completar sin marcar Show primero
-    if (!tarea.completada && !tarea.show) {
-        mostrarAviso('Debes asignar Show o No Show antes de completar la tarea');
+    // Si tiene subtareas, no se puede cambiar manualmente — es estado derivado
+    if (tarea.subtareas && tarea.subtareas.length > 0) {
+        mostrarAviso('Esta tarea se completa automaticamente cuando todas sus subtareas esten terminadas');
         return;
     }
 
@@ -674,15 +806,19 @@ function abrirModalTarea(proyectoId, seccionNombre, tareaId) {
     const tarea = seccion.tareas.find(t => t.id === tareaId);
     if (!tarea) return;
 
+    // Populate section dropdown
+    const selectSeccion = document.getElementById('tarea-seccion-destino');
+    selectSeccion.innerHTML = proyecto.secciones.map(s =>
+        `<option value="${escapeAttr(s.nombre)}" ${s.nombre === seccionNombre ? 'selected' : ''}>${escapeHtml(s.nombre)}</option>`
+    ).join('');
+
     document.getElementById('modal-tarea-titulo').textContent = 'Editar Tarea';
     document.getElementById('tarea-proyecto-id').value = proyectoId;
     document.getElementById('tarea-seccion-nombre').value = seccionNombre;
     document.getElementById('tarea-id').value = tareaId;
     document.getElementById('tarea-nombre').value = tarea.nombre;
-    document.getElementById('tarea-show').value = tarea.show || '';
     document.getElementById('tarea-fecha').value = tarea.fechaEntrega || '';
     document.getElementById('tarea-tiempo').value = tarea.tiempoEstimado || '';
-    document.getElementById('tarea-completada').value = tarea.completada ? 'true' : 'false';
     document.getElementById('tarea-notas').value = tarea.notas || '';
 
     abrirModal('modal-tarea');
@@ -691,12 +827,11 @@ function abrirModalTarea(proyectoId, seccionNombre, tareaId) {
 async function guardarTarea() {
     const proyectoId = document.getElementById('tarea-proyecto-id').value;
     const seccionNombre = document.getElementById('tarea-seccion-nombre').value;
+    const seccionDestino = document.getElementById('tarea-seccion-destino').value || seccionNombre;
     const tareaId = document.getElementById('tarea-id').value;
     const nombre = document.getElementById('tarea-nombre').value.trim();
-    const show = document.getElementById('tarea-show').value || null;
     const fechaEntrega = document.getElementById('tarea-fecha').value || null;
     const tiempoEstimado = parseInt(document.getElementById('tarea-tiempo').value) || null;
-    const completada = document.getElementById('tarea-completada').value === 'true';
     const notas = document.getElementById('tarea-notas').value.trim();
 
     if (!nombre) {
@@ -704,13 +839,37 @@ async function guardarTarea() {
         return;
     }
 
-    if (completada && !show) {
-        mostrarAviso('Debes asignar Show o No Show antes de completar la tarea');
+    const proyecto = proyectos.find(p => p.id === proyectoId);
+    if (!proyecto) return;
+
+    // Handle section move
+    if (tareaId && seccionDestino !== seccionNombre) {
+        showLoading();
+        try {
+            moverTareaEntreSecciones(proyecto, tareaId, seccionNombre, seccionDestino);
+            await moverTareaAPI(proyectoId, tareaId, seccionNombre, seccionDestino).catch(() => {});
+            const destSec = proyecto.secciones.find(s => s.nombre === seccionDestino);
+            const tareaMovida = destSec ? destSec.tareas.find(t => t.id === tareaId) : null;
+            if (tareaMovida) {
+                tareaMovida.nombre = nombre;
+                tareaMovida.fechaEntrega = fechaEntrega;
+                tareaMovida.tiempoEstimado = tiempoEstimado;
+                tareaMovida.notas = notas;
+                await actualizarTareaAPI(proyectoId, seccionDestino, tareaMovida).catch(() => {});
+            }
+            guardarProyectosLocal(proyectos);
+            cerrarModal('modal-tarea');
+            abrirDetalle(proyectoId);
+            refrescarTodo();
+            mostrarToast('Tarea movida a ' + seccionDestino, 'success');
+        } catch (err) {
+            mostrarToast('Error al mover tarea: ' + err.message, 'error');
+        } finally {
+            hideLoading();
+        }
         return;
     }
 
-    const proyecto = proyectos.find(p => p.id === proyectoId);
-    if (!proyecto) return;
     const seccion = proyecto.secciones.find(s => s.nombre === seccionNombre);
     if (!seccion) return;
 
@@ -719,72 +878,25 @@ async function guardarTarea() {
         if (tareaId) {
             const tarea = seccion.tareas.find(t => t.id === tareaId);
             if (tarea) {
-                const showAnterior = tarea.show;
                 tarea.nombre = nombre;
-                tarea.show = show;
                 tarea.fechaEntrega = fechaEntrega;
                 tarea.tiempoEstimado = tiempoEstimado;
                 tarea.notas = notas;
-
-                // Auto-logic: Show -> completada, No Show -> no completada + duplicar
-                if (show === 'Show') {
-                    tarea.completada = true;
-                } else if (show === 'No Show') {
-                    tarea.completada = false;
-                    // Solo crear duplicado si el show cambio a "No Show" ahora
-                    if (showAnterior !== 'No Show') {
-                        const tareaIdx = seccion.tareas.indexOf(tarea);
-                        const nuevaTarea = {
-                            id: generarId(),
-                            nombre: nombre,
-                            completada: false,
-                            show: null,
-                            fechaEntrega: null,
-                            tiempoEstimado: tiempoEstimado,
-                            notas: ''
-                        };
-                        seccion.tareas.splice(tareaIdx + 1, 0, nuevaTarea);
-                        // Sync duplicada al backend
-                        await actualizarTareaAPI(proyectoId, seccionNombre, nuevaTarea).catch(() => {});
-                    }
-                } else {
-                    tarea.completada = completada;
-                }
-
+                // completada se deriva de subtareas, no se cambia manualmente aqui
                 await actualizarTareaAPI(proyectoId, seccionNombre, tarea);
             }
         } else {
-            // Auto-logic para tareas nuevas
-            let autoCompletada = completada;
-            if (show === 'Show') autoCompletada = true;
-            if (show === 'No Show') autoCompletada = false;
-
             const nuevaTarea = {
                 id: generarId(),
                 nombre,
-                completada: autoCompletada,
-                show,
+                completada: false,
                 fechaEntrega,
                 tiempoEstimado,
-                notas
+                notas,
+                subtareas: []
             };
             seccion.tareas.push(nuevaTarea);
             await actualizarTareaAPI(proyectoId, seccionNombre, nuevaTarea);
-
-            // Si nueva tarea con No Show, crear duplicado vacio
-            if (show === 'No Show') {
-                const dupTarea = {
-                    id: generarId(),
-                    nombre: nombre,
-                    completada: false,
-                    show: null,
-                    fechaEntrega: null,
-                    tiempoEstimado: tiempoEstimado,
-                    notas: ''
-                };
-                seccion.tareas.push(dupTarea);
-                await actualizarTareaAPI(proyectoId, seccionNombre, dupTarea).catch(() => {});
-            }
         }
 
         guardarProyectosLocal(proyectos);
@@ -800,15 +912,23 @@ async function guardarTarea() {
 }
 
 function agregarTarea(proyectoId, seccionNombre) {
+    const proyecto = proyectos.find(p => p.id === proyectoId);
+
+    // Populate section dropdown
+    const selectSeccion = document.getElementById('tarea-seccion-destino');
+    if (proyecto) {
+        selectSeccion.innerHTML = proyecto.secciones.map(s =>
+            `<option value="${escapeAttr(s.nombre)}" ${s.nombre === seccionNombre ? 'selected' : ''}>${escapeHtml(s.nombre)}</option>`
+        ).join('');
+    }
+
     document.getElementById('modal-tarea-titulo').textContent = 'Nueva Tarea';
     document.getElementById('tarea-proyecto-id').value = proyectoId;
     document.getElementById('tarea-seccion-nombre').value = seccionNombre;
     document.getElementById('tarea-id').value = '';
     document.getElementById('tarea-nombre').value = '';
-    document.getElementById('tarea-show').value = '';
     document.getElementById('tarea-fecha').value = '';
     document.getElementById('tarea-tiempo').value = '';
-    document.getElementById('tarea-completada').value = 'false';
     document.getElementById('tarea-notas').value = '';
 
     abrirModal('modal-tarea');
@@ -951,8 +1071,14 @@ function renderImportList() {
         </div>
 
         ${nuevas.length > 0 ? `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px">
                 <button class="import-select-all" onclick="toggleSelectAllImport()">Seleccionar / Deseleccionar todos</button>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap">Plantilla:</label>
+                    <select id="import-plantilla" class="form-control" style="min-width:180px;font-size:12px;padding:4px 8px">
+                        ${plantillas.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('')}
+                    </select>
+                </div>
             </div>
             <div class="import-scroll">
                 <table class="import-table">
@@ -1017,6 +1143,8 @@ function updateImportCount() {
 
 async function ejecutarImport() {
     const checkboxes = document.querySelectorAll('#import-content input[type="checkbox"]:checked');
+    const importPlantillaSelect = document.getElementById('import-plantilla');
+    const plantillaId = importPlantillaSelect ? importPlantillaSelect.value : null;
     let importados = 0;
     let errores = 0;
 
@@ -1035,7 +1163,7 @@ async function ejecutarImport() {
                 estado: 'activo',
                 fechaInicio: alta.fecha ? formatearFechaISO(alta.fecha) : new Date().toISOString().split('T')[0],
                 ultimaActividad: new Date().toISOString().split('T')[0],
-                secciones: crearEstructuraProyecto()
+                secciones: plantillaId ? crearEstructuraDesdePlantilla(plantillaId) : crearEstructuraProyecto()
             };
 
             try {
@@ -1076,6 +1204,398 @@ function formatearFechaISO(fechaStr) {
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     return new Date().toISOString().split('T')[0];
+}
+
+// ==========================================
+// PLANTILLAS (Templates CRUD)
+// ==========================================
+
+function abrirModalPlantillas() {
+    renderListaPlantillas();
+    abrirModal('modal-plantillas');
+}
+
+function renderListaPlantillas() {
+    const container = document.getElementById('plantillas-lista');
+    if (plantillas.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">No hay plantillas</div>';
+        return;
+    }
+
+    container.innerHTML = plantillas.map(pl => {
+        const totalTareas = pl.secciones.reduce((acc, s) => acc + s.tareas.length, 0);
+        const secConTareas = pl.secciones.filter(s => s.tareas.length > 0).length;
+        return `
+            <div class="plantilla-card">
+                <div class="plantilla-card-info">
+                    <div class="plantilla-card-name">${escapeHtml(pl.nombre)}</div>
+                    <div class="plantilla-card-desc">${escapeHtml(pl.descripcion || '')}</div>
+                    <div class="plantilla-card-meta">${totalTareas} tareas en ${secConTareas} secciones</div>
+                </div>
+                <div class="plantilla-card-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="abrirEditorPlantilla('${pl.id}')">Editar</button>
+                    <button class="btn btn-secondary btn-sm" onclick="duplicarPlantilla('${pl.id}')">Duplicar</button>
+                    ${pl.id !== 'default' ? `<button class="btn btn-danger btn-sm" onclick="eliminarPlantillaConfirm('${pl.id}')">Eliminar</button>` : ''}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function abrirEditorPlantilla(id) {
+    const titulo = document.getElementById('editor-plantilla-titulo');
+    const inputId = document.getElementById('plantilla-id');
+    const inputNombre = document.getElementById('plantilla-nombre');
+    const inputDesc = document.getElementById('plantilla-descripcion');
+    const seccionesContainer = document.getElementById('plantilla-secciones');
+
+    let seccionesData;
+
+    if (id) {
+        const pl = plantillas.find(p => p.id === id);
+        if (!pl) return;
+        titulo.textContent = 'Editar Plantilla';
+        inputId.value = pl.id;
+        inputNombre.value = pl.nombre;
+        inputDesc.value = pl.descripcion || '';
+        seccionesData = pl.secciones;
+    } else {
+        titulo.textContent = 'Nueva Plantilla';
+        inputId.value = '';
+        inputNombre.value = '';
+        inputDesc.value = '';
+        seccionesData = SECCIONES.map(nombre => ({ nombre, tareas: [] }));
+    }
+
+    // Render secciones con inputs de tareas
+    seccionesContainer.innerHTML = seccionesData.map((sec, i) => `
+        <div class="plantilla-seccion-block">
+            <div class="plantilla-seccion-header">${escapeHtml(sec.nombre)}</div>
+            <div class="plantilla-tareas-list" id="pl-tareas-${i}">
+                ${sec.tareas.map((t, ti) => `
+                    <div class="plantilla-tarea-chip">
+                        <span>${escapeHtml(t)}</span>
+                        <button onclick="quitarTareaPlantilla(${i}, ${ti})" title="Quitar">&times;</button>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="plantilla-add-tarea">
+                <input type="text" class="form-control" placeholder="Nueva tarea..." id="pl-input-${i}"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();agregarTareaPlantilla(${i})}">
+                <button class="btn btn-secondary btn-sm" onclick="agregarTareaPlantilla(${i})">+</button>
+            </div>
+        </div>
+    `).join('');
+
+    // Store current secciones data for manipulation
+    window._plantillaSeccionesEdit = JSON.parse(JSON.stringify(seccionesData));
+
+    abrirModal('modal-editar-plantilla');
+    inputNombre.focus();
+}
+
+function agregarTareaPlantilla(secIdx) {
+    const input = document.getElementById('pl-input-' + secIdx);
+    const nombre = input.value.trim();
+    if (!nombre) return;
+    window._plantillaSeccionesEdit[secIdx].tareas.push(nombre);
+    input.value = '';
+    // Re-render just the chips
+    renderChipsPlantilla(secIdx);
+    input.focus();
+}
+
+function quitarTareaPlantilla(secIdx, tareaIdx) {
+    window._plantillaSeccionesEdit[secIdx].tareas.splice(tareaIdx, 1);
+    renderChipsPlantilla(secIdx);
+}
+
+function renderChipsPlantilla(secIdx) {
+    const container = document.getElementById('pl-tareas-' + secIdx);
+    const tareas = window._plantillaSeccionesEdit[secIdx].tareas;
+    container.innerHTML = tareas.map((t, ti) => `
+        <div class="plantilla-tarea-chip">
+            <span>${escapeHtml(t)}</span>
+            <button onclick="quitarTareaPlantilla(${secIdx}, ${ti})" title="Quitar">&times;</button>
+        </div>
+    `).join('');
+}
+
+async function guardarPlantilla() {
+    const id = document.getElementById('plantilla-id').value;
+    const nombre = document.getElementById('plantilla-nombre').value.trim();
+    const descripcion = document.getElementById('plantilla-descripcion').value.trim();
+
+    if (!nombre) {
+        document.getElementById('plantilla-nombre').focus();
+        return;
+    }
+
+    const secciones = window._plantillaSeccionesEdit;
+
+    showLoading();
+    try {
+        if (id) {
+            const idx = plantillas.findIndex(p => p.id === id);
+            if (idx !== -1) {
+                plantillas[idx].nombre = nombre;
+                plantillas[idx].descripcion = descripcion;
+                plantillas[idx].secciones = secciones;
+                await actualizarPlantillaAPI(plantillas[idx]).catch(() => {});
+            }
+        } else {
+            const nueva = { id: generarId(), nombre, descripcion, secciones };
+            plantillas.push(nueva);
+            await crearPlantillaAPI(nueva).catch(() => {});
+        }
+
+        guardarPlantillasLocal(plantillas);
+        cerrarModal('modal-editar-plantilla');
+        renderListaPlantillas();
+        mostrarToast('Plantilla guardada', 'success');
+    } catch (err) {
+        mostrarToast('Error al guardar plantilla: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function duplicarPlantilla(id) {
+    const pl = plantillas.find(p => p.id === id);
+    if (!pl) return;
+    const copia = {
+        id: generarId(),
+        nombre: pl.nombre + ' (copia)',
+        descripcion: pl.descripcion,
+        secciones: JSON.parse(JSON.stringify(pl.secciones))
+    };
+    plantillas.push(copia);
+    guardarPlantillasLocal(plantillas);
+    await crearPlantillaAPI(copia).catch(() => {});
+    renderListaPlantillas();
+    mostrarToast('Plantilla duplicada', 'success');
+}
+
+function eliminarPlantillaConfirm(id) {
+    mostrarConfirmacion('¿Eliminar esta plantilla?', async () => {
+        plantillas = plantillas.filter(p => p.id !== id);
+        guardarPlantillasLocal(plantillas);
+        await eliminarPlantillaAPI(id).catch(() => {});
+        renderListaPlantillas();
+        mostrarToast('Plantilla eliminada', 'success');
+    });
+}
+
+// ==========================================
+// DRAG & DROP
+// ==========================================
+
+let dragData = null;
+
+function onDragStart(e) {
+    const row = e.target.closest('.task-row');
+    if (!row) return;
+    dragData = {
+        tareaId: row.dataset.tareaId,
+        seccion: row.dataset.seccion,
+        proyecto: row.dataset.proyecto
+    };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', row.dataset.tareaId);
+    row.classList.add('dragging');
+}
+
+function onDragEnd(e) {
+    const row = e.target.closest('.task-row');
+    if (row) row.classList.remove('dragging');
+    document.querySelectorAll('.section-block.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragData = null;
+}
+
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function onDragEnter(e) {
+    e.preventDefault();
+    const block = e.target.closest('.section-block');
+    if (block && dragData) {
+        block.classList.add('drag-over');
+        // Auto-open collapsed sections
+        if (!block.classList.contains('open')) {
+            block.classList.add('open');
+        }
+    }
+}
+
+function onDragLeave(e) {
+    const block = e.target.closest('.section-block');
+    if (block && !block.contains(e.relatedTarget)) {
+        block.classList.remove('drag-over');
+    }
+}
+
+async function onDrop(e) {
+    e.preventDefault();
+    const block = e.target.closest('.section-block');
+    if (!block || !dragData) return;
+    block.classList.remove('drag-over');
+
+    const seccionDestino = block.dataset.seccion;
+    const seccionOrigen = dragData.seccion;
+    const tareaId = dragData.tareaId;
+    const proyectoId = dragData.proyecto;
+
+    if (seccionOrigen === seccionDestino) return;
+
+    const proyecto = proyectos.find(p => p.id === proyectoId);
+    if (!proyecto) return;
+
+    const moved = moverTareaEntreSecciones(proyecto, tareaId, seccionOrigen, seccionDestino);
+    if (!moved) return;
+
+    try {
+        await moverTareaAPI(proyectoId, tareaId, seccionOrigen, seccionDestino).catch(() => {});
+        guardarProyectosLocal(proyectos);
+        mostrarToast('Tarea movida a ' + seccionDestino, 'success');
+    } catch (err) {
+        // Revert
+        moverTareaEntreSecciones(proyecto, tareaId, seccionDestino, seccionOrigen);
+        mostrarToast('Error al mover: ' + err.message, 'error');
+    }
+
+    abrirDetalle(proyectoId);
+    refrescarTodo();
+}
+
+// ==========================================
+// SUBTASK OPERATIONS
+// ==========================================
+
+function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
+    const proyecto = proyectos.find(p => p.id === proyectoId);
+    if (!proyecto) return;
+    const seccion = proyecto.secciones.find(s => s.nombre === seccionNombre);
+    if (!seccion) return;
+    const tarea = seccion.tareas.find(t => t.id === tareaId);
+    if (!tarea) return;
+
+    document.getElementById('subtarea-proyecto-id').value = proyectoId;
+    document.getElementById('subtarea-seccion-nombre').value = seccionNombre;
+    document.getElementById('subtarea-tarea-id').value = tareaId;
+
+    if (subtareaId) {
+        const subtarea = (tarea.subtareas || []).find(s => s.id === subtareaId);
+        if (!subtarea) return;
+        document.getElementById('modal-subtarea-titulo').textContent = 'Editar Subtarea';
+        document.getElementById('subtarea-id').value = subtareaId;
+        document.getElementById('subtarea-nombre').value = subtarea.nombre;
+        document.getElementById('subtarea-fecha').value = subtarea.fechaEntrega || '';
+        document.getElementById('subtarea-tiempo').value = subtarea.tiempoEstimado || '';
+        document.getElementById('subtarea-completada').value = subtarea.completada ? 'true' : 'false';
+        document.getElementById('subtarea-notas').value = subtarea.notas || '';
+    } else {
+        document.getElementById('modal-subtarea-titulo').textContent = 'Nueva Subtarea';
+        document.getElementById('subtarea-id').value = '';
+        document.getElementById('subtarea-nombre').value = '';
+        document.getElementById('subtarea-fecha').value = '';
+        document.getElementById('subtarea-tiempo').value = '';
+        document.getElementById('subtarea-completada').value = 'false';
+        document.getElementById('subtarea-notas').value = '';
+    }
+
+    abrirModal('modal-subtarea');
+    document.getElementById('subtarea-nombre').focus();
+}
+
+async function guardarSubtarea() {
+    const proyectoId = document.getElementById('subtarea-proyecto-id').value;
+    const seccionNombre = document.getElementById('subtarea-seccion-nombre').value;
+    const tareaId = document.getElementById('subtarea-tarea-id').value;
+    const subtareaId = document.getElementById('subtarea-id').value;
+    const nombre = document.getElementById('subtarea-nombre').value.trim();
+    const fechaEntrega = document.getElementById('subtarea-fecha').value || null;
+    const tiempoEstimado = parseInt(document.getElementById('subtarea-tiempo').value) || null;
+    const completada = document.getElementById('subtarea-completada').value === 'true';
+    const notas = document.getElementById('subtarea-notas').value.trim();
+
+    if (!nombre) {
+        document.getElementById('subtarea-nombre').focus();
+        return;
+    }
+
+    const proyecto = proyectos.find(p => p.id === proyectoId);
+    if (!proyecto) return;
+    const seccion = proyecto.secciones.find(s => s.nombre === seccionNombre);
+    if (!seccion) return;
+    const tarea = seccion.tareas.find(t => t.id === tareaId);
+    if (!tarea) return;
+    if (!tarea.subtareas) tarea.subtareas = [];
+
+    showLoading();
+    try {
+        if (subtareaId) {
+            const sub = tarea.subtareas.find(s => s.id === subtareaId);
+            if (sub) {
+                sub.nombre = nombre;
+                sub.fechaEntrega = fechaEntrega;
+                sub.tiempoEstimado = tiempoEstimado;
+                sub.completada = completada;
+                sub.notas = notas;
+            }
+        } else {
+            tarea.subtareas.push({
+                id: generarId(),
+                nombre,
+                completada,
+                fechaEntrega,
+                tiempoEstimado,
+                notas
+            });
+        }
+
+        // Derivar estado de la tarea padre
+        tarea.completada = tarea.subtareas.length > 0 && tarea.subtareas.every(s => s.completada);
+
+        await actualizarTareaAPI(proyectoId, seccionNombre, tarea);
+        guardarProyectosLocal(proyectos);
+        cerrarModal('modal-subtarea');
+        abrirDetalle(proyectoId);
+        refrescarTodo();
+        mostrarToast('Subtarea guardada', 'success');
+    } catch (err) {
+        mostrarToast('Error al guardar subtarea: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function toggleSubtareaCompletada(proyectoId, seccionNombre, tareaId, subtareaId) {
+    const proyecto = proyectos.find(p => p.id === proyectoId);
+    if (!proyecto) return;
+    const seccion = proyecto.secciones.find(s => s.nombre === seccionNombre);
+    if (!seccion) return;
+    const tarea = seccion.tareas.find(t => t.id === tareaId);
+    if (!tarea || !tarea.subtareas) return;
+    const sub = tarea.subtareas.find(s => s.id === subtareaId);
+    if (!sub) return;
+
+    sub.completada = !sub.completada;
+
+    // Derivar estado de la tarea padre: terminada solo si TODAS las subtareas estan completadas
+    const todasCompletadas = tarea.subtareas.length > 0 && tarea.subtareas.every(s => s.completada);
+    tarea.completada = todasCompletadas;
+
+    try {
+        await actualizarTareaAPI(proyectoId, seccionNombre, tarea);
+        guardarProyectosLocal(proyectos);
+    } catch (err) {
+        sub.completada = !sub.completada; // revert
+        tarea.completada = !todasCompletadas; // revert
+        mostrarToast('Error al actualizar subtarea: ' + err.message, 'error');
+    }
+    abrirDetalle(proyectoId);
+    refrescarTodo();
 }
 
 // ==========================================

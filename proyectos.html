@@ -60,6 +60,10 @@
             </button>
         </nav>
         <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" onclick="abrirModalPlantillas()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                Plantillas
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="importarDesdeAltas()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Importar Altas
@@ -162,6 +166,10 @@
                         <input type="date" id="proyecto-fecha" class="form-control">
                     </div>
                 </div>
+                <div class="form-group" id="proyecto-plantilla-group">
+                    <label>Plantilla</label>
+                    <select id="proyecto-plantilla" class="form-control"></select>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="cerrarModal('modal-proyecto')">Cancelar</button>
@@ -192,35 +200,24 @@
                 <input type="hidden" id="tarea-proyecto-id">
                 <input type="hidden" id="tarea-seccion-nombre">
                 <input type="hidden" id="tarea-id">
-                <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="tarea-nombre" class="form-control">
+                <div class="form-row">
+                    <div class="form-group" style="flex:2">
+                        <label>Nombre</label>
+                        <input type="text" id="tarea-nombre" class="form-control">
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label>Seccion</label>
+                        <select id="tarea-seccion-destino" class="form-control"></select>
+                    </div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Show</label>
-                        <select id="tarea-show" class="form-control">
-                            <option value="">Sin asignar</option>
-                            <option value="Show">Show</option>
-                            <option value="No Show">No Show</option>
-                        </select>
-                    </div>
                     <div class="form-group">
                         <label>Fecha de entrega</label>
                         <input type="date" id="tarea-fecha" class="form-control">
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label>Tiempo estimado (min)</label>
                         <input type="number" id="tarea-tiempo" class="form-control" placeholder="60" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label>Completada</label>
-                        <select id="tarea-completada" class="form-control">
-                            <option value="false">No</option>
-                            <option value="true">Sí</option>
-                        </select>
                     </div>
                 </div>
                 <div class="form-group">
@@ -261,6 +258,100 @@
                     <p>Cargando clientes desde Altas...</p>
                 </div>
                 <div id="import-content" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Lista de Plantillas -->
+    <div class="modal-overlay" id="modal-plantillas">
+        <div class="modal modal-detail">
+            <div class="modal-header">
+                <h2>Gestionar Plantillas</h2>
+                <button class="modal-close" onclick="cerrarModal('modal-plantillas')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+                    <button class="btn btn-primary btn-sm" onclick="abrirEditorPlantilla()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nueva Plantilla
+                    </button>
+                </div>
+                <div id="plantillas-lista"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Editar Plantilla -->
+    <div class="modal-overlay" id="modal-editar-plantilla">
+        <div class="modal modal-detail">
+            <div class="modal-header">
+                <h2 id="editor-plantilla-titulo">Nueva Plantilla</h2>
+                <button class="modal-close" onclick="cerrarModal('modal-editar-plantilla')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="plantilla-id">
+                <div class="form-row">
+                    <div class="form-group" style="flex:2">
+                        <label>Nombre</label>
+                        <input type="text" id="plantilla-nombre" class="form-control" placeholder="Nombre de la plantilla">
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label>Descripcion</label>
+                        <input type="text" id="plantilla-descripcion" class="form-control" placeholder="Breve descripcion">
+                    </div>
+                </div>
+                <div class="plantilla-secciones" id="plantilla-secciones"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="cerrarModal('modal-editar-plantilla')">Cancelar</button>
+                <button class="btn btn-primary" onclick="guardarPlantilla()">Guardar Plantilla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Subtarea -->
+    <div class="modal-overlay" id="modal-subtarea">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-subtarea-titulo">Nueva Subtarea</h2>
+                <button class="modal-close" onclick="cerrarModal('modal-subtarea')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="subtarea-proyecto-id">
+                <input type="hidden" id="subtarea-seccion-nombre">
+                <input type="hidden" id="subtarea-tarea-id">
+                <input type="hidden" id="subtarea-id">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="subtarea-nombre" class="form-control" placeholder="Nombre de la subtarea">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha de entrega</label>
+                        <input type="date" id="subtarea-fecha" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Tiempo estimado (min)</label>
+                        <input type="number" id="subtarea-tiempo" class="form-control" placeholder="60" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Completada</label>
+                        <select id="subtarea-completada" class="form-control">
+                            <option value="false">No</option>
+                            <option value="true">Si</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea id="subtarea-notas" class="form-control" placeholder="Notas..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="cerrarModal('modal-subtarea')">Cancelar</button>
+                <button class="btn btn-primary" onclick="guardarSubtarea()">Guardar</button>
             </div>
         </div>
     </div>
