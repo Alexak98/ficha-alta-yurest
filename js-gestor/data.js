@@ -14,6 +14,9 @@ const WEBHOOK_PROYECTOS = `${WEBHOOK_BASE}/proyectos`;
 const WEBHOOK_PROYECTOS_TAREA = `${WEBHOOK_BASE}/proyectos/tarea`;
 const WEBHOOK_PROYECTOS_TAREA_MOVER = `${WEBHOOK_BASE}/proyectos/tarea/mover`;
 const WEBHOOK_PLANTILLAS = `${WEBHOOK_BASE}/plantillas`;
+const WEBHOOK_ALTAS = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
+const WEBHOOK_ASANA_PROXY = `${WEBHOOK_BASE}/asana/tasks`;
+const WEBHOOK_CALENDAR = `${WEBHOOK_BASE}/calendar/event`;
 
 const IMPLEMENTADORES = [
     'Carlos Aparicio',
@@ -33,7 +36,6 @@ const ESTADOS_PROYECTO = ['activo', 'completado', 'pausado'];
 // Secciones fijas basadas en la estructura de Asana
 const SECCIONES = [
     'Puesta en Marcha / Finalización',
-    'Desarrollos',
     'Hardware',
     'Carga de Datos Yuload',
     'Integraciones',
@@ -292,16 +294,30 @@ async function cargarProyectos() {
         const lista = Array.isArray(data) ? data
             : Array.isArray(data.proyectos) ? data.proyectos
             : Array.isArray(data.data) ? data.data : [];
-        if (lista.length > 0) return lista;
-        // Backend vacio: cargar datos ejemplo
-        return DATOS_EJEMPLO;
+        if (lista.length > 0) return migrarProyectos(lista);
+        return migrarProyectos(DATOS_EJEMPLO);
     } catch (err) {
         console.warn('Error cargando proyectos del backend, usando datos locales:', err.message);
         mostrarToast('No se pudo conectar al backend. Usando datos locales.', 'warning');
         const datos = localStorage.getItem(STORAGE_KEY);
-        if (datos) return JSON.parse(datos);
-        return DATOS_EJEMPLO;
+        if (datos) return migrarProyectos(JSON.parse(datos));
+        return migrarProyectos(DATOS_EJEMPLO);
     }
+}
+
+// Elimina secciones que ya no existen en SECCIONES (ej: "Desarrollos" eliminada)
+function migrarProyectos(lista) {
+    const seccionesValidas = new Set(SECCIONES);
+    lista.forEach(p => {
+        if (p.secciones) {
+            p.secciones = p.secciones.filter(s => seccionesValidas.has(s.nombre));
+        }
+        if (!p.participantes) p.participantes = [];
+        if (!p.contactos) p.contactos = [];
+        if (!p.anotaciones) p.anotaciones = '';
+        if (!p.adjuntos) p.adjuntos = [];
+    });
+    return lista;
 }
 
 function guardarProyectosLocal(proyectos) {
@@ -437,6 +453,87 @@ function crearEstructuraDesdePlantilla(plantillaId) {
             }))
         };
     });
+}
+
+// ==========================================
+// ASANA PROXY & ANOTACIONES
+// ==========================================
+
+async function obtenerTareasAsana(asanaProjectId) {
+    if (!asanaProjectId) return [];
+    try {
+        const data = await apiRequest(`${WEBHOOK_ASANA_PROXY}?projectId=${encodeURIComponent(asanaProjectId)}`, 'GET');
+        return Array.isArray(data) ? data : Array.isArray(data.tasks) ? data.tasks : [];
+    } catch (err) {
+        console.warn('Error obteniendo tareas Asana:', err.message);
+        return [];
+    }
+}
+
+async function actualizarAnotacionesAPI(proyectoId, anotaciones) {
+    return await apiRequest(`${WEBHOOK_PROYECTOS}/anotaciones`, 'PUT', { proyectoId, anotaciones });
+}
+
+async function crearEventoCalendarAPI(data) {
+    return await apiRequest(WEBHOOK_CALENDAR, 'POST', data);
+}
+
+// Obtiene la fecha mas reciente de subtareas (ultima sesion agendada)
+function obtenerUltimaSesionAgendada(proyecto) {
+    let maxFecha = null;
+    proyecto.secciones.forEach(sec => {
+        sec.tareas.forEach(tarea => {
+            if (tarea.fechaEntrega) {
+                if (!maxFecha || tarea.fechaEntrega > maxFecha) maxFecha = tarea.fechaEntrega;
+            }
+            if (tarea.subtareas) {
+                tarea.subtareas.forEach(sub => {
+                    if (sub.fechaEntrega) {
+                        if (!maxFecha || sub.fechaEntrega > maxFecha) maxFecha = sub.fechaEntrega;
+                    }
+                });
+            }
+        });
+    });
+    return maxFecha;
+}
+
+// Normaliza datos de una ficha de alta
+function normalizarAlta(f) {
+    const get = (keys) => {
+        for (const k of keys) {
+            const val = (f[k] || '').toString().trim();
+            if (val) return val;
+        }
+        return '';
+    };
+    const nombre = get(['Denominación Social', 'Denominacion Social', 'denominacion', 'Nombre Sociedad']);
+    const comercial = get(['Nombre Comercial', 'nombreComercial', 'Nombre']);
+    const tipo = get(['Tipo Cliente', 'Tipo de Cliente', 'tipoCliente']);
+    const implementador = get(['Implementador']);
+    const id = get(['ID', 'id']);
+    const fecha = get(['Fecha', 'fecha']);
+    const estado = get(['Estado', 'estado']);
+
+    let tipoNorm = 'Corporate sin cocina';
+    const tipoLower = tipo.toLowerCase();
+    if (tipoLower.includes('lite') || tipoLower.includes('planes') || tipoLower === 'planes') {
+        tipoNorm = 'Planes';
+    } else if (tipoLower.includes('corporate') || tipoLower.includes('corp')) {
+        const modulos = get(['Módulos', 'modulos']);
+        if (modulos.toLowerCase().includes('cocina')) tipoNorm = 'Corporate con cocina';
+    }
+
+    return {
+        altaId: id,
+        nombre: nombre || comercial,
+        nombreComercial: comercial,
+        tipo: tipoNorm,
+        tipoOriginal: tipo,
+        implementador: IMPLEMENTADORES.includes(implementador) ? implementador : '',
+        fecha,
+        estado
+    };
 }
 
 // ==========================================

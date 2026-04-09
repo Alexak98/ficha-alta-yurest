@@ -449,10 +449,13 @@ function renderCard(proyecto) {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     <strong>${resumen.sesionesCompletadas}/${resumen.totalSesiones}</strong> sesiones
                 </span>
-                <div class="card-show-stats">
-                    ${resumen.sesionesShow > 0 ? `<span class="show-badge show">Show: ${resumen.sesionesShow}</span>` : ''}
-                    ${resumen.sesionesNoShow > 0 ? `<span class="show-badge no-show">No Show: ${resumen.sesionesNoShow}</span>` : ''}
-                </div>
+                ${(() => {
+                    const ultimaSesion = obtenerUltimaSesionAgendada(proyecto);
+                    return ultimaSesion ? `<span class="card-sesion-fecha">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        ${formatearFechaCorta(ultimaSesion)}
+                    </span>` : '';
+                })()}
             </div>
         </div>`;
 }
@@ -499,7 +502,8 @@ function abrirModalProyecto(id) {
         selectTipo.value = p.tipo;
         selectEstado.value = p.estado;
         inputFecha.value = p.fechaInicio;
-        plantillaGroup.style.display = 'none'; // No cambiar plantilla al editar
+        plantillaGroup.style.display = 'none';
+        window._proyectoParticipantes = [...(p.participantes || [])];
     } else {
         titulo.textContent = 'Nuevo Proyecto';
         inputId.value = '';
@@ -509,8 +513,10 @@ function abrirModalProyecto(id) {
         selectEstado.selectedIndex = 0;
         inputFecha.value = new Date().toISOString().split('T')[0];
         plantillaGroup.style.display = '';
+        window._proyectoParticipantes = [];
     }
 
+    renderParticipantesChips();
     abrirModal('modal-proyecto');
     inputCliente.focus();
 }
@@ -539,6 +545,7 @@ async function guardarProyecto() {
                 proyectos[idx].tipo = tipo;
                 proyectos[idx].estado = estado;
                 proyectos[idx].fechaInicio = fechaInicio;
+                proyectos[idx].participantes = window._proyectoParticipantes || [];
                 await actualizarProyectoAPI(proyectos[idx]);
             }
         } else {
@@ -550,6 +557,7 @@ async function guardarProyecto() {
                 estado,
                 fechaInicio,
                 ultimaActividad: new Date().toISOString().split('T')[0],
+                participantes: window._proyectoParticipantes || [],
                 secciones: plantillaId ? crearEstructuraDesdePlantilla(plantillaId) : crearEstructuraProyecto()
             };
             await crearProyectoAPI(nuevoProyecto);
@@ -596,14 +604,135 @@ function abrirDetalle(id) {
     const proyecto = proyectos.find(p => p.id === id);
     if (!proyecto) return;
 
+    // Easter egg splash
+    mostrarSplash(() => {
+        document.getElementById('detalle-titulo').textContent = proyecto.cliente;
+
+        // Reset tabs
+        document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.detail-tab[data-dtab="tareas"]').classList.add('active');
+        document.getElementById('detalle-tareas').style.display = '';
+        document.getElementById('detalle-contactos').style.display = 'none';
+        document.getElementById('detalle-desarrollos').style.display = 'none';
+        document.getElementById('detalle-anotaciones').style.display = 'none';
+
+        // Render Tareas tab
+        renderDetalleTareas(proyecto);
+
+        abrirModal('modal-detalle');
+    });
+}
+
+// ==========================================
+// SPLASH + CONFETTI
+// ==========================================
+
+function mostrarSplash(callback) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'splash-overlay';
+    overlay.innerHTML = `
+        <div class="splash-content">
+            <img src="https://i.ibb.co/JWppm92w/DSC04201.jpg" class="splash-img" alt="Alvaro Jareño">
+            <div class="splash-info">
+                <h2 class="splash-name">Alvaro Jareño</h2>
+                <span class="splash-role">Claude Senior Developer</span>
+                <p class="splash-msg">Soy Alvaro Jareño, me enorgullece que estes probando mi producto, dame feedback e invitame a un cafe. Si quieres desarrollar tu propia herramienta desde 0, contactame.</p>
+                <div class="splash-actions">
+                    <a href="https://buymeacoffee.com" target="_blank" class="splash-donate-btn" onclick="event.stopPropagation()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                        Invitame a un cafe
+                    </a>
+                    <a href="mailto:contacto@alvarojareno.com" class="splash-contact-btn" onclick="event.stopPropagation()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        Contactar
+                    </a>
+                </div>
+            </div>
+        </div>
+        <canvas id="confetti-canvas"></canvas>
+    `;
+    document.body.appendChild(overlay);
+
+    // Sound
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // Fanfare-like sound
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.5);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + i * 0.12);
+            osc.stop(ctx.currentTime + i * 0.12 + 0.5);
+        });
+    } catch (_) {}
+
+    // Trigger animation
+    requestAnimationFrame(() => overlay.classList.add('show'));
+
+    // Confetti
+    const canvas = document.getElementById('confetti-canvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctxC = canvas.getContext('2d');
+    const particles = [];
+    const colors = ['#fc5858','#4F46E5','#059669','#D97706','#DC2626','#f59e0b','#8b5cf6','#ec4899'];
+
+    for (let i = 0; i < 150; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height - canvas.height,
+            w: Math.random() * 10 + 5,
+            h: Math.random() * 6 + 3,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vy: Math.random() * 3 + 2,
+            vx: (Math.random() - 0.5) * 2,
+            rot: Math.random() * 360,
+            vr: (Math.random() - 0.5) * 8
+        });
+    }
+
+    let animId;
+    function animConfetti() {
+        ctxC.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+            p.y += p.vy;
+            p.x += p.vx;
+            p.rot += p.vr;
+            ctxC.save();
+            ctxC.translate(p.x, p.y);
+            ctxC.rotate(p.rot * Math.PI / 180);
+            ctxC.fillStyle = p.color;
+            ctxC.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctxC.restore();
+        });
+        animId = requestAnimationFrame(animConfetti);
+    }
+    animConfetti();
+
+    // Close on click or after 2.5s
+    const close = () => {
+        cancelAnimationFrame(animId);
+        overlay.classList.remove('show');
+        overlay.addEventListener('transitionend', () => { overlay.remove(); callback(); });
+    };
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    setTimeout(close, 5000);
+}
+
+function renderDetalleTareas(proyecto) {
     const color = COLORES_IMPLEMENTADOR[proyecto.implementador] || '#6366f1';
     const iniciales = INICIALES_IMPLEMENTADOR[proyecto.implementador] || '??';
     const resumen = obtenerResumenProyecto(proyecto);
+    const ultimaSesion = obtenerUltimaSesionAgendada(proyecto);
 
-    document.getElementById('detalle-titulo').textContent = proyecto.cliente;
-
-    const body = document.getElementById('detalle-body');
-    body.innerHTML = `
+    document.getElementById('detalle-tareas').innerHTML = `
         <div class="detail-info">
             <div class="detail-field">
                 <span class="detail-label">Implementador</span>
@@ -626,6 +755,14 @@ function abrirDetalle(id) {
                 <span class="detail-label">Progreso</span>
                 <span class="detail-value">${resumen.progreso}% (${resumen.tareasCompletadas}/${resumen.totalTareas})</span>
             </div>
+            ${ultimaSesion ? `<div class="detail-field">
+                <span class="detail-label">Ultima sesion</span>
+                <span class="detail-value detail-sesion-fecha">${formatearFecha(ultimaSesion)}</span>
+            </div>` : ''}
+            ${(proyecto.participantes && proyecto.participantes.length > 0) ? `<div class="detail-field">
+                <span class="detail-label">Participantes</span>
+                <span class="detail-value"><div class="participantes-chips-inline">${proyecto.participantes.map(e => `<span class="participante-chip-sm">${escapeHtml(e)}</span>`).join('')}</div></span>
+            </div>` : ''}
         </div>
 
         <div class="detail-sections">
@@ -642,8 +779,356 @@ function abrirDetalle(id) {
                 Eliminar
             </button>
         </div>`;
+}
 
-    abrirModal('modal-detalle');
+function cambiarVistaDetalle(vista) {
+    document.querySelectorAll('.detail-tab').forEach(t => t.classList.toggle('active', t.dataset.dtab === vista));
+    document.getElementById('detalle-tareas').style.display = vista === 'tareas' ? '' : 'none';
+    document.getElementById('detalle-contactos').style.display = vista === 'contactos' ? '' : 'none';
+    document.getElementById('detalle-desarrollos').style.display = vista === 'desarrollos' ? '' : 'none';
+    document.getElementById('detalle-anotaciones').style.display = vista === 'anotaciones' ? '' : 'none';
+
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+
+    if (vista === 'contactos') renderDetalleContactos(proyecto);
+    if (vista === 'desarrollos') renderDetalleDesarrollos(proyecto);
+    if (vista === 'anotaciones') renderDetalleAnotaciones(proyecto);
+}
+
+function renderDetalleContactos(proyecto) {
+    if (!proyecto.contactos) proyecto.contactos = [];
+    // Migrar formato viejo (array de strings) a objetos
+    if (proyecto.contactos.length > 0 && typeof proyecto.contactos[0] === 'string') {
+        proyecto.contactos = proyecto.contactos.map(email => ({ email, nombre: '', apellidos: '', puesto: '', telefono: '' }));
+    }
+    // Migrar participantes viejos si existen
+    if (proyecto.participantes && proyecto.participantes.length > 0 && proyecto.contactos.length === 0) {
+        proyecto.contactos = proyecto.participantes.map(e => typeof e === 'string' ? { email: e, nombre: '', apellidos: '', puesto: '', telefono: '' } : e);
+    }
+
+    const container = document.getElementById('detalle-contactos');
+    container.innerHTML = `
+        <div class="contactos-editor">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+                <button class="btn btn-primary btn-sm" onclick="abrirFormContacto()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Nuevo contacto
+                </button>
+            </div>
+            <div id="contacto-form-container" style="display:none">
+                <div class="contacto-form">
+                    <input type="hidden" id="contacto-edit-idx" value="">
+                    <div class="form-row">
+                        <div class="form-group"><label>Nombre</label><input type="text" id="contacto-nombre" class="form-control" placeholder="Nombre"></div>
+                        <div class="form-group"><label>Apellidos</label><input type="text" id="contacto-apellidos" class="form-control" placeholder="Apellidos"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Email</label><input type="email" id="contacto-email" class="form-control" placeholder="email@ejemplo.com"></div>
+                        <div class="form-group"><label>Puesto</label><input type="text" id="contacto-puesto" class="form-control" placeholder="Cargo / Puesto"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Telefono</label><input type="tel" id="contacto-telefono" class="form-control" placeholder="+34 600 000 000"></div>
+                        <div class="form-group" style="display:flex;align-items:flex-end;gap:6px">
+                            <button class="btn btn-primary btn-sm" onclick="guardarContactoDetalle()">Guardar</button>
+                            <button class="btn btn-secondary btn-sm" onclick="cerrarFormContacto()">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="contactos-list">
+                ${proyecto.contactos.length > 0
+                    ? proyecto.contactos.map((c, i) => `
+                        <div class="contacto-row">
+                            <div class="contacto-avatar">${(c.nombre || c.email || '?').charAt(0).toUpperCase()}</div>
+                            <div class="contacto-info">
+                                <div class="contacto-nombre-line">
+                                    ${c.nombre || c.apellidos ? `<strong>${escapeHtml((c.nombre || '') + ' ' + (c.apellidos || '')).trim()}</strong>` : ''}
+                                    ${c.puesto ? `<span class="contacto-puesto">${escapeHtml(c.puesto)}</span>` : ''}
+                                </div>
+                                <div class="contacto-detail-line">
+                                    ${c.email ? `<span>${escapeHtml(c.email)}</span>` : ''}
+                                    ${c.telefono ? `<span class="contacto-tel">${escapeHtml(c.telefono)}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="task-actions" style="flex-shrink:0">
+                                <button class="task-edit-btn" style="opacity:1" onclick="editarContactoDetalle(${i})" title="Editar">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                </button>
+                                <button class="task-delete-btn" style="opacity:1" onclick="eliminarContactoDetalle(${i})" title="Eliminar">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<div class="contactos-empty">No hay contactos asociados a este proyecto</div>'
+                }
+            </div>
+        </div>`;
+}
+
+function abrirFormContacto() {
+    document.getElementById('contacto-form-container').style.display = '';
+    document.getElementById('contacto-edit-idx').value = '';
+    document.getElementById('contacto-nombre').value = '';
+    document.getElementById('contacto-apellidos').value = '';
+    document.getElementById('contacto-email').value = '';
+    document.getElementById('contacto-puesto').value = '';
+    document.getElementById('contacto-telefono').value = '';
+    document.getElementById('contacto-nombre').focus();
+}
+
+function editarContactoDetalle(idx) {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto || !proyecto.contactos || !proyecto.contactos[idx]) return;
+    const c = proyecto.contactos[idx];
+    document.getElementById('contacto-form-container').style.display = '';
+    document.getElementById('contacto-edit-idx').value = idx;
+    document.getElementById('contacto-nombre').value = c.nombre || '';
+    document.getElementById('contacto-apellidos').value = c.apellidos || '';
+    document.getElementById('contacto-email').value = c.email || '';
+    document.getElementById('contacto-puesto').value = c.puesto || '';
+    document.getElementById('contacto-telefono').value = c.telefono || '';
+    document.getElementById('contacto-nombre').focus();
+}
+
+function cerrarFormContacto() {
+    document.getElementById('contacto-form-container').style.display = 'none';
+}
+
+async function guardarContactoDetalle() {
+    const nombre = document.getElementById('contacto-nombre').value.trim();
+    const apellidos = document.getElementById('contacto-apellidos').value.trim();
+    const email = document.getElementById('contacto-email').value.trim().toLowerCase();
+    const puesto = document.getElementById('contacto-puesto').value.trim();
+    const telefono = document.getElementById('contacto-telefono').value.trim();
+
+    if (!email || !email.includes('@')) {
+        document.getElementById('contacto-email').focus();
+        mostrarToast('Email es obligatorio', 'warning');
+        return;
+    }
+
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    if (!proyecto.contactos) proyecto.contactos = [];
+
+    const editIdx = document.getElementById('contacto-edit-idx').value;
+    const contacto = { nombre, apellidos, email, puesto, telefono };
+
+    if (editIdx !== '') {
+        proyecto.contactos[parseInt(editIdx)] = contacto;
+    } else {
+        proyecto.contactos.push(contacto);
+    }
+
+    // Sincronizar participantes (array de emails) para compatibilidad con subtareas
+    proyecto.participantes = proyecto.contactos.map(c => c.email);
+
+    guardarProyectosLocal(proyectos);
+    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+    renderDetalleContactos(proyecto);
+    mostrarToast('Contacto guardado', 'success');
+}
+
+async function eliminarContactoDetalle(idx) {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto || !proyecto.contactos) return;
+    mostrarConfirmacion('¿Eliminar este contacto?', async () => {
+        proyecto.contactos.splice(idx, 1);
+        proyecto.participantes = proyecto.contactos.map(c => c.email);
+        guardarProyectosLocal(proyectos);
+        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+        renderDetalleContactos(proyecto);
+        mostrarToast('Contacto eliminado', 'success');
+    });
+}
+
+async function renderDetalleDesarrollos(proyecto) {
+    const container = document.getElementById('detalle-desarrollos');
+    const asanaId = proyecto.asanaProjectId || '';
+
+    container.innerHTML = `
+        <div class="desarrollos-config">
+            <div class="form-row" style="align-items:flex-end">
+                <div class="form-group" style="flex:1">
+                    <label>Asana Project ID</label>
+                    <input type="text" id="asana-project-id" class="form-control" placeholder="Ej: 1234567890" value="${escapeHtml(asanaId)}">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="vincularAsana()" style="margin-bottom:0;height:38px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                    Vincular
+                </button>
+            </div>
+        </div>
+        <div id="asana-tasks-list" class="desarrollos-list">
+            ${asanaId ? '<div class="loading-inline"><div class="spinner"></div> Cargando tareas de Asana...</div>' : '<div style="text-align:center;padding:32px;color:var(--text-muted)">Vincula un proyecto de Asana para ver sus desarrollos</div>'}
+        </div>`;
+
+    if (asanaId) {
+        const tasks = await obtenerTareasAsana(asanaId);
+        const listEl = document.getElementById('asana-tasks-list');
+        if (tasks.length > 0) {
+            listEl.innerHTML = tasks.map(t => `
+                <div class="asana-task-row ${t.completed ? 'completed' : ''}">
+                    <div class="task-check ${t.completed ? 'checked' : ''}"></div>
+                    <span class="task-name ${t.completed ? 'completed' : ''}">${escapeHtml(t.name || t.nombre || '')}</span>
+                    <span class="task-date">${t.due_on ? formatearFechaCorta(t.due_on) : '—'}</span>
+                </div>
+            `).join('');
+        } else {
+            listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">No se encontraron tareas o no se pudo conectar con Asana</div>';
+        }
+    }
+}
+
+async function vincularAsana() {
+    const asanaId = document.getElementById('asana-project-id').value.trim();
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+
+    proyecto.asanaProjectId = asanaId;
+    guardarProyectosLocal(proyectos);
+    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+
+    renderDetalleDesarrollos(proyecto);
+    mostrarToast(asanaId ? 'Proyecto Asana vinculado' : 'Vinculacion removida', 'success');
+}
+
+function renderDetalleAnotaciones(proyecto) {
+    const anotaciones = proyecto.anotaciones || '';
+    const adjuntos = proyecto.adjuntos || [];
+
+    document.getElementById('detalle-anotaciones').innerHTML = `
+        <div class="anotaciones-editor">
+            <label style="font-weight:600;margin-bottom:8px;display:block">Anotaciones del proyecto</label>
+            <textarea id="anotaciones-text" class="form-control anotaciones-textarea" placeholder="Escribe notas, observaciones, acuerdos...">${escapeHtml(anotaciones)}</textarea>
+
+            <div class="adjuntos-section">
+                <div class="adjuntos-header">
+                    <label style="font-weight:600;display:block">Adjuntos</label>
+                    <label class="btn btn-secondary btn-sm adjuntos-upload-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                        Adjuntar archivo
+                        <input type="file" id="adjunto-input" accept="image/*,.pdf" multiple style="display:none" onchange="agregarAdjuntos(event)">
+                    </label>
+                </div>
+                <div class="adjuntos-list" id="adjuntos-list">
+                    ${adjuntos.length > 0 ? adjuntos.map((adj, i) => renderAdjunto(adj, i)).join('') : '<div class="adjuntos-empty">Sin archivos adjuntos</div>'}
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+                <button class="btn btn-primary btn-sm" onclick="guardarAnotaciones()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Guardar todo
+                </button>
+            </div>
+        </div>`;
+}
+
+function renderAdjunto(adj, index) {
+    const isImage = adj.tipo && adj.tipo.startsWith('image/');
+    const isPdf = adj.tipo && adj.tipo === 'application/pdf';
+    const iconSvg = isPdf
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+
+    return `
+        <div class="adjunto-item">
+            ${isImage ? `<div class="adjunto-thumb" onclick="abrirAdjunto(${index})"><img src="${adj.data}" alt="${escapeHtml(adj.nombre)}"></div>` : `<div class="adjunto-icon" onclick="abrirAdjunto(${index})">${iconSvg}</div>`}
+            <div class="adjunto-info" onclick="abrirAdjunto(${index})">
+                <span class="adjunto-nombre">${escapeHtml(adj.nombre)}</span>
+                <span class="adjunto-size">${adj.size ? formatearTamano(adj.size) : ''}</span>
+            </div>
+            <button class="task-delete-btn" onclick="eliminarAdjunto(${index})" title="Eliminar" style="opacity:1">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+        </div>`;
+}
+
+function formatearTamano(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function agregarAdjuntos(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    if (!proyecto.adjuntos) proyecto.adjuntos = [];
+
+    const maxSize = 5 * 1024 * 1024; // 5MB por archivo
+    let procesados = 0;
+    const total = files.length;
+
+    for (const file of files) {
+        if (file.size > maxSize) {
+            mostrarToast(`${file.name} es mayor a 5MB, omitido`, 'warning');
+            procesados++;
+            continue;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            proyecto.adjuntos.push({
+                id: generarId(),
+                nombre: file.name,
+                tipo: file.type,
+                size: file.size,
+                data: e.target.result,
+                fecha: new Date().toISOString()
+            });
+            procesados++;
+            if (procesados === total) {
+                guardarProyectosLocal(proyectos);
+                renderDetalleAnotaciones(proyecto);
+                mostrarToast(`${proyecto.adjuntos.length} adjunto(s) en total`, 'success');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Reset input
+    event.target.value = '';
+}
+
+function eliminarAdjunto(index) {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto || !proyecto.adjuntos) return;
+    mostrarConfirmacion('¿Eliminar este adjunto?', () => {
+        proyecto.adjuntos.splice(index, 1);
+        guardarProyectosLocal(proyectos);
+        renderDetalleAnotaciones(proyecto);
+        mostrarToast('Adjunto eliminado', 'success');
+    });
+}
+
+function abrirAdjunto(index) {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto || !proyecto.adjuntos || !proyecto.adjuntos[index]) return;
+    const adj = proyecto.adjuntos[index];
+    const win = window.open('', '_blank');
+    if (adj.tipo && adj.tipo.startsWith('image/')) {
+        win.document.write(`<html><head><title>${escapeHtml(adj.nombre)}</title></head><body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f1f5f9"><img src="${adj.data}" style="max-width:100%;max-height:100vh"></body></html>`);
+    } else {
+        win.document.write(`<html><head><title>${escapeHtml(adj.nombre)}</title></head><body style="margin:0"><iframe src="${adj.data}" style="width:100%;height:100vh;border:none"></iframe></body></html>`);
+    }
+}
+
+async function guardarAnotaciones() {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    const texto = document.getElementById('anotaciones-text').value;
+    proyecto.anotaciones = texto;
+    guardarProyectosLocal(proyectos);
+    try {
+        await actualizarAnotacionesAPI(proyecto.id, texto).catch(() => {});
+    } catch (_) {}
+    mostrarToast('Anotaciones guardadas', 'success');
 }
 
 function renderSeccion(proyectoId, seccion, seccionIndex) {
@@ -727,12 +1212,18 @@ function renderTareaRow(proyectoId, seccionNombre, tarea) {
                 <button class="task-edit-btn" onclick="abrirModalTarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
+                <button class="task-delete-btn" onclick="event.stopPropagation(); eliminarTarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')" title="Eliminar tarea">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
             </div>
         </div>
         ${hasSubtareas ? `<div class="subtask-container">${subtareas.map(sub => renderSubtareaRow(proyectoId, seccionNombre, tarea.id, sub)).join('')}</div>` : ''}`;
 }
 
 function renderSubtareaRow(proyectoId, seccionNombre, tareaId, subtarea) {
+    const partCount = (subtarea.participantes || []).length;
+    const agendado = subtarea.agendado;
+
     return `
         <div class="subtask-row">
             <span class="subtask-indent">
@@ -740,12 +1231,26 @@ function renderSubtareaRow(proyectoId, seccionNombre, tareaId, subtarea) {
             </span>
             <div class="task-check ${subtarea.completada ? 'checked' : ''}"
                  onclick="toggleSubtareaCompletada('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')"></div>
-            <span class="task-name ${subtarea.completada ? 'completed' : ''}">${escapeHtml(subtarea.nombre)}</span>
+            <span class="task-name ${subtarea.completada ? 'completed' : ''}">
+                ${escapeHtml(subtarea.nombre)}
+                ${partCount > 0 ? `<span class="subtask-participantes-badge" title="${(subtarea.participantes||[]).join(', ')}">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    ${partCount}
+                </span>` : ''}
+                ${agendado ? `<span class="subtask-calendar-badge" title="Agendado en Calendar">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>` : ''}
+            </span>
             <span class="task-date">${subtarea.fechaEntrega ? formatearFechaCorta(subtarea.fechaEntrega) : '—'}</span>
             <span class="task-time">${subtarea.tiempoEstimado ? subtarea.tiempoEstimado + ' min' : '—'}</span>
-            <button class="task-edit-btn" onclick="abrirModalSubtarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
+            <div class="task-actions">
+                <button class="task-edit-btn" onclick="abrirModalSubtarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="task-delete-btn" onclick="event.stopPropagation(); eliminarSubtarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tareaId}', '${subtarea.id}')" title="Eliminar subtarea">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+            </div>
         </div>`;
 }
 
@@ -783,6 +1288,40 @@ async function toggleTareaCompletada(proyectoId, seccionNombre, tareaId) {
     }
     abrirDetalle(proyectoId);
     refrescarTodo();
+}
+
+function eliminarTarea(proyectoId, seccionNombre, tareaId) {
+    mostrarConfirmacion('¿Eliminar esta tarea y sus subtareas?', async () => {
+        const proyecto = proyectos.find(p => p.id === proyectoId);
+        if (!proyecto) return;
+        const seccion = proyecto.secciones.find(s => s.nombre === seccionNombre);
+        if (!seccion) return;
+        seccion.tareas = seccion.tareas.filter(t => t.id !== tareaId);
+        guardarProyectosLocal(proyectos);
+        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+        abrirDetalle(proyectoId);
+        refrescarTodo();
+        mostrarToast('Tarea eliminada', 'success');
+    });
+}
+
+function eliminarSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
+    mostrarConfirmacion('¿Eliminar esta subtarea?', async () => {
+        const proyecto = proyectos.find(p => p.id === proyectoId);
+        if (!proyecto) return;
+        const seccion = proyecto.secciones.find(s => s.nombre === seccionNombre);
+        if (!seccion) return;
+        const tarea = seccion.tareas.find(t => t.id === tareaId);
+        if (!tarea || !tarea.subtareas) return;
+        tarea.subtareas = tarea.subtareas.filter(s => s.id !== subtareaId);
+        // Recalcular estado padre
+        tarea.completada = tarea.subtareas.length > 0 && tarea.subtareas.every(s => s.completada);
+        guardarProyectosLocal(proyectos);
+        try { await actualizarTareaAPI(proyectoId, seccionNombre, tarea).catch(() => {}); } catch (_) {}
+        abrirDetalle(proyectoId);
+        refrescarTodo();
+        mostrarToast('Subtarea eliminada', 'success');
+    });
 }
 
 function mostrarAviso(mensaje) {
@@ -969,241 +1508,37 @@ function resetearYRecargar() {
 }
 
 // ==========================================
-// IMPORT FROM ALTAS
+// PARTICIPANTES (Project modal)
 // ==========================================
 
-const WEBHOOK_ALTAS = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
-
-let altasData = [];
-
-async function importarDesdeAltas() {
-    abrirModal('modal-import');
-    document.getElementById('import-loading').style.display = '';
-    document.getElementById('import-content').style.display = 'none';
-
-    const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-
-    try {
-        const res = await fetch(WEBHOOK_ALTAS, {
-            method: 'GET',
-            headers: session.basicAuth ? { 'Authorization': 'Basic ' + session.basicAuth } : {}
-        });
-        if (!res.ok) throw new Error('Error ' + res.status);
-        let data = {};
-        try { data = await res.json(); } catch (_) {}
-        const raw = Array.isArray(data) ? data
-            : Array.isArray(data.clientes) ? data.clientes
-            : Array.isArray(data.data) ? data.data : [];
-
-        altasData = raw.map(normalizarAlta).filter(a => a.nombre);
-        renderImportList();
-    } catch (err) {
-        document.getElementById('import-loading').style.display = 'none';
-        document.getElementById('import-content').style.display = '';
-        document.getElementById('import-content').innerHTML = `
-            <div class="import-error">
-                <p>No se pudieron cargar los datos de Altas</p>
-                <p style="font-size:12px;color:var(--text-muted);margin-top:8px">${escapeHtml(err.message)}</p>
-                <button class="btn btn-secondary" style="margin-top:12px" onclick="cerrarModal('modal-import')">Cerrar</button>
-            </div>`;
+function agregarParticipanteProyecto() {
+    const input = document.getElementById('proyecto-participante-input');
+    const email = input.value.trim().toLowerCase();
+    if (!email || !email.includes('@')) { input.focus(); return; }
+    if (window._proyectoParticipantes.includes(email)) {
+        mostrarToast('Email ya agregado', 'warning');
+        input.value = '';
+        input.focus();
+        return;
     }
+    window._proyectoParticipantes.push(email);
+    input.value = '';
+    renderParticipantesChips();
+    input.focus();
 }
 
-function normalizarAlta(f) {
-    const get = (keys) => {
-        for (const k of keys) {
-            const val = (f[k] || '').toString().trim();
-            if (val) return val;
-        }
-        return '';
-    };
-
-    const nombre = get(['Denominación Social', 'Denominacion Social', 'denominacion', 'Nombre Sociedad']);
-    const comercial = get(['Nombre Comercial', 'nombreComercial', 'Nombre']);
-    const tipo = get(['Tipo Cliente', 'Tipo de Cliente', 'tipoCliente']);
-    const implementador = get(['Implementador']);
-    const id = get(['ID', 'id']);
-    const fecha = get(['Fecha', 'fecha']);
-    const estado = get(['Estado', 'estado']);
-
-    // Normalize tipo to match our TIPOS_PROYECTO
-    let tipoNorm = 'Corporate sin cocina';
-    const tipoLower = tipo.toLowerCase();
-    if (tipoLower.includes('lite') || tipoLower.includes('planes') || tipoLower === 'planes') {
-        tipoNorm = 'Planes';
-    } else if (tipoLower.includes('corporate') || tipoLower.includes('corp')) {
-        // Check if has cocina modules
-        const modulos = get(['Módulos', 'modulos']);
-        if (modulos.toLowerCase().includes('cocina')) {
-            tipoNorm = 'Corporate con cocina';
-        } else {
-            tipoNorm = 'Corporate sin cocina';
-        }
-    }
-
-    return {
-        altaId: id,
-        nombre: nombre || comercial,
-        nombreComercial: comercial,
-        tipo: tipoNorm,
-        tipoOriginal: tipo,
-        implementador: IMPLEMENTADORES.includes(implementador) ? implementador : '',
-        fecha,
-        estado
-    };
+function quitarParticipanteProyecto(idx) {
+    window._proyectoParticipantes.splice(idx, 1);
+    renderParticipantesChips();
 }
 
-function renderImportList() {
-    document.getElementById('import-loading').style.display = 'none';
-    const content = document.getElementById('import-content');
-    content.style.display = '';
-
-    // Check which altas already exist as projects
-    const nombresExistentes = new Set(proyectos.map(p => p.cliente.toLowerCase().trim()));
-
-    const nuevas = altasData.filter(a => !nombresExistentes.has(a.nombre.toLowerCase().trim()));
-    const existentes = altasData.filter(a => nombresExistentes.has(a.nombre.toLowerCase().trim()));
-
-    content.innerHTML = `
-        <div class="import-summary">
-            <span class="count">${nuevas.length}</span>
-            <span>clientes nuevos para importar (de ${altasData.length} totales, ${existentes.length} ya existen)</span>
-        </div>
-
-        ${nuevas.length > 0 ? `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px">
-                <button class="import-select-all" onclick="toggleSelectAllImport()">Seleccionar / Deseleccionar todos</button>
-                <div style="display:flex;align-items:center;gap:6px">
-                    <label style="font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap">Plantilla:</label>
-                    <select id="import-plantilla" class="form-control" style="min-width:180px;font-size:12px;padding:4px 8px">
-                        ${plantillas.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`).join('')}
-                    </select>
-                </div>
-            </div>
-            <div class="import-scroll">
-                <table class="import-table">
-                    <thead>
-                        <tr>
-                            <th class="import-check"></th>
-                            <th>Cliente</th>
-                            <th>Tipo</th>
-                            <th>Implementador</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${nuevas.map((a, i) => `
-                            <tr>
-                                <td class="import-check"><input type="checkbox" checked data-import-idx="${altasData.indexOf(a)}"></td>
-                                <td><strong>${escapeHtml(a.nombre)}</strong>${a.nombreComercial && a.nombreComercial !== a.nombre ? `<br><span style="font-size:11px;color:var(--text-muted)">${escapeHtml(a.nombreComercial)}</span>` : ''}</td>
-                                <td><span class="card-tipo">${escapeHtml(a.tipoOriginal || a.tipo)}</span></td>
-                                <td>${a.implementador ? escapeHtml(a.implementador) : '<span style="color:var(--text-muted)">Sin asignar</span>'}</td>
-                                <td><span class="import-new">NUEVO</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            <div class="import-actions">
-                <span style="font-size:13px;color:var(--text-muted)"><span id="import-selected-count">${nuevas.length}</span> seleccionados</span>
-                <div style="display:flex;gap:8px">
-                    <button class="btn btn-secondary" onclick="cerrarModal('modal-import')">Cancelar</button>
-                    <button class="btn btn-primary" onclick="ejecutarImport()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Importar seleccionados
-                    </button>
-                </div>
-            </div>
-        ` : `
-            <div style="text-align:center;padding:24px;color:var(--text-muted)">
-                <p>Todos los clientes de Altas ya tienen proyecto creado.</p>
-                <button class="btn btn-secondary" style="margin-top:12px" onclick="cerrarModal('modal-import')">Cerrar</button>
-            </div>
-        `}
-    `;
-
-    // Update selected count on checkbox change
-    content.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', updateImportCount);
-    });
-}
-
-function toggleSelectAllImport() {
-    const checkboxes = document.querySelectorAll('#import-content input[type="checkbox"]');
-    const allChecked = [...checkboxes].every(cb => cb.checked);
-    checkboxes.forEach(cb => cb.checked = !allChecked);
-    updateImportCount();
-}
-
-function updateImportCount() {
-    const checked = document.querySelectorAll('#import-content input[type="checkbox"]:checked').length;
-    const el = document.getElementById('import-selected-count');
-    if (el) el.textContent = checked;
-}
-
-async function ejecutarImport() {
-    const checkboxes = document.querySelectorAll('#import-content input[type="checkbox"]:checked');
-    const importPlantillaSelect = document.getElementById('import-plantilla');
-    const plantillaId = importPlantillaSelect ? importPlantillaSelect.value : null;
-    let importados = 0;
-    let errores = 0;
-
-    showLoading();
-    try {
-        for (const cb of checkboxes) {
-            const idx = parseInt(cb.dataset.importIdx);
-            const alta = altasData[idx];
-            if (!alta) continue;
-
-            const nuevoProyecto = {
-                id: generarId(),
-                cliente: alta.nombre,
-                implementador: alta.implementador || IMPLEMENTADORES[0],
-                tipo: alta.tipo,
-                estado: 'activo',
-                fechaInicio: alta.fecha ? formatearFechaISO(alta.fecha) : new Date().toISOString().split('T')[0],
-                ultimaActividad: new Date().toISOString().split('T')[0],
-                secciones: plantillaId ? crearEstructuraDesdePlantilla(plantillaId) : crearEstructuraProyecto()
-            };
-
-            try {
-                await crearProyectoAPI(nuevoProyecto);
-                proyectos.push(nuevoProyecto);
-                importados++;
-            } catch (err) {
-                console.warn('Error importando', alta.nombre, err);
-                errores++;
-            }
-        }
-
-        if (importados > 0) {
-            guardarProyectosLocal(proyectos);
-            refrescarTodo();
-        }
-
-        cerrarModal('modal-import');
-        let msg = `Se importaron ${importados} proyecto${importados !== 1 ? 's' : ''} correctamente`;
-        if (errores > 0) msg += ` (${errores} con error)`;
-        mostrarToast(msg, errores > 0 ? 'warning' : 'success');
-    } catch (err) {
-        mostrarToast('Error durante la importacion: ' + err.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function formatearFechaISO(fechaStr) {
-    if (!fechaStr) return new Date().toISOString().split('T')[0];
-    // Try parsing various formats
-    const d = new Date(fechaStr);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-    // Try dd/mm/yyyy
-    const parts = fechaStr.split('/');
-    if (parts.length === 3) {
-        const [day, month, year] = parts;
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-    return new Date().toISOString().split('T')[0];
+function renderParticipantesChips() {
+    const container = document.getElementById('proyecto-participantes-chips');
+    if (!container) return;
+    const list = window._proyectoParticipantes || [];
+    container.innerHTML = list.length > 0
+        ? list.map((email, i) => `<span class="participante-chip">${escapeHtml(email)}<button onclick="quitarParticipanteProyecto(${i})">&times;</button></span>`).join('')
+        : '<span style="font-size:12px;color:var(--text-muted)">Sin participantes</span>';
 }
 
 // ==========================================
@@ -1484,6 +1819,13 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
     document.getElementById('subtarea-seccion-nombre').value = seccionNombre;
     document.getElementById('subtarea-tarea-id').value = tareaId;
 
+    // Populate participantes checkboxes from project
+    const partContainer = document.getElementById('subtarea-participantes');
+    const partList = proyecto.participantes || [];
+    partContainer.innerHTML = partList.length > 0
+        ? partList.map(email => `<label class="participante-check-item"><input type="checkbox" value="${escapeHtml(email)}" class="sub-part-cb"> ${escapeHtml(email)}</label>`).join('')
+        : '<span style="font-size:12px;color:var(--text-muted)">Agrega participantes al proyecto primero</span>';
+
     if (subtareaId) {
         const subtarea = (tarea.subtareas || []).find(s => s.id === subtareaId);
         if (!subtarea) return;
@@ -1494,6 +1836,10 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         document.getElementById('subtarea-tiempo').value = subtarea.tiempoEstimado || '';
         document.getElementById('subtarea-completada').value = subtarea.completada ? 'true' : 'false';
         document.getElementById('subtarea-notas').value = subtarea.notas || '';
+        // Check participantes
+        const subPart = subtarea.participantes || [];
+        partContainer.querySelectorAll('.sub-part-cb').forEach(cb => { cb.checked = subPart.includes(cb.value); });
+        document.getElementById('subtarea-agendar').checked = false;
     } else {
         document.getElementById('modal-subtarea-titulo').textContent = 'Nueva Subtarea';
         document.getElementById('subtarea-id').value = '';
@@ -1502,6 +1848,8 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         document.getElementById('subtarea-tiempo').value = '';
         document.getElementById('subtarea-completada').value = 'false';
         document.getElementById('subtarea-notas').value = '';
+        partContainer.querySelectorAll('.sub-part-cb').forEach(cb => { cb.checked = false; });
+        document.getElementById('subtarea-agendar').checked = false;
     }
 
     abrirModal('modal-subtarea');
@@ -1518,6 +1866,8 @@ async function guardarSubtarea() {
     const tiempoEstimado = parseInt(document.getElementById('subtarea-tiempo').value) || null;
     const completada = document.getElementById('subtarea-completada').value === 'true';
     const notas = document.getElementById('subtarea-notas').value.trim();
+    const participantesSeleccionados = [...document.querySelectorAll('.sub-part-cb:checked')].map(cb => cb.value);
+    const agendar = document.getElementById('subtarea-agendar').checked;
 
     if (!nombre) {
         document.getElementById('subtarea-nombre').focus();
@@ -1534,24 +1884,29 @@ async function guardarSubtarea() {
 
     showLoading();
     try {
+        let subtareaObj;
         if (subtareaId) {
-            const sub = tarea.subtareas.find(s => s.id === subtareaId);
-            if (sub) {
-                sub.nombre = nombre;
-                sub.fechaEntrega = fechaEntrega;
-                sub.tiempoEstimado = tiempoEstimado;
-                sub.completada = completada;
-                sub.notas = notas;
+            subtareaObj = tarea.subtareas.find(s => s.id === subtareaId);
+            if (subtareaObj) {
+                subtareaObj.nombre = nombre;
+                subtareaObj.fechaEntrega = fechaEntrega;
+                subtareaObj.tiempoEstimado = tiempoEstimado;
+                subtareaObj.completada = completada;
+                subtareaObj.notas = notas;
+                subtareaObj.participantes = participantesSeleccionados;
             }
         } else {
-            tarea.subtareas.push({
+            subtareaObj = {
                 id: generarId(),
                 nombre,
                 completada,
                 fechaEntrega,
                 tiempoEstimado,
-                notas
-            });
+                notas,
+                participantes: participantesSeleccionados,
+                agendado: false
+            };
+            tarea.subtareas.push(subtareaObj);
         }
 
         // Derivar estado de la tarea padre
@@ -1559,10 +1914,32 @@ async function guardarSubtarea() {
 
         await actualizarTareaAPI(proyectoId, seccionNombre, tarea);
         guardarProyectosLocal(proyectos);
+
+        // Agendar en Calendar si se marcó
+        if (agendar && subtareaObj && fechaEntrega) {
+            try {
+                await crearEventoCalendarAPI({
+                    proyectoId,
+                    cliente: proyecto.cliente,
+                    tarea: tarea.nombre,
+                    subtarea: subtareaObj.nombre,
+                    fecha: fechaEntrega,
+                    tiempoEstimado: tiempoEstimado || 60,
+                    participantes: participantesSeleccionados
+                });
+                subtareaObj.agendado = true;
+                guardarProyectosLocal(proyectos);
+                mostrarToast('Subtarea guardada y agendada en Calendar', 'success');
+            } catch (calErr) {
+                mostrarToast('Subtarea guardada, pero error al agendar: ' + calErr.message, 'warning');
+            }
+        } else {
+            mostrarToast('Subtarea guardada', 'success');
+        }
+
         cerrarModal('modal-subtarea');
         abrirDetalle(proyectoId);
         refrescarTodo();
-        mostrarToast('Subtarea guardada', 'success');
     } catch (err) {
         mostrarToast('Error al guardar subtarea: ' + err.message, 'error');
     } finally {
