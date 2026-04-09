@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bajas - Yurest</title>
+    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+    <style>
+        /* ── Sidebar ── */
+        .sidebar-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.45);
+            z-index: 500; opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: 248px; height: 100vh;
+            background: #fff; z-index: 600;
+            transform: translateX(-100%);
+            transition: transform 0.26s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.13);
+            display: flex; flex-direction: column;
+        }
+        .sidebar.open { transform: translateX(0); }
+        .sidebar-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 18px 16px; border-bottom: 1.5px solid #f1f5f9;
+        }
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.78rem; font-weight: 800;
+            letter-spacing: 0.13em; text-transform: uppercase; color: #fc5858;
+        }
+        .sidebar-brand-dot {
+            width: 8px; height: 8px; background: #fc5858; border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.25);
+        }
+        .sidebar-close {
+            width: 28px; height: 28px; border-radius: 8px;
+            border: 1.5px solid #e2e8f0; background: #f8fafc;
+            color: #64748b; font-size: 0.9rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .sidebar-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+        .sidebar-label {
+            padding: 16px 18px 6px;
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; color: #94a3b8;
+        }
+        .sidebar-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 18px; margin: 2px 10px; border-radius: 10px;
+            font-size: 0.88rem; font-weight: 500; color: #334155;
+            text-decoration: none; cursor: pointer;
+            transition: background 0.14s, color 0.14s;
+        }
+        .sidebar-item:hover { background: #f8fafc; color: #1e293b; }
+        .sidebar-item.active { background: #fff1f1; color: #fc5858; font-weight: 700; }
+        .sidebar-item svg { flex-shrink: 0; opacity: 0.7; }
+        .sidebar-item.active svg { opacity: 1; }
+        .sidebar-ft {
+            margin-top: auto; padding: 16px 18px;
+            border-top: 1.5px solid #f1f5f9;
+        }
+        .sidebar-ft button {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 10px 14px; border-radius: 10px;
+            border: 1.5px solid #fecaca; background: #fff5f5;
+            color: #dc2626; font-size: 0.85rem; font-weight: 600;
+            font-family: inherit; cursor: pointer; transition: background 0.15s;
+        }
+        .sidebar-ft button:hover { background: #fee2e2; }
+        .btn-menu {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; flex-shrink: 0;
+            background: #fff; border: 1.5px solid #e2e8f0;
+            border-radius: 10px; cursor: pointer; color: #64748b;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+        }
+        .btn-menu:hover { border-color: #fc5858; color: #fc5858; background: #fff1f1; }
+
+        /* ── Toolbar ── */
+        .toolbar {
+            display: flex; align-items: center; gap: 12px;
+            margin: 28px 0 18px; flex-wrap: wrap;
+        }
+        .search-wrap { flex: 1; position: relative; max-width: 320px; }
+        .search-wrap .search-icon {
+            position: absolute; left: 14px; top: 50%;
+            transform: translateY(-50%); color: #94a3b8; pointer-events: none;
+        }
+        .search-input {
+            width: 100%; padding: 10px 16px 10px 44px;
+            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            font-size: 0.9rem; background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box; font-family: inherit;
+        }
+        .search-input:focus {
+            outline: none; border-color: #fc5858;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.12);
+        }
+        .search-input::placeholder { color: #cbd5e1; }
+
+        /* ── Botón añadir baja ── */
+        .btn-add-baja {
+            display: flex; align-items: center; gap: 7px;
+            padding: 10px 18px; border-radius: 10px;
+            border: none; background: #fc5858; color: #fff;
+            font-size: 0.88rem; font-weight: 700; font-family: inherit;
+            cursor: pointer; transition: background 0.15s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .btn-add-baja:hover  { background: #ef4444; }
+        .btn-add-baja:active { transform: scale(0.97); }
+
+        /* ── Stats ── */
+        .stats-bar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+        .stat-chip {
+            background: #fff; border: 1.5px solid #e2e8f0;
+            border-radius: 9px; padding: 8px 16px;
+            font-size: 0.82rem; color: #64748b;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .stat-chip strong { color: #1e293b; font-size: 0.98rem; }
+        .stat-chip--red   strong { color: #fc5858; }
+        .stat-chip--blue  strong { color: #3b82f6; }
+        .stat-chip--purple strong { color: #8b5cf6; }
+        .stat-chip--orange strong { color: #f97316; }
+
+        /* ── Informe mensual ── */
+        .informe-widget {
+            background: #fff; border: 1.5px solid #e2e8f0;
+            border-radius: 14px; margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .informe-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 13px 18px; cursor: pointer; user-select: none;
+            transition: background 0.12s;
+        }
+        .informe-hd:hover { background: #f8fafc; }
+        .informe-hd-left { display: flex; align-items: center; gap: 9px; }
+        .informe-hd-icon { font-size: 1rem; }
+        .informe-hd-title { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
+        .informe-hd-sub   { font-size: 0.73rem; color: #94a3b8; margin-left: 4px; }
+        .informe-toggle-arrow {
+            width: 18px; height: 18px; color: #94a3b8;
+            transition: transform 0.22s; flex-shrink: 0;
+        }
+        .informe-toggle-arrow.open { transform: rotate(180deg); }
+        .informe-body {
+            border-top: 1.5px solid #f1f5f9;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.28s ease;
+        }
+        .informe-body.open { max-height: 600px; }
+        .informe-table-wrap { overflow-x: auto; }
+        .informe-table {
+            width: 100%; border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .informe-table thead th {
+            padding: 9px 16px; text-align: left;
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
+            text-transform: uppercase; color: #94a3b8;
+            background: #f8fafc; border-bottom: 1.5px solid #f1f5f9;
+            white-space: nowrap;
+        }
+        .informe-table thead th.th-r { text-align: right; }
+        .informe-table tbody tr { border-bottom: 1px solid #f8fafc; transition: background 0.1s; }
+        .informe-table tbody tr:last-child { border-bottom: none; }
+        .informe-table tbody tr:hover { background: #fafafa; }
+        .informe-table tbody td { padding: 9px 16px; color: #334155; }
+        .informe-table tbody td.td-r { text-align: right; }
+        .informe-mes { font-weight: 600; color: #1e293b; white-space: nowrap; }
+        .informe-mes.current { color: #fc5858; }
+        .ibadge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 26px; padding: 2px 8px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 700;
+        }
+        .ibadge-0 { color: #cbd5e1; }
+        .ibadge-red    { background: #fee2e2; color: #dc2626; }
+        .ibadge-blue   { background: #dbeafe; color: #2563eb; }
+        .ibadge-purple { background: #ede9fe; color: #7c3aed; }
+        .informe-mrr-wrap { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+        .informe-mrr-bar-track {
+            width: 60px; height: 5px; background: #f1f5f9; border-radius: 3px; flex-shrink: 0;
+        }
+        .informe-mrr-bar-fill {
+            height: 100%; background: linear-gradient(90deg,#fc5858,#f97316); border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .informe-mrr-val { font-weight: 700; color: #f97316; white-space: nowrap; }
+        .informe-mrr-zero { color: #cbd5e1; }
+        .informe-empty { padding: 20px 18px; color: #94a3b8; font-size: 0.82rem; }
+
+        /* ── Filtros tipo ── */
+        .filter-bar {
+            display: flex; align-items: center; gap: 8px;
+            flex-wrap: wrap; margin-bottom: 16px;
+        }
+        .filter-label {
+            font-size: 0.72rem; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .chip {
+            padding: 5px 13px; border-radius: 20px;
+            font-size: 0.8rem; font-weight: 600; font-family: inherit;
+            cursor: pointer; border: 1.5px solid #e2e8f0;
+            background: #fff; color: #64748b; transition: all 0.15s;
+        }
+        .chip:hover { border-color: #94a3b8; color: #1e293b; }
+        .chip.active-all      { background: #1e293b; border-color: #1e293b; color: #fff; }
+        .chip.active-cliente  { background: #dc2626; border-color: #dc2626; color: #fff; }
+        .chip.active-local    { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .chip.active-modulos  { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
+
+        /* ── Tabla ── */
+        .table-wrap {
+            background: #fff; border-radius: 14px; overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04);
+        }
+        .bajas-table { width: 100%; border-collapse: collapse; }
+        .bajas-table thead th {
+            background: #f8fafc; color: #64748b;
+            font-size: 0.7rem; font-weight: 700;
+            letter-spacing: 0.08em; text-transform: uppercase;
+            padding: 12px 16px; text-align: left;
+            border-bottom: 1.5px solid #e2e8f0; white-space: nowrap;
+        }
+        .bajas-table thead th.th-center { text-align: center; }
+        .bajas-table tbody tr {
+            border-bottom: 1px solid #f1f5f9; transition: background 0.12s;
+        }
+        .bajas-table tbody tr:last-child { border-bottom: none; }
+        .bajas-table tbody tr:hover { background: #fff8f8; }
+        .bajas-table tbody td {
+            padding: 13px 16px; font-size: 0.88rem;
+            color: #334155; vertical-align: middle;
+        }
+        .td-nombre { font-weight: 600; color: #1e293b; }
+        .td-sub    { font-size: 0.76rem; color: #94a3b8; margin-top: 2px; }
+        .td-fecha  { color: #94a3b8; font-size: 0.8rem; white-space: nowrap; }
+        .td-center { text-align: center; }
+
+        /* ── Badge tipo baja ── */
+        .badge-baja {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 20px;
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+        .badge-cliente  { background: #fee2e2; color: #dc2626; }
+        .badge-local    { background: #dbeafe; color: #2563eb; }
+        .badge-modulos  { background: #ede9fe; color: #7c3aed; }
+
+        /* ── Módulos tags inline ── */
+        .mod-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+        .mod-tag {
+            padding: 2px 8px; border-radius: 20px;
+            background: #ede9fe; color: #7c3aed;
+            font-size: 0.72rem; font-weight: 700;
+        }
+
+        /* ── Loading / Empty ── */
+        .loading-state {
+            text-align: center; padding: 64px 20px; color: #94a3b8;
+        }
+        .spinner {
+            width: 34px; height: 34px;
+            border: 3px solid #fee2e2; border-top-color: #fc5858;
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+            margin: 0 auto 14px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state {
+            text-align: center; padding: 64px 20px; background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .empty-state h3 { font-size: 1.1rem; color: #334155; margin: 0 0 8px; }
+        .empty-state p  { color: #94a3b8; font-size: 0.9rem; margin: 0; }
+
+        /* ══════════════════════════════════════════
+           MODAL
+        ══════════════════════════════════════════ */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.5);
+            z-index: 800; display: flex;
+            align-items: center; justify-content: center;
+            padding: 20px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: all; }
+        .modal {
+            background: #fff; border-radius: 16px;
+            width: 100%; max-width: 540px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+            transform: translateY(12px) scale(0.98);
+            transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+            max-height: 90vh; display: flex; flex-direction: column;
+        }
+        .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+
+        .modal-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 22px 16px;
+            border-bottom: 1.5px solid #f1f5f9; flex-shrink: 0;
+        }
+        .modal-title { font-size: 1rem; font-weight: 700; color: #1e293b; }
+        .modal-subtitle { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+        .modal-close {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: 1.5px solid #e2e8f0; background: #f8fafc;
+            color: #64748b; font-size: 1rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; flex-shrink: 0;
+        }
+        .modal-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+
+        .modal-body {
+            padding: 20px 22px;
+            overflow-y: auto; flex: 1;
+        }
+        .modal-body::-webkit-scrollbar { width: 5px; }
+        .modal-body::-webkit-scrollbar-track { background: #f8fafc; }
+        .modal-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        .modal-ft {
+            padding: 14px 22px 18px;
+            border-top: 1.5px solid #f1f5f9;
+            display: flex; gap: 10px; justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        /* ── Breadcrumb dentro del modal ── */
+        .modal-breadcrumb {
+            display: flex; align-items: center; gap: 6px;
+            margin-bottom: 18px; flex-wrap: wrap;
+        }
+        .bc-item {
+            font-size: 0.78rem; font-weight: 600; color: #94a3b8;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .bc-item.active { color: #1e293b; }
+        .bc-sep { color: #cbd5e1; font-size: 0.75rem; }
+        .bc-badge {
+            padding: 2px 8px; border-radius: 20px;
+            font-size: 0.7rem; font-weight: 700;
+        }
+
+        /* ── Tarjetas de tipo de baja ── */
+        .tipo-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+        }
+        .tipo-card {
+            border: 2px solid #e2e8f0; border-radius: 12px;
+            padding: 18px 12px; text-align: center; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .tipo-card:hover { border-color: #fc5858; background: #fff8f8; }
+        .tipo-card.selected { border-color: #fc5858; background: #fff1f1; }
+        .tipo-card-icon {
+            font-size: 1.8rem; margin-bottom: 8px; display: block;
+        }
+        .tipo-card-name {
+            font-size: 0.88rem; font-weight: 700; color: #1e293b; display: block;
+        }
+        .tipo-card-desc {
+            font-size: 0.74rem; color: #94a3b8; margin-top: 4px; display: block;
+            line-height: 1.3;
+        }
+        .tipo-card.selected .tipo-card-name { color: #dc2626; }
+
+        /* ── Lista de clientes en modal ── */
+        .modal-search-wrap { position: relative; margin-bottom: 12px; }
+        .modal-search-icon {
+            position: absolute; left: 12px; top: 50%;
+            transform: translateY(-50%); color: #94a3b8; pointer-events: none;
+        }
+        .modal-search {
+            width: 100%; padding: 9px 14px 9px 38px;
+            border: 1.5px solid #e2e8f0; border-radius: 9px;
+            font-size: 0.88rem; font-family: inherit; background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+        .modal-search:focus {
+            outline: none; border-color: #fc5858;
+            box-shadow: 0 0 0 3px rgba(252,88,88,0.12);
+        }
+        .modal-search::placeholder { color: #cbd5e1; }
+
+        .modal-list {
+            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            max-height: 260px; overflow-y: auto;
+        }
+        .modal-list::-webkit-scrollbar { width: 5px; }
+        .modal-list::-webkit-scrollbar-track { background: #f8fafc; }
+        .modal-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        .modal-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 11px 14px; cursor: pointer;
+            border-bottom: 1px solid #f1f5f9; transition: background 0.12s;
+        }
+        .modal-row:last-child { border-bottom: none; }
+        .modal-row:hover { background: #fff8f8; }
+        .modal-row.selected { background: #fff1f1; }
+        .modal-row-info { flex: 1; min-width: 0; }
+        .modal-row-name {
+            font-weight: 600; font-size: 0.88rem; color: #1e293b;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .modal-row-sub { font-size: 0.74rem; color: #94a3b8; margin-top: 1px; }
+        .modal-row-check {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #fc5858; color: #fff;
+            display: none; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .modal-row.selected .modal-row-check { display: flex; }
+        .modal-empty { text-align: center; padding: 24px; color: #94a3b8; font-size: 0.85rem; }
+
+        /* ── Locales en modal ── */
+        .local-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px; margin-top: 4px;
+        }
+        .local-card {
+            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            padding: 12px 14px; cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; gap: 9px;
+        }
+        .local-card:hover { border-color: #fc5858; background: #fff8f8; }
+        .local-card.selected { border-color: #fc5858; background: #fff1f1; }
+        .local-card-icon {
+            font-size: 1.1rem; flex-shrink: 0;
+        }
+        .local-card-name { font-weight: 600; font-size: 0.83rem; color: #1e293b; }
+        .local-card.selected .local-card-name { color: #dc2626; }
+        .local-manual-wrap { margin-top: 10px; }
+        .local-manual-label { font-size: 0.75rem; font-weight: 600; color: #64748b; margin-bottom: 5px; display: block; }
+        .local-manual {
+            width: 100%; padding: 9px 12px;
+            border: 1.5px solid #e2e8f0; border-radius: 9px;
+            font-size: 0.88rem; font-family: inherit;
+            transition: border-color 0.2s; box-sizing: border-box;
+        }
+        .local-manual:focus { outline: none; border-color: #fc5858; box-shadow: 0 0 0 3px rgba(252,88,88,0.12); }
+
+        /* ── Módulos en modal ── */
+        .modulos-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+            gap: 8px;
+        }
+        .modulo-item {
+            display: flex; align-items: center; gap: 9px;
+            border: 1.5px solid #e2e8f0; border-radius: 9px;
+            padding: 10px 12px; cursor: pointer; transition: all 0.15s;
+            user-select: none;
+        }
+        .modulo-item:hover { border-color: #c4b5fd; background: #faf5ff; }
+        .modulo-item.checked { border-color: #a78bfa; background: #f5f3ff; }
+        .modulo-item input { display: none; }
+        .mcheck {
+            width: 17px; height: 17px; border-radius: 4px;
+            border: 2px solid #e2e8f0; background: #fff;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all 0.15s;
+        }
+        .modulo-item.checked .mcheck { background: #8b5cf6; border-color: #8b5cf6; }
+        .modulo-item.checked .mcheck::after {
+            content: ''; width: 4px; height: 8px;
+            border: 2px solid #fff; border-top: none; border-left: none;
+            transform: rotate(45deg) translateY(-1px); display: block;
+        }
+        .modulo-item-name { font-size: 0.82rem; font-weight: 500; color: #334155; }
+        .modulo-item.checked .modulo-item-name { color: #6d28d9; font-weight: 600; }
+
+        /* ── Grid de motivos ── */
+        .motivo-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+            gap: 8px;
+        }
+        .motivo-card {
+            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            padding: 13px 10px; text-align: center; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .motivo-card:hover { border-color: #fc5858; background: #fff8f8; }
+        .motivo-card.selected { border-color: #fc5858; background: #fff1f1; }
+        .motivo-icon  { font-size: 1.4rem; display: block; margin-bottom: 6px; }
+        .motivo-label { font-size: 0.8rem; font-weight: 600; color: #334155; }
+        .motivo-card.selected .motivo-label { color: #dc2626; }
+
+        /* ── MRR input en modal ── */
+        .mrr-input-wrap {
+            margin-top: 16px; padding-top: 16px;
+            border-top: 1.5px solid #f1f5f9;
+        }
+        .mrr-input-label {
+            display: block; font-size: 0.78rem; font-weight: 700;
+            color: #64748b; margin-bottom: 6px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .mrr-input {
+            width: 180px; padding: 9px 12px;
+            border: 1.5px solid #e2e8f0; border-radius: 9px;
+            font-size: 0.95rem; font-family: inherit; font-weight: 600;
+            color: #1e293b; transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .mrr-input:focus { outline: none; border-color: #fc5858; box-shadow: 0 0 0 3px rgba(252,88,88,0.12); }
+
+        /* ── MRR valor en tabla ── */
+        .mrr-val {
+            font-weight: 700; color: #dc2626; font-size: 0.88rem;
+        }
+
+        /* ── Stat chip naranja ── */
+        .stat-chip--orange strong { color: #ea580c; }
+
+        /* ── Filtro de fechas ── */
+        .filter-date-wrap {
+            display: flex; align-items: center; gap: 6px;
+            margin-left: 8px; padding-left: 12px;
+            border-left: 1.5px solid #e2e8f0;
+        }
+        .filter-date-label {
+            font-size: 0.72rem; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+        }
+        .filter-date {
+            padding: 5px 10px; border-radius: 8px;
+            border: 1.5px solid #e2e8f0; font-size: 0.8rem;
+            font-family: inherit; color: #334155;
+            background: #fff; cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        .filter-date:focus { outline: none; border-color: #fc5858; box-shadow: 0 0 0 3px rgba(252,88,88,0.1); }
+        .filter-date-clear {
+            font-size: 0.75rem; color: #94a3b8; cursor: pointer;
+            background: none; border: none; font-family: inherit;
+            padding: 2px 4px; border-radius: 4px;
+            transition: color 0.15s;
+        }
+        .filter-date-clear:hover { color: #dc2626; }
+
+        /* ── Badge motivo en tabla ── */
+        .badge-motivo {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border-radius: 20px;
+            background: #fef9c3; color: #854d0e;
+            font-size: 0.73rem; font-weight: 700;
+        }
+
+        /* ── Contexto seleccionado en modal ── */
+        .ctx-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 8px;
+            font-size: 0.77rem; font-weight: 600;
+            margin-bottom: 12px; margin-right: 6px;
+        }
+        .ctx-chip--cliente { background: #fff1f1; border: 1.5px solid #fecaca; color: #dc2626; }
+        .ctx-chip--motivo  { background: #fefce8; border: 1.5px solid #fde68a; color: #92400e; }
+        .ctx-chip--local   { background: #eff6ff; border: 1.5px solid #bfdbfe; color: #2563eb; }
+
+        /* ── Botones del modal ── */
+        .btn-modal-back {
+            padding: 9px 18px; border-radius: 9px;
+            border: 1.5px solid #e2e8f0; background: #fff; color: #64748b;
+            font-size: 0.85rem; font-weight: 600; font-family: inherit;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: all 0.15s;
+        }
+        .btn-modal-back:hover { border-color: #94a3b8; color: #1e293b; }
+        .btn-modal-next {
+            padding: 9px 20px; border-radius: 9px;
+            border: none; background: #fc5858; color: #fff;
+            font-size: 0.85rem; font-weight: 700; font-family: inherit;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: background 0.15s;
+        }
+        .btn-modal-next:hover    { background: #ef4444; }
+        .btn-modal-next:disabled { background: #fca5a5; cursor: not-allowed; }
+        .btn-modal-save {
+            padding: 9px 22px; border-radius: 9px;
+            border: none; background: #dc2626; color: #fff;
+            font-size: 0.85rem; font-weight: 700; font-family: inherit;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: background 0.15s;
+        }
+        .btn-modal-save:hover    { background: #b91c1c; }
+        .btn-modal-save:disabled { background: #fca5a5; cursor: not-allowed; }
+
+        /* ── Status banner ── */
+        .status-banner {
+            display: none; padding: 11px 16px; border-radius: 10px;
+            font-size: 0.88rem; font-weight: 500; margin-bottom: 16px;
+            align-items: center; gap: 8px;
+        }
+        .status-banner.ok  { display: flex; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .status-banner.err { display: flex; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+
+        /* ── Saving spinner en modal ── */
+        .modal-saving {
+            display: none; align-items: center; justify-content: center;
+            gap: 10px; padding: 24px; color: #64748b; font-size: 0.88rem;
+        }
+        .modal-saving .spinner { margin: 0; width: 22px; height: 22px; }
+        /* ── Botones Editar / Borrar en fila ── */
+        .td-acciones { text-align: center; white-space: nowrap; }
+        .btn-accion {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; border-radius: 8px;
+            border: 1.5px solid transparent; cursor: pointer;
+            font-size: 0.85rem; transition: background 0.13s, border-color 0.13s;
+            background: transparent;
+        }
+        .btn-editar { color: #2563eb; }
+        .btn-editar:hover { background: #dbeafe; border-color: #93c5fd; }
+        .btn-borrar { color: #dc2626; margin-left: 4px; }
+        .btn-borrar:hover { background: #fee2e2; border-color: #fca5a5; }
+
+        /* ── Modal Editar ── */
+        .edit-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.5);
+            z-index: 900; display: flex;
+            align-items: center; justify-content: center;
+            padding: 20px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .edit-overlay.open { opacity: 1; pointer-events: all; }
+        .edit-modal {
+            background: #fff; border-radius: 16px;
+            width: 100%; max-width: 480px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+            transform: translateY(10px) scale(0.98);
+            transition: transform 0.22s cubic-bezier(.34,1.56,.64,1);
+            overflow: hidden;
+        }
+        .edit-overlay.open .edit-modal { transform: translateY(0) scale(1); }
+        .edit-modal-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 24px 16px; border-bottom: 1.5px solid #f1f5f9;
+        }
+        .edit-modal-title { font-size: 1.05rem; font-weight: 700; color: #1e293b; }
+        .edit-modal-sub   { font-size: 0.78rem; color: #94a3b8; margin-top: 3px; }
+        .edit-modal-body  { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; max-height: 60vh; overflow-y: auto; }
+        .edit-field label { display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px; }
+        .edit-field select,
+        .edit-field input[type="text"],
+        .edit-field input[type="number"] {
+            width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0;
+            border-radius: 8px; font-size: 0.9rem; color: #1e293b;
+            background: #f8fafc; outline: none; box-sizing: border-box;
+            transition: border-color 0.15s;
+        }
+        .edit-field select:focus,
+        .edit-field input:focus { border-color: #fc5858; background: #fff; }
+        .edit-modulos-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+        .edit-mod-item {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 10px; border-radius: 20px; cursor: pointer;
+            border: 1.5px solid #e2e8f0; font-size: 0.78rem; color: #475569;
+            background: #f8fafc; transition: all 0.12s; user-select: none;
+        }
+        .edit-mod-item.checked { background: #ede9fe; border-color: #a78bfa; color: #7c3aed; font-weight: 700; }
+        .edit-modal-ft {
+            display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+            padding: 14px 24px; border-top: 1.5px solid #f1f5f9;
+        }
+        .btn-edit-cancel {
+            padding: 9px 18px; border-radius: 8px; border: 1.5px solid #e2e8f0;
+            background: #fff; color: #64748b; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-edit-cancel:hover { background: #f8fafc; }
+        .btn-edit-save {
+            padding: 9px 20px; border-radius: 8px; border: none;
+            background: linear-gradient(135deg,#fc5858,#f43f3f);
+            color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-edit-save:hover { opacity: 0.9; }
+
+        /* ── Modal Confirmar Borrado ── */
+        .confirm-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.5);
+            z-index: 950; display: flex;
+            align-items: center; justify-content: center;
+            padding: 20px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.18s;
+        }
+        .confirm-overlay.open { opacity: 1; pointer-events: all; }
+        .confirm-modal {
+            background: #fff; border-radius: 14px;
+            width: 100%; max-width: 380px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+            transform: scale(0.95);
+            transition: transform 0.2s cubic-bezier(.34,1.56,.64,1);
+            padding: 28px 24px 20px;
+            text-align: center;
+        }
+        .confirm-overlay.open .confirm-modal { transform: scale(1); }
+        .confirm-icon { font-size: 2.4rem; margin-bottom: 10px; }
+        .confirm-title { font-size: 1rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+        .confirm-desc  { font-size: 0.83rem; color: #64748b; margin-bottom: 22px; line-height: 1.5; }
+        .confirm-btns  { display: flex; gap: 10px; justify-content: center; }
+        .btn-confirm-cancel {
+            flex: 1; padding: 9px; border-radius: 8px; border: 1.5px solid #e2e8f0;
+            background: #fff; color: #64748b; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-confirm-cancel:hover { background: #f8fafc; }
+        .btn-confirm-delete {
+            flex: 1; padding: 9px; border-radius: 8px; border: none;
+            background: #dc2626; color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+        }
+        .btn-confirm-delete:hover { background: #b91c1c; }
+    </style>
+</head>
+<body>
+
+<header class="page-header">
+    <div class="header-inner">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span class="brand-name">Yurest</span>
+        </div>
+        <h1>Bajas</h1>
+        <p class="header-sub">Registro de bajas de clientes, locales y módulos</p>
+        <button onclick="cerrarSesion()" style="
+            position:absolute;top:20px;right:24px;
+            background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.35);
+            color:#fff;padding:7px 16px;border-radius:8px;font-size:0.82rem;
+            font-weight:600;font-family:inherit;cursor:pointer;
+            display:flex;align-items:center;gap:6px;transition:background 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar sesión
+        </button>
+    </div>
+</header>
+
+<!-- Sidebar -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-hd">
+        <div class="sidebar-brand"><span class="sidebar-brand-dot"></span>Yurest</div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
+    <div class="sidebar-label">Secciones</div>
+    <a href="lista.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Fichas de cliente
+    </a>
+    <a href="distribucion.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            <circle cx="19" cy="6" r="2.5"/><circle cx="5" cy="6" r="2.5"/>
+        </svg>
+        Implementadores
+    </a>
+    <a href="bajas.html" class="sidebar-item active">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+        Bajas
+    </a>
+    <a href="proyectos.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        Proyectos
+    </a>
+    <div class="sidebar-ft">
+        <button onclick="closeSidebar();cerrarSesion()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar sesión
+        </button>
+    </div>
+</nav>
+
+<!-- ════════════════════════════════════════════
+     MODAL NUEVA BAJA
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+        <div class="modal-hd">
+            <div>
+                <div class="modal-title" id="modal-title">Nueva baja</div>
+                <div class="modal-subtitle" id="modal-subtitle">Selecciona el tipo de baja</div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal()">✕</button>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div class="modal-body" id="modal-body">
+            <!-- Se rellena por JS -->
+        </div>
+
+        <div class="modal-ft" id="modal-ft">
+            <!-- Se rellena por JS -->
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MODAL EDITAR BAJA
+════════════════════════════════════════════ -->
+<div class="edit-overlay" id="edit-overlay">
+    <div class="edit-modal">
+        <div class="edit-modal-hd">
+            <div>
+                <div class="edit-modal-title">Editar baja</div>
+                <div class="edit-modal-sub" id="edit-modal-sub">—</div>
+            </div>
+            <button class="modal-close" onclick="cerrarEditModal()">✕</button>
+        </div>
+        <div class="edit-modal-body" id="edit-modal-body">
+            <!-- Se rellena por JS -->
+        </div>
+        <div class="edit-modal-ft">
+            <button class="btn-edit-cancel" onclick="cerrarEditModal()">Cancelar</button>
+            <button class="btn-edit-save" onclick="guardarEdicion()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Guardar cambios
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MODAL CONFIRMAR BORRADO
+════════════════════════════════════════════ -->
+<div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-modal">
+        <div class="confirm-icon">🗑️</div>
+        <div class="confirm-title">¿Eliminar esta baja?</div>
+        <div class="confirm-desc" id="confirm-desc">Esta acción enviará una solicitud de eliminación al sistema.</div>
+        <div class="confirm-btns">
+            <button class="btn-confirm-cancel" onclick="cerrarConfirm()">Cancelar</button>
+            <button class="btn-confirm-delete" onclick="ejecutarBorrado()">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     CONTENIDO PRINCIPAL
+════════════════════════════════════════════ -->
+<div class="container">
+
+    <div id="status-banner" class="status-banner"></div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+        <div class="search-wrap">
+            <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input id="search-bajas" class="search-input" type="search"
+                   placeholder="Buscar por cliente, local…" oninput="filtrarBajas()">
+        </div>
+        <button class="btn-add-baja" onclick="abrirModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Añadir baja
+        </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="stats-bar" style="display:none;">
+        <div class="stat-chip"><strong id="stat-total">0</strong> bajas totales</div>
+        <div class="stat-chip stat-chip--red"><strong id="stat-cliente">0</strong> de cliente</div>
+        <div class="stat-chip stat-chip--blue"><strong id="stat-local">0</strong> de local</div>
+        <div class="stat-chip stat-chip--purple"><strong id="stat-modulos">0</strong> de módulos</div>
+        <div class="stat-chip stat-chip--orange"><strong id="stat-mrr">0,00 €</strong> MRR perdido</div>
+    </div>
+
+    <!-- Informe mensual -->
+    <div class="informe-widget" id="informe-widget" style="display:none;">
+        <div class="informe-hd" onclick="toggleInforme()">
+            <div class="informe-hd-left">
+                <span class="informe-hd-icon">📊</span>
+                <span class="informe-hd-title">Informe mensual</span>
+                <span class="informe-hd-sub" id="informe-hd-sub"></span>
+            </div>
+            <svg class="informe-toggle-arrow" id="informe-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </div>
+        <div class="informe-body" id="informe-body">
+            <div class="informe-table-wrap">
+                <table class="informe-table">
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            <th class="th-r">Clientes</th>
+                            <th class="th-r">Locales</th>
+                            <th class="th-r">Módulos</th>
+                            <th class="th-r">MRR perdido</th>
+                        </tr>
+                    </thead>
+                    <tbody id="informe-tbody">
+                        <tr><td colspan="5" class="informe-empty">Sin datos</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-bar" id="filter-bar" style="display:none;">
+        <span class="filter-label">Tipo</span>
+        <button class="chip active-all" data-tipo="" onclick="setFiltroTipo(this,'')">Todas</button>
+        <button class="chip" data-tipo="cliente"  onclick="setFiltroTipo(this,'cliente')">Cliente</button>
+        <button class="chip" data-tipo="local"    onclick="setFiltroTipo(this,'local')">Local</button>
+        <button class="chip" data-tipo="modulos"  onclick="setFiltroTipo(this,'modulos')">Módulos</button>
+        <div class="filter-date-wrap">
+            <span class="filter-date-label">Desde</span>
+            <input type="text" class="filter-date" id="filtro-desde" placeholder="dd/mm/aaaa" readonly>
+            <span class="filter-date-label">Hasta</span>
+            <input type="text" class="filter-date" id="filtro-hasta" placeholder="dd/mm/aaaa" readonly>
+            <button class="filter-date-clear" onclick="limpiarFiltroFecha()" title="Limpiar fechas">✕</button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-state" class="loading-state">
+        <div class="spinner"></div>
+        <p>Cargando bajas…</p>
+    </div>
+
+    <!-- Tabla -->
+    <div id="table-wrap" class="table-wrap" style="display:none;">
+        <table class="bajas-table">
+            <thead>
+                <tr>
+                    <th>Fecha baja</th>
+                    <th>Fecha efecto</th>
+                    <th>Cliente</th>
+                    <th class="th-center">Tipo de baja</th>
+                    <th>Motivo</th>
+                    <th>Local</th>
+                    <th>Módulos</th>
+                    <th class="th-center">MRR Perdido</th>
+                    <th class="th-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="bajas-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- Empty -->
+    <div id="empty-state" class="empty-state" style="display:none;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+        <h3>Sin bajas registradas</h3>
+        <p>Pulsa "Añadir baja" para registrar la primera.</p>
+    </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════════════
+const WEBHOOK_LOGIN   = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
+const WEBHOOK_BAJAS   = 'https://n8n-soporte.data.yurest.dev/webhook/84f094b2-9e55-448f-8ad9-f28721841873';
+const WEBHOOK_BAJA_CLIENTE = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
+const WEBHOOK_BAJA_LOCAL   = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
+const WEBHOOK_BAJA_MODULOS = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
+const WEBHOOK_BAJA_EDITAR  = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
+const WEBHOOK_BAJA_BORRAR  = 'https://n8n-soporte.data.yurest.dev/webhook-test/95d5ed5d-1139-45b9-88c2-3066bc49e45b';
+
+const TODOS_MODULOS = [
+    'Compras','Cocina','Stock','Analítica de Ventas','Finanzas',
+    'RRHH','Gestor Documental','Checklists','Auditorías','APPCC',
+    'Comunicación y averías','Etiquetado','Lector Óptico OCR',
+    'Paneles BI (Dashboards Dinámicos)','Firma Digital',
+    'Cocina de Producción','Almacén Central','Conexión TPV'
+];
+
+// ══════════════════════════════════════════════════════════════════
+//  ESTADO
+// ══════════════════════════════════════════════════════════════════
+let todasBajas      = [];
+let bajasFiltradas  = [];
+let filtroTipo      = '';
+let todosClientes   = [];
+
+// Estado modal
+// Pasos: 0=tipo · 1=cliente · 2=motivo · 3=local · 4=módulos
+let mPaso     = 0;
+let mTipo     = '';  // 'cliente' | 'local' | 'modulos'
+let mCliente  = null;
+let mMotivo   = '';
+let mLocal    = null;
+let mModulos       = new Set();
+let mMRR           = '';
+let mFechaEfecto   = '';
+let mClientesFiltrados = [];
+
+const MOTIVOS_BAJA = [
+    { id: 'cierre_ops',      label: 'Cierre ops',               icon: '🔒' },
+    { id: 'ux',              label: 'UX (Experience)',           icon: '🖥️' },
+    { id: 'feed_comercial',  label: 'Feed comercial',            icon: '📣' },
+    { id: 'precio',          label: 'Precio',                    icon: '💶' },
+    { id: 'problemas_lider', label: 'Problemas líder proyecto',  icon: '⚠️' },
+    { id: 'desarrollo_prop', label: 'Desarrollo propio',         icon: '🛠️' },
+    { id: 'ces_producto',    label: 'CES (producto)',             icon: '📦' },
+];
+
+// ══════════════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════════════
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatFecha(v) {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (isNaN(d)) return String(v);
+    return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function cerrarSesion() { sessionStorage.clear(); window.location.replace('login.html'); }
+
+// ══════════════════════════════════════════════════════════════════
+//  SIDEBAR
+// ══════════════════════════════════════════════════════════════════
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeSidebar(); cerrarModal(); } });
+
+// ══════════════════════════════════════════════════════════════════
+//  CARGA BAJAS (tabla principal)
+// ══════════════════════════════════════════════════════════════════
+async function cargarBajas() {
+    document.getElementById('loading-state').style.display = 'block';
+    document.getElementById('table-wrap').style.display    = 'none';
+    document.getElementById('empty-state').style.display   = 'none';
+
+    if (!WEBHOOK_BAJAS) {
+        // Sin webhook: mostrar tabla vacía
+        todasBajas = [];
+        renderBajas();
+        return;
+    }
+    const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+    try {
+        const res = await fetch(WEBHOOK_BAJAS, {
+            method: 'GET',
+            headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
+        });
+        if (!res.ok) throw new Error('Error ' + res.status);
+        let data = {};
+        try { data = await res.json(); } catch(_) {}
+        todasBajas = Array.isArray(data) ? data
+                   : Array.isArray(data.bajas) ? data.bajas : [];
+        renderBajas();
+    } catch(err) {
+        document.getElementById('loading-state').innerHTML =
+            `<p style="color:#dc2626;">Error al cargar bajas: ${esc(err.message)}</p>`;
+    }
+}
+
+function filtrarBajas() {
+    const q      = (document.getElementById('search-bajas').value||'').toLowerCase().trim();
+    const desde  = document.getElementById('filtro-desde')?.value || '';
+    const hasta  = document.getElementById('filtro-hasta')?.value || '';
+    const dDesde = desde ? new Date(desde + 'T00:00:00') : null;
+    const dHasta = hasta ? new Date(hasta + 'T23:59:59') : null;
+
+    bajasFiltradas = todasBajas.filter(b => {
+        const matchTipo = !filtroTipo || (b.tipo||'').toLowerCase() === filtroTipo;
+        const matchQ = !q ||
+            (b.cliente_nombre||'').toLowerCase().includes(q) ||
+            (b.local||'').toLowerCase().includes(q) ||
+            (b.cliente_cif||'').toLowerCase().includes(q);
+        const fechaBaja = b.fecha_baja ? new Date(b.fecha_baja) : (b.fecha ? new Date(b.fecha) : null);
+        const matchDesde = !dDesde || (fechaBaja && fechaBaja >= dDesde);
+        const matchHasta = !dHasta || (fechaBaja && fechaBaja <= dHasta);
+        return matchTipo && matchQ && matchDesde && matchHasta;
+    });
+    renderTabla();
+}
+
+function limpiarFiltroFecha() {
+    if (window._fpDesde) window._fpDesde.clear();
+    if (window._fpHasta) window._fpHasta.clear();
+    filtrarBajas();
+}
+
+function setFiltroTipo(el, tipo) {
+    filtroTipo = tipo;
+    document.querySelectorAll('.filter-bar .chip').forEach(c => {
+        c.className = 'chip';
+        if (c.dataset.tipo === tipo) {
+            c.classList.add(tipo ? 'active-'+tipo : 'active-all');
+        }
+    });
+    filtrarBajas();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INFORME MENSUAL
+// ══════════════════════════════════════════════════════════════════
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function computarMeses() {
+    const meses = {};
+    todasBajas.forEach(b => {
+        const d = new Date(b.fecha_baja || b.fecha);
+        if (isNaN(d)) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        if (!meses[key]) meses[key] = { key, year: d.getFullYear(), month: d.getMonth(), cliente: 0, local: 0, modulos: 0, mrr: 0 };
+        const tipo = (b.tipo || '').toLowerCase();
+        if (tipo === 'cliente') meses[key].cliente++;
+        else if (tipo === 'local') meses[key].local++;
+        else if (tipo === 'modulos') meses[key].modulos++;
+        meses[key].mrr += parseFloat(b.mrr) || 0;
+    });
+    return Object.values(meses).sort((a, b) => b.key.localeCompare(a.key)).slice(0, 6);
+}
+
+function renderInformeMensual() {
+    const filas = computarMeses();
+    const widget = document.getElementById('informe-widget');
+    if (!filas.length) { widget.style.display = 'none'; return; }
+    widget.style.display = '';
+
+    const hoy = new Date();
+    const keyHoy = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+    const totalMRR = filas.reduce((s, f) => s + f.mrr, 0);
+    const maxMRR   = Math.max(...filas.map(f => f.mrr), 1);
+
+    // Subtitle: resumen actual
+    const mesActual = filas.find(f => f.key === keyHoy);
+    const subParts = [];
+    if (mesActual) {
+        subParts.push(`Este mes: ${mesActual.cliente + mesActual.local + mesActual.modulos} bajas`);
+        if (mesActual.mrr > 0) subParts.push(`${mesActual.mrr.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} € MRR`);
+    }
+    document.getElementById('informe-hd-sub').textContent = subParts.join(' · ');
+
+    document.getElementById('informe-tbody').innerHTML = filas.map(f => {
+        const esMesActual = f.key === keyHoy;
+        const mesLabel = `${MESES_ES[f.month]} ${f.year}`;
+        const pct = totalMRR > 0 ? Math.round((f.mrr / maxMRR) * 100) : 0;
+        const mrrHtml = f.mrr > 0
+            ? `<div class="informe-mrr-wrap">
+                   <span class="informe-mrr-val">${f.mrr.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</span>
+                   <div class="informe-mrr-bar-track"><div class="informe-mrr-bar-fill" style="width:${pct}%"></div></div>
+               </div>`
+            : `<span class="informe-mrr-zero">—</span>`;
+        const badge = (n, cls) => n > 0
+            ? `<span class="ibadge ibadge-${cls}">${n}</span>`
+            : `<span class="ibadge ibadge-0">—</span>`;
+        return `<tr>
+            <td class="informe-mes${esMesActual ? ' current' : ''}">${esc(mesLabel)}${esMesActual ? ' <span style="font-size:0.65rem;background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:10px;font-weight:700;">Actual</span>' : ''}</td>
+            <td class="td-r">${badge(f.cliente,'red')}</td>
+            <td class="td-r">${badge(f.local,'blue')}</td>
+            <td class="td-r">${badge(f.modulos,'purple')}</td>
+            <td class="td-r">${mrrHtml}</td>
+        </tr>`;
+    }).join('');
+}
+
+let _informeOpen = false;
+function toggleInforme() {
+    _informeOpen = !_informeOpen;
+    document.getElementById('informe-body').classList.toggle('open', _informeOpen);
+    document.getElementById('informe-arrow').classList.toggle('open', _informeOpen);
+}
+
+function renderBajas() {
+    document.getElementById('loading-state').style.display = 'none';
+    bajasFiltradas = [...todasBajas];
+
+    // Stats
+    const nCliente = todasBajas.filter(b => b.tipo==='cliente').length;
+    const nLocal   = todasBajas.filter(b => b.tipo==='local').length;
+    const nMod     = todasBajas.filter(b => b.tipo==='modulos').length;
+    const totalMRR = todasBajas.reduce((acc, b) => acc + (parseFloat(b.mrr)||0), 0);
+    document.getElementById('stat-total').textContent   = todasBajas.length;
+    document.getElementById('stat-cliente').textContent = nCliente;
+    document.getElementById('stat-local').textContent   = nLocal;
+    document.getElementById('stat-modulos').textContent = nMod;
+    document.getElementById('stat-mrr').textContent     = totalMRR.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
+
+    if (todasBajas.length > 0) {
+        document.getElementById('stats-bar').style.display  = 'flex';
+        document.getElementById('filter-bar').style.display = 'flex';
+    }
+    renderInformeMensual();
+    renderTabla();
+}
+
+function renderTabla() {
+    const tbody = document.getElementById('bajas-tbody');
+    if (!bajasFiltradas.length) {
+        document.getElementById('table-wrap').style.display  = 'none';
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+    }
+    document.getElementById('table-wrap').style.display  = 'block';
+    document.getElementById('empty-state').style.display = 'none';
+
+    tbody.innerHTML = bajasFiltradas.map((b, i) => {
+        const tipo = (b.tipo||'').toLowerCase();
+        const badgeMap = { cliente: 'badge-cliente', local: 'badge-local', modulos: 'badge-modulos' };
+        const labelMap = { cliente: 'Cliente', local: 'Local', modulos: 'Módulos' };
+        const iconMap  = { cliente: '👤', local: '🏪', modulos: '🧩' };
+        const badge = badgeMap[tipo] || 'badge-cliente';
+        const label = labelMap[tipo] || tipo;
+        const icon  = iconMap[tipo]  || '•';
+
+        const mods = Array.isArray(b.modulos) && b.modulos.length
+            ? `<div class="mod-tags">${b.modulos.map(m=>`<span class="mod-tag">${esc(m)}</span>`).join('')}</div>`
+            : '—';
+
+        const motivoObj   = MOTIVOS_BAJA.find(m => m.id === b.motivo_id) || null;
+        const motivoTxt   = b.motivo || b.motivo_id || '—';
+        const motivoBadge = motivoObj
+            ? `<span class="badge-motivo">${motivoObj.icon} ${esc(motivoObj.label)}</span>`
+            : `<span style="color:#94a3b8;font-size:0.82rem;">${esc(motivoTxt)}</span>`;
+
+        const mrr = b.mrr != null && b.mrr !== ''
+            ? `<span class="mrr-val">${parseFloat(b.mrr).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €</span>`
+            : '—';
+
+        const fBaja   = b.fecha_baja || b.fecha;
+        const fEfecto = b.fecha_efecto;
+        return `<tr>
+            <td class="td-fecha">${esc(formatFecha(fBaja))}</td>
+            <td class="td-fecha">${fEfecto ? esc(formatFecha(fEfecto)) : '<span style="color:#cbd5e1">—</span>'}</td>
+            <td>
+                <div class="td-nombre">${esc(b.cliente_nombre||'—')}</div>
+                <div class="td-sub">${esc(b.cliente_cif||'')}</div>
+            </td>
+            <td class="td-center">
+                <span class="badge-baja ${badge}">${icon} ${label}</span>
+            </td>
+            <td>${motivoBadge}</td>
+            <td>${esc(b.local||'—')}</td>
+            <td>${mods}</td>
+            <td class="td-center">${mrr}</td>
+            <td class="td-acciones">
+                <button class="btn-accion btn-editar" onclick="editarBaja(${i})" title="Editar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn-accion btn-borrar" onclick="confirmarBorrado(${i})" title="Eliminar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CARGA CLIENTES (para el modal)
+// ══════════════════════════════════════════════════════════════════
+async function cargarClientes() {
+    if (todosClientes.length) return; // ya cargados
+    const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+    try {
+        const res = await fetch(WEBHOOK_LOGIN, {
+            method: 'GET',
+            headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
+        });
+        if (!res.ok) throw new Error('Error ' + res.status);
+        let data = {};
+        try { data = await res.json(); } catch(_) {}
+        let fichas = Array.isArray(data) ? data
+                   : Array.isArray(data.clientes) ? data.clientes
+                   : Array.isArray(data.data) ? data.data : [];
+        todosClientes = fichas
+            .map(f => {
+                const out = {};
+                Object.keys(f).forEach(k => { out[k.trim()] = f[k]; });
+                return out;
+            })
+            .filter(f => (f['Baja'] || '').toString().trim().toLowerCase() === 'no');
+    } catch(err) {
+        console.error('Error cargando clientes:', err);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  MODAL — apertura y navegación
+// ══════════════════════════════════════════════════════════════════
+function abrirModal() {
+    mPaso    = 0;
+    mTipo    = '';
+    mCliente = null;
+    mMotivo  = '';
+    mLocal   = null;
+    mModulos.clear();
+    mMRR          = '';
+    mFechaEfecto  = '';
+    mClientesFiltrados = [];
+    renderModalPaso();
+    document.getElementById('modal-overlay').classList.add('open');
+}
+
+function cerrarModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function renderModalPaso() {
+    const body = document.getElementById('modal-body');
+    const ft   = document.getElementById('modal-ft');
+
+    // ── PASO 0: elegir tipo ──────────────────────────────────────
+    if (mPaso === 0) {
+        document.getElementById('modal-title').textContent    = 'Nueva baja';
+        document.getElementById('modal-subtitle').textContent = 'Selecciona el tipo de baja';
+        body.innerHTML = `
+            <div class="tipo-grid">
+                <div class="tipo-card ${mTipo==='cliente'?'selected':''}" onclick="selTipo('cliente')">
+                    <span class="tipo-card-icon">👤</span>
+                    <span class="tipo-card-name">Cliente</span>
+                    <span class="tipo-card-desc">Baja total del cliente en el sistema</span>
+                </div>
+                <div class="tipo-card ${mTipo==='local'?'selected':''}" onclick="selTipo('local')">
+                    <span class="tipo-card-icon">🏪</span>
+                    <span class="tipo-card-name">Local</span>
+                    <span class="tipo-card-desc">Baja de un local concreto del cliente</span>
+                </div>
+                <div class="tipo-card ${mTipo==='modulos'?'selected':''}" onclick="selTipo('modulos')">
+                    <span class="tipo-card-icon">🧩</span>
+                    <span class="tipo-card-name">Módulos</span>
+                    <span class="tipo-card-desc">Baja de módulos específicos en un local</span>
+                </div>
+            </div>`;
+        ft.innerHTML = `
+            <button class="btn-modal-back" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn-modal-next" id="btn-m-next0" onclick="irModalPaso(1)" ${mTipo?'':'disabled'}>
+                Continuar
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>`;
+        return;
+    }
+
+    // ── PASO 1: elegir cliente ───────────────────────────────────
+    if (mPaso === 1) {
+        const tipoLabel = { cliente:'Cliente', local:'Local', modulos:'Módulos' }[mTipo];
+        document.getElementById('modal-title').textContent    = `Baja de ${tipoLabel}`;
+        document.getElementById('modal-subtitle').textContent = 'Selecciona el cliente';
+
+        mClientesFiltrados = [...todosClientes];
+        body.innerHTML = `
+            <div class="modal-search-wrap">
+                <svg class="modal-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input class="modal-search" id="modal-search-cli" type="search"
+                       placeholder="Buscar cliente…" oninput="filtrarClientesModal()">
+            </div>
+            <div class="modal-list" id="modal-cli-list">
+                ${renderClientesModal()}
+            </div>
+            ${todosClientes.length === 0 ? '<p style="color:#94a3b8;font-size:0.83rem;margin-top:10px;text-align:center;">Cargando clientes…</p>' : ''}`;
+
+        ft.innerHTML = `
+            <button class="btn-modal-back" onclick="irModalPaso(0)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Atrás
+            </button>
+            <button class="btn-modal-next" id="btn-m-next1" onclick="irModalPaso(2)" ${mCliente?'':'disabled'}>
+                Seleccionar motivo
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>`;
+        return;
+    }
+
+    // ── PASO 2: elegir motivo ────────────────────────────────────
+    if (mPaso === 2) {
+        const nombreCli = mCliente ? (mCliente['Nombre Comercial'] || mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '') : '';
+        const tipoLabel = { cliente:'Cliente', local:'Local', modulos:'Módulos' }[mTipo];
+        document.getElementById('modal-title').textContent    = `Baja de ${tipoLabel}`;
+        document.getElementById('modal-subtitle').textContent = 'Selecciona el motivo de baja';
+
+        body.innerHTML = `
+            <span class="ctx-chip ctx-chip--cliente">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                ${esc(nombreCli)}
+            </span>
+            <div class="motivo-grid">
+                ${MOTIVOS_BAJA.map(mv => `
+                <div class="motivo-card ${mMotivo===mv.id?'selected':''}" onclick="selMotivo('${mv.id}', this)">
+                    <span class="motivo-icon">${mv.icon}</span>
+                    <span class="motivo-label">${esc(mv.label)}</span>
+                </div>`).join('')}
+            </div>`;
+
+        const nextLabel = mTipo === 'cliente'
+            ? `<button class="btn-modal-save" id="btn-m-save2" onclick="guardarBaja()" ${mMotivo?'':'disabled'}>
+                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                   Guardar baja
+               </button>`
+            : `<button class="btn-modal-next" id="btn-m-next2" onclick="irModalPaso(3)" ${mMotivo?'':'disabled'}>
+                   Seleccionar local
+                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+               </button>`;
+
+        if (mTipo === 'cliente') {
+            body.innerHTML += `<div class="mrr-input-wrap">
+                <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+                    <div>
+                        <label class="mrr-input-label">MRR perdido (€)</label>
+                        <input type="number" id="mrr-input" class="mrr-input" min="0" step="0.01"
+                               placeholder="0,00" value="${mMRR||''}">
+                    </div>
+                    <div>
+                        <label class="mrr-input-label">Fecha de efecto</label>
+                        <input type="text" id="fecha-efecto-input" class="mrr-input" style="width:160px;"
+                               placeholder="dd/mm/aaaa" readonly>
+                    </div>
+                </div>
+            </div>`;
+            initFechaEfectoPicker();
+        }
+
+        ft.innerHTML = `
+            <button class="btn-modal-back" onclick="irModalPaso(1)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Atrás
+            </button>
+            ${nextLabel}`;
+        return;
+    }
+
+    // ── PASO 3: elegir local ─────────────────────────────────────
+    if (mPaso === 3) {
+        const nombreCli = mCliente ? (mCliente['Nombre Comercial'] || mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '') : '';
+        const motivoLabel = (MOTIVOS_BAJA.find(m => m.id === mMotivo)||{}).label || '';
+        document.getElementById('modal-title').textContent    = `Baja de ${mTipo === 'local' ? 'Local' : 'Módulos'}`;
+        document.getElementById('modal-subtitle').textContent = 'Selecciona el local';
+
+        const numLocales = parseInt(mCliente['Nº Locales'] || mCliente['Número de Locales'] || '0', 10) || 0;
+        let localesHtml = '';
+        if (numLocales > 0) {
+            localesHtml = `<div class="local-grid">`;
+            for (let i = 1; i <= numLocales; i++) {
+                const sel = mLocal === `Local ${i}`;
+                localesHtml += `<div class="local-card ${sel?'selected':''}" onclick="selLocal('Local ${i}', ${i})">
+                    <span class="local-card-icon">🏪</span>
+                    <div class="local-card-name">Local ${i}</div>
+                </div>`;
+            }
+            localesHtml += `</div>`;
+        }
+        localesHtml += `<div class="local-manual-wrap">
+            <label class="local-manual-label">${numLocales > 0 ? 'O escribe el nombre exacto del local' : 'Nombre del local'}</label>
+            <input type="text" class="local-manual" id="local-manual-inp"
+                   value="${esc(mLocal && !mLocal.startsWith('Local ') ? mLocal : '')}"
+                   placeholder="Ej: Local Madrid Centro"
+                   oninput="onLocalManualModal()">
+        </div>`;
+
+        body.innerHTML = `
+            <span class="ctx-chip ctx-chip--cliente">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                ${esc(nombreCli)}
+            </span>
+            <span class="ctx-chip ctx-chip--motivo">
+                ${(MOTIVOS_BAJA.find(m=>m.id===mMotivo)||{}).icon||''} ${esc(motivoLabel)}
+            </span>
+            ${localesHtml}`;
+
+        const puedeGuardar = mTipo === 'local';
+        ft.innerHTML = `
+            <button class="btn-modal-back" onclick="irModalPaso(2)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Atrás
+            </button>
+            ${puedeGuardar
+                ? `<button class="btn-modal-save" id="btn-m-save3" onclick="guardarBaja()" ${mLocal?'':'disabled'}>
+                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                       Guardar baja
+                   </button>`
+                : `<button class="btn-modal-next" id="btn-m-next3" onclick="irModalPaso(4)" ${mLocal?'':'disabled'}>
+                       Seleccionar módulos
+                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                   </button>`
+            }`;
+
+        if (puedeGuardar) {
+            body.innerHTML += `<div class="mrr-input-wrap">
+                <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+                    <div>
+                        <label class="mrr-input-label">MRR perdido (€)</label>
+                        <input type="number" id="mrr-input" class="mrr-input" min="0" step="0.01"
+                               placeholder="0,00" value="${mMRR||''}">
+                    </div>
+                    <div>
+                        <label class="mrr-input-label">Fecha de efecto</label>
+                        <input type="text" id="fecha-efecto-input" class="mrr-input" style="width:160px;"
+                               placeholder="dd/mm/aaaa" readonly>
+                    </div>
+                </div>
+            </div>`;
+            initFechaEfectoPicker();
+        }
+        return;
+    }
+
+    // ── PASO 4: elegir módulos ───────────────────────────────────
+    if (mPaso === 4) {
+        const nombreCli   = mCliente ? (mCliente['Nombre Comercial'] || mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '') : '';
+        const motivoLabel = (MOTIVOS_BAJA.find(m => m.id === mMotivo)||{}).label || '';
+        document.getElementById('modal-title').textContent    = 'Baja de Módulos';
+        document.getElementById('modal-subtitle').textContent = 'Selecciona los módulos a dar de baja';
+
+        body.innerHTML = `
+            <span class="ctx-chip ctx-chip--cliente">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                ${esc(nombreCli)}
+            </span>
+            <span class="ctx-chip ctx-chip--motivo">
+                ${(MOTIVOS_BAJA.find(m=>m.id===mMotivo)||{}).icon||''} ${esc(motivoLabel)}
+            </span>
+            <span class="ctx-chip ctx-chip--local">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                ${esc(mLocal)}
+            </span>
+            <div class="modulos-grid">
+                ${TODOS_MODULOS.map(m => `
+                <label class="modulo-item ${mModulos.has(m)?'checked':''}" onclick="toggleMod('${m.replace(/'/g,"\\'")}', this)">
+                    <input type="checkbox" ${mModulos.has(m)?'checked':''}>
+                    <div class="mcheck"></div>
+                    <span class="modulo-item-name">${esc(m)}</span>
+                </label>`).join('')}
+            </div>`;
+
+        body.innerHTML += `<div class="mrr-input-wrap">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+                <div>
+                    <label class="mrr-input-label">MRR perdido (€)</label>
+                    <input type="number" id="mrr-input" class="mrr-input" min="0" step="0.01"
+                           placeholder="0,00" value="${mMRR||''}">
+                </div>
+                <div>
+                    <label class="mrr-input-label">Fecha de efecto</label>
+                    <input type="text" id="fecha-efecto-input" class="mrr-input" style="width:160px;"
+                           placeholder="dd/mm/aaaa" readonly>
+                </div>
+            </div>
+        </div>`;
+        initFechaEfectoPicker();
+
+        ft.innerHTML = `
+            <button class="btn-modal-back" onclick="irModalPaso(3)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Atrás
+            </button>
+            <button class="btn-modal-save" id="btn-m-save4" onclick="guardarBaja()" ${mModulos.size?'':'disabled'}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Guardar baja
+            </button>`;
+    }
+}
+
+async function irModalPaso(n) {
+    if (n === 1) await cargarClientes();
+    mPaso = n;
+    renderModalPaso();
+}
+
+// ── Selección tipo ────────────────────────────────────────────────
+function selTipo(t) {
+    mTipo = t;
+    document.querySelectorAll('.tipo-card').forEach(el => {
+        el.classList.toggle('selected', el.onclick.toString().includes(`'${t}'`));
+    });
+    const btn = document.getElementById('btn-m-next0');
+    if (btn) btn.disabled = false;
+}
+
+// ── Selección motivo ──────────────────────────────────────────────
+function selMotivo(id, el) {
+    mMotivo = id;
+    document.querySelectorAll('.motivo-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    const btnNext = document.getElementById('btn-m-next2');
+    const btnSave = document.getElementById('btn-m-save2');
+    if (btnNext) btnNext.disabled = false;
+    if (btnSave) btnSave.disabled = false;
+}
+
+// ── Clientes en modal ─────────────────────────────────────────────
+function filtrarClientesModal() {
+    const q = (document.getElementById('modal-search-cli').value||'').toLowerCase().trim();
+    mClientesFiltrados = q
+        ? todosClientes.filter(f =>
+            (f['Nombre Comercial']||'').toLowerCase().includes(q) ||
+            (f['Nombre Sociedad']||'').toLowerCase().includes(q) ||
+            (f['Denominación Social']||'').toLowerCase().includes(q) ||
+            (f['CIF/NIF']||'').toLowerCase().includes(q))
+        : [...todosClientes];
+    document.getElementById('modal-cli-list').innerHTML = renderClientesModal();
+}
+
+function renderClientesModal() {
+    if (!mClientesFiltrados.length && todosClientes.length) {
+        return '<div class="modal-empty">Sin resultados</div>';
+    }
+    if (!todosClientes.length) {
+        return '<div class="modal-empty">Cargando…</div>';
+    }
+    return mClientesFiltrados.map((f, i) => {
+        const comercial = f['Nombre Comercial'] || '';
+        const sociedad  = f['Nombre Sociedad'] || f['Denominación Social'] || '';
+        const nombre    = comercial || sociedad || '(sin nombre)';
+        const cif       = f['CIF/NIF'] || '';
+        const isSel     = mCliente && mCliente['CIF/NIF'] === f['CIF/NIF'] && (mCliente['Nombre Comercial']||mCliente['Nombre Sociedad']||mCliente['Denominación Social']) === nombre;
+
+        // Sub: nombre sociedad siempre visible + CIF
+        const subParts = [];
+        if (sociedad) subParts.push(sociedad);
+        if (cif)      subParts.push(cif);
+        const sub = subParts.join(' · ');
+
+        return `<div class="modal-row ${isSel?'selected':''}" onclick="selClienteModal(${i})">
+            <div class="modal-row-info">
+                <div class="modal-row-name">${esc(nombre)}</div>
+                ${sub ? `<div class="modal-row-sub">${esc(sub)}</div>` : ''}
+            </div>
+            <div class="modal-row-check">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function selClienteModal(i) {
+    mCliente = mClientesFiltrados[i];
+    mLocal   = null;
+    mModulos.clear();
+    document.getElementById('modal-cli-list').innerHTML = renderClientesModal();
+    const btnNext = document.getElementById('btn-m-next1');
+    if (btnNext) btnNext.disabled = false;
+}
+
+// ── Local en modal ────────────────────────────────────────────────
+function selLocal(nombre, idx) {
+    mLocal = nombre;
+    document.querySelectorAll('.local-card').forEach((el, i) => {
+        el.classList.toggle('selected', i + 1 === idx);
+    });
+    const inp = document.getElementById('local-manual-inp');
+    if (inp) inp.value = '';
+    const btnNext = document.getElementById('btn-m-next3');
+    const btnSave = document.getElementById('btn-m-save3');
+    if (btnNext) btnNext.disabled = false;
+    if (btnSave) btnSave.disabled = false;
+}
+
+function onLocalManualModal() {
+    const val = (document.getElementById('local-manual-inp').value||'').trim();
+    mLocal = val || null;
+    document.querySelectorAll('.local-card').forEach(el => el.classList.remove('selected'));
+    const btnNext = document.getElementById('btn-m-next3');
+    const btnSave = document.getElementById('btn-m-save3');
+    if (btnNext) btnNext.disabled = !val;
+    if (btnSave) btnSave.disabled = !val;
+}
+
+// ── Módulos en modal ──────────────────────────────────────────────
+function toggleMod(nombre, labelEl) {
+    labelEl.classList.toggle('checked');
+    if (mModulos.has(nombre)) mModulos.delete(nombre);
+    else mModulos.add(nombre);
+    const btnSave = document.getElementById('btn-m-save3');
+    if (btnSave) btnSave.disabled = mModulos.size === 0;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GUARDAR BAJA
+// ══════════════════════════════════════════════════════════════════
+async function guardarBaja() {
+    const body = document.getElementById('modal-body');
+    const ft   = document.getElementById('modal-ft');
+    ft.innerHTML = `<div class="modal-saving" style="display:flex;"><div class="spinner"></div> Guardando baja…</div>`;
+    body.style.opacity = '0.4';
+    body.style.pointerEvents = 'none';
+
+    mMRR         = (document.getElementById('mrr-input')?.value || '').trim();
+    mFechaEfecto = (document.getElementById('fecha-efecto-input')?.value || '').trim();
+    const motivoLabel = (MOTIVOS_BAJA.find(m => m.id === mMotivo)||{}).label || mMotivo;
+    const ahora = new Date().toISOString();
+    const payload = {
+        tipo:           mTipo,
+        cliente_nombre: mCliente['Nombre Comercial'] || mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '',
+        cliente_denom:  mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '',
+        cliente_cif:    mCliente['CIF/NIF'] || '',
+        cliente_email:  mCliente['Email'] || '',
+        cliente_id:     mCliente['ID'] || '',
+        motivo_id:      mMotivo,
+        motivo:         motivoLabel,
+        local:          mLocal || null,
+        modulos:        [...mModulos],
+        mrr:            mMRR !== '' ? parseFloat(mMRR) : null,
+        fecha_baja:     ahora,
+        fecha_efecto:   mFechaEfecto || null,
+        fecha:          ahora,   // compatibilidad legacy
+        Baja:           'Sí'
+    };
+
+    const webhookMap = {
+        cliente: WEBHOOK_BAJA_CLIENTE,
+        local:   WEBHOOK_BAJA_LOCAL,
+        modulos: WEBHOOK_BAJA_MODULOS
+    };
+    const url = webhookMap[mTipo] || '';
+
+    try {
+        if (url) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Error ' + res.status);
+        } else {
+            await new Promise(r => setTimeout(r, 600)); // simulación sin webhook
+        }
+
+        // Añadir a la lista local y re-renderizar
+        todasBajas.unshift(payload);
+        renderBajas();
+        cerrarModal();
+
+        const nombre = payload.cliente_nombre;
+        const extras = mTipo === 'modulos' ? ` · ${[...mModulos].join(', ')}` :
+                       mTipo === 'local'   ? ` · ${mLocal}` : '';
+        mostrarStatus('ok', `✅ Baja registrada — <strong>${esc(nombre)}</strong>${esc(extras)}`);
+
+    } catch(err) {
+        body.style.opacity = '';
+        body.style.pointerEvents = '';
+        ft.innerHTML = `
+            <div style="color:#dc2626;font-size:0.83rem;flex:1;">⚠️ Error: ${esc(err.message)}</div>
+            <button class="btn-modal-back" onclick="renderModalPaso()">Reintentar</button>`;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  EDITAR BAJA
+// ══════════════════════════════════════════════════════════════════
+let _editIdx    = null;   // índice en bajasFiltradas
+let _editBaja   = null;   // objeto baja actual
+let _fpEditEfecto = null; // instancia flatpickr del campo fecha_efecto en edit modal
+let _editModulos = new Set();
+
+function editarBaja(idx) {
+    _editIdx  = idx;
+    _editBaja = bajasFiltradas[idx];
+    const b   = _editBaja;
+    const tipo = (b.tipo || '').toLowerCase();
+
+    document.getElementById('edit-modal-sub').textContent =
+        `${b.cliente_nombre || '—'}  ·  ${b.cliente_cif || ''}`;
+
+    _editModulos = new Set(Array.isArray(b.modulos) ? b.modulos : []);
+
+    const motivosOpts = MOTIVOS_BAJA.map(m =>
+        `<option value="${m.id}" ${b.motivo_id === m.id ? 'selected' : ''}>${m.icon} ${m.label}</option>`
+    ).join('');
+
+    const localField = tipo !== 'cliente' ? `
+        <div class="edit-field">
+            <label>Local</label>
+            <input type="text" id="edit-local" value="${esc(b.local || '')}">
+        </div>` : '';
+
+    const modulosField = tipo === 'modulos' ? `
+        <div class="edit-field">
+            <label>Módulos</label>
+            <div class="edit-modulos-grid" id="edit-modulos-grid">
+                ${TODOS_MODULOS.map(m => `
+                <span class="edit-mod-item ${_editModulos.has(m) ? 'checked' : ''}"
+                      onclick="toggleEditMod('${m.replace(/'/g,"\\'")}'  , this)">${esc(m)}</span>`
+                ).join('')}
+            </div>
+        </div>` : '';
+
+    document.getElementById('edit-modal-body').innerHTML = `
+        <div class="edit-field">
+            <label>Motivo</label>
+            <select id="edit-motivo">${motivosOpts}</select>
+        </div>
+        ${localField}
+        ${modulosField}
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div class="edit-field" style="flex:1;min-width:120px;">
+                <label>MRR perdido (€)</label>
+                <input type="number" id="edit-mrr" min="0" step="0.01"
+                       placeholder="0,00" value="${b.mrr != null ? b.mrr : ''}">
+            </div>
+            <div class="edit-field" style="flex:1;min-width:140px;">
+                <label>Fecha de efecto</label>
+                <input type="text" id="edit-fecha-efecto" placeholder="dd/mm/aaaa" readonly>
+            </div>
+        </div>`;
+
+    // Flatpickr para fecha_efecto en edit modal
+    if (_fpEditEfecto) { _fpEditEfecto.destroy(); _fpEditEfecto = null; }
+    _fpEditEfecto = flatpickr('#edit-fecha-efecto', { ...FP_BASE });
+    const fechaEfecto = b.fecha_efecto || '';
+    if (fechaEfecto) _fpEditEfecto.setDate(fechaEfecto, false);
+
+    document.getElementById('edit-overlay').classList.add('open');
+}
+
+function toggleEditMod(nombre, el) {
+    el.classList.toggle('checked');
+    if (_editModulos.has(nombre)) _editModulos.delete(nombre);
+    else _editModulos.add(nombre);
+}
+
+function cerrarEditModal() {
+    document.getElementById('edit-overlay').classList.remove('open');
+    if (_fpEditEfecto) { _fpEditEfecto.destroy(); _fpEditEfecto = null; }
+    _editIdx = null; _editBaja = null;
+}
+
+async function guardarEdicion() {
+    const b         = _editBaja;
+    const tipo      = (b.tipo || '').toLowerCase();
+    const motivoId  = document.getElementById('edit-motivo').value;
+    const motivoObj = MOTIVOS_BAJA.find(m => m.id === motivoId) || {};
+    const mrr       = (document.getElementById('edit-mrr').value || '').trim();
+    const fEfecto   = document.getElementById('edit-fecha-efecto').value || '';
+    const local     = tipo !== 'cliente' ? (document.getElementById('edit-local')?.value || '').trim() : b.local;
+
+    const payload = {
+        accion:         'editar',
+        tipo:           b.tipo,
+        cliente_id:     b.cliente_id,
+        cliente_nombre: b.cliente_nombre,
+        cliente_cif:    b.cliente_cif,
+        fecha_baja:     b.fecha_baja || b.fecha,
+        motivo_id:      motivoId,
+        motivo:         motivoObj.label || motivoId,
+        local:          local || null,
+        modulos:        tipo === 'modulos' ? [..._editModulos] : b.modulos,
+        mrr:            mrr !== '' ? parseFloat(mrr) : null,
+        fecha_efecto:   fEfecto || null,
+        Baja:           'Sí'
+    };
+
+    const saveBtn = document.querySelector('.btn-edit-save');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando…'; }
+
+    try {
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        const res = await fetch(WEBHOOK_BAJA_EDITAR, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Error ' + res.status);
+
+        // Actualizar objeto local
+        Object.assign(bajasFiltradas[_editIdx], {
+            motivo_id: motivoId, motivo: motivoObj.label || motivoId,
+            local, modulos: payload.modulos,
+            mrr: payload.mrr, fecha_efecto: fEfecto || null
+        });
+        renderTabla();
+        cerrarEditModal();
+        mostrarStatus('ok', `✅ Baja actualizada — <strong>${esc(b.cliente_nombre)}</strong>`);
+    } catch(err) {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar cambios'; }
+        mostrarStatus('err', `⚠️ Error al guardar: ${esc(err.message)}`);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  BORRAR BAJA
+// ══════════════════════════════════════════════════════════════════
+let _borrarIdx = null;
+
+function confirmarBorrado(idx) {
+    _borrarIdx = idx;
+    const b = bajasFiltradas[idx];
+    document.getElementById('confirm-desc').innerHTML =
+        `Se eliminará la baja de <strong>${esc(b.cliente_nombre || '—')}</strong>. Esta acción enviará una solicitud de eliminación al sistema.`;
+    document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function cerrarConfirm() {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    _borrarIdx = null;
+}
+
+async function ejecutarBorrado() {
+    const b = bajasFiltradas[_borrarIdx];
+    const delBtn = document.querySelector('.btn-confirm-delete');
+    if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Eliminando…'; }
+
+    try {
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        const res = await fetch(WEBHOOK_BAJA_BORRAR, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
+            body: JSON.stringify({
+                accion:         'borrar',
+                tipo:           b.tipo,
+                cliente_id:     b.cliente_id,
+                cliente_nombre: b.cliente_nombre,
+                cliente_cif:    b.cliente_cif,
+                fecha_baja:     b.fecha_baja || b.fecha
+            })
+        });
+        if (!res.ok) throw new Error('Error ' + res.status);
+
+        // Quitar de lista local
+        const idxEnTodos = todasBajas.indexOf(b);
+        if (idxEnTodos !== -1) todasBajas.splice(idxEnTodos, 1);
+        cerrarConfirm();
+        filtrarBajas();
+        mostrarStatus('ok', `🗑️ Baja eliminada — <strong>${esc(b.cliente_nombre)}</strong>`);
+    } catch(err) {
+        if (delBtn) { delBtn.disabled = false; delBtn.textContent = 'Eliminar'; }
+        mostrarStatus('err', `⚠️ Error al eliminar: ${esc(err.message)}`);
+        cerrarConfirm();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  STATUS BANNER
+// ══════════════════════════════════════════════════════════════════
+function mostrarStatus(tipo, html) {
+    const b = document.getElementById('status-banner');
+    b.className = 'status-banner ' + tipo;
+    b.innerHTML = html;
+    b.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => { b.className = 'status-banner'; b.innerHTML = ''; }, 6000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FLATPICKR – helpers de calendario
+// ══════════════════════════════════════════════════════════════════
+const FP_BASE = {
+    locale:     'es',
+    dateFormat: 'Y-m-d',       // valor interno ISO (para filtros y payload)
+    altInput:   true,
+    altFormat:  'd/m/Y',       // formato visible para el usuario
+    allowInput: false
+};
+
+function initFilterDatePickers() {
+    window._fpDesde = flatpickr('#filtro-desde', {
+        ...FP_BASE,
+        onChange: () => filtrarBajas()
+    });
+    window._fpHasta = flatpickr('#filtro-hasta', {
+        ...FP_BASE,
+        onChange: () => filtrarBajas()
+    });
+}
+
+function initFechaEfectoPicker() {
+    if (window._fpEfecto) { window._fpEfecto.destroy(); window._fpEfecto = null; }
+    const el = document.getElementById('fecha-efecto-input');
+    if (!el) return;
+    window._fpEfecto = flatpickr(el, {
+        ...FP_BASE,
+        onChange: (_, dateStr) => { mFechaEfecto = dateStr; }
+    });
+    if (mFechaEfecto) window._fpEfecto.setDate(mFechaEfecto, false);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+cargarBajas();
+initFilterDatePickers();
+</script>
+</body>
+</html>
