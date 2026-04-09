@@ -604,126 +604,20 @@ function abrirDetalle(id) {
     const proyecto = proyectos.find(p => p.id === id);
     if (!proyecto) return;
 
-    // Easter egg splash
-    mostrarSplash(() => {
-        document.getElementById('detalle-titulo').textContent = proyecto.cliente;
+    document.getElementById('detalle-titulo').textContent = proyecto.cliente;
 
-        // Reset tabs
-        document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-        document.querySelector('.detail-tab[data-dtab="tareas"]').classList.add('active');
-        document.getElementById('detalle-tareas').style.display = '';
-        document.getElementById('detalle-contactos').style.display = 'none';
-        document.getElementById('detalle-desarrollos').style.display = 'none';
-        document.getElementById('detalle-anotaciones').style.display = 'none';
+    // Reset tabs
+    document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.detail-tab[data-dtab="tareas"]').classList.add('active');
+    document.getElementById('detalle-tareas').style.display = '';
+    document.getElementById('detalle-contactos').style.display = 'none';
+    document.getElementById('detalle-desarrollos').style.display = 'none';
+    document.getElementById('detalle-anotaciones').style.display = 'none';
 
-        // Render Tareas tab
-        renderDetalleTareas(proyecto);
+    // Render Tareas tab
+    renderDetalleTareas(proyecto);
 
-        abrirModal('modal-detalle');
-    });
-}
-
-// ==========================================
-// SPLASH + CONFETTI
-// ==========================================
-
-function mostrarSplash(callback) {
-    // Create overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'splash-overlay';
-    overlay.innerHTML = `
-        <div class="splash-content">
-            <img src="https://i.ibb.co/JWppm92w/DSC04201.jpg" class="splash-img" alt="Alvaro Jareño">
-            <div class="splash-info">
-                <h2 class="splash-name">Alvaro Jareño</h2>
-                <span class="splash-role">Claude Senior Developer</span>
-                <p class="splash-msg">Soy Alvaro Jareño, me enorgullece que estes probando mi producto, dame feedback e invitame a un cafe. Si quieres desarrollar tu propia herramienta desde 0, contactame.</p>
-                <div class="splash-actions">
-                    <a href="https://buymeacoffee.com" target="_blank" class="splash-donate-btn" onclick="event.stopPropagation()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-                        Invitame a un cafe
-                    </a>
-                    <a href="mailto:contacto@alvarojareno.com" class="splash-contact-btn" onclick="event.stopPropagation()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                        Contactar
-                    </a>
-                </div>
-            </div>
-        </div>
-        <canvas id="confetti-canvas"></canvas>
-    `;
-    document.body.appendChild(overlay);
-
-    // Sound
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        // Fanfare-like sound
-        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.12);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.5);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(ctx.currentTime + i * 0.12);
-            osc.stop(ctx.currentTime + i * 0.12 + 0.5);
-        });
-    } catch (_) {}
-
-    // Trigger animation
-    requestAnimationFrame(() => overlay.classList.add('show'));
-
-    // Confetti
-    const canvas = document.getElementById('confetti-canvas');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const ctxC = canvas.getContext('2d');
-    const particles = [];
-    const colors = ['#fc5858','#4F46E5','#059669','#D97706','#DC2626','#f59e0b','#8b5cf6','#ec4899'];
-
-    for (let i = 0; i < 150; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height - canvas.height,
-            w: Math.random() * 10 + 5,
-            h: Math.random() * 6 + 3,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            vy: Math.random() * 3 + 2,
-            vx: (Math.random() - 0.5) * 2,
-            rot: Math.random() * 360,
-            vr: (Math.random() - 0.5) * 8
-        });
-    }
-
-    let animId;
-    function animConfetti() {
-        ctxC.clearRect(0, 0, canvas.width, canvas.height);
-        particles.forEach(p => {
-            p.y += p.vy;
-            p.x += p.vx;
-            p.rot += p.vr;
-            ctxC.save();
-            ctxC.translate(p.x, p.y);
-            ctxC.rotate(p.rot * Math.PI / 180);
-            ctxC.fillStyle = p.color;
-            ctxC.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-            ctxC.restore();
-        });
-        animId = requestAnimationFrame(animConfetti);
-    }
-    animConfetti();
-
-    // Close on click or after 2.5s
-    const close = () => {
-        cancelAnimationFrame(animId);
-        overlay.classList.remove('show');
-        overlay.addEventListener('transitionend', () => { overlay.remove(); callback(); });
-    };
-
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    setTimeout(close, 5000);
+    abrirModal('modal-detalle');
 }
 
 function renderDetalleTareas(proyecto) {
