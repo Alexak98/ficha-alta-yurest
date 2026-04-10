@@ -38,11 +38,8 @@ const SECCIONES = [
     'Puesta en Marcha / Finalización',
     'Hardware',
     'Carga de Datos Yuload',
-    'Integraciones',
     'Planificación de sesiones',
-    'Módulos terminados de implementar',
-    'Desarrollos Finalizados',
-    'Proyecto Finalizado'
+    'Módulos terminados de implementar'
 ];
 
 // Tareas plantilla para "Planificación de sesiones"
@@ -79,10 +76,6 @@ const TAREAS_CARGA_DATOS = [
     'Carga - Cliente - OCR - Corp'
 ];
 
-// Tareas plantilla para "Proyecto Finalizado"
-const TAREAS_PROYECTO_FINALIZADO = [
-    'Proyecto finalizado'
-];
 
 const COLORES_IMPLEMENTADOR = {
     'Carlos Aparicio': '#4F46E5',
@@ -130,17 +123,6 @@ function crearEstructuraProyecto() {
             }));
         } else if (seccion === 'Carga de Datos Yuload') {
             tareas = TAREAS_CARGA_DATOS.map(nombre => ({
-                id: generarId(),
-                nombre,
-                completada: false,
-                show: null,
-                fechaEntrega: null,
-                tiempoEstimado: null,
-                notas: '',
-                subtareas: []
-            }));
-        } else if (seccion === 'Proyecto Finalizado') {
-            tareas = TAREAS_PROYECTO_FINALIZADO.map(nombre => ({
                 id: generarId(),
                 nombre,
                 completada: false,
@@ -200,9 +182,7 @@ function crearProyectoEjemplo(cliente, implementador, tipo, estado, fechaInicio,
 
     // Marcar proyecto finalizado
     if (estado === 'completado') {
-        const fin = s.find(x => x.nombre === 'Proyecto Finalizado');
-        fin.tareas[0].completada = true;
-        pm.tareas.forEach(t => { t.completada = true; t.show = 'Show'; });
+        pm.tareas.forEach(t => { t.completada = true; });
     }
 
     return {
@@ -316,6 +296,9 @@ function migrarProyectos(lista) {
         if (!p.contactos) p.contactos = [];
         if (!p.anotaciones) p.anotaciones = '';
         if (!p.adjuntos) p.adjuntos = [];
+        if (!p.tpv) p.tpv = '';
+        if (!p.motivoPausa) p.motivoPausa = '';
+        if (!p.planAccion) p.planAccion = '';
     });
     return lista;
 }
@@ -381,7 +364,6 @@ function obtenerPlantillaDefault() {
             if (nombre === 'Planificación de sesiones') tareas = [...SESIONES_PLANTILLA];
             else if (nombre === 'Puesta en Marcha / Finalización') tareas = [...TAREAS_PUESTA_EN_MARCHA];
             else if (nombre === 'Carga de Datos Yuload') tareas = [...TAREAS_CARGA_DATOS];
-            else if (nombre === 'Proyecto Finalizado') tareas = [...TAREAS_PROYECTO_FINALIZADO];
             return { nombre, tareas };
         })
     };
@@ -531,6 +513,7 @@ function normalizarAlta(f) {
     const id = get(['ID', 'id']);
     const fecha = get(['Fecha', 'fecha']);
     const estado = get(['Estado', 'estado']);
+    const tpv = get(['TPV', 'tpv']);
 
     let tipoNorm = 'Corporate sin cocina';
     const tipoLower = tipo.toLowerCase();
@@ -549,7 +532,8 @@ function normalizarAlta(f) {
         tipoOriginal: tipo,
         implementador: IMPLEMENTADORES.includes(implementador) ? implementador : '',
         fecha,
-        estado
+        estado,
+        tpv
     };
 }
 
@@ -560,7 +544,7 @@ function normalizarAlta(f) {
 // Determina el estado derivado del proyecto para el dashboard
 function obtenerEstadoDashboard(proyecto) {
     if (proyecto.estado === 'completado') return 'terminado';
-    if (proyecto.estado === 'pausado') return 'parado';
+    if (proyecto.estado === 'pausado') return 'pausado';
 
     // Para activos, verificar si tiene sesiones completadas
     const resumen = obtenerResumenProyecto(proyecto);
@@ -587,14 +571,14 @@ function contarSesionesPendientes(proyecto) {
 
 // Genera estadísticas del dashboard
 function generarEstadisticasDashboard(proyectos) {
-    const totales = { total: proyectos.length, parados: 0, avanzando: 0, terminados: 0, inicio: 0, totalPendientes: 0 };
+    const totales = { total: proyectos.length, pausados: 0, avanzando: 0, terminados: 0, inicio: 0, totalPendientes: 0, sesionesAgendadas: 0, sesionesSinAgendar: 0 };
     const porImplementador = {};
 
     IMPLEMENTADORES.forEach(impl => {
-        porImplementador[impl] = { total: 0, parados: 0, avanzando: 0, terminados: 0, inicio: 0, pendientes: 0 };
+        porImplementador[impl] = { total: 0, pausados: 0, avanzando: 0, terminados: 0, inicio: 0, pendientes: 0 };
     });
 
-    const clientesParados = [];
+    const clientesPausados = [];
 
     proyectos.forEach(p => {
         const estadoDash = obtenerEstadoDashboard(p);
@@ -603,7 +587,19 @@ function generarEstadisticasDashboard(proyectos) {
 
         totales.totalPendientes += pendientes;
 
-        const keyMap = { parado: 'parados', avanzando: 'avanzando', terminado: 'terminados', inicio: 'inicio' };
+        // Contar subtareas agendadas/sin agendar
+        p.secciones.forEach(sec => {
+            sec.tareas.forEach(tarea => {
+                if (tarea.subtareas) {
+                    tarea.subtareas.forEach(sub => {
+                        if (sub.fechaEntrega) totales.sesionesAgendadas++;
+                        else totales.sesionesSinAgendar++;
+                    });
+                }
+            });
+        });
+
+        const keyMap = { pausado: 'pausados', avanzando: 'avanzando', terminado: 'terminados', inicio: 'inicio' };
         const statsKey = keyMap[estadoDash] || estadoDash;
 
         if (porImplementador[impl]) {
@@ -614,21 +610,21 @@ function generarEstadisticasDashboard(proyectos) {
 
         totales[statsKey]++;
 
-        if (estadoDash === 'parado') {
-            clientesParados.push({
+        if (estadoDash === 'pausado') {
+            clientesPausados.push({
                 cliente: p.cliente,
                 implementador: p.implementador,
                 pendientes,
-                semanasParado: calcularSemanasParado(p),
+                semanasPausado: calcularSemanasParado(p),
                 id: p.id
             });
         }
     });
 
-    // Ordenar parados por pendientes descendente
-    clientesParados.sort((a, b) => b.pendientes - a.pendientes);
+    // Ordenar pausados por pendientes descendente
+    clientesPausados.sort((a, b) => b.pendientes - a.pendientes);
 
-    return { totales, porImplementador, clientesParados };
+    return { totales, porImplementador, clientesPausados };
 }
 
 // Calcula dias laborables entre dos fechas (excluye sabados y domingos)

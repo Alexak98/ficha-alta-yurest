@@ -4,7 +4,7 @@
 
 let proyectos = [];
 let vistaActual = 'dashboard';
-let dashboardFiltroActivo = null; // null, 'parados', 'avanzando', 'terminados', 'inicio'
+let dashboardFiltroActivo = null; // null, 'pausados', 'avanzando', 'terminados', 'inicio'
 
 // ==========================================
 // INIT
@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     inicializarFiltros();
     refrescarTodo();
+    actualizarBadgeSinAsignar();
 
     // Inicializar flatpickr en los campos de fecha
     const fpConfig = { locale: 'es', dateFormat: 'Y-m-d', altInput: true, altFormat: 'j M Y', allowInput: false };
@@ -49,20 +50,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ==========================================
 
 function inicializarFiltros() {
-    const filtroImpl = document.getElementById('filtro-implementador');
-    IMPLEMENTADORES.forEach(impl => {
-        filtroImpl.innerHTML += `<option value="${impl}">${impl}</option>`;
-    });
+    const filtroImplChecks = document.getElementById('filtro-impl-checks');
+    filtroImplChecks.innerHTML = IMPLEMENTADORES.map(impl =>
+        `<label class="filter-check-item"><input type="checkbox" value="${impl}" class="filtro-impl-cb" onchange="aplicarFiltros()"> ${impl}</label>`
+    ).join('');
 
-    const filtroTipo = document.getElementById('filtro-tipo');
-    TIPOS_PROYECTO.forEach(tipo => {
-        filtroTipo.innerHTML += `<option value="${tipo}">${tipo}</option>`;
-    });
+    const filtroTipoChecks = document.getElementById('filtro-tipo-checks');
+    filtroTipoChecks.innerHTML = TIPOS_PROYECTO.map(tipo =>
+        `<label class="filter-check-item"><input type="checkbox" value="${tipo}" class="filtro-tipo-cb" onchange="aplicarFiltros()"> ${tipo}</label>`
+    ).join('');
 
-    const filtroEstado = document.getElementById('filtro-estado');
-    ESTADOS_PROYECTO.forEach(estado => {
-        filtroEstado.innerHTML += `<option value="${estado}">${capitalizar(estado)}</option>`;
-    });
+    const filtroEstadoChecks = document.getElementById('filtro-estado-checks');
+    filtroEstadoChecks.innerHTML = ESTADOS_PROYECTO.map(estado =>
+        `<label class="filter-check-item"><input type="checkbox" value="${estado}" class="filtro-estado-cb" onchange="aplicarFiltros()"> ${capitalizar(estado)}</label>`
+    ).join('');
 
     const proyImpl = document.getElementById('proyecto-implementador');
     IMPLEMENTADORES.forEach(impl => {
@@ -81,30 +82,83 @@ function inicializarFiltros() {
 }
 
 function aplicarFiltros() {
-    // Update pill active states
-    document.querySelectorAll('.filter-pill').forEach(pill => {
-        const select = pill.querySelector('.filter-select');
-        if (select.value) {
-            pill.classList.add('active');
-        } else {
-            pill.classList.remove('active');
-        }
-    });
+    // Update impl multi-select pill label
+    const implChecked = [...document.querySelectorAll('.filtro-impl-cb:checked')].map(cb => cb.value.split(' ')[0]);
+    const implPill = document.querySelector('[onclick*="toggleImplDropdown"]');
+    const implLabel = document.getElementById('filtro-impl-label');
+    if (implChecked.length === 0) {
+        implLabel.textContent = 'Implementador';
+        if (implPill) implPill.classList.remove('active');
+    } else {
+        implLabel.textContent = implChecked.join(', ');
+        if (implPill) implPill.classList.add('active');
+    }
+
+    // Update tipo multi-select pill label
+    const tiposChecked = [...document.querySelectorAll('.filtro-tipo-cb:checked')].map(cb => cb.value);
+    const tipoPill = document.querySelector('[onclick*="toggleTipoDropdown"]');
+    const tipoLabel = document.getElementById('filtro-tipo-label');
+    if (tiposChecked.length === 0) {
+        tipoLabel.textContent = 'Tipo';
+        if (tipoPill) tipoPill.classList.remove('active');
+    } else {
+        tipoLabel.textContent = tiposChecked.join(', ');
+        if (tipoPill) tipoPill.classList.add('active');
+    }
+
+    // Update estado multi-select pill label
+    const estadosChecked = [...document.querySelectorAll('.filtro-estado-cb:checked')].map(cb => capitalizar(cb.value));
+    const estadoPill = document.querySelector('[onclick*="toggleEstadoDropdown"]');
+    const estadoLabel = document.getElementById('filtro-estado-label');
+    if (estadosChecked.length === 0) {
+        estadoLabel.textContent = 'Estado';
+        if (estadoPill) estadoPill.classList.remove('active');
+    } else {
+        estadoLabel.textContent = estadosChecked.join(', ');
+        if (estadoPill) estadoPill.classList.add('active');
+    }
 
     // Show/hide clear button
-    const impl = document.getElementById('filtro-implementador').value;
-    const tipo = document.getElementById('filtro-tipo').value;
-    const estado = document.getElementById('filtro-estado').value;
+    const buscar = (document.getElementById('buscar-proyecto')?.value || '').trim();
     const clearBtn = document.getElementById('filter-clear-btn');
-    clearBtn.style.display = (impl || tipo || estado) ? 'inline-flex' : 'none';
+    clearBtn.style.display = (implChecked.length > 0 || tiposChecked.length > 0 || estadosChecked.length > 0 || buscar) ? 'inline-flex' : 'none';
 
     renderizarDashboard();
 }
 
+function closeAllFilterDropdowns(except) {
+    ['filtro-impl-dropdown', 'filtro-tipo-dropdown', 'filtro-estado-dropdown'].forEach(id => {
+        if (id !== except) document.getElementById(id)?.classList.remove('open');
+    });
+}
+
+function openFilterDropdown(ddId, e) {
+    e.stopPropagation();
+    closeAllFilterDropdowns(ddId);
+    const dd = document.getElementById(ddId);
+    dd.classList.toggle('open');
+    if (dd.classList.contains('open')) {
+        const close = (ev) => {
+            if (!dd.contains(ev.target) && !ev.target.closest('.filter-pill-multi')) {
+                dd.classList.remove('open');
+                document.removeEventListener('click', close);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', close), 0);
+    }
+}
+
+function toggleImplDropdown(e) { openFilterDropdown('filtro-impl-dropdown', e); }
+
+function toggleTipoDropdown(e) { openFilterDropdown('filtro-tipo-dropdown', e); }
+function toggleEstadoDropdown(e) { openFilterDropdown('filtro-estado-dropdown', e); }
+
 function limpiarFiltros() {
-    document.getElementById('filtro-implementador').value = '';
-    document.getElementById('filtro-tipo').value = '';
-    document.getElementById('filtro-estado').value = '';
+    document.querySelectorAll('.filtro-impl-cb').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.filtro-tipo-cb').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.filtro-estado-cb').forEach(cb => { cb.checked = false; });
+    const buscarInput = document.getElementById('buscar-proyecto');
+    if (buscarInput) buscarInput.value = '';
     aplicarFiltros();
 }
 
@@ -139,11 +193,11 @@ function renderizarEstadisticas() {
         <div class="kpi-row">
             <div class="kpi-card kpi-total ${dashboardFiltroActivo === 'total' ? 'kpi-active' : ''}" onclick="filtrarDashboard('total')">
                 <div class="kpi-value">${stats.totales.total}</div>
-                <div class="kpi-label">Total clientes</div>
+                <div class="kpi-label">Total de Proyectos</div>
             </div>
-            <div class="kpi-card kpi-parados ${dashboardFiltroActivo === 'parados' ? 'kpi-active' : ''}" onclick="filtrarDashboard('parados')">
-                <div class="kpi-value">${stats.totales.parados}</div>
-                <div class="kpi-label">Parados</div>
+            <div class="kpi-card kpi-parados ${dashboardFiltroActivo === 'pausados' ? 'kpi-active' : ''}" onclick="filtrarDashboard('pausados')">
+                <div class="kpi-value">${stats.totales.pausados}</div>
+                <div class="kpi-label">Pausados</div>
             </div>
             <div class="kpi-card kpi-avanzando ${dashboardFiltroActivo === 'avanzando' ? 'kpi-active' : ''}" onclick="filtrarDashboard('avanzando')">
                 <div class="kpi-value">${stats.totales.avanzando}</div>
@@ -157,9 +211,13 @@ function renderizarEstadisticas() {
                 <div class="kpi-value">${stats.totales.inicio}</div>
                 <div class="kpi-label">Inicio / Sin datos</div>
             </div>
-            <div class="kpi-card kpi-pendientes">
-                <div class="kpi-value">${stats.totales.totalPendientes}</div>
-                <div class="kpi-label">Total pendientes</div>
+            <div class="kpi-card kpi-agendadas">
+                <div class="kpi-value">${stats.totales.sesionesAgendadas}</div>
+                <div class="kpi-label">Sesiones agendadas</div>
+            </div>
+            <div class="kpi-card kpi-singendar">
+                <div class="kpi-value">${stats.totales.sesionesSinAgendar}</div>
+                <div class="kpi-label">Sesiones sin agendar</div>
             </div>
         </div>
 
@@ -174,7 +232,7 @@ function renderizarEstadisticas() {
                         <tr>
                             <th>Implementador</th>
                             <th>Total</th>
-                            <th>Parados</th>
+                            <th>Pausados</th>
                             <th>Avanzando</th>
                             <th>Terminados</th>
                             <th>Inicio</th>
@@ -189,7 +247,7 @@ function renderizarEstadisticas() {
                             return `<tr class="impl-row" onclick="filtrarDashboardPorImplementador('${escapeAttr(impl)}')">
                                 <td><div class="impl-name"><span class="avatar" style="background:${color}">${ini}</span>${impl.split(' ')[0]}</div></td>
                                 <td><strong>${d.total}</strong></td>
-                                <td class="td-parados">${d.parados || '—'}</td>
+                                <td class="td-parados">${d.pausados || '—'}</td>
                                 <td class="td-avanzando">${d.avanzando || '—'}</td>
                                 <td class="td-terminados">${d.terminados || '—'}</td>
                                 <td class="td-inicio">${d.inicio || '—'}</td>
@@ -203,7 +261,7 @@ function renderizarEstadisticas() {
             <div class="stats-panel">
                 <div class="stats-panel-header parados-header">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    Clientes parados — sin reducción de pendientes en 3+ semanas
+                    Clientes pausados — sin reducción de pendientes en 3+ semanas
                 </div>
                 <table class="parados-table">
                     <thead>
@@ -211,21 +269,21 @@ function renderizarEstadisticas() {
                             <th>Cliente</th>
                             <th>Implementador</th>
                             <th>Pendientes</th>
-                            <th>Semanas parado</th>
+                            <th>Semanas pausado</th>
                         </tr>
                     </thead>
                 </table>
                 <div class="parados-scroll">
                     <table class="parados-table">
                         <tbody>
-                            ${stats.clientesParados.length > 0 ? stats.clientesParados.map(cp => `
+                            ${stats.clientesPausados.length > 0 ? stats.clientesPausados.map(cp => `
                                 <tr onclick="abrirDetalle('${cp.id}')">
                                     <td class="parados-cliente">${escapeHtml(cp.cliente)}</td>
                                     <td class="parados-impl">${cp.implementador.split(' ')[0]}</td>
                                     <td class="parados-pendientes">${cp.pendientes}</td>
-                                    <td class="parados-semanas">${cp.semanasParado !== null ? cp.semanasParado : '—'}</td>
+                                    <td class="parados-semanas">${cp.semanasPausado !== null ? cp.semanasPausado : '—'}</td>
                                 </tr>
-                            `).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">No hay clientes parados</td></tr>'}
+                            `).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">No hay clientes pausados</td></tr>'}
                         </tbody>
                     </table>
                 </div>
@@ -311,14 +369,14 @@ function renderizarEstadisticas() {
 
 const LABELS_FILTRO = {
     total: 'Todos los clientes',
-    parados: 'Clientes parados',
+    pausados: 'Clientes pausados',
     avanzando: 'Clientes avanzando',
     terminados: 'Clientes terminados',
     inicio: 'Clientes en inicio / sin datos'
 };
 
 const ESTADO_MAP = {
-    parados: 'parado',
+    pausados: 'pausado',
     avanzando: 'avanzando',
     terminados: 'terminado',
     inicio: 'inicio'
@@ -387,14 +445,16 @@ function refrescarTodo() {
 }
 
 function obtenerProyectosFiltrados() {
-    const impl = document.getElementById('filtro-implementador').value;
-    const tipo = document.getElementById('filtro-tipo').value;
-    const estado = document.getElementById('filtro-estado').value;
+    const implSeleccionados = [...document.querySelectorAll('.filtro-impl-cb:checked')].map(cb => cb.value);
+    const tiposSeleccionados = [...document.querySelectorAll('.filtro-tipo-cb:checked')].map(cb => cb.value);
+    const estadosSeleccionados = [...document.querySelectorAll('.filtro-estado-cb:checked')].map(cb => cb.value);
+    const buscar = (document.getElementById('buscar-proyecto')?.value || '').toLowerCase().trim();
 
     return proyectos.filter(p => {
-        if (impl && p.implementador !== impl) return false;
-        if (tipo && p.tipo !== tipo) return false;
-        if (estado && p.estado !== estado) return false;
+        if (implSeleccionados.length > 0 && !implSeleccionados.includes(p.implementador)) return false;
+        if (tiposSeleccionados.length > 0 && !tiposSeleccionados.includes(p.tipo)) return false;
+        if (estadosSeleccionados.length > 0 && !estadosSeleccionados.includes(p.estado)) return false;
+        if (buscar && !p.cliente.toLowerCase().includes(buscar) && !p.implementador.toLowerCase().includes(buscar)) return false;
         return true;
     });
 }
@@ -541,6 +601,7 @@ function abrirModalProyecto(id) {
         selectTipo.value = p.tipo;
         selectEstado.value = p.estado;
         inputFecha.value = p.fechaInicio;
+        document.getElementById('proyecto-tpv').value = p.tpv || '';
         plantillaGroup.style.display = 'none';
         window._proyectoParticipantes = [...(p.participantes || [])];
     } else {
@@ -551,6 +612,7 @@ function abrirModalProyecto(id) {
         selectTipo.selectedIndex = 0;
         selectEstado.selectedIndex = 0;
         inputFecha.value = new Date().toISOString().split('T')[0];
+        document.getElementById('proyecto-tpv').value = '';
         plantillaGroup.style.display = '';
         window._proyectoParticipantes = [];
     }
@@ -568,6 +630,7 @@ async function guardarProyecto() {
     const estado = document.getElementById('proyecto-estado').value;
     const fechaInicio = document.getElementById('proyecto-fecha').value;
     const plantillaId = document.getElementById('proyecto-plantilla').value;
+    const tpv = document.getElementById('proyecto-tpv').value.trim();
 
     if (!cliente) {
         document.getElementById('proyecto-cliente').focus();
@@ -584,6 +647,7 @@ async function guardarProyecto() {
                 proyectos[idx].tipo = tipo;
                 proyectos[idx].estado = estado;
                 proyectos[idx].fechaInicio = fechaInicio;
+                proyectos[idx].tpv = tpv;
                 proyectos[idx].participantes = window._proyectoParticipantes || [];
                 await actualizarProyectoAPI(proyectos[idx]);
             }
@@ -596,6 +660,7 @@ async function guardarProyecto() {
                 estado,
                 fechaInicio,
                 ultimaActividad: new Date().toISOString().split('T')[0],
+                tpv,
                 participantes: window._proyectoParticipantes || [],
                 secciones: plantillaId ? crearEstructuraDesdePlantilla(plantillaId) : crearEstructuraProyecto()
             };
@@ -692,11 +757,32 @@ function renderDetalleTareas(proyecto) {
                 <span class="detail-label">Ultima sesion</span>
                 <span class="detail-value detail-sesion-fecha">${formatearFecha(ultimaSesion)}</span>
             </div>` : ''}
+            <div class="detail-field">
+                <span class="detail-label">Integracion TPV</span>
+                <span class="detail-value">${proyecto.tpv ? `<span class="detail-tpv-badge">${escapeHtml(proyecto.tpv)}</span>` : '<span style="color:var(--text-muted)">Sin TPV</span>'}</span>
+            </div>
             ${(proyecto.participantes && proyecto.participantes.length > 0) ? `<div class="detail-field">
                 <span class="detail-label">Participantes</span>
                 <span class="detail-value"><div class="participantes-chips-inline">${proyecto.participantes.map(e => `<span class="participante-chip-sm">${escapeHtml(e)}</span>`).join('')}</div></span>
             </div>` : ''}
         </div>
+
+        ${proyecto.estado === 'pausado' ? `
+        <div class="pausa-info-panel">
+            <div class="pausa-info-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+                Proyecto pausado
+            </div>
+            <div class="form-group">
+                <label>Motivo de pausa</label>
+                <textarea id="motivo-pausa" class="form-control" rows="2" placeholder="Indica el motivo de la pausa..." onchange="guardarDatosPausa()">${escapeHtml(proyecto.motivoPausa || '')}</textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Plan de accion</label>
+                <textarea id="plan-accion" class="form-control" rows="2" placeholder="Describe el plan para retomar..." onchange="guardarDatosPausa()">${escapeHtml(proyecto.planAccion || '')}</textarea>
+            </div>
+        </div>
+        ` : ''}
 
         <div class="detail-sections">
             ${proyecto.secciones.map((seccion, si) => renderSeccion(proyecto.id, seccion, si)).join('')}
@@ -712,6 +798,16 @@ function renderDetalleTareas(proyecto) {
                 Eliminar
             </button>
         </div>`;
+}
+
+async function guardarDatosPausa() {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    proyecto.motivoPausa = document.getElementById('motivo-pausa').value;
+    proyecto.planAccion = document.getElementById('plan-accion').value;
+    guardarProyectosLocal(proyectos);
+    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+    mostrarToast('Datos de pausa guardados', 'success');
 }
 
 function cambiarVistaDetalle(vista) {
@@ -1906,6 +2002,28 @@ async function toggleSubtareaCompletada(proyectoId, seccionNombre, tareaId, subt
     }
     abrirDetalle(proyectoId);
     refrescarTodo();
+}
+
+// ==========================================
+// BADGE SIN ASIGNAR
+// ==========================================
+
+async function actualizarBadgeSinAsignar() {
+    const badge = document.getElementById('badge-sinasignar');
+    if (!badge) return;
+    try {
+        const res = await fetch(WEBHOOK_ALTAS, { method: 'GET', headers: getAuthHeaders() });
+        if (!res.ok) return;
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+        const raw = Array.isArray(data) ? data
+            : Array.isArray(data.clientes) ? data.clientes
+            : Array.isArray(data.data) ? data.data : [];
+        const todas = raw.map(normalizarAlta).filter(a => a.nombre);
+        const nombresExistentes = new Set(proyectos.map(p => p.cliente.toLowerCase().trim()));
+        const sinAsignar = todas.filter(a => !nombresExistentes.has(a.nombre.toLowerCase().trim()));
+        badge.textContent = sinAsignar.length > 0 ? sinAsignar.length : '';
+    } catch (_) {}
 }
 
 // ==========================================

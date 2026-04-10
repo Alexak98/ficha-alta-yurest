@@ -33,7 +33,7 @@
         </a>
         <a href="sinasignar.html" class="sidebar-item">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
-            Sin asignar
+            Sin asignar <span class="sidebar-badge" id="badge-sinasignar"></span>
         </a>
         <a href="proyectos.html" class="sidebar-item active">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
@@ -99,30 +99,40 @@
 
     <!-- ======================== VIEW: PROYECTOS ======================== -->
     <div id="vista-proyectos" class="vista" style="display:none">
-        <!-- FILTERS -->
+        <!-- SEARCH + FILTERS -->
         <div class="filters-bar">
+            <div class="search-group">
+                <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="buscar-proyecto" class="search-input" placeholder="Buscar proyecto..." oninput="aplicarFiltros()">
+            </div>
             <div class="filter-group">
-                <div class="filter-pill">
+                <div class="filter-pill filter-pill-multi" onclick="toggleImplDropdown(event)">
                     <svg class="filter-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <select id="filtro-implementador" class="filter-select" onchange="aplicarFiltros()">
-                        <option value="">Implementador</option>
-                    </select>
+                    <span id="filtro-impl-label">Implementador</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="filter-dropdown" id="filtro-impl-dropdown">
+                    <div id="filtro-impl-checks"></div>
                 </div>
             </div>
             <div class="filter-group">
-                <div class="filter-pill">
+                <div class="filter-pill filter-pill-multi" onclick="toggleTipoDropdown(event)">
                     <svg class="filter-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-                    <select id="filtro-tipo" class="filter-select" onchange="aplicarFiltros()">
-                        <option value="">Tipo</option>
-                    </select>
+                    <span id="filtro-tipo-label">Tipo</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="filter-dropdown" id="filtro-tipo-dropdown">
+                    <div id="filtro-tipo-checks"></div>
                 </div>
             </div>
             <div class="filter-group">
-                <div class="filter-pill">
+                <div class="filter-pill filter-pill-multi" onclick="toggleEstadoDropdown(event)">
                     <svg class="filter-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <select id="filtro-estado" class="filter-select" onchange="aplicarFiltros()">
-                        <option value="">Estado</option>
-                    </select>
+                    <span id="filtro-estado-label">Estado</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="filter-dropdown" id="filtro-estado-dropdown">
+                    <div id="filtro-estado-checks"></div>
                 </div>
             </div>
             <button class="filter-clear-btn" id="filter-clear-btn" onclick="limpiarFiltros()" style="display:none">
@@ -167,6 +177,12 @@
                     <div class="form-group">
                         <label>Fecha de inicio</label>
                         <input type="date" id="proyecto-fecha" class="form-control">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Integracion TPV</label>
+                        <input type="text" id="proyecto-tpv" class="form-control" placeholder="Ej: Revo, Agora, Last...">
                     </div>
                 </div>
                 <div class="form-group" id="proyecto-plantilla-group">
@@ -382,7 +398,7 @@
         </div>
     </div>
 
-    <script src="js-gestor/data.js"></script>
-    <script src="js-gestor/app.js"></script>
+    <script src="js-gestor/data.js?v=2"></script>
+    <script src="js-gestor/app.js?v=2"></script>
 </body>
 </html>

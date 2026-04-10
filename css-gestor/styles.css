@@ -25,6 +25,23 @@
 }
 .sidebar.open { left: 0; }
 
+.sidebar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: #DC2626;
+    border-radius: 10px;
+    margin-left: auto;
+}
+
+.sidebar-badge:empty { display: none; }
+
 .sidebar-hd {
     display: flex; align-items: center; justify-content: space-between;
     padding: 18px 18px 12px;
@@ -525,6 +542,8 @@ body {
 .kpi-card.kpi-terminados::before { background: #2563EB; }
 .kpi-card.kpi-inicio::before { background: #D97706; }
 .kpi-card.kpi-pendientes::before { background: #7C3AED; }
+.kpi-card.kpi-agendadas::before { background: #059669; }
+.kpi-card.kpi-singendar::before { background: #D97706; }
 
 .kpi-value {
     font-size: 32px;
@@ -539,6 +558,8 @@ body {
 .kpi-card.kpi-terminados .kpi-value { color: #2563EB; }
 .kpi-card.kpi-inicio .kpi-value { color: #D97706; }
 .kpi-card.kpi-pendientes .kpi-value { color: #7C3AED; }
+.kpi-card.kpi-agendadas .kpi-value { color: #059669; }
+.kpi-card.kpi-singendar .kpi-value { color: #D97706; }
 
 .kpi-label {
     font-size: 11px;
@@ -1365,6 +1386,46 @@ body {
     color: #4F46E5;
 }
 
+.pausa-info-panel {
+    margin: 12px 0;
+    padding: 14px 16px;
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    border-radius: 10px;
+}
+
+.pausa-info-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #DC2626;
+    margin-bottom: 10px;
+}
+
+.pausa-info-panel .form-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #991B1B;
+}
+
+.pausa-info-panel textarea {
+    background: #fff;
+    font-size: 13px;
+}
+
+.detail-tpv-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    background: #FEF3C7;
+    color: #92400E;
+    font-weight: 700;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #FDE68A;
+}
+
 /* ==========================================
    PARTICIPANTES
    ========================================== */
@@ -1495,6 +1556,101 @@ body {
     height: 15px;
     accent-color: #4F46E5;
     flex-shrink: 0;
+}
+
+/* ==========================================
+   MULTI-SELECT FILTER DROPDOWN
+   ========================================== */
+
+.filter-pill-multi {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.filter-group {
+    position: relative;
+}
+
+.filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    padding: 6px;
+    min-width: 160px;
+    margin-top: 4px;
+}
+
+.filter-dropdown.open {
+    display: block;
+}
+
+.filter-check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background var(--transition);
+}
+
+.filter-check-item:hover {
+    background: var(--bg-hover);
+}
+
+.filter-check-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #4F46E5;
+}
+
+/* ==========================================
+   SEARCH BAR
+   ========================================== */
+
+.search-group {
+    position: relative;
+    min-width: 220px;
+}
+
+.search-group .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.search-group .search-input {
+    width: 100%;
+    padding: 8px 14px 8px 38px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg-white);
+    transition: border-color var(--transition);
+    box-sizing: border-box;
+}
+
+.search-group .search-input:focus {
+    outline: none;
+    border-color: #4F46E5;
+}
+
+.search-group .search-input::placeholder {
+    color: var(--text-muted);
 }
 
 /* ==========================================

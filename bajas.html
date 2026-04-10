@@ -65,6 +65,8 @@
         .sidebar-item.active { background: #fff1f1; color: #fc5858; font-weight: 700; }
         .sidebar-item svg { flex-shrink: 0; opacity: 0.7; }
         .sidebar-item.active svg { opacity: 1; }
+        .sidebar-badge { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;font-size:11px;font-weight:700;color:#fff;background:#DC2626;border-radius:10px;margin-left:auto }
+        .sidebar-badge:empty { display:none }
         .sidebar-ft {
             margin-top: auto; padding: 16px 18px;
             border-top: 1.5px solid #f1f5f9;
@@ -796,7 +798,7 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>
         </svg>
-        Sin asignar
+        Sin asignar <span class="sidebar-badge" id="badge-sinasignar"></span>
     </a>
     <a href="proyectos.html" class="sidebar-item">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2019,6 +2021,9 @@ function initFechaEfectoPicker() {
 // ══════════════════════════════════════════════════════════════════
 cargarBajas();
 initFilterDatePickers();
+</script>
+<script>
+(async()=>{try{const b=document.getElementById('badge-sinasignar');if(!b)return;const s=JSON.parse(sessionStorage.getItem('yurest_auth')||'{}');const h=s.basicAuth?{'Authorization':'Basic '+s.basicAuth}:{};const r=await fetch('https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f',{headers:h});if(!r.ok)return;const d=await r.json();const raw=Array.isArray(d)?d:Array.isArray(d.clientes)?d.clientes:Array.isArray(d.data)?d.data:[];const p=JSON.parse(localStorage.getItem('gestor_proyectos_v3')||'[]');const ex=new Set(p.map(x=>x.cliente.toLowerCase().trim()));const c=raw.filter(a=>{const n=((a['Denominación Social']||a['Denominacion Social']||a.denominacion||a['Nombre Sociedad']||a['Nombre Comercial']||a.nombreComercial||a.Nombre||'')).toString().trim();return n&&!ex.has(n.toLowerCase().trim())}).length;b.textContent=c>0?c:''}catch(e){}})();
 </script>
 </body>
 </html>

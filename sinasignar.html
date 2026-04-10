@@ -23,6 +23,8 @@
         .sidebar-item.active { background:#fff1f1;color:#fc5858;font-weight:700 }
         .sidebar-item svg { flex-shrink:0;opacity:0.7 }
         .sidebar-item.active svg { opacity:1 }
+        .sidebar-badge { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;font-size:11px;font-weight:700;color:#fff;background:#DC2626;border-radius:10px;margin-left:auto }
+        .sidebar-badge:empty { display:none }
         .sidebar-ft { margin-top:auto;padding:16px 18px;border-top:1.5px solid #f1f5f9 }
         .sidebar-ft button { display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;color:#dc2626;font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;transition:background 0.15s }
         .sidebar-ft button:hover { background:#fee2e2 }
@@ -140,7 +142,7 @@
         </a>
         <a href="sinasignar.html" class="sidebar-item active">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
-            Sin asignar
+            Sin asignar <span class="sidebar-badge" id="badge-sinasignar"></span>
         </a>
         <a href="proyectos.html" class="sidebar-item">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
@@ -265,6 +267,8 @@
 
             document.getElementById('fichas-stats').textContent =
                 `${fichasSinAsignar.length} fichas sin proyecto (de ${todas.length} totales)`;
+            const badge = document.getElementById('badge-sinasignar');
+            if (badge) badge.textContent = fichasSinAsignar.length > 0 ? fichasSinAsignar.length : '';
             renderFichas();
         } catch (err) {
             grid.innerHTML = `<div class="empty-state">
@@ -342,7 +346,8 @@
                 ultimaActividad: new Date().toISOString().split('T')[0],
                 secciones: plantillaId ? crearEstructuraDesdePlantilla(plantillaId) : crearEstructuraProyecto(),
                 anotaciones: '',
-                asanaProjectId: ''
+                asanaProjectId: '',
+                tpv: f.tpv || ''
             };
 
             await crearProyectoAPI(nuevoProyecto).catch(() => {});
