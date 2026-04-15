@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integraciones - Yurest</title>
+    <style>
+        * { margin:0;padding:0;box-sizing:border-box }
+        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b }
+        .sidebar-overlay { position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:40;display:none }
+        .sidebar-overlay.open { display:block }
+        .sidebar { position:fixed;left:0;top:0;bottom:0;width:260px;background:#fff;z-index:50;transform:translateX(-100%);transition:transform 0.2s;display:flex;flex-direction:column;border-right:1.5px solid #f1f5f9 }
+        .sidebar.open { transform:translateX(0) }
+        .sidebar-hd { display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1.5px solid #f1f5f9 }
+        .sidebar-brand { display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:800;letter-spacing:0.15em;color:#fc5858 }
+        .sidebar-brand-dot { width:8px;height:8px;background:#fc5858;border-radius:50% }
+        .sidebar-close { background:#f1f5f9;border:none;border-radius:8px;width:28px;height:28px;font-size:14px;color:#475569;cursor:pointer }
+        .sidebar-label { padding:16px 18px 6px;font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8 }
+        .sidebar-item { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:0.88rem;font-weight:500;color:#334155;text-decoration:none;cursor:pointer;transition:background 0.14s }
+        .sidebar-item:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-item.active { background:#fff1f1;color:#fc5858;font-weight:700 }
+        .sidebar-item svg { flex-shrink:0;opacity:0.7 }
+        .sidebar-item.active svg { opacity:1 }
+        .sidebar-group { margin: 2px 0; }
+        .sidebar-group-header { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:0.88rem;font-weight:500;color:#334155;cursor:pointer;user-select:none;transition:background 0.14s,color 0.14s }
+        .sidebar-group-header:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-group-header svg { flex-shrink:0;opacity:0.7 }
+        .sidebar-group-chevron { margin-left:auto;transition:transform 0.18s }
+        .sidebar-group.open .sidebar-group-chevron { transform:rotate(90deg) }
+        .sidebar-group-children { max-height:0;overflow:hidden;transition:max-height 0.2s ease }
+        .sidebar-group.open .sidebar-group-children { max-height:500px }
+        .sidebar-group-children .sidebar-item { padding-left:44px;font-size:0.84rem;position:relative }
+        .sidebar-group-children .sidebar-item::before { content:'';position:absolute;left:30px;top:50%;width:8px;height:1.5px;background:#cbd5e1 }
+        .sidebar-badge { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;font-size:11px;font-weight:700;color:#fff;background:#DC2626;border-radius:10px;margin-left:auto }
+        .sidebar-badge:empty { display:none }
+        .sidebar-ft { margin-top:auto;padding:16px 18px;border-top:1.5px solid #f1f5f9 }
+        .sidebar-ft button { display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;color:#dc2626;font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer;transition:background 0.15s }
+        .sidebar-ft button:hover { background:#fee2e2 }
+
+        .page-header { display:flex;align-items:center;gap:14px;padding:20px 24px;background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:50 }
+        .btn-menu { display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex-shrink:0;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;color:#64748b;transition:border-color 0.15s,color 0.15s,background 0.15s;padding:0 }
+        .btn-menu:hover { border-color:#fc5858;color:#fc5858;background:#fff1f1 }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.1rem;font-weight:800;color:#1e293b }
+
+        .page-content { max-width:1400px;margin:0 auto;padding:32px }
+        .page-toolbar { display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;gap:16px;flex-wrap:wrap }
+        .page-toolbar h3 { font-size:15px;font-weight:700;color:#1e293b }
+        .page-stats { font-size:13px;color:#64748b;margin-top:4px }
+
+        .btn { padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px }
+        .btn-secondary { background:#fff;border:1.5px solid #e2e8f0;color:#475569 }
+        .btn-secondary:hover { background:#f8fafc;border-color:#cbd5e1 }
+
+        /* Secciones apiladas colapsables */
+        .sections-list { display:flex;flex-direction:column;gap:12px }
+        .section-card {
+            background:#fff;border-radius:14px;
+            border:1.5px solid #f1f5f9;
+            overflow:hidden;transition:box-shadow 0.15s;
+        }
+        .section-card:hover { box-shadow:0 1px 3px rgba(0,0,0,0.04) }
+        .section-head {
+            display:flex;align-items:center;gap:10px;
+            padding:16px 20px;cursor:pointer;user-select:none;
+            transition:background 0.12s;
+        }
+        .section-head:hover { background:#fafbfc }
+        .section-chevron {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:22px;height:22px;color:#94a3b8;
+            transition:transform 0.2s;flex-shrink:0;
+        }
+        .section-card.open .section-chevron { transform:rotate(90deg);color:#fc5858 }
+        .section-title {
+            font-size:0.92rem;font-weight:700;color:#1e293b;
+            flex:1;display:flex;align-items:center;gap:10px;
+        }
+        .section-stats {
+            display:flex;gap:6px;align-items:center;
+        }
+        .section-count {
+            background:#f1f5f9;color:#64748b;
+            font-size:0.72rem;font-weight:700;
+            padding:3px 10px;border-radius:999px;
+        }
+        .section-count-done {
+            background:#dcfce7;color:#15803d;
+            font-size:0.72rem;font-weight:700;
+            padding:3px 10px;border-radius:999px;
+        }
+        .section-body {
+            max-height:0;overflow:hidden;
+            transition:max-height 0.28s ease;
+        }
+        .section-card.open .section-body { max-height:6000px }
+        .section-body-inner {
+            padding:4px 20px 20px;
+            display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+            gap:10px;
+        }
+
+        .task-card {
+            background:#fafbfc;border:1.5px solid #f1f5f9;border-radius:10px;
+            padding:12px 14px;transition:all 0.15s;position:relative;
+            border-left-width:4px;
+        }
+        .task-card:hover { background:#fff;transform:translateX(1px) }
+
+        /* Escala de urgencia por antigüedad */
+        .task-card.age-fresh    { border-left-color:#e2e8f0 }                                /* < 1 semana */
+        .task-card.age-warn     { border-left-color:#facc15;background:#fffef5 }              /* 1-3 semanas */
+        .task-card.age-high     { border-left-color:#f97316;background:#fff7ed }              /* 3 semanas - 1 mes */
+        .task-card.age-urgent   { border-left-color:#ef4444;background:#fef2f2 }              /* 1-2 meses */
+        .task-card.age-critical { border-left-color:#991b1b;background:#fee2e2;border-color:#fca5a5 } /* 2+ meses */
+
+        .task-age-badge {
+            display:inline-flex;align-items:center;gap:3px;
+            padding:2px 7px;border-radius:999px;
+            font-weight:700;font-size:0.68rem;
+            background:#f1f5f9;color:#64748b;
+        }
+        .task-age-badge.age-warn     { background:#fef3c7;color:#92400e }
+        .task-age-badge.age-high     { background:#ffedd5;color:#9a3412 }
+        .task-age-badge.age-urgent   { background:#fee2e2;color:#b91c1c }
+        .task-age-badge.age-critical { background:#991b1b;color:#fff }
+        .task-asana-btn {
+            position:absolute;top:10px;right:10px;
+            display:inline-flex;align-items:center;justify-content:center;
+            width:24px;height:24px;border-radius:6px;
+            background:#fff;border:1.5px solid #e2e8f0;
+            color:#94a3b8;text-decoration:none;
+            opacity:0;transition:all 0.15s;
+        }
+        .task-card:hover .task-asana-btn { opacity:1 }
+        .task-asana-btn:hover { background:#fc5858;border-color:#fc5858;color:#fff }
+        .task-card.completed { opacity:0.55 }
+        .task-card.completed .task-title { text-decoration:line-through;color:#94a3b8 }
+        .task-title { font-size:0.85rem;font-weight:600;color:#1e293b;line-height:1.45;margin-bottom:6px }
+        .task-meta { display:flex;gap:10px;font-size:0.72rem;color:#94a3b8;flex-wrap:wrap }
+        .task-meta-item { display:inline-flex;align-items:center;gap:4px }
+        .task-assignee {
+            display:inline-flex;align-items:center;gap:5px;
+            padding:2px 8px;border-radius:999px;
+            background:#eff6ff;color:#2563eb;font-weight:600;font-size:0.7rem;
+        }
+        .task-due { color:#64748b }
+        .task-due.overdue { color:#dc2626;font-weight:600 }
+
+        /* Barra de acciones de expansión */
+        .expand-actions {
+            display:flex;gap:10px;margin-bottom:12px;
+        }
+        .btn-link-action {
+            background:none;border:none;color:#64748b;
+            font-size:0.78rem;font-weight:600;cursor:pointer;
+            padding:4px 8px;border-radius:6px;font-family:inherit;
+            transition:color 0.14s,background 0.14s;
+        }
+        .btn-link-action:hover { color:#fc5858;background:#fff1f1 }
+
+        /* Filtros TPV */
+        .tpv-filter-bar {
+            display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+            padding:12px 16px;margin-bottom:14px;
+            background:#fff;border:1.5px solid #f1f5f9;border-radius:12px;
+        }
+        .tpv-filter-label {
+            font-size:0.72rem;font-weight:700;letter-spacing:0.08em;
+            text-transform:uppercase;color:#94a3b8;margin-right:4px;
+        }
+        .chip-filter {
+            display:inline-flex;align-items:center;gap:6px;
+            padding:5px 13px;border-radius:999px;
+            font-size:0.8rem;font-weight:600;color:#475569;
+            background:#fff;border:1.5px solid #e2e8f0;
+            cursor:pointer;user-select:none;transition:all 0.15s;
+        }
+        .chip-filter:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .chip-filter.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
+        .chip-filter.chip-all { background:#0f172a;border-color:#0f172a;color:#fff }
+        .chip-filter.chip-all.active { background:#fc5858;border-color:#fc5858;color:#fff }
+        .chip-filter .chip-count {
+            font-size:0.68rem;font-weight:700;
+            background:#f1f5f9;color:#64748b;
+            padding:1px 6px;border-radius:999px;
+        }
+        .chip-filter.active .chip-count { background:#fc5858;color:#fff }
+        .chip-filter.chip-all .chip-count { background:rgba(255,255,255,0.2);color:#fff }
+
+        /* Badge TPV en las tarjetas */
+        .task-tpv {
+            display:inline-flex;align-items:center;gap:4px;
+            padding:2px 8px;border-radius:999px;
+            background:#fef3c7;color:#92400e;
+            font-weight:600;font-size:0.7rem;
+        }
+
+        /* Comentario en las tarjetas */
+        .task-comment {
+            margin-top:10px;padding:10px 12px;
+            background:#f8fafc;border-left:3px solid #cbd5e1;
+            border-radius:0 8px 8px 0;font-size:0.8rem;color:#475569;
+            line-height:1.4;
+        }
+        .task-comment-head {
+            display:flex;align-items:center;gap:6px;margin-bottom:4px;
+            font-size:0.68rem;color:#94a3b8;font-weight:600;
+            letter-spacing:0.03em;
+        }
+        .task-comment-author { color:#475569;font-weight:700 }
+        .task-comment-text {
+            display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+            overflow:hidden;text-overflow:ellipsis;word-break:break-word;
+        }
+        .task-comment-loading { color:#94a3b8;font-style:italic;font-size:0.78rem }
+        .task-comment-empty { color:#cbd5e1;font-style:italic;font-size:0.78rem;padding:6px 0 }
+
+        /* ── Widgets informativos ── */
+        .widgets-row {
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+            gap:16px;margin-bottom:20px;
+        }
+        .widget-card {
+            background:#fff;border:1.5px solid #f1f5f9;border-radius:14px;
+            padding:18px 20px;
+        }
+        .widget-head {
+            display:flex;align-items:center;justify-content:space-between;
+            margin-bottom:14px;
+        }
+        .widget-title {
+            font-size:0.78rem;font-weight:700;letter-spacing:0.08em;
+            text-transform:uppercase;color:#64748b;
+        }
+        .widget-total {
+            font-size:1.4rem;font-weight:800;color:#1e293b;line-height:1;
+        }
+        .widget-placeholder {
+            text-align:center;padding:24px 12px;
+            color:#cbd5e1;font-size:0.82rem;font-weight:500;
+            background:repeating-linear-gradient(45deg,#f8fafc,#f8fafc 10px,#fff 10px,#fff 20px);
+            border-radius:10px;
+        }
+
+        /* Barras stack (donut-like) */
+        .stacked-bar {
+            display:flex;height:8px;border-radius:4px;overflow:hidden;
+            background:#f1f5f9;margin-bottom:14px;
+        }
+        .stacked-seg { height:100%;transition:width 0.3s }
+        .legend-list {
+            display:flex;flex-direction:column;gap:6px;
+        }
+        .legend-item {
+            display:flex;align-items:center;gap:8px;font-size:0.82rem;
+        }
+        .legend-dot {
+            width:10px;height:10px;border-radius:3px;flex-shrink:0;
+        }
+        .legend-name {
+            flex:1;color:#475569;font-weight:500;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .legend-count {
+            color:#1e293b;font-weight:700;font-variant-numeric:tabular-nums;
+        }
+        .legend-pct {
+            color:#94a3b8;font-size:0.72rem;font-weight:500;
+            font-variant-numeric:tabular-nums;min-width:38px;text-align:right;
+        }
+
+        /* Widget de antigüedad */
+        .age-buckets { display:flex;flex-direction:column;gap:8px }
+        .age-bucket-row {
+            display:flex;align-items:center;gap:10px;
+            padding:8px 10px;border-radius:8px;
+            background:#fafbfc;border:1.5px solid #f1f5f9;
+        }
+        .age-bucket-dot {
+            width:10px;height:10px;border-radius:3px;flex-shrink:0;
+        }
+        .age-bucket-label {
+            flex:1;font-size:0.82rem;font-weight:600;color:#475569;
+        }
+        .age-bucket-count {
+            font-size:1rem;font-weight:800;color:#1e293b;
+            font-variant-numeric:tabular-nums;
+        }
+        .age-bucket-row.bucket-warn     { background:#fffbeb;border-color:#fde68a }
+        .age-bucket-row.bucket-high     { background:#fff7ed;border-color:#fed7aa }
+        .age-bucket-row.bucket-urgent   { background:#fef2f2;border-color:#fecaca }
+        .age-bucket-row.bucket-critical { background:#fee2e2;border-color:#fca5a5 }
+        .age-bucket-row.bucket-critical .age-bucket-label { color:#7f1d1d }
+        .age-bucket-row.bucket-critical .age-bucket-count { color:#991b1b }
+
+        .empty-state {
+            text-align:center;padding:60px 20px;color:#94a3b8;
+            background:#fff;border-radius:14px;border:1.5px solid #f1f5f9;
+        }
+        .empty-state svg { width:48px;height:48px;color:#cbd5e1;margin-bottom:12px }
+        .empty-state h3 { font-size:1rem;font-weight:700;color:#475569;margin-bottom:6px }
+        .loading-center { display:flex;flex-direction:column;align-items:center;padding:48px }
+        .spinner { width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#fc5858;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px }
+        @keyframes spin { to { transform:rotate(360deg) } }
+
+        .asana-link {
+            display:inline-flex;align-items:center;gap:6px;
+            padding:7px 14px;background:#fc636b;color:#fff;
+            text-decoration:none;border-radius:8px;
+            font-size:0.8rem;font-weight:600;transition:opacity 0.15s;
+        }
+        .asana-link:hover { opacity:0.9 }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-hd">
+        <div class="sidebar-brand"><span class="sidebar-brand-dot"></span>Yurest</div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
+    <div class="sidebar-label">Secciones</div>
+    <div class="sidebar-group" id="sidebar-group-informes">
+        <div class="sidebar-group-header" onclick="document.getElementById('sidebar-group-informes').classList.toggle('open')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-5"/></svg>
+            Informes
+            <svg class="sidebar-group-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="sidebar-group-children">
+            <a href="distribucion.html" class="sidebar-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                Implementadores
+            </a>
+        </div>
+    </div>
+    <a href="lista.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Fichas de cliente
+    </a>
+    <a href="bajas.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Bajas
+    </a>
+    <a href="sinasignar.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
+        Sin asignar <span class="sidebar-badge" id="badge-sinasignar"></span>
+    </a>
+    <a href="proyectos.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+        Proyectos
+    </a>
+    <a href="integraciones.html" class="sidebar-item active">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Integraciones
+    </a>
+    <div class="sidebar-ft">
+        <button onclick="cerrarSesion()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Cerrar sesión
+        </button>
+    </div>
+</nav>
+
+<!-- Header -->
+<div class="page-header">
+    <button class="btn-menu" onclick="openSidebar()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+    <h1>Integraciones</h1>
+</div>
+
+<!-- Content -->
+<div class="page-content">
+    <div class="page-toolbar">
+        <div>
+            <h3>Integraciones (Asana)</h3>
+            <div class="page-stats" id="stats"></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <a href="https://app.asana.com/1/1120027994284990/project/1207920061546505/dashboard/1207923016544182"
+               target="_blank" class="asana-link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.7815 11.8906c-1.9219 0-3.4844 1.5547-3.4844 3.4844 0 1.9218 1.5625 3.4843 3.4844 3.4843S22.2578 17.3048 22.2578 15.375c0-1.9297-1.5547-3.4844-3.4763-3.4844zM5.2186 11.8906c-1.9219 0-3.4766 1.5547-3.4766 3.4844 0 1.9218 1.5547 3.4843 3.4766 3.4843 1.9218 0 3.4843-1.5625 3.4843-3.4843 0-1.9297-1.5625-3.4844-3.4843-3.4844zm6.7812-6.7812c-1.9219 0-3.4843 1.5625-3.4843 3.4844 0 1.9218 1.5625 3.4765 3.4843 3.4765s3.4844-1.5547 3.4844-3.4765c0-1.9219-1.5625-3.4844-3.4844-3.4844z"/></svg>
+                Abrir en Asana
+            </a>
+            <button class="btn btn-secondary" onclick="cargarTareas()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                Recargar
+            </button>
+        </div>
+    </div>
+
+    <div id="widgets" class="widgets-row" style="display:none"></div>
+
+    <div id="loading" class="loading-center">
+        <div class="spinner"></div>
+        <p style="color:#64748b">Cargando tareas desde Asana...</p>
+    </div>
+
+    <div id="content" style="display:none"></div>
+
+    <div id="empty" class="empty-state" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <h3>Sin tareas</h3>
+        <p id="empty-msg">El proyecto de Asana no tiene tareas o no se pudieron cargar.</p>
+    </div>
+</div>
+
+<script>
+    // ── Sidebar ────────────────────────────────────────────────────────────
+    function openSidebar() {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sidebar-overlay').classList.add('open');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-overlay').classList.remove('open');
+    }
+    function cerrarSesion() {
+        sessionStorage.clear();
+        window.location.replace('login.html');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+
+    // ── Auth ───────────────────────────────────────────────────────────────
+    (function checkAuth() {
+        const session = sessionStorage.getItem('yurest_auth');
+        if (!session) window.location.replace('login.html');
+    })();
+
+    // ── Config ─────────────────────────────────────────────────────────────
+    const ASANA_PROJECT_ID = '1207920061546505';
+    const WEBHOOK_ASANA = 'https://n8n-soporte.data.yurest.dev/webhook/asana/tasks';
+    const WEBHOOK_ASANA_STORIES = 'https://n8n-soporte.data.yurest.dev/webhook/asana/task/stories';
+
+    // Cache de comentarios por taskId
+    const commentsCache = {};
+
+    // Secciones que se muestran (y en este orden)
+    const SECCIONES_PERMITIDAS = [
+        'Integraciones pendientes',
+        'Integraciones paralizadas',
+        'Integraciones implementadas por desarrollo',
+        'Solicitud de datos realizada',
+        'Datos incorrectos y notificados',
+        'Integraciones realizadas',
+        'Baja'
+    ];
+
+    // Estado global
+    let todasLasTareas = [];
+    let filtrosTPV = new Set();
+
+    // Nombres de custom field a detectar como "TPV"
+    const TPV_FIELD_NAMES = ['tpv', 'tipo tpv', 'tipo de tpv', 'sistema tpv'];
+
+    // Extrae el valor del custom field TPV de una tarea
+    function getTPV(task) {
+        const cfs = task.custom_fields || [];
+        for (const cf of cfs) {
+            const nombre = (cf.name || '').toLowerCase().trim();
+            if (TPV_FIELD_NAMES.includes(nombre)) {
+                return cf.display_value ||
+                       cf.enum_value?.name ||
+                       cf.text_value ||
+                       '';
+            }
+        }
+        return '';
+    }
+
+    function esc(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function formatFecha(v) {
+        if (!v) return '';
+        const d = new Date(v);
+        if (isNaN(d)) return String(v);
+        return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
+    }
+
+    function isOverdue(due) {
+        if (!due) return false;
+        const d = new Date(due);
+        if (isNaN(d)) return false;
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+        return d < hoy;
+    }
+
+    // Días desde una fecha hasta hoy
+    function diasDesde(fecha) {
+        if (!fecha) return null;
+        const d = new Date(fecha);
+        if (isNaN(d)) return null;
+        const hoy = new Date();
+        const diff = hoy - d;
+        return Math.floor(diff / (1000 * 60 * 60 * 24));
+    }
+
+    // Clasifica urgencia por días de antigüedad
+    function bucketAntiguedad(dias) {
+        if (dias == null) return { key: 'fresh', label: '', short: '' };
+        if (dias < 7)   return { key: 'fresh',    label: 'Menos de 1 semana', short: `${dias}d` };
+        if (dias < 21)  return { key: 'warn',     label: '1-3 semanas',       short: `${dias}d` };
+        if (dias < 30)  return { key: 'high',     label: '3 semanas - 1 mes', short: `${dias}d` };
+        if (dias < 60)  return { key: 'urgent',   label: '1-2 meses',         short: `${Math.round(dias/30*10)/10}m` };
+        return           { key: 'critical', label: '+ de 2 meses',      short: `${Math.round(dias/30*10)/10}m` };
+    }
+
+    function getAuthHeaders() {
+        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        const headers = { 'Content-Type': 'application/json' };
+        if (session.basicAuth) headers['Authorization'] = 'Basic ' + session.basicAuth;
+        return headers;
+    }
+
+    // Fetch del último comentario de una tarea (con cache)
+    async function fetchLastComment(taskId) {
+        if (commentsCache[taskId] !== undefined) return commentsCache[taskId];
+        try {
+            const url = `${WEBHOOK_ASANA_STORIES}?taskId=${encodeURIComponent(taskId)}`;
+            const res = await fetch(url, { method: 'GET', headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Error ' + res.status);
+            const data = await res.json();
+            commentsCache[taskId] = data.lastComment || null;
+            return commentsCache[taskId];
+        } catch (_) {
+            commentsCache[taskId] = null;
+            return null;
+        }
+    }
+
+    // Carga el comentario de cada tarea visible y lo inyecta en su tarjeta
+    async function cargarComentariosEnSeccion(seccionNombre, tareas) {
+        // Fetch en paralelo
+        const promises = tareas.map(async t => {
+            if (!t.gid) return;
+            const comment = await fetchLastComment(t.gid);
+            const slot = document.querySelector(`.task-comment-slot[data-task-id="${t.gid}"]`);
+            if (!slot) return;
+            if (comment && comment.text) {
+                const fecha = comment.created_at ? formatFecha(comment.created_at) : '';
+                slot.innerHTML = `
+                    <div class="task-comment">
+                        <div class="task-comment-head">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                            <span class="task-comment-author">${esc(comment.created_by || 'Usuario')}</span>
+                            ${fecha ? `<span>· ${esc(fecha)}</span>` : ''}
+                        </div>
+                        <div class="task-comment-text">${esc(comment.text)}</div>
+                    </div>
+                `;
+            } else {
+                slot.innerHTML = '';
+            }
+        });
+        await Promise.allSettled(promises);
+    }
+
+    // ── Cargar tareas desde webhook ───────────────────────────────────────
+    async function cargarTareas() {
+        const loading = document.getElementById('loading');
+        const content = document.getElementById('content');
+        const empty = document.getElementById('empty');
+
+        loading.style.display = '';
+        content.style.display = 'none';
+        empty.style.display = 'none';
+
+        try {
+            const url = `${WEBHOOK_ASANA}?projectId=${encodeURIComponent(ASANA_PROJECT_ID)}`;
+            const res = await fetch(url, { method: 'GET', headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Error ' + res.status);
+            let data = {};
+            try { data = await res.json(); } catch(_) {}
+            const tasks = Array.isArray(data) ? data
+                : Array.isArray(data.tasks) ? data.tasks
+                : Array.isArray(data.data) ? data.data : [];
+
+            loading.style.display = 'none';
+            if (!tasks.length) {
+                empty.style.display = '';
+                document.getElementById('empty-msg').textContent =
+                    'El proyecto de Asana no tiene tareas o la integración aún no está configurada.';
+                return;
+            }
+            renderTareas(tasks);
+        } catch (err) {
+            loading.style.display = 'none';
+            empty.style.display = '';
+            document.getElementById('empty-msg').textContent =
+                'No se pudieron cargar las tareas: ' + err.message;
+        }
+    }
+
+    function renderTareas(tasks) {
+        todasLasTareas = tasks;
+        aplicarFiltrosYRender();
+    }
+
+    // ── Widgets informativos ───────────────────────────────────────────────
+    const WIDGET_COLORS = [
+        '#fc5858', '#3b82f6', '#10b981', '#f59e0b',
+        '#8b5cf6', '#ec4899', '#14b8a6', '#64748b',
+        '#f97316', '#6366f1'
+    ];
+
+    function renderWidgets(tareasEnSecciones) {
+        const container = document.getElementById('widgets');
+        container.style.display = '';
+
+        // 1) Por TPV
+        const porTPV = {};
+        tareasEnSecciones.forEach(t => {
+            const tpv = getTPV(t) || 'Sin TPV';
+            porTPV[tpv] = (porTPV[tpv] || 0) + 1;
+        });
+        const tpvEntries = Object.entries(porTPV).sort((a, b) => b[1] - a[1]);
+
+        const widgetTPV = renderWidgetDistribucion(
+            'Solicitud de datos · por TPV',
+            tpvEntries,
+            tareasEnSecciones.length
+        );
+
+        // 2) Por Tipo de Cliente (placeholder hasta que el usuario indique)
+        const widgetTipoCliente = `
+            <div class="widget-card">
+                <div class="widget-head">
+                    <span class="widget-title">Solicitud de datos · por Tipo de Cliente</span>
+                </div>
+                <div class="widget-placeholder">
+                    Pendiente de configurar origen de datos
+                </div>
+            </div>
+        `;
+
+        // 3) Antigüedad: solo tareas de "Solicitud de datos realizada" no completadas
+        const pendientes = tareasEnSecciones.filter(t => !t.completed);
+        const widgetAntiguedad = renderWidgetAntiguedad(pendientes);
+
+        container.innerHTML = widgetTPV + widgetTipoCliente + widgetAntiguedad;
+    }
+
+    function renderWidgetAntiguedad(tareas) {
+        const buckets = {
+            fresh:    { label: 'Menos de 1 semana', color: '#94a3b8', count: 0 },
+            warn:     { label: '1-3 semanas',       color: '#facc15', count: 0 },
+            high:     { label: '3 semanas - 1 mes', color: '#f97316', count: 0 },
+            urgent:   { label: '1-2 meses',         color: '#ef4444', count: 0 },
+            critical: { label: 'Más de 2 meses',    color: '#991b1b', count: 0 }
+        };
+
+        tareas.forEach(t => {
+            const dias = diasDesde(t.created_at);
+            const bucket = bucketAntiguedad(dias);
+            if (buckets[bucket.key]) buckets[bucket.key].count++;
+        });
+
+        const total = tareas.length;
+        const keysOrder = ['critical', 'urgent', 'high', 'warn', 'fresh'];
+
+        const rows = keysOrder.map(k => {
+            const b = buckets[k];
+            if (b.count === 0 && k === 'fresh') return '';
+            return `
+                <div class="age-bucket-row bucket-${k}">
+                    <span class="age-bucket-dot" style="background:${b.color}"></span>
+                    <span class="age-bucket-label">${esc(b.label)}</span>
+                    <span class="age-bucket-count">${b.count}</span>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="widget-card">
+                <div class="widget-head">
+                    <span class="widget-title">Antigüedad de tareas pendientes</span>
+                    <span class="widget-total">${total}</span>
+                </div>
+                <div class="age-buckets">${rows || '<div class="widget-placeholder">Sin tareas pendientes</div>'}</div>
+            </div>
+        `;
+    }
+
+    function renderWidgetDistribucion(titulo, entries, total) {
+        if (!entries.length) {
+            return `
+                <div class="widget-card">
+                    <div class="widget-head">
+                        <span class="widget-title">${esc(titulo)}</span>
+                        <span class="widget-total">0</span>
+                    </div>
+                    <div class="widget-placeholder">Sin datos</div>
+                </div>
+            `;
+        }
+
+        const segmentos = entries.map(([name, count], i) => {
+            const color = WIDGET_COLORS[i % WIDGET_COLORS.length];
+            const pct = total > 0 ? (count / total) * 100 : 0;
+            return { name, count, pct, color };
+        });
+
+        const stacked = segmentos.map(s =>
+            `<div class="stacked-seg" style="width:${s.pct}%;background:${s.color}" title="${esc(s.name)}: ${s.count}"></div>`
+        ).join('');
+
+        const legend = segmentos.map(s => `
+            <div class="legend-item">
+                <span class="legend-dot" style="background:${s.color}"></span>
+                <span class="legend-name">${esc(s.name)}</span>
+                <span class="legend-count">${s.count}</span>
+                <span class="legend-pct">${s.pct.toFixed(0)}%</span>
+            </div>
+        `).join('');
+
+        return `
+            <div class="widget-card">
+                <div class="widget-head">
+                    <span class="widget-title">${esc(titulo)}</span>
+                    <span class="widget-total">${total}</span>
+                </div>
+                <div class="stacked-bar">${stacked}</div>
+                <div class="legend-list">${legend}</div>
+            </div>
+        `;
+    }
+
+    function aplicarFiltrosYRender() {
+        const content = document.getElementById('content');
+        content.style.display = '';
+
+        // Filtrar por secciones permitidas
+        const setPermitidas = new Set(SECCIONES_PERMITIDAS);
+        const tareasEnSecciones = todasLasTareas.filter(t => {
+            const secNombre = (t.memberships || [])[0]?.section?.name;
+            return secNombre && setPermitidas.has(secNombre);
+        });
+
+        // Los widgets solo muestran las tareas de "Solicitud de datos realizada"
+        const tareasSolicitud = tareasEnSecciones.filter(t => {
+            const sec = (t.memberships || [])[0]?.section?.name;
+            return sec === 'Solicitud de datos realizada';
+        });
+        renderWidgets(tareasSolicitud);
+
+        let tareasFiltradas = [...tareasEnSecciones];
+
+        // Filtrar por TPV si hay filtros activos
+        if (filtrosTPV.size > 0) {
+            tareasFiltradas = tareasFiltradas.filter(t => {
+                const tpv = getTPV(t) || 'Sin TPV';
+                return filtrosTPV.has(tpv);
+            });
+        }
+
+        // Agrupar por sección
+        const porSeccion = {};
+        tareasFiltradas.forEach(t => {
+            const secNombre = (t.memberships || [])[0]?.section?.name;
+            if (!porSeccion[secNombre]) porSeccion[secNombre] = [];
+            porSeccion[secNombre].push(t);
+        });
+
+        // Ordenar cada sección por fecha de creación (más antigua primero)
+        Object.keys(porSeccion).forEach(sec => {
+            porSeccion[sec].sort((a, b) => {
+                const da = a.created_at ? new Date(a.created_at).getTime() : Infinity;
+                const db = b.created_at ? new Date(b.created_at).getTime() : Infinity;
+                return da - db;
+            });
+        });
+
+        // Stats
+        const total = tareasFiltradas.length;
+        const completadas = tareasFiltradas.filter(t => t.completed).length;
+        document.getElementById('stats').textContent =
+            `${total} tarea${total !== 1 ? 's' : ''} · ${completadas} completada${completadas !== 1 ? 's' : ''}` +
+            (filtrosTPV.size > 0 ? ` · Filtro TPV: ${[...filtrosTPV].join(', ')}` : '');
+
+        // Lista ordenada según SECCIONES_PERMITIDAS, incluyendo vacías
+        const secciones = [...SECCIONES_PERMITIDAS];
+
+        // Acciones de expansión
+        const actions = `
+            <div class="expand-actions">
+                <button class="btn-link-action" onclick="expandirTodas()">Expandir todas</button>
+                <button class="btn-link-action" onclick="contraerTodas()">Contraer todas</button>
+            </div>
+        `;
+
+        // Barra de filtros TPV (basada en TODAS las tareas de secciones permitidas)
+        const countsByTPV = {};
+        tareasEnSecciones.forEach(t => {
+            const tpv = getTPV(t) || 'Sin TPV';
+            countsByTPV[tpv] = (countsByTPV[tpv] || 0) + 1;
+        });
+        const tpvNames = Object.keys(countsByTPV).sort((a, b) => {
+            if (a === 'Sin TPV') return 1;
+            if (b === 'Sin TPV') return -1;
+            return a.localeCompare(b);
+        });
+
+        const filterBar = tpvNames.length === 0 ? '' : `
+            <div class="tpv-filter-bar">
+                <span class="tpv-filter-label">Filtrar por TPV</span>
+                <button class="chip-filter chip-all ${filtrosTPV.size === 0 ? 'active' : ''}"
+                        onclick="toggleFiltroTPV('__all__')">
+                    Todos <span class="chip-count">${tareasEnSecciones.length}</span>
+                </button>
+                ${tpvNames.map(tpv => `
+                    <button class="chip-filter ${filtrosTPV.has(tpv) ? 'active' : ''}"
+                            onclick="toggleFiltroTPV('${esc(tpv).replace(/'/g, "\\'")}')">
+                        ${esc(tpv)} <span class="chip-count">${countsByTPV[tpv]}</span>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+
+        // Render secciones apiladas (colapsables) - el comentario siempre con slot
+        const list = secciones.map((secNombre, idx) => {
+            const items = porSeccion[secNombre] || [];
+            const nTotal = items.length;
+            const body = items.length
+                ? items.map(t => renderTaskCard(t, true)).join('')
+                : '<div style="color:#94a3b8;font-size:0.82rem;padding:8px 0;text-align:center;">Sin tareas</div>';
+            return `
+                <div class="section-card${idx === 0 ? ' open' : ''}" data-section-name="${esc(secNombre)}" data-loaded="0">
+                    <div class="section-head" onclick="toggleSeccion(this)">
+                        <span class="section-chevron">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </span>
+                        <span class="section-title">${esc(secNombre)}</span>
+                        <span class="section-stats">
+                            <span class="section-count">${nTotal}</span>
+                        </span>
+                    </div>
+                    <div class="section-body">
+                        <div class="section-body-inner">
+                            ${body}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Guardar referencia a las tareas por sección para lazy loading
+        window._porSeccion = porSeccion;
+
+        content.innerHTML = filterBar + actions + `<div class="sections-list">${list}</div>`;
+
+        // Cargar comentarios solo de la primera sección (que está abierta por defecto)
+        document.querySelectorAll('.section-card.open').forEach(card => {
+            cargarComentariosSeccion(card);
+        });
+    }
+
+    // Carga los comentarios para todas las tareas visibles de una sección
+    function cargarComentariosSeccion(card) {
+        if (!card || card.dataset.loaded === '1') return;
+        card.dataset.loaded = '1';
+        const secNombre = card.dataset.sectionName;
+        const tareas = (window._porSeccion && window._porSeccion[secNombre]) || [];
+        if (tareas.length > 0) {
+            cargarComentariosEnSeccion(secNombre, tareas);
+        }
+    }
+
+    function toggleFiltroTPV(tpv) {
+        if (tpv === '__all__') {
+            filtrosTPV.clear();
+        } else {
+            if (filtrosTPV.has(tpv)) filtrosTPV.delete(tpv);
+            else filtrosTPV.add(tpv);
+        }
+        aplicarFiltrosYRender();
+    }
+
+    function toggleSeccion(head) {
+        const card = head.closest('.section-card');
+        const wasOpen = card.classList.contains('open');
+        card.classList.toggle('open');
+        // Si se acaba de abrir, cargar los comentarios (lazy)
+        if (!wasOpen) cargarComentariosSeccion(card);
+    }
+
+    function expandirTodas() {
+        document.querySelectorAll('.section-card').forEach(c => {
+            c.classList.add('open');
+            cargarComentariosSeccion(c);
+        });
+    }
+
+    function contraerTodas() {
+        document.querySelectorAll('.section-card').forEach(c => c.classList.remove('open'));
+    }
+
+    function renderTaskCard(t, showComment) {
+        const nombre = t.name || '(Sin nombre)';
+        const completed = !!t.completed;
+        const dueOn = t.due_on;
+        const createdAt = t.created_at;
+        const assignee = t.assignee?.name || '';
+        const overdue = !completed && isOverdue(dueOn);
+        const tpv = getTPV(t);
+        const url = t.permalink_url || '';
+
+        // Urgencia por antigüedad
+        const dias = diasDesde(createdAt);
+        const bucket = bucketAntiguedad(dias);
+        const ageClass = completed ? '' : `age-${bucket.key}`;
+
+        const btnAsana = url ? `
+            <a href="${esc(url)}" target="_blank" class="task-asana-btn" title="Abrir en Asana" onclick="event.stopPropagation()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+        ` : '';
+
+        const ageBadge = (dias != null && !completed && bucket.key !== 'fresh') ? `
+            <span class="task-age-badge age-${bucket.key}" title="${esc(bucket.label)}">${esc(bucket.short)}</span>
+        ` : '';
+
+        // Slot para el comentario (se rellena asincrónicamente)
+        const commentSlot = showComment && t.gid
+            ? `<div class="task-comment-slot" data-task-id="${esc(t.gid)}"><div class="task-comment-loading">Cargando último comentario…</div></div>`
+            : '';
+
+        return `
+            <div class="task-card ${completed ? 'completed' : ageClass}">
+                ${btnAsana}
+                <div class="task-title" style="padding-right:28px">${esc(nombre)}</div>
+                <div class="task-meta">
+                    ${ageBadge}
+                    ${tpv ? `<span class="task-tpv">${esc(tpv)}</span>` : ''}
+                    ${assignee ? `<span class="task-assignee">${esc(assignee)}</span>` : ''}
+                    ${createdAt ? `<span class="task-meta-item task-created" title="Fecha de creación">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        ${esc(formatFecha(createdAt))}
+                    </span>` : ''}
+                    ${dueOn ? `<span class="task-meta-item task-due ${overdue ? 'overdue' : ''}" title="Fecha de entrega">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        ${esc(formatFecha(dueOn))}
+                    </span>` : ''}
+                </div>
+                ${commentSlot}
+            </div>
+        `;
+    }
+
+    // Cargar al iniciar
+    document.addEventListener('DOMContentLoaded', cargarTareas);
+</script>
+
+</body>
+</html>

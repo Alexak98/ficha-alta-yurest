@@ -274,23 +274,38 @@ async function cargarProyectos() {
         const lista = Array.isArray(data) ? data
             : Array.isArray(data.proyectos) ? data.proyectos
             : Array.isArray(data.data) ? data.data : [];
-        if (lista.length > 0) return migrarProyectos(lista);
-        return migrarProyectos(DATOS_EJEMPLO);
+        return migrarProyectos(lista);
     } catch (err) {
-        console.warn('Error cargando proyectos del backend, usando datos locales:', err.message);
-        mostrarToast('No se pudo conectar al backend. Usando datos locales.', 'warning');
-        const datos = localStorage.getItem(STORAGE_KEY);
-        if (datos) return migrarProyectos(JSON.parse(datos));
-        return migrarProyectos(DATOS_EJEMPLO);
+        console.warn('Error cargando proyectos del backend:', err.message);
+        mostrarToast('No se pudo conectar al backend.', 'warning');
+        return [];
     }
+}
+
+// Parsea campos JSONB que vienen como string desde Supabase
+function parseJSONBField(val, fallback) {
+    if (val == null) return fallback;
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'object') return val;
+    if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch (_) { return fallback; }
+    }
+    return fallback;
 }
 
 // Elimina secciones que ya no existen en SECCIONES (ej: "Desarrollos" eliminada)
 function migrarProyectos(lista) {
     const seccionesValidas = new Set(SECCIONES);
     lista.forEach(p => {
-        if (p.secciones) {
-            p.secciones = p.secciones.filter(s => seccionesValidas.has(s.nombre));
+        // Parsear campos JSONB que Supabase puede devolver como string
+        p.secciones = parseJSONBField(p.secciones, []);
+        p.contactos = parseJSONBField(p.contactos, []);
+        p.adjuntos = parseJSONBField(p.adjuntos, []);
+
+        if (Array.isArray(p.secciones)) {
+            p.secciones = p.secciones.filter(s => s && seccionesValidas.has(s.nombre));
+        } else {
+            p.secciones = [];
         }
         if (!p.participantes) p.participantes = [];
         if (!p.contactos) p.contactos = [];

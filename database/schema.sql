@@ -55,6 +55,10 @@ CREATE TABLE fichas_alta (
     tpv TEXT,
     tpv_contacto TEXT,
     tpv_email TEXT,
+    tpv_no_integrado BOOLEAN DEFAULT false,
+    tpv_ni_nombre TEXT,
+    tpv_ni_contacto TEXT,
+    tpv_ni_email TEXT,
 
     -- Dirección de entrega (para clientes Lite)
     entrega_calle TEXT,
@@ -108,7 +112,7 @@ CREATE TABLE fichas_alta (
     baja TEXT DEFAULT 'No', -- 'No' o 'Sí'
 
     -- Estado del alta
-    estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'completada', 'en_proceso')),
+    estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'completada', 'en_proceso', 'rellenado')),
 
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),

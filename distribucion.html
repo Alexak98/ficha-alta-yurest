@@ -69,6 +69,39 @@
         }
         .sidebar-item svg { flex-shrink: 0; opacity: 0.7; }
         .sidebar-item.active svg { opacity: 1; }
+        /* Grupo colapsable tipo árbol */
+        .sidebar-group { margin: 2px 0; }
+        .sidebar-group-header {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 18px; margin: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.88rem; font-weight: 500; color: #334155;
+            cursor: pointer; user-select: none;
+            transition: background 0.14s, color 0.14s;
+        }
+        .sidebar-group-header:hover { background: #f8fafc; color: #1e293b; }
+        .sidebar-group-header svg { flex-shrink: 0; opacity: 0.7; }
+        .sidebar-group-chevron {
+            margin-left: auto; transition: transform 0.18s;
+        }
+        .sidebar-group.open .sidebar-group-chevron { transform: rotate(90deg); }
+        .sidebar-group-children {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.2s ease;
+        }
+        .sidebar-group.open .sidebar-group-children { max-height: 500px; }
+        .sidebar-group-children .sidebar-item {
+            padding-left: 44px;
+            font-size: 0.84rem;
+            position: relative;
+        }
+        .sidebar-group-children .sidebar-item::before {
+            content: '';
+            position: absolute;
+            left: 30px; top: 50%;
+            width: 8px; height: 1.5px;
+            background: #cbd5e1;
+        }
         .sidebar-badge { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;font-size:11px;font-weight:700;color:#fff;background:#DC2626;border-radius:10px;margin-left:auto }
         .sidebar-badge:empty { display:none }
         .sidebar-ft {
@@ -227,6 +260,19 @@
         .badge-planes    { background: #dbeafe; color: #2563eb; }
         .badge-corporate { background: #ede9fe; color: #7c3aed; }
         .badge-desconocido { background: #f1f5f9; color: #64748b; }
+
+        /* Badge implementador (read-only) */
+        .badge-impl {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 11px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
 
         /* ── Implementador select ── */
         .sel-impl {
@@ -456,37 +502,11 @@
 <body>
 
 <header class="page-header">
-    <div class="header-inner">
-        <div class="brand">
-            <span class="brand-dot"></span>
-            <span class="brand-name">Yurest</span>
-        </div>
-        <h1>Distribución de implementadores</h1>
-        <p class="header-sub">Asigna un implementador a cada ficha de alta completada</p>
-        <button onclick="cerrarSesion()" style="
-            position:absolute;top:20px;right:24px;
-            background:rgba(255,255,255,0.15);
-            border:1.5px solid rgba(255,255,255,0.35);
-            color:#fff;
-            padding:7px 16px;
-            border-radius:8px;
-            font-size:0.82rem;
-            font-weight:600;
-            font-family:inherit;
-            cursor:pointer;
-            display:flex;align-items:center;gap:6px;
-            transition:background 0.2s;
-        " onmouseover="this.style.background='rgba(255,255,255,0.25)'"
-           onmouseout="this.style.background='rgba(255,255,255,0.15)'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            Cerrar sesión
-        </button>
-    </div>
+    <button class="btn-menu" onclick="openSidebar()" title="Menú">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img class="brand-logo" src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+    <h1>Distribución de implementadores</h1>
 </header>
 
 <!-- ── Sidebar navegación ── -->
@@ -500,19 +520,32 @@
         <button class="sidebar-close" onclick="closeSidebar()">✕</button>
     </div>
     <div class="sidebar-label">Secciones</div>
+    <div class="sidebar-group open" id="sidebar-group-informes">
+        <div class="sidebar-group-header" onclick="document.getElementById('sidebar-group-informes').classList.toggle('open')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-5"/>
+            </svg>
+            Informes
+            <svg class="sidebar-group-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+            </svg>
+        </div>
+        <div class="sidebar-group-children">
+            <a href="distribucion.html" class="sidebar-item active">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                    <circle cx="19" cy="6" r="2.5"/><circle cx="5" cy="6" r="2.5"/>
+                </svg>
+                Implementadores
+            </a>
+        </div>
+    </div>
     <a href="lista.html" class="sidebar-item">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
             <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
         </svg>
         Fichas de cliente
-    </a>
-    <a href="distribucion.html" class="sidebar-item active">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-            <circle cx="19" cy="6" r="2.5"/><circle cx="5" cy="6" r="2.5"/>
-        </svg>
-        Implementadores
     </a>
     <a href="bajas.html" class="sidebar-item">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -532,6 +565,13 @@
             <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
         </svg>
         Proyectos
+    </a>
+    <a href="integraciones.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        Integraciones
     </a>
     <div class="sidebar-ft">
         <button onclick="closeSidebar();cerrarSesion()">
@@ -705,7 +745,10 @@
         if (f.email && !out['Email']) out['Email'] = f.email;
         if (f.tipo_cliente && !out['Tipo Cliente']) out['Tipo Cliente'] = f.tipo_cliente;
         if (f.implementador && !out['Implementador']) out['Implementador'] = f.implementador;
-        if (f.estado && !out['Estado']) out['Estado'] = f.estado;
+        if (f.estado && !out['Estado']) {
+            const e = String(f.estado).toLowerCase();
+            out['Estado'] = e.charAt(0).toUpperCase() + e.slice(1);
+        }
         if (f.comercial && !out['Comercial']) out['Comercial'] = f.comercial;
         if (f.created_at && !out['Fecha']) out['Fecha'] = f.created_at;
         if (f.baja && !out['Baja']) out['Baja'] = f.baja;
@@ -801,10 +844,9 @@
                             : `<span style="color:#cbd5e1">—</span>`;
 
             const implActual = (f['Implementador'] || '').trim();
-            const implOptions = IMPLEMENTADORES.map(imp =>
-                `<option value="${esc(imp)}"${imp === implActual ? ' selected' : ''}>${esc(imp)}</option>`
-            ).join('');
-            const selClass = implActual ? 'sel-impl asignado' : 'sel-impl';
+            const implBadge = implActual
+                ? `<span class="badge-impl">${esc(implActual)}</span>`
+                : `<span style="color:#cbd5e1">— Sin asignar —</span>`;
 
             return `<tr>
                 <td class="td-fecha">${fecha}</td>
@@ -815,76 +857,13 @@
                 <td class="td-center">${tipoBadge}</td>
                 <td class="td-center" style="color:#94a3b8;">${esc(String(locales))}</td>
                 <td class="td-center">${cocinaBadge}</td>
-                <td>
-                    <div class="impl-cell">
-                        <select class="${selClass}" data-id="${id}" data-idx="${i}"
-                                onchange="onImplChange(this)">
-                            <option value="">— Sin asignar —</option>
-                            ${implOptions}
-                        </select>
-                        <span class="impl-status" id="impl-status-${i}"></span>
-                    </div>
-                </td>
+                <td>${implBadge}</td>
             </tr>`;
         }).join('');
 
     }
 
-    // ── Auto-guardado al cambiar implementador ───────────────────────────────────
-    function onImplChange(sel) {
-        sel.classList.toggle('asignado', sel.value !== '');
-        autoGuardar(sel);
-    }
-
-    async function autoGuardar(sel) {
-        const idx    = parseInt(sel.dataset.idx);
-        const f      = fichasFiltradas[idx];
-        const status = document.getElementById('impl-status-' + idx);
-        if (!f || !status) return;
-
-        // Spinner mientras guarda
-        sel.disabled = true;
-        status.className = 'impl-status visible';
-        status.innerHTML = `<span class="impl-spinner"></span>`;
-
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-        try {
-            const payload = {
-                row_number:      f['row_number'] || f['Row Number'] || '',
-                id:              f['ID'] || f['id'] || '',
-                nombre_sociedad: f['Nombre Sociedad'] || '',
-                nombre_cliente:  f['Nombre'] || f['Nombre Comercial'] || '',
-                tipo_cliente:    f['Tipo Cliente'] || f['tipoCliente'] || '',
-                fecha:           f['Fecha'] || '',
-                implementador:   sel.value
-            };
-            const res = await fetch(WEBHOOK_GUARDAR_DIST, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Basic ' + (session.basicAuth || '')
-                },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error('Error ' + res.status);
-
-            // Actualizar el array en memoria para que los filtros no pierdan el valor
-            fichasFiltradas[idx]['Implementador'] = sel.value;
-            const fichaId = f['ID'] || f['id'];
-            const enTodas = todasFichas.find(tf => (tf['ID'] || tf['id']) === fichaId);
-            if (enTodas) enTodas['Implementador'] = sel.value;
-
-            status.className = 'impl-status visible ok';
-            status.innerHTML = '✓ Guardado';
-        } catch (err) {
-            status.className = 'impl-status visible err';
-            status.innerHTML = '✗ Error';
-        } finally {
-            sel.disabled = false;
-            // Desvanecer el indicador tras 3s
-            setTimeout(() => { status.classList.remove('visible'); }, 3000);
-        }
-    }
+    // Vista de solo lectura - sin acciones sobre implementadores
 
     // ── Poblar contadores de chips ───────────────────────────────────────────────
     function poblarContadores(fichas) {

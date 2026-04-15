@@ -8,6 +8,30 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+    <style>
+        .sidebar-group { margin: 2px 0; }
+        .sidebar-group-header {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 18px; margin: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.88rem; font-weight: 500; color: #334155;
+            cursor: pointer; user-select: none;
+            transition: background 0.14s, color 0.14s;
+        }
+        .sidebar-group-header:hover { background: #f8fafc; color: #1e293b; }
+        .sidebar-group-header svg { flex-shrink: 0; opacity: 0.7; }
+        .sidebar-group-chevron { margin-left: auto; transition: transform 0.18s; }
+        .sidebar-group.open .sidebar-group-chevron { transform: rotate(90deg); }
+        .sidebar-group-children { max-height: 0; overflow: hidden; transition: max-height 0.2s ease; }
+        .sidebar-group.open .sidebar-group-children { max-height: 500px; }
+        .sidebar-group-children .sidebar-item {
+            padding-left: 44px; font-size: 0.84rem; position: relative;
+        }
+        .sidebar-group-children .sidebar-item::before {
+            content: ''; position: absolute; left: 30px; top: 50%;
+            width: 8px; height: 1.5px; background: #cbd5e1;
+        }
+    </style>
 </head>
 <body>
 
@@ -19,13 +43,22 @@
             <button class="sidebar-close" onclick="closeSidebar()">&#10005;</button>
         </div>
         <div class="sidebar-label">Secciones</div>
+        <div class="sidebar-group" id="sidebar-group-informes">
+            <div class="sidebar-group-header" onclick="document.getElementById('sidebar-group-informes').classList.toggle('open')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-5"/></svg>
+                Informes
+                <svg class="sidebar-group-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div class="sidebar-group-children">
+                <a href="distribucion.html" class="sidebar-item">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="19" cy="6" r="2.5"/><circle cx="5" cy="6" r="2.5"/></svg>
+                    Implementadores
+                </a>
+            </div>
+        </div>
         <a href="lista.html" class="sidebar-item">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Fichas de cliente
-        </a>
-        <a href="distribucion.html" class="sidebar-item">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="19" cy="6" r="2.5"/><circle cx="5" cy="6" r="2.5"/></svg>
-            Implementadores
         </a>
         <a href="bajas.html" class="sidebar-item">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -38,6 +71,10 @@
         <a href="proyectos.html" class="sidebar-item active">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
             Proyectos
+        </a>
+        <a href="integraciones.html" class="sidebar-item">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Integraciones
         </a>
         <div class="sidebar-ft">
             <button onclick="closeSidebar()">

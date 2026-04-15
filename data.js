@@ -285,15 +285,11 @@ async function cargarProyectos() {
         const lista = Array.isArray(data) ? data
             : Array.isArray(data.proyectos) ? data.proyectos
             : Array.isArray(data.data) ? data.data : [];
-        if (lista.length > 0) return lista;
-        // Backend vacio: cargar datos ejemplo
-        return DATOS_EJEMPLO;
+        return lista;
     } catch (err) {
-        console.warn('Error cargando proyectos del backend, usando datos locales:', err.message);
-        mostrarToast('No se pudo conectar al backend. Usando datos locales.', 'warning');
-        const datos = localStorage.getItem(STORAGE_KEY);
-        if (datos) return JSON.parse(datos);
-        return DATOS_EJEMPLO;
+        console.warn('Error cargando proyectos del backend:', err.message);
+        mostrarToast('No se pudo conectar al backend.', 'warning');
+        return [];
     }
 }
 
