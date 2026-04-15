@@ -1,0 +1,134 @@
+{
+  "name": "Yurest - Distribución",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "6d3ed726-c86a-4b86-a2ae-7f07da9630a5",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-dist",
+      "name": "Webhook Distribución",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "distribucion"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\n\n// Actualizar el campo implementador en fichas_alta\nconst fichaId = d.id || d.ficha_id || '';\nconst implementador = d.implementador || d.Implementador || '';\n\nif (!fichaId) {\n  throw new Error('Falta el ID de la ficha');\n}\n\nreturn [{ json: { \n  fichaId,\n  implementador,\n  datos: d\n} }];"
+      },
+      "id": "prepare-dist",
+      "name": "Preparar Distribución",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Actualizar implementador en fichas_alta\nconst { fichaId, implementador } = $input.first().json;\nreturn [{ json: { id: fichaId, implementador } }];"
+      },
+      "id": "map-update-ficha",
+      "name": "Map Update Ficha",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "fichas_alta",
+        "matchingColumns": ["id"],
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-update-ficha-dist",
+      "name": "UPDATE Ficha Implementador",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [920, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// También registrar en tabla distribucion\nconst orig = $('Preparar Distribución').first().json;\nreturn [{ json: {\n  implementador: orig.implementador,\n  ficha_id: orig.fichaId,\n  datos: JSON.stringify(orig.datos)\n} }];"
+      },
+      "id": "map-insert-dist",
+      "name": "Map Insert Distribución",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "distribucion",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-insert-dist",
+      "name": "INSERT Distribución",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1360, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-dist",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1580, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Distribución": {
+      "main": [[{ "node": "Preparar Distribución", "type": "main", "index": 0 }]]
+    },
+    "Preparar Distribución": {
+      "main": [[{ "node": "Map Update Ficha", "type": "main", "index": 0 }]]
+    },
+    "Map Update Ficha": {
+      "main": [[{ "node": "UPDATE Ficha Implementador", "type": "main", "index": 0 }]]
+    },
+    "UPDATE Ficha Implementador": {
+      "main": [[{ "node": "Map Insert Distribución", "type": "main", "index": 0 }]]
+    },
+    "Map Insert Distribución": {
+      "main": [[{ "node": "INSERT Distribución", "type": "main", "index": 0 }]]
+    },
+    "INSERT Distribución": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "yurest" },
+    { "name": "distribucion" }
+  ]
+}

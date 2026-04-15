@@ -1,0 +1,375 @@
+{
+  "name": "Yurest - Auxiliares (Completar, Responder, Docs, Drive)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "5a304fcd-ae1d-49e6-92d1-c5a5e007bbfd",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-completar",
+      "name": "Webhook Completar Ficha",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "completar-ficha"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $input.first().json.query || {};\nconst id = query.id || '';\nif (!id) throw new Error('Falta id en query params');\nreturn [{ json: { id } }];"
+      },
+      "id": "extract-completar-id",
+      "name": "Extraer ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 200]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "fichas_alta",
+        "matchingColumns": ["id"],
+        "options": {}
+      },
+      "id": "supa-get-ficha",
+      "name": "GET Ficha por ID",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 200],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "respond-completar",
+      "name": "Respond Ficha",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "6da4274f-5a6d-4981-a92a-f9d7eb734144",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-responder-sol",
+      "name": "Webhook Responder Solicitud",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "webhookId": "responder-solicitud"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst d = raw.body || raw;\nconst solicitudId = d['ID Solicitud'] || '';\nreturn [{ json: { solicitudId, clienteData: d } }];"
+      },
+      "id": "save-body",
+      "name": "Guardar Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 500]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "solicitudes",
+        "returnAll": true,
+        "options": {},
+        "alwaysOutputData": true
+      },
+      "id": "supa-get-all-sol",
+      "name": "GET Todas Solicitudes",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [640, 500],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const { solicitudId, clienteData } = $('Guardar Body').first().json;\nconst allSol = $input.all().map(i => i.json).filter(s => s.id);\n\nlet solicitudUUID = null;\nlet comercial = '';\nlet tipo = '';\n\nfor (const sol of allSol) {\n  let datos = sol.datos;\n  if (typeof datos === 'string') {\n    try { datos = JSON.parse(datos); } catch(_) { datos = {}; }\n  }\n  const solId = datos['ID Solicitud'] || '';\n  if (String(solId) === String(solicitudId)) {\n    solicitudUUID = sol.id;\n    comercial = datos['Comercial'] || '';\n    tipo = datos['Tipo Cliente'] || sol.tipo || '';\n    break;\n  }\n}\n\nconst ficha = {\n  comercial: comercial,\n  denominacion: clienteData['Nombre Sociedad'] || '',\n  nombre_comercial: clienteData['Nombre Comercial'] || '',\n  calle: clienteData['Calle'] || '',\n  numero: clienteData['Número'] || '',\n  cp: clienteData['CP'] || '',\n  municipio: clienteData['Municipio'] || '',\n  provincia: clienteData['Provincia'] || '',\n  cif: clienteData['CIF/NIF'] || '',\n  email: clienteData['Email'] || '',\n  email_factura: clienteData['Email Factura'] || '',\n  email_cc: clienteData['Email CC'] || '',\n  tipo_cliente: tipo,\n  jp_nombre: clienteData['JP Nombre'] || '',\n  jp_apellidos: clienteData['JP Apellidos'] || '',\n  jp_rol: clienteData['JP Rol'] || '',\n  jp_telefono: clienteData['JP Teléfono'] || '',\n  jp_mail: clienteData['JP Mail'] || '',\n  firm_nombre: clienteData['Firmante Nombre'] || '',\n  firm_apellidos: clienteData['Firmante Apellidos'] || '',\n  firm_mail: clienteData['Firmante Mail'] || '',\n  firm_dni: clienteData['Firmante DNI'] || '',\n  firm_puesto: clienteData['Firmante Puesto'] || '',\n  tpv: clienteData['TPV'] || '',\n  tpv_contacto: clienteData['TPV Contacto'] || '',\n  tpv_email: clienteData['TPV Email'] || '',\n  estado: 'completada',\n  baja: 'No'\n};\n\nreturn [{ json: { ficha, solicitudUUID, solicitudId, comercial, tipo } }];"
+      },
+      "id": "merge-data",
+      "name": "Merge Solicitud + Cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { ficha } = $input.first().json;\nreturn [{ json: ficha }];"
+      },
+      "id": "extract-ficha-insert",
+      "name": "Extraer Ficha",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 380]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "fichas_alta",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-insert-ficha-resp",
+      "name": "INSERT Ficha Alta",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1240, 380],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.denominacion }}",
+        "driveId": {
+          "__rl": true,
+          "value": "0AGFVnSzfPIg-Uk9PVA",
+          "mode": "list",
+          "cachedResultName": "Yurest",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/0AGFVnSzfPIg-Uk9PVA"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1TR48H496Xg66L-VnMFwjj0e8ay4jzV0g",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1440, 380],
+      "id": "create-drive-folder",
+      "name": "Create Drive Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "mhJHxwOFo87L8Bzt",
+          "name": "Soporte Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener ID de la ficha creada + URL de la carpeta Drive\nconst fichaId = $('INSERT Ficha Alta').first().json.id;\nconst driveId = $input.first().json.id;\nconst carpetaUrl = `https://drive.google.com/drive/u/1/folders/${driveId}`;\nreturn [{ json: { id: fichaId, carpeta_drive: carpetaUrl } }];"
+      },
+      "id": "map-drive-url",
+      "name": "Map Drive URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 380]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "fichas_alta",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-update-ficha-drive",
+      "name": "UPDATE Ficha Drive",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1840, 380],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const { solicitudUUID } = $('Merge Solicitud + Cliente').first().json;\nif (!solicitudUUID) {\n  return [{ json: { skip: true } }];\n}\nreturn [{ json: { id: solicitudUUID, estado: 'completado' } }];"
+      },
+      "id": "prepare-update-sol",
+      "name": "Preparar Update Solicitud",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 560]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "solicitudes",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-update-sol-estado",
+      "name": "UPDATE Solicitud Estado",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1240, 560],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mapear comercial → email de destino\nconst { comercial, ficha } = $('Merge Solicitud + Cliente').first().json;\n\nconst emailMap = {\n  'Santiago Gonzalez': 'a.abramyan@yurest.com',\n  'Borja Pastor': 'b.pastor@yurest.com',\n  'Ivan Ramirez': 'i.ramirez@yurest.com',\n  'Pedro Martin': 'p.martin@yurest.com',\n  'Ismael Calero': 'i.calero@yurest.com',\n  'Springboard Monica': 'm.springboard@yurest.com',\n  'Springboard Pau': 'p.springboard@yurest.com'\n};\n\nconst toEmail = emailMap[comercial] || 'soporte@yurest.com';\nconst nombreComercial = ficha.nombre_comercial || ficha.denominacion || 'Cliente';\n\nreturn [{ json: {\n  toEmail,\n  comercial,\n  nombreComercial\n} }];"
+      },
+      "id": "map-comercial-email",
+      "name": "Map Comercial Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 740]
+    },
+    {
+      "parameters": {
+        "fromEmail": "soporte@yurest.com",
+        "toEmail": "={{ $json.toEmail }}",
+        "subject": "={{ $json.nombreComercial }} ha rellenado la ficha",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Notificación de Alta de Cliente</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;\">\n\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f1f5f9;padding:40px 0;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;\">\n\n          <tr>\n            <td style=\"background:#fc5858;border-radius:16px 16px 0 0;padding:36px 40px;text-align:center;\">\n              <p style=\"margin:0 0 6px;font-size:0.7rem;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.7);\">● YUREST · GESTIÓN</p>\n              <h1 style=\"margin:0;color:#ffffff;font-size:1.75rem;font-weight:800;line-height:1.2;\">Ficha de alta completada</h1>\n              <p style=\"margin:12px 0 0;color:rgba(255,255,255,0.88);font-size:0.95rem;\">Un nuevo cliente ha finalizado su registro correctamente.</p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background:#ffffff;padding:40px 40px 32px;\">\n\n              <p style=\"margin:0 0 20px;font-size:1rem;color:#1e293b;line-height:1.6;\">Hola {{ $json.comercial }},</p>\n\n              <p style=\"margin:0 0 24px;font-size:1rem;color:#475569;line-height:1.6;\">\n                Te informamos que el cliente <strong style=\"color:#1e293b;\">{{ $json.nombreComercial }}</strong> ha completado satisfactoriamente su ficha de alta y los datos ya están disponibles en el sistema.\n              </p>\n\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fef9c3;border-left:4px solid #eab308;border-radius:4px;margin-bottom:28px;\">\n                <tr>\n                  <td style=\"padding:16px 20px;\">\n                    <p style=\"margin:0;font-size:0.9rem;color:#854d0e;font-weight:600;line-height:1.4;\">\n                      <strong>Estado:</strong> Pendiente de revisión y finalización por tu parte.\n                    </p>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin:0 0 28px;font-size:0.95rem;color:#475569;line-height:1.6;\">\n                Por favor, accede al panel administrativo para verificar la información y completar el proceso oficial de registro:\n              </p>\n\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                <tr>\n                  <td align=\"center\" style=\"padding-bottom:12px;\">\n                    <a href=\"https://panel.yurest.com\" target=\"_blank\"\n                       style=\"display:inline-block;background:#1e293b;color:#ffffff;text-decoration:none;font-size:0.92rem;font-weight:700;padding:14px 32px;border-radius:10px;\">\n                      Ver panel de administración →\n                    </a>\n                  </td>\n                </tr>\n              </table>\n\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background:#f8fafc;border-radius:0 0 16px 16px;border-top:1.5px solid #e2e8f0;padding:24px 40px;text-align:center;\">\n              <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#fc5858;\">● YUREST</p>\n              <p style=\"margin:0;font-size:0.75rem;color:#94a3b8;\">Notificación automática · Sistema de Altas</p>\n            </td>\n          </tr>\n\n        </table>\n      </td>\n    </tr>\n  </table>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1240, 740],
+      "id": "email-comercial",
+      "name": "Email aviso al comercial",
+      "credentials": {
+        "smtp": {
+          "id": "2V6BD1M7DfSWvpIf",
+          "name": "Soporte"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "respond-responder",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 560]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "bdef8517-9b76-4640-8f82-d940fd0ab96b",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-docs",
+      "name": "Webhook Docs Subidos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 960],
+      "webhookId": "docs-subidos"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { documentos: [] } }];"
+      },
+      "id": "process-docs",
+      "name": "Procesar Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 960]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "respond-docs",
+      "name": "Respond Docs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [700, 960]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "2010bb2b-72e9-4bae-afb1-d5a937c59009",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-drive",
+      "name": "Webhook Get Drive",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 1140],
+      "webhookId": "get-drive"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { files: [] } }];"
+      },
+      "id": "process-drive",
+      "name": "Procesar Drive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 1140]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "respond-drive",
+      "name": "Respond Drive",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [700, 1140]
+    }
+  ],
+  "connections": {
+    "Webhook Completar Ficha": { "main": [[{ "node": "Extraer ID", "type": "main", "index": 0 }]] },
+    "Extraer ID": { "main": [[{ "node": "GET Ficha por ID", "type": "main", "index": 0 }]] },
+    "GET Ficha por ID": { "main": [[{ "node": "Respond Ficha", "type": "main", "index": 0 }]] },
+
+    "Webhook Responder Solicitud": { "main": [[{ "node": "Guardar Body", "type": "main", "index": 0 }]] },
+    "Guardar Body": { "main": [[{ "node": "GET Todas Solicitudes", "type": "main", "index": 0 }]] },
+    "GET Todas Solicitudes": { "main": [[{ "node": "Merge Solicitud + Cliente", "type": "main", "index": 0 }]] },
+    "Merge Solicitud + Cliente": { "main": [
+      [
+        { "node": "Extraer Ficha", "type": "main", "index": 0 },
+        { "node": "Preparar Update Solicitud", "type": "main", "index": 0 },
+        { "node": "Map Comercial Email", "type": "main", "index": 0 }
+      ]
+    ] },
+    "Extraer Ficha": { "main": [[{ "node": "INSERT Ficha Alta", "type": "main", "index": 0 }]] },
+    "INSERT Ficha Alta": { "main": [[{ "node": "Create Drive Folder", "type": "main", "index": 0 }]] },
+    "Create Drive Folder": { "main": [[{ "node": "Map Drive URL", "type": "main", "index": 0 }]] },
+    "Map Drive URL": { "main": [[{ "node": "UPDATE Ficha Drive", "type": "main", "index": 0 }]] },
+    "Preparar Update Solicitud": { "main": [[{ "node": "UPDATE Solicitud Estado", "type": "main", "index": 0 }]] },
+    "UPDATE Solicitud Estado": { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] },
+    "Map Comercial Email": { "main": [[{ "node": "Email aviso al comercial", "type": "main", "index": 0 }]] },
+
+    "Webhook Docs Subidos": { "main": [[{ "node": "Procesar Docs", "type": "main", "index": 0 }]] },
+    "Procesar Docs": { "main": [[{ "node": "Respond Docs", "type": "main", "index": 0 }]] },
+    "Webhook Get Drive": { "main": [[{ "node": "Procesar Drive", "type": "main", "index": 0 }]] },
+    "Procesar Drive": { "main": [[{ "node": "Respond Drive", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "yurest" }, { "name": "auxiliares" }]
+}

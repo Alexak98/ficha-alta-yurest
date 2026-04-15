@@ -892,19 +892,20 @@ async function importarDesdeAltas() {
 function normalizarAlta(f) {
     const get = (keys) => {
         for (const k of keys) {
-            const val = (f[k] || '').toString().trim();
-            if (val) return val;
+            const val = f[k];
+            if (val != null && val !== '') return String(val).trim();
         }
         return '';
     };
 
     const nombre = get(['Denominación Social', 'Denominacion Social', 'denominacion', 'Nombre Sociedad']);
-    const comercial = get(['Nombre Comercial', 'nombreComercial', 'Nombre']);
-    const tipo = get(['Tipo Cliente', 'Tipo de Cliente', 'tipoCliente']);
-    const implementador = get(['Implementador']);
+    const comercial = get(['Nombre Comercial', 'nombreComercial', 'nombre_comercial', 'Nombre']);
+    const tipo = get(['Tipo Cliente', 'Tipo de Cliente', 'tipoCliente', 'tipo_cliente']);
+    const implementador = get(['Implementador', 'implementador']);
     const id = get(['ID', 'id']);
-    const fecha = get(['Fecha', 'fecha']);
+    const fecha = get(['Fecha', 'fecha', 'created_at']);
     const estado = get(['Estado', 'estado']);
+    const tpv = get(['TPV', 'tpv']);
 
     // Normalize tipo to match our TIPOS_PROYECTO
     let tipoNorm = 'Corporate sin cocina';
@@ -913,7 +914,8 @@ function normalizarAlta(f) {
         tipoNorm = 'Planes';
     } else if (tipoLower.includes('corporate') || tipoLower.includes('corp')) {
         // Check if has cocina modules
-        const modulos = get(['Módulos', 'modulos']);
+        const rawMods = f['Módulos'] || f['modulos'] || f.modulos || '';
+        const modulos = Array.isArray(rawMods) ? rawMods.join(',') : String(rawMods);
         if (modulos.toLowerCase().includes('cocina')) {
             tipoNorm = 'Corporate con cocina';
         } else {
@@ -929,7 +931,8 @@ function normalizarAlta(f) {
         tipoOriginal: tipo,
         implementador: IMPLEMENTADORES.includes(implementador) ? implementador : '',
         fecha,
-        estado
+        estado,
+        tpv
     };
 }
 

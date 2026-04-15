@@ -1,0 +1,338 @@
+{
+  "name": "Yurest - Proyectos Tareas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "PUT",
+        "path": "proyectos/tarea",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-tarea",
+      "name": "Webhook Tarea",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "proyectos-tarea"
+    },
+    {
+      "parameters": {
+        "httpMethod": "PUT",
+        "path": "proyectos/tarea/mover",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-mover",
+      "name": "Webhook Mover Tarea",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "webhookId": "proyectos-tarea-mover"
+    },
+    {
+      "parameters": {
+        "httpMethod": "PUT",
+        "path": "proyectos/anotaciones",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-anotaciones",
+      "name": "Webhook Anotaciones",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 800],
+      "webhookId": "proyectos-anotaciones"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Extraer proyectoId del body para buscar en Supabase\nconst body = $input.first().json.body;\nconst proyectoId = body.proyectoId;\n\nif (!proyectoId) {\n  throw new Error('Falta proyectoId');\n}\n\nreturn [{ json: { id: proyectoId, body } }];"
+      },
+      "id": "extract-tarea-id",
+      "name": "Extraer ID (Tarea)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 200]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "proyectos",
+        "matchingColumns": ["id"],
+        "options": {}
+      },
+      "id": "get-proyecto-tarea",
+      "name": "GET Proyecto (Tarea)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Actualizar tarea dentro de las secciones JSONB\nconst proyecto = $input.first().json;\nconst body = $('Extraer ID (Tarea)').first().json.body;\nconst { seccionNombre, tarea } = body;\n\nif (!seccionNombre || !tarea || !tarea.id) {\n  throw new Error('Faltan datos: seccionNombre, tarea.id');\n}\n\nlet secciones = proyecto.secciones;\nif (typeof secciones === 'string') secciones = JSON.parse(secciones);\n\nlet encontrada = false;\n\nfor (const seccion of secciones) {\n  if (seccion.nombre === seccionNombre) {\n    const idx = seccion.tareas.findIndex(t => t.id === tarea.id);\n    if (idx !== -1) {\n      // Merge: mantener campos existentes, actualizar los que vienen\n      seccion.tareas[idx] = { ...seccion.tareas[idx], ...tarea };\n      encontrada = true;\n      break;\n    }\n    // Buscar en subtareas\n    for (const t of seccion.tareas) {\n      if (t.subtareas) {\n        const subIdx = t.subtareas.findIndex(s => s.id === tarea.id);\n        if (subIdx !== -1) {\n          t.subtareas[subIdx] = { ...t.subtareas[subIdx], ...tarea };\n          encontrada = true;\n          break;\n        }\n      }\n    }\n    if (encontrada) break;\n  }\n}\n\nif (!encontrada) {\n  // Buscar la tarea en CUALQUIER sección (por si cambió de nombre la sección)\n  for (const seccion of secciones) {\n    const idx = seccion.tareas.findIndex(t => t.id === tarea.id);\n    if (idx !== -1) {\n      seccion.tareas[idx] = { ...seccion.tareas[idx], ...tarea };\n      encontrada = true;\n      break;\n    }\n  }\n}\n\nif (!encontrada) {\n  throw new Error(`Tarea ${tarea.id} no encontrada en sección ${seccionNombre}`);\n}\n\n// Actualizar ultima_actividad\nconst hoy = new Date().toISOString().split('T')[0];\n\nreturn [{ json: {\n  id: proyecto.id,\n  secciones: JSON.stringify(secciones),\n  ultima_actividad: hoy\n}}];"
+      },
+      "id": "update-tarea-json",
+      "name": "Actualizar Tarea en JSONB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "proyectos",
+        "matchingColumns": ["id"],
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "save-tarea",
+      "name": "SAVE Tarea",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-tarea",
+      "name": "Respond Tarea OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1360, 200]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Extraer datos para mover tarea\nconst body = $input.first().json.body;\nconst { proyectoId, tareaId, seccionOrigen, seccionDestino } = body;\n\nif (!proyectoId || !tareaId || !seccionOrigen || !seccionDestino) {\n  throw new Error('Faltan datos: proyectoId, tareaId, seccionOrigen, seccionDestino');\n}\n\nreturn [{ json: { id: proyectoId, body } }];"
+      },
+      "id": "extract-mover-id",
+      "name": "Extraer ID (Mover)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 500]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "proyectos",
+        "matchingColumns": ["id"],
+        "options": {}
+      },
+      "id": "get-proyecto-mover",
+      "name": "GET Proyecto (Mover)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mover tarea de una sección a otra\nconst proyecto = $input.first().json;\nconst body = $('Extraer ID (Mover)').first().json.body;\nconst { tareaId, seccionOrigen, seccionDestino } = body;\n\nlet secciones = proyecto.secciones;\nif (typeof secciones === 'string') secciones = JSON.parse(secciones);\n\nif (seccionOrigen === seccionDestino) {\n  return [{ json: { id: proyecto.id, secciones: JSON.stringify(secciones) } }];\n}\n\nconst origen = secciones.find(s => s.nombre === seccionOrigen);\nconst destino = secciones.find(s => s.nombre === seccionDestino);\n\nif (!origen) throw new Error(`Sección origen no encontrada: ${seccionOrigen}`);\nif (!destino) throw new Error(`Sección destino no encontrada: ${seccionDestino}`);\n\nconst idx = origen.tareas.findIndex(t => t.id === tareaId);\nif (idx === -1) throw new Error(`Tarea ${tareaId} no encontrada en ${seccionOrigen}`);\n\n// Extraer de origen y añadir a destino\nconst [tarea] = origen.tareas.splice(idx, 1);\ndestino.tareas.push(tarea);\n\nconst hoy = new Date().toISOString().split('T')[0];\n\nreturn [{ json: {\n  id: proyecto.id,\n  secciones: JSON.stringify(secciones),\n  ultima_actividad: hoy\n}}];"
+      },
+      "id": "mover-tarea-json",
+      "name": "Mover Tarea en JSONB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 500]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "proyectos",
+        "matchingColumns": ["id"],
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "save-mover",
+      "name": "SAVE Mover",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-mover",
+      "name": "Respond Mover OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1360, 500]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Preparar actualización de anotaciones\nconst body = $input.first().json.body;\nconst { proyectoId, anotaciones } = body;\n\nif (!proyectoId) {\n  throw new Error('Falta proyectoId');\n}\n\nreturn [{ json: {\n  id: proyectoId,\n  anotaciones: anotaciones || ''\n}}];"
+      },
+      "id": "prepare-anotaciones",
+      "name": "Preparar Anotaciones",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 800]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "proyectos",
+        "matchingColumns": ["id"],
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "save-anotaciones",
+      "name": "SAVE Anotaciones",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 800],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-anotaciones",
+      "name": "Respond Anotaciones OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 800]
+    }
+  ],
+  "connections": {
+    "Webhook Tarea": {
+      "main": [
+        [{ "node": "Extraer ID (Tarea)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraer ID (Tarea)": {
+      "main": [
+        [{ "node": "GET Proyecto (Tarea)", "type": "main", "index": 0 }]
+      ]
+    },
+    "GET Proyecto (Tarea)": {
+      "main": [
+        [{ "node": "Actualizar Tarea en JSONB", "type": "main", "index": 0 }]
+      ]
+    },
+    "Actualizar Tarea en JSONB": {
+      "main": [
+        [{ "node": "SAVE Tarea", "type": "main", "index": 0 }]
+      ]
+    },
+    "SAVE Tarea": {
+      "main": [
+        [{ "node": "Respond Tarea OK", "type": "main", "index": 0 }]
+      ]
+    },
+
+    "Webhook Mover Tarea": {
+      "main": [
+        [{ "node": "Extraer ID (Mover)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraer ID (Mover)": {
+      "main": [
+        [{ "node": "GET Proyecto (Mover)", "type": "main", "index": 0 }]
+      ]
+    },
+    "GET Proyecto (Mover)": {
+      "main": [
+        [{ "node": "Mover Tarea en JSONB", "type": "main", "index": 0 }]
+      ]
+    },
+    "Mover Tarea en JSONB": {
+      "main": [
+        [{ "node": "SAVE Mover", "type": "main", "index": 0 }]
+      ]
+    },
+    "SAVE Mover": {
+      "main": [
+        [{ "node": "Respond Mover OK", "type": "main", "index": 0 }]
+      ]
+    },
+
+    "Webhook Anotaciones": {
+      "main": [
+        [{ "node": "Preparar Anotaciones", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preparar Anotaciones": {
+      "main": [
+        [{ "node": "SAVE Anotaciones", "type": "main", "index": 0 }]
+      ]
+    },
+    "SAVE Anotaciones": {
+      "main": [
+        [{ "node": "Respond Anotaciones OK", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "yurest" },
+    { "name": "proyectos" },
+    { "name": "tareas" }
+  ]
+}

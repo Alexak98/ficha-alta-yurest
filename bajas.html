@@ -1320,9 +1320,21 @@ async function cargarClientes() {
             .map(f => {
                 const out = {};
                 Object.keys(f).forEach(k => { out[k.trim()] = f[k]; });
+                // Mapear campos snake_case de Supabase → formato esperado
+                if (f.denominacion && !out['Nombre Sociedad']) out['Nombre Sociedad'] = f.denominacion;
+                if (f.nombre_comercial && !out['Nombre Comercial']) out['Nombre Comercial'] = f.nombre_comercial;
+                if (f.cif && !out['CIF/NIF']) out['CIF/NIF'] = f.cif;
+                if (f.email && !out['Email']) out['Email'] = f.email;
+                if (f.tipo_cliente && !out['Tipo Cliente']) out['Tipo Cliente'] = f.tipo_cliente;
+                if (f.implementador && !out['Implementador']) out['Implementador'] = f.implementador;
+                if (f.id && !out['ID']) out['ID'] = f.id;
+                if (f.baja && !out['Baja']) out['Baja'] = f.baja;
+                if (f.modulos && !out['Módulos']) out['Módulos'] = Array.isArray(f.modulos) ? f.modulos.join(',') : f.modulos;
+                if (f.lite === true) out['Lite'] = 'Sí';
+                if (f.distribuidor === true) out['Distribuidor'] = 'Sí';
                 return out;
             })
-            .filter(f => (f['Baja'] || '').toString().trim().toLowerCase() === 'no');
+            .filter(f => (f['Baja'] || f['baja'] || '').toString().trim().toLowerCase() === 'no');
     } catch(err) {
         console.error('Error cargando clientes:', err);
     }

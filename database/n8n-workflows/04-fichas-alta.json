@@ -1,0 +1,266 @@
+{
+  "name": "Yurest - Fichas de Alta",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "018f3362-7969-4c49-9088-c78e4446c77f",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-get-altas",
+      "name": "Webhook GET Altas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "altas-get"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "fichas_alta",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-get-altas",
+      "name": "GET Fichas",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [480, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Para cada ficha, cargar sus locales\nconst fichas = $input.all().map(i => i.json);\nreturn [{ json: { clientes: fichas } }];"
+      },
+      "id": "format-get-altas",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-get-altas",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "57e04029-bae4-4124-8c43-c535e831a147",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-post-altas",
+      "name": "Webhook POST Guardar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 480],
+      "webhookId": "altas-guardar"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\n\n// Detectar si es edición (tiene id) o alta nueva\nconst isEdit = !!d.id;\n\nconst row = {};\n\n// Si es edición, incluir el id\nif (isEdit) row.id = d.id;\n\n// Mapear campos del formulario → columnas de la BD\nrow.comercial = d['Comercial'] || '';\nrow.denominacion = d['Nombre Sociedad'] || d['Denominación Social'] || '';\nrow.nombre_comercial = d['Nombre Comercial'] || '';\nrow.calle = d['Calle'] || '';\nrow.numero = d['Número'] || '';\nrow.cp = d['CP'] || '';\nrow.municipio = d['Municipio'] || '';\nrow.provincia = d['Provincia'] || '';\nrow.cif = d['CIF/NIF'] || '';\nrow.email = d['Email'] || '';\nrow.email_factura = d['Email Factura'] || '';\nrow.email_cc = d['Email CC'] || '';\nrow.tipo_cliente = d['Tipo Cliente'] || '';\n\n// Firmas\nrow.firmas_contratadas = d['Firmas Contratadas'] || '';\n\n// JP\nrow.jp_nombre = d['JP Nombre'] || '';\nrow.jp_apellidos = d['JP Apellidos'] || '';\nrow.jp_rol = d['JP Rol'] || '';\nrow.jp_telefono = d['JP Teléfono'] || '';\nrow.jp_mail = d['JP Mail'] || '';\n\n// Firmante\nrow.firm_nombre = d['Firmante Nombre'] || '';\nrow.firm_apellidos = d['Firmante Apellidos'] || '';\nrow.firm_mail = d['Firmante Mail'] || '';\nrow.firm_dni = d['Firmante DNI'] || '';\nrow.firm_puesto = d['Firmante Puesto'] || '';\n\n// TPV\nrow.tpv = d['TPV'] || '';\nrow.tpv_contacto = d['TPV Contacto'] || '';\nrow.tpv_email = d['TPV Email'] || '';\n\n// Lite\nrow.lite = (d['Lite'] === 'Sí');\n\n// Entrega\nrow.entrega_calle = d['Entrega Calle'] || '';\nrow.entrega_numero = d['Entrega Número'] || '';\nrow.entrega_cp = d['Entrega CP'] || '';\nrow.entrega_municipio = d['Entrega Municipio'] || '';\nrow.entrega_provincia = d['Entrega Provincia'] || '';\n\n// Contacto\nrow.contacto_nombre = d['Contacto Nombre'] || '';\nrow.contacto_email = d['Contacto Email'] || '';\nrow.contacto_telefono = d['Contacto Teléfono'] || '';\n\n// Distribuidor\nrow.distribuidor = (d['Distribuidor'] === 'Sí');\nrow.dist_empresa = d['Dist. Empresa'] || '';\nrow.dist_cif = d['Dist. CIF'] || '';\nrow.dist_direccion = d['Dist. Dirección'] || '';\nrow.dist_cp = d['Dist. CP'] || '';\nrow.dist_contacto = d['Dist. Contacto'] || '';\nrow.dist_mail = d['Dist. Mail'] || '';\nrow.dist_telefono = d['Dist. Teléfono'] || '';\nrow.dist_comision = parseFloat(d['Dist. Comisión Implementación (%)']) || 0;\n\n// Financiero\nrow.importe_setup = parseFloat(d['ImporteSetup']) || 0;\nrow.descuento_setup = parseFloat(d['Descuentosetup']) || 0;\nrow.mensualidad_total_locales = parseFloat(d['Mensualidad Total Locales']) || 0;\n\n// Credenciales\nrow.cred_master = d['Credencial Master'] || '';\nrow.cred_yurest = d['Credencial Yurest'] || '';\n\n// Otros\nrow.comentarios = d['Comentarios'] || '';\nrow.modulos = d['Módulos'] || [];\nrow.baja = d['Baja'] || 'No';\n\n// Locales se procesarán aparte\nconst locales = d.locales || [];\n\nreturn [{ json: { row, locales, isEdit } }];"
+      },
+      "id": "prepare-upsert-alta",
+      "name": "Preparar Ficha",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 480]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isEdit }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "if-edit",
+      "name": "Es Edición?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "// UPDATE: extraer row para actualizar\nconst { row } = $input.first().json;\nreturn [{ json: row }];"
+      },
+      "id": "extract-update",
+      "name": "Extraer UPDATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 380]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "fichas_alta",
+        "matchingColumns": ["id"],
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-update-alta",
+      "name": "UPDATE Ficha",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 380],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// INSERT: extraer row sin id\nconst { row } = $input.first().json;\ndelete row.id;\nreturn [{ json: row }];"
+      },
+      "id": "extract-insert",
+      "name": "Extraer INSERT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 580]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "fichas_alta",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-insert-alta",
+      "name": "INSERT Ficha",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 580],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar locales: obtener ficha_id del resultado del insert/update\nconst fichaResult = $input.first().json;\nconst fichaId = fichaResult.id;\n\n// Recuperar locales del nodo anterior\nconst prepareNode = $('Preparar Ficha').first().json;\nconst locales = prepareNode.locales || [];\nconst isEdit = prepareNode.isEdit;\n\nif (locales.length === 0) {\n  return [{ json: { fichaId, success: true, localesCount: 0 } }];\n}\n\n// Preparar locales para insertar\nconst rows = locales.map(l => ({\n  ficha_id: fichaId,\n  nombre: l.nombre || '',\n  email: l.email || '',\n  calle: l.calle || '',\n  numero: l.numero || '',\n  cp: l.cp || '',\n  sociedad_cif: l.sociedad_cif || '',\n  sociedad_denominacion: l.sociedad_denominacion || '',\n  sociedad_calle: l.sociedad_calle || '',\n  sociedad_numero: l.sociedad_numero || '',\n  sociedad_cp: l.sociedad_cp || '',\n  sociedad_municipio: l.sociedad_municipio || '',\n  sociedad_provincia: l.sociedad_provincia || '',\n  mensualidad: parseFloat(l.mensualidad) || 0\n}));\n\nreturn rows.map(r => ({ json: r }));"
+      },
+      "id": "prepare-locales",
+      "name": "Preparar Locales",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 480]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "locales",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-insert-locales",
+      "name": "INSERT Locales",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1580, 480],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-post-altas",
+      "name": "Respond Guardar OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1800, 480]
+    }
+  ],
+  "connections": {
+    "Webhook GET Altas": {
+      "main": [[{ "node": "GET Fichas", "type": "main", "index": 0 }]]
+    },
+    "GET Fichas": {
+      "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]]
+    },
+    "Formatear GET": {
+      "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]]
+    },
+    "Webhook POST Guardar": {
+      "main": [[{ "node": "Preparar Ficha", "type": "main", "index": 0 }]]
+    },
+    "Preparar Ficha": {
+      "main": [[{ "node": "Es Edición?", "type": "main", "index": 0 }]]
+    },
+    "Es Edición?": {
+      "main": [
+        [{ "node": "Extraer UPDATE", "type": "main", "index": 0 }],
+        [{ "node": "Extraer INSERT", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraer UPDATE": {
+      "main": [[{ "node": "UPDATE Ficha", "type": "main", "index": 0 }]]
+    },
+    "UPDATE Ficha": {
+      "main": [[{ "node": "Preparar Locales", "type": "main", "index": 0 }]]
+    },
+    "Extraer INSERT": {
+      "main": [[{ "node": "INSERT Ficha", "type": "main", "index": 0 }]]
+    },
+    "INSERT Ficha": {
+      "main": [[{ "node": "Preparar Locales", "type": "main", "index": 0 }]]
+    },
+    "Preparar Locales": {
+      "main": [[{ "node": "INSERT Locales", "type": "main", "index": 0 }]]
+    },
+    "INSERT Locales": {
+      "main": [[{ "node": "Respond Guardar OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "yurest" },
+    { "name": "fichas" }
+  ]
+}

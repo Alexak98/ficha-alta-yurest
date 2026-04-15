@@ -216,7 +216,9 @@
             background: #f1f5f9;
             color: #cbd5e1;
         }
-        .td-actions { display: flex; gap: 5px; align-items: center; }
+        .td-actions { vertical-align: middle; white-space: nowrap; }
+        .td-actions > * { margin-right: 5px; vertical-align: middle; }
+        .td-actions > *:last-child { margin-right: 0; }
         .btn-ver, .btn-edit, .btn-del {
             padding: 5px 10px;
             border-radius: 7px;
@@ -1411,12 +1413,12 @@
     <div class="confirm-modal">
         <h3>✉ Reenviar solicitud</h3>
         <p>¿A qué dirección quieres reenviar el email de solicitud?</p>
-        <div style="display:flex;gap:10px;margin-bottom:14px;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:0.86rem;color:#334155;cursor:pointer;">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.86rem;color:#334155;cursor:pointer;">
                 <input type="radio" name="reenvio_dest" value="mismo" checked onchange="toggleReenvioInput(false)">
-                Mismo email (<span id="reenvio-email-label" style="font-family:monospace;color:#64748b"></span>)
+                <span>Mismo email<br><span id="reenvio-email-label" style="font-family:monospace;font-size:0.8rem;color:#64748b"></span></span>
             </label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:0.86rem;color:#334155;cursor:pointer;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.86rem;color:#334155;cursor:pointer;">
                 <input type="radio" name="reenvio_dest" value="otro" onchange="toggleReenvioInput(true)">
                 Otro email
             </label>
@@ -1523,13 +1525,65 @@
             const key = k.trim();
             let val = f[k];
             // Normalizar Lite: boolean false → '', true → 'Sí'
-            if (key === 'Lite') val = (val === true || val === 'Sí') ? 'Sí' : '';
+            if (key === 'Lite' || key === 'lite') val = (val === true || val === 'Sí') ? 'Sí' : '';
             // Normalizar Módulos: JSON array string → comma separated
-            if (key === 'Módulos' && typeof val === 'string' && val.startsWith('[')) {
+            if ((key === 'Módulos' || key === 'modulos') && typeof val === 'string' && val.startsWith('[')) {
                 try { val = JSON.parse(val).join(', '); } catch (_) {}
+            }
+            if ((key === 'Módulos' || key === 'modulos') && Array.isArray(val)) {
+                val = val.join(', ');
             }
             out[key] = val;
         });
+
+        // Mapear campos snake_case de Supabase → formato esperado por el frontend
+        if (f.denominacion && !out['Nombre Sociedad']) out['Nombre Sociedad'] = f.denominacion;
+        if (f.nombre_comercial && !out['Nombre Comercial']) out['Nombre Comercial'] = f.nombre_comercial;
+        if (f.cif && !out['CIF/NIF']) out['CIF/NIF'] = f.cif;
+        if (f.email && !out['Email']) out['Email'] = f.email;
+        if (f.email_factura && !out['Email Factura']) out['Email Factura'] = f.email_factura;
+        if (f.email_cc && !out['Email CC']) out['Email CC'] = f.email_cc;
+        if (f.tipo_cliente && !out['Tipo Cliente']) out['Tipo Cliente'] = f.tipo_cliente;
+        if (f.implementador && !out['Implementador']) out['Implementador'] = f.implementador;
+        if (f.estado && !out['Estado']) out['Estado'] = f.estado;
+        if (f.comercial && !out['Comercial']) out['Comercial'] = f.comercial;
+        if (f.created_at && !out['Fecha']) out['Fecha'] = f.created_at;
+        if (f.baja && !out['Baja']) out['Baja'] = f.baja;
+        if (f.lite === true) out['Lite'] = 'Sí';
+        if (f.distribuidor === true && !out['Distribuidor']) out['Distribuidor'] = 'Sí';
+        if (f.modulos && !out['Módulos']) out['Módulos'] = Array.isArray(f.modulos) ? f.modulos.join(', ') : f.modulos;
+        if (f.id && !out['ID']) out['ID'] = f.id;
+        if (f.jp_nombre && !out['JP Nombre']) out['JP Nombre'] = f.jp_nombre;
+        if (f.jp_apellidos && !out['JP Apellidos']) out['JP Apellidos'] = f.jp_apellidos;
+        if (f.jp_mail && !out['JP Mail']) out['JP Mail'] = f.jp_mail;
+        if (f.jp_telefono && !out['JP Teléfono']) out['JP Teléfono'] = f.jp_telefono;
+        if (f.jp_rol && !out['JP Rol']) out['JP Rol'] = f.jp_rol;
+        if (f.firm_nombre && !out['Firmante Nombre']) out['Firmante Nombre'] = f.firm_nombre;
+        if (f.firm_apellidos && !out['Firmante Apellidos']) out['Firmante Apellidos'] = f.firm_apellidos;
+        if (f.firm_mail && !out['Firmante Mail']) out['Firmante Mail'] = f.firm_mail;
+        if (f.firm_dni && !out['Firmante DNI']) out['Firmante DNI'] = f.firm_dni;
+        if (f.firm_puesto && !out['Firmante Puesto']) out['Firmante Puesto'] = f.firm_puesto;
+        if (f.tpv && !out['TPV']) out['TPV'] = f.tpv;
+        if (f.tpv_contacto && !out['TPV Contacto']) out['TPV Contacto'] = f.tpv_contacto;
+        if (f.tpv_email && !out['TPV Email']) out['TPV Email'] = f.tpv_email;
+        if (f.cred_master && !out['Credencial Master']) out['Credencial Master'] = f.cred_master;
+        if (f.cred_yurest && !out['Credencial Yurest']) out['Credencial Yurest'] = f.cred_yurest;
+        if (f.comentarios && !out['Comentarios']) out['Comentarios'] = f.comentarios;
+        if (f.importe_setup && !out['ImporteSetup']) out['ImporteSetup'] = f.importe_setup;
+        if (f.descuento_setup && !out['Descuentosetup']) out['Descuentosetup'] = f.descuento_setup;
+        if (f.dist_empresa && !out['Dist. Empresa']) out['Dist. Empresa'] = f.dist_empresa;
+        if (f.dist_cif && !out['Dist. CIF']) out['Dist. CIF'] = f.dist_cif;
+        if (f.dist_direccion && !out['Dist. Dirección']) out['Dist. Dirección'] = f.dist_direccion;
+        if (f.dist_cp && !out['Dist. CP']) out['Dist. CP'] = f.dist_cp;
+        if (f.dist_contacto && !out['Dist. Contacto']) out['Dist. Contacto'] = f.dist_contacto;
+        if (f.dist_mail && !out['Dist. Mail']) out['Dist. Mail'] = f.dist_mail;
+        if (f.dist_telefono && !out['Dist. Teléfono']) out['Dist. Teléfono'] = f.dist_telefono;
+        if (f.calle && !out['Calle']) out['Calle'] = f.calle;
+        if (f.numero && !out['Número']) out['Número'] = f.numero;
+        if (f.cp && !out['CP']) out['CP'] = f.cp;
+        if (f.municipio && !out['Municipio']) out['Municipio'] = f.municipio;
+        if (f.provincia && !out['Provincia']) out['Provincia'] = f.provincia;
+        if (f.firmas_contratadas && !out['Firmas Contratadas']) out['Firmas Contratadas'] = f.firmas_contratadas;
 
         // ── Normalizar Setup Importe / Descuento desde columnas del sheet ────
         if (!out['Setup Importe']   && out['ImporteSetup'])    out['Setup Importe']   = out['ImporteSetup'];

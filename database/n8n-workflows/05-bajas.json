@@ -1,0 +1,303 @@
+{
+  "name": "Yurest - Bajas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "84f094b2-9e55-448f-8ad9-f28721841873",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-get-bajas",
+      "name": "Webhook GET Bajas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "bajas-get"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "bajas",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-get-bajas",
+      "name": "GET Bajas",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [480, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst bajas = items.map(item => item.json);\nreturn [{ json: { bajas } }];"
+      },
+      "id": "format-get-bajas",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-get-bajas",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "73ce8d34-9980-4c65-bd82-c0767f1483cf",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-post-baja",
+      "name": "Webhook POST Baja",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 480],
+      "webhookId": "bajas-crear-editar"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\nconst accion = d.accion || 'crear';\n\nconst row = {\n  cliente: d.cliente_nombre || '',\n  motivo: d.motivo || d.motivo_id || '',\n  fecha_baja: d.fecha_baja ? new Date(d.fecha_baja).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],\n  implementador: d.implementador || '',\n  tipo_cliente: d.tipo || '',\n  datos: JSON.stringify({\n    tipo: d.tipo || '',\n    cliente_id: d.cliente_id || '',\n    cliente_nombre: d.cliente_nombre || '',\n    cliente_denom: d.cliente_denom || '',\n    cliente_cif: d.cliente_cif || '',\n    cliente_email: d.cliente_email || '',\n    motivo_id: d.motivo_id || '',\n    motivo: d.motivo || '',\n    local: d.local || null,\n    modulos: d.modulos || [],\n    mrr: d.mrr || null,\n    fecha_efecto: d.fecha_efecto || null\n  })\n};\n\n// Si es editar, necesitamos buscar por cliente_id + fecha para actualizar\nif (accion === 'editar' && d.cliente_id) {\n  row._accion = 'editar';\n  row._cliente_id = d.cliente_id;\n  row._fecha_baja_original = d.fecha_baja;\n}\n\n// Vincular con ficha si hay cliente_id\nif (d.cliente_id) row.ficha_id = d.cliente_id;\n\nreturn [{ json: { row, accion } }];"
+      },
+      "id": "prepare-baja",
+      "name": "Preparar Baja",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 480]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.accion }}",
+              "rightValue": "editar",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "if-editar-baja",
+      "name": "Es Editar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\nreturn [{ json: row }];"
+      },
+      "id": "extract-insert-baja",
+      "name": "Extraer INSERT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 580]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "bajas",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-insert-baja",
+      "name": "INSERT Baja",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 580],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Para editar, usar los datos del row\nconst { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\nreturn [{ json: row }];"
+      },
+      "id": "extract-update-baja",
+      "name": "Extraer UPDATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 380]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "bajas",
+        "matchingColumns": ["id"],
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-update-baja",
+      "name": "UPDATE Baja",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 380],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-baja-ok",
+      "name": "Respond Baja OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1360, 480]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "95d5ed5d-1139-45b9-88c2-3066bc49e45b",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-borrar-baja",
+      "name": "Webhook Borrar Baja",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 760],
+      "webhookId": "bajas-borrar"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\n// Buscar la baja por datos del cliente\nreturn [{ json: { \n  cliente: d.cliente_nombre || '',\n  cliente_id: d.cliente_id || '',\n  fecha_baja: d.fecha_baja || ''\n} }];"
+      },
+      "id": "prepare-borrar",
+      "name": "Preparar Borrado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 760]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "bajas",
+        "matchingColumns": ["id"],
+        "options": {}
+      },
+      "id": "supa-delete-baja",
+      "name": "DELETE Baja",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 760],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-borrar-ok",
+      "name": "Respond Borrar OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 760]
+    }
+  ],
+  "connections": {
+    "Webhook GET Bajas": {
+      "main": [[{ "node": "GET Bajas", "type": "main", "index": 0 }]]
+    },
+    "GET Bajas": {
+      "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]]
+    },
+    "Formatear GET": {
+      "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]]
+    },
+    "Webhook POST Baja": {
+      "main": [[{ "node": "Preparar Baja", "type": "main", "index": 0 }]]
+    },
+    "Preparar Baja": {
+      "main": [[{ "node": "Es Editar?", "type": "main", "index": 0 }]]
+    },
+    "Es Editar?": {
+      "main": [
+        [{ "node": "Extraer UPDATE", "type": "main", "index": 0 }],
+        [{ "node": "Extraer INSERT", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraer UPDATE": {
+      "main": [[{ "node": "UPDATE Baja", "type": "main", "index": 0 }]]
+    },
+    "UPDATE Baja": {
+      "main": [[{ "node": "Respond Baja OK", "type": "main", "index": 0 }]]
+    },
+    "Extraer INSERT": {
+      "main": [[{ "node": "INSERT Baja", "type": "main", "index": 0 }]]
+    },
+    "INSERT Baja": {
+      "main": [[{ "node": "Respond Baja OK", "type": "main", "index": 0 }]]
+    },
+    "Webhook Borrar Baja": {
+      "main": [[{ "node": "Preparar Borrado", "type": "main", "index": 0 }]]
+    },
+    "Preparar Borrado": {
+      "main": [[{ "node": "DELETE Baja", "type": "main", "index": 0 }]]
+    },
+    "DELETE Baja": {
+      "main": [[{ "node": "Respond Borrar OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "yurest" },
+    { "name": "bajas" }
+  ]
+}

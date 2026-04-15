@@ -1,0 +1,65 @@
+{
+  "name": "Yurest - Rellenado Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "fa16b994-5af1-4368-ba6b-592e633937c3",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-get-rell",
+      "name": "Webhook GET Rellenado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "rellenado-get"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "fichas_alta",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "estado=eq.completada",
+        "options": {},
+        "alwaysOutputData": true
+      },
+      "id": "supa-get-rell",
+      "name": "GET Fichas Rellenadas",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [480, 300],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().filter(i => i.json && i.json.id);\nconst solicitudes = items.map(item => item.json);\nreturn [{ json: { solicitudes } }];"
+      },
+      "id": "format-get-rell",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "respond-get-rell",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Webhook GET Rellenado": { "main": [[{ "node": "GET Fichas Rellenadas", "type": "main", "index": 0 }]] },
+    "GET Fichas Rellenadas": { "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]] },
+    "Formatear GET": { "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "yurest" }, { "name": "rellenado" }]
+}

@@ -1737,13 +1737,13 @@
         set('corp_setup_descuento', 'Descuentosetup', 'Setup Descuento', 'setup_descuento', 'corp_setup_descuento');
 
         // ── Distribuidor ──────────────────────────────────────────────────────
-        if (f['Distribuidor'] === 'Sí') {
+        if (f['Distribuidor'] === 'Sí' || f.distribuidor === true || f.distribuidor === 'true') {
             document.getElementById('dist_check').checked = true;
             toggleSeccionDistribuidor(true);
         }
 
         // ── Lite ──────────────────────────────────────────────────────────────
-        if (f['Lite'] === 'Sí') {
+        if (f['Lite'] === 'Sí' || f.lite === true || f.lite === 'true') {
             document.getElementById('lite_check').checked = true;
             toggleLite(true);
         }
@@ -1756,8 +1756,11 @@
         }
 
         // ── Módulos ───────────────────────────────────────────────────────────
-        if (f['Módulos']) {
-            const mods = String(f['Módulos']).split(',').map(m => m.trim().toLowerCase());
+        const rawModulos = f['Módulos'] || f['modulos'] || f.modulos;
+        if (rawModulos) {
+            const mods = Array.isArray(rawModulos)
+                ? rawModulos.map(m => m.trim().toLowerCase())
+                : String(rawModulos).split(',').map(m => m.trim().toLowerCase());
             document.querySelectorAll('input[name="modulo"]').forEach(cb => {
                 if (mods.includes(cb.value.toLowerCase())) cb.checked = true;
             });
@@ -1765,7 +1768,7 @@
 
         // ── Locales ───────────────────────────────────────────────────────────
         try {
-            const rawL = f['Locales'] || f['locales'] || '';
+            const rawL = f['Locales'] || f['locales'] || f._locales || '';
             const locales = typeof rawL === 'string' && rawL.startsWith('[') ? JSON.parse(rawL) : (Array.isArray(rawL) ? rawL : []);
             locales.forEach(l => {
                 agregarLocal();

@@ -1,0 +1,78 @@
+{
+  "name": "Yurest - Eliminar Ficha y Solicitud",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "DELETE",
+        "path": "a2b1b1d6-a1dc-4366-b60e-b5e4506faa3d",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-del",
+      "name": "Webhook DELETE",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "eliminar"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\nconst id = d.row_number || d.id || d.ID || '';\n\nif (!id) {\n  throw new Error('Falta ID para eliminar');\n}\n\n// Intentar eliminar de ambas tablas (fichas_alta y solicitudes)\n// El ID de Supabase es UUID\nreturn [{ json: { id } }];"
+      },
+      "id": "prepare-del",
+      "name": "Preparar DELETE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "fichas_alta",
+        "matchingColumns": ["id"],
+        "options": {},
+        "alwaysOutputData": true
+      },
+      "id": "supa-del-ficha",
+      "name": "DELETE Ficha",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 240],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "solicitudes",
+        "matchingColumns": ["id"],
+        "options": {},
+        "alwaysOutputData": true
+      },
+      "id": "supa-del-sol",
+      "name": "DELETE Solicitud",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 400],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { success: true } }];"
+      },
+      "id": "respond-del",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Webhook DELETE": { "main": [[{ "node": "Preparar DELETE", "type": "main", "index": 0 }]] },
+    "Preparar DELETE": { "main": [
+      [{ "node": "DELETE Ficha", "type": "main", "index": 0 }, { "node": "DELETE Solicitud", "type": "main", "index": 0 }]
+    ] },
+    "DELETE Ficha": { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "yurest" }, { "name": "eliminar" }]
+}

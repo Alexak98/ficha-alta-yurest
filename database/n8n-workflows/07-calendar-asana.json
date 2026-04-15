@@ -1,0 +1,160 @@
+{
+  "name": "Yurest - Calendar y Asana Proxy",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "calendar/event",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-calendar",
+      "name": "Webhook Calendar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "calendar-event"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer datos del evento de calendario\nconst d = $input.first().json.body;\n\nreturn [{ json: {\n  summary: d.summary || d.titulo || '',\n  description: d.description || d.descripcion || '',\n  start: d.start || d.inicio || '',\n  end: d.end || d.fin || '',\n  attendees: d.attendees || d.participantes || [],\n  location: d.location || d.ubicacion || '',\n  proyectoId: d.proyectoId || '',\n  tareaId: d.tareaId || '',\n  implementador: d.implementador || ''\n} }];"
+      },
+      "id": "prepare-event",
+      "name": "Preparar Evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Evento procesado. Conectar con Google Calendar o servicio de calendario.' }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-calendar",
+      "name": "Respond Calendar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [700, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "asana/tasks",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-asana",
+      "name": "Webhook Asana Proxy",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 480],
+      "webhookId": "asana-tasks"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer projectId de query params\nconst query = $input.first().json.query || {};\nconst projectId = query.projectId || '';\n\nif (!projectId) {\n  throw new Error('Falta projectId en query params');\n}\n\nreturn [{ json: { projectId } }];"
+      },
+      "id": "extract-asana-id",
+      "name": "Extraer Project ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 480]
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/projects/{{ $json.projectId }}/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "opt_fields", "value": "name,completed,due_on,assignee.name,notes,memberships.section.name" }
+          ]
+        }
+      },
+      "id": "asana-request",
+      "name": "GET Asana Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 480],
+      "credentials": {
+        "asanaApi": {
+          "id": "ASANA_CREDENTIAL_ID",
+          "name": "Asana Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formatear respuesta de Asana\nconst data = $input.first().json;\nconst tasks = data.data || data || [];\nreturn [{ json: { tasks } }];"
+      },
+      "id": "format-asana",
+      "name": "Formatear Asana",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-asana",
+      "name": "Respond Asana",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1140, 480]
+    }
+  ],
+  "connections": {
+    "Webhook Calendar": {
+      "main": [[{ "node": "Preparar Evento", "type": "main", "index": 0 }]]
+    },
+    "Preparar Evento": {
+      "main": [[{ "node": "Respond Calendar", "type": "main", "index": 0 }]]
+    },
+    "Webhook Asana Proxy": {
+      "main": [[{ "node": "Extraer Project ID", "type": "main", "index": 0 }]]
+    },
+    "Extraer Project ID": {
+      "main": [[{ "node": "GET Asana Tasks", "type": "main", "index": 0 }]]
+    },
+    "GET Asana Tasks": {
+      "main": [[{ "node": "Formatear Asana", "type": "main", "index": 0 }]]
+    },
+    "Formatear Asana": {
+      "main": [[{ "node": "Respond Asana", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "yurest" },
+    { "name": "integraciones" }
+  ]
+}

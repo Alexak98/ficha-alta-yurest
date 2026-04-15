@@ -1,0 +1,139 @@
+{
+  "name": "Yurest - Solicitudes",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "1757fdcc-7fa7-4cb9-93b9-eb8118adaa1e",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-get-sol",
+      "name": "Webhook GET Solicitudes",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "solicitudes-get"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "solicitudes",
+        "returnAll": true,
+        "options": {},
+        "alwaysOutputData": true
+      },
+      "id": "supa-get-sol",
+      "name": "GET Solicitudes",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [480, 200],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().filter(i => i.json && i.json.id);\n\n// Reconstruir formato que el frontend espera\nconst solicitudes = items.map(item => {\n  const s = item.json;\n  const datos = typeof s.datos === 'string' ? JSON.parse(s.datos || '{}') : (s.datos || {});\n  // Merge: datos guardados + campos directos\n  return {\n    ...datos,\n    id: s.id,\n    'ID Solicitud': datos['ID Solicitud'] || s.id,\n    'Nombre Sociedad': datos['Nombre Sociedad'] || '',\n    'Nombre': datos['Nombre'] || '',\n    'Email': datos['Email'] || '',\n    'Comercial': datos['Comercial'] || '',\n    'Tipo Cliente': datos['Tipo Cliente'] || s.tipo || '',\n    'Estado': datos['Estado'] || s.estado || 'Pendiente',\n    'Fecha': datos['Fecha'] || s.created_at || '',\n    'Fecha Solicitud': datos['Fecha'] || s.created_at || ''\n  };\n});\nreturn [{ json: { solicitudes } }];"
+      },
+      "id": "format-get-sol",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "respond-get-sol",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b0629324-e611-47d4-835f-3ac9bcd4dc9b",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-post-sol",
+      "name": "Crear Solicitud",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 460],
+      "webhookId": "solicitudes-crear"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\n\n// El frontend envía datos con claves españolas\nconst row = {\n  tipo: d['Tipo Cliente'] || d.tipo || '',\n  estado: d['Estado'] || d.estado || 'pendiente',\n  notas: d['email_body'] || d.notas || '',\n  datos: JSON.stringify(d)\n};\n\nreturn [{ json: row }];"
+      },
+      "id": "prepare-sol",
+      "name": "Preparar Solicitud",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 460]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "solicitudes",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "supa-insert-sol",
+      "name": "INSERT Solicitud",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 460],
+      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: $json }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "respond-post-sol",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 460]
+    },
+    {
+      "parameters": {
+        "fromEmail": "soporte@yurest.com",
+        "toEmail": "={{ $('Crear Solicitud').item.json.body.Email }}",
+        "subject": "Solicitud de creación de ficha de alta - Yurest",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Ficha de Alta - Yurest</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f1f1f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;\">\n\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f1f1f1;padding:40px 16px;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:580px;\">\n\n          <tr>\n            <td style=\"background:linear-gradient(135deg,#111111 0%,#1c0808 50%,#2d0c0c 100%);border-radius:16px 16px 0 0;padding:36px 40px 32px;\">\n              <table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin-bottom:24px;\">\n                <tr>\n                  <td style=\"background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:5px 14px 5px 10px;\">\n                    <table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n                      <tr>\n                        <td style=\"width:8px;height:8px;background:#fc5858;border-radius:50%;vertical-align:middle;\"></td>\n                        <td style=\"padding-left:8px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fca5a5;vertical-align:middle;\">Yurest</td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n              </table>\n              <p style=\"margin:0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.3;\">Completa tu ficha de alta</p>\n              <p style=\"margin:8px 0 0;font-size:14px;color:#94a3b8;line-height:1.5;\">Rellena los datos de tu empresa para comenzar el proceso de alta con Yurest</p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background:#ffffff;padding:36px 40px;\">\n              <p style=\"margin:0 0 20px;font-size:15px;color:#1e293b;line-height:1.6;\">\n                Hola <strong>{{ $('Crear Solicitud').item.json.body.Nombre }}</strong>,\n              </p>\n              <p style=\"margin:0 0 20px;font-size:15px;color:#334155;line-height:1.7;\">\n                Te enviamos este formulario para que puedas completar tu alta con Yurest. Por favor, rellénalo cuando puedas, solo te llevará unos minutos.\n              </p>\n              <table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:28px 0;\">\n                <tr>\n                  <td align=\"center\" style=\"background:#fc5858;border-radius:10px;\">\n                    <a href=\"{{ $('Crear Solicitud').item.json.body.form_url }}\"\n                       style=\"display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.01em;\">\n                      Rellenar ficha de alta →\n                    </a>\n                  </td>\n                </tr>\n              </table>\n              <p style=\"margin:0 0 8px;font-size:12px;color:#94a3b8;\">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>\n              <p style=\"margin:0 0 28px;font-size:12px;word-break:break-all;\">\n                <a href=\"{{ $('Crear Solicitud').item.json.body.form_url }}\"\n                   style=\"color:#fc5858;text-decoration:none;\">\n                  {{ $('Crear Solicitud').item.json.body.form_url }}\n                </a>\n              </p>\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:0 0 24px;\">\n                <tr><td style=\"border-top:1.5px solid #f1f5f9;\"></td></tr>\n              </table>\n              <p style=\"margin:0;font-size:14px;color:#64748b;line-height:1.7;\">\n                Si tienes cualquier duda no dudes en contactarme.<br><br>\n                Un saludo,<br>\n                <strong style=\"color:#1e293b;\">{{ $('Crear Solicitud').item.json.body.Comercial }}</strong><br>\n                <span style=\"color:#94a3b8;font-size:13px;\">Equipo comercial · Yurest</span>\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background:#f8fafc;border-radius:0 0 16px 16px;border-top:1.5px solid #e2e8f0;padding:20px 40px;\">\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n                <tr>\n                  <td style=\"font-size:12px;color:#94a3b8;\">© Yurest · Este email fue enviado porque tu comercial ha iniciado un proceso de alta.</td>\n                  <td align=\"right\" style=\"font-size:12px;\"><a href=\"https://yurest.com\" style=\"color:#fc5858;text-decoration:none;font-weight:600;\">yurest.com</a></td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n        </table>\n      </td>\n    </tr>\n  </table>\n\n</body>\n</html>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [700, 660],
+      "id": "email-solicitud",
+      "name": "Envio de mail al cliente",
+      "credentials": {
+        "smtp": {
+          "id": "2V6BD1M7DfSWvpIf",
+          "name": "Soporte"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook GET Solicitudes": { "main": [[{ "node": "GET Solicitudes", "type": "main", "index": 0 }]] },
+    "GET Solicitudes": { "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]] },
+    "Formatear GET": { "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]] },
+    "Crear Solicitud": { "main": [[{ "node": "Preparar Solicitud", "type": "main", "index": 0 }]] },
+    "Preparar Solicitud": { "main": [[{ "node": "INSERT Solicitud", "type": "main", "index": 0 }]] },
+    "INSERT Solicitud": { "main": [
+      [{ "node": "Respond POST", "type": "main", "index": 0 }, { "node": "Envio de mail al cliente", "type": "main", "index": 0 }]
+    ] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "yurest" }, { "name": "solicitudes" }]
+}
