@@ -200,9 +200,17 @@
       "parameters": {
         "operation": "update",
         "tableId": "bajas",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "dataToSend": "autoMapInputData",
         "options": {}
       },
@@ -291,9 +299,17 @@
       "parameters": {
         "operation": "delete",
         "tableId": "bajas",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "supa-delete-baja",

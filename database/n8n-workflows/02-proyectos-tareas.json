@@ -75,9 +75,17 @@
       "parameters": {
         "operation": "get",
         "tableId": "proyectos",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "get-proyecto-tarea",
@@ -112,9 +120,17 @@
       "parameters": {
         "operation": "update",
         "tableId": "proyectos",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "dataToSend": "autoMapInputData",
         "options": {}
       },
@@ -186,9 +202,17 @@
       "parameters": {
         "operation": "get",
         "tableId": "proyectos",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "get-proyecto-mover",
@@ -223,9 +247,17 @@
       "parameters": {
         "operation": "update",
         "tableId": "proyectos",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "dataToSend": "autoMapInputData",
         "options": {}
       },
@@ -297,9 +329,17 @@
       "parameters": {
         "operation": "update",
         "tableId": "proyectos",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "dataToSend": "autoMapInputData",
         "options": {}
       },

@@ -211,9 +211,17 @@
       "parameters": {
         "operation": "update",
         "tableId": "proyectos",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "dataToSend": "autoMapInputData",
         "options": {}
       },
@@ -302,9 +310,17 @@
       "parameters": {
         "operation": "delete",
         "tableId": "proyectos",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "supa-delete",
