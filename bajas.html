@@ -1054,6 +1054,9 @@ async function cargarBajas() {
         todasBajas = Array.isArray(data) ? data
                    : Array.isArray(data.bajas) ? data.bajas : [];
         renderBajas();
+        // Precargar clientes en background para que el modal abra al instante
+        // sin "Cargando clientes…" la primera vez que el usuario lo pulse.
+        cargarClientes().catch(() => {});
     } catch(err) {
         // Mostramos un mensaje genérico al usuario y dejamos el detalle en consola.
         console.warn('[bajas] error al cargar:', err);
@@ -1066,8 +1069,14 @@ function filtrarBajas() {
     const q      = (document.getElementById('search-bajas').value||'').toLowerCase().trim();
     const desde  = document.getElementById('filtro-desde')?.value || '';
     const hasta  = document.getElementById('filtro-hasta')?.value || '';
-    const dDesde = desde ? new Date(desde + 'T00:00:00') : null;
-    const dHasta = hasta ? new Date(hasta + 'T23:59:59') : null;
+    let dDesde = desde ? new Date(desde + 'T00:00:00') : null;
+    let dHasta = hasta ? new Date(hasta + 'T23:59:59') : null;
+    // Si el usuario invierte las fechas, las intercambiamos sin perder la
+    // selección — más útil que devolver vacío sin avisar.
+    if (dDesde && dHasta && dDesde > dHasta) {
+        const tmp = dDesde; dDesde = new Date(dHasta.getFullYear(), dHasta.getMonth(), dHasta.getDate(), 0, 0, 0);
+        dHasta = new Date(tmp.getFullYear(), tmp.getMonth(), tmp.getDate(), 23, 59, 59);
+    }
 
     bajasFiltradas = todasBajas.filter(b => {
         const matchTipo = !filtroTipo || (b.tipo||'').toLowerCase() === filtroTipo;
@@ -1177,9 +1186,10 @@ function renderBajas() {
     bajasFiltradas = [...todasBajas];
 
     // Stats
-    const nCliente = todasBajas.filter(b => b.tipo==='cliente').length;
-    const nLocal   = todasBajas.filter(b => b.tipo==='local').length;
-    const nMod     = todasBajas.filter(b => b.tipo==='modulos').length;
+    const _normTipo = b => (b.tipo || '').toString().trim().toLowerCase();
+    const nCliente = todasBajas.filter(b => _normTipo(b) === 'cliente').length;
+    const nLocal   = todasBajas.filter(b => _normTipo(b) === 'local').length;
+    const nMod     = todasBajas.filter(b => _normTipo(b) === 'modulos').length;
     const totalMRR = todasBajas.reduce((acc, b) => acc + (parseFloat(b.mrr)||0), 0);
     document.getElementById('stat-total').textContent   = todasBajas.length;
     document.getElementById('stat-cliente').textContent = nCliente;
@@ -1285,17 +1295,53 @@ async function cargarClientes() {
                 if (f.modulos && !out['Módulos']) out['Módulos'] = Array.isArray(f.modulos) ? f.modulos.join(',') : f.modulos;
                 if (f.lite === true) out['Lite'] = 'Sí';
                 if (f.distribuidor === true) out['Distribuidor'] = 'Sí';
+                // Locales: mantener tal cual viene (array u objeto JSONB).
+                // _localesDelCliente() los normaliza al usarlos.
+                if (f.locales != null && out['Locales'] == null) out['Locales'] = f.locales;
                 return out;
             })
-            .filter(f => (f['Baja'] || f['baja'] || '').toString().trim().toLowerCase() === 'no');
+            // Considera dado de baja: 'sí'/'si'/true. Considera activo:
+            // ausente, 'no', false, ''. Cualquier otra cosa lo trata como
+            // activo para no perder clientes por inconsistencias del backend.
+            .filter(f => {
+                const raw = f['Baja'] ?? f['baja'] ?? null;
+                if (raw === true) return false;
+                if (raw === false || raw == null) return true;
+                const s = String(raw).trim().toLowerCase();
+                return s !== 'sí' && s !== 'si' && s !== 'true';
+            });
     } catch(err) {
-        console.error('Error cargando clientes:', err);
+        console.warn('[cargarClientes]', err);
+        // Si el modal está abierto, avisar al usuario en vez de dejar el
+        // texto "Cargando clientes…" colgado para siempre.
+        const lista = document.getElementById('modal-cli-list');
+        if (lista) {
+            lista.innerHTML = '<p style="color:#dc2626;font-size:0.85rem;padding:10px;text-align:center;">No se pudieron cargar los clientes. Reintenta cerrando el modal y abriéndolo de nuevo.</p>';
+        }
     }
 }
 
 // ══════════════════════════════════════════════════════════════════
 //  MODAL — apertura y navegación
 // ══════════════════════════════════════════════════════════════════
+// Devuelve los locales reales de un cliente, soportando los varios formatos
+// que puede traer el backend: array JS (Supabase JSONB) o string JSON.
+function _localesDelCliente(cliente) {
+    if (!cliente) return [];
+    const raw = cliente['Locales'] ?? cliente['locales'] ?? null;
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+        const s = raw.trim();
+        if (s.startsWith('[') || s.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(s);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (_) { return []; }
+        }
+    }
+    return [];
+}
+
 function abrirModal() {
     mPaso    = 0;
     mTipo    = '';
@@ -1312,6 +1358,10 @@ function abrirModal() {
 
 function cerrarModal() {
     document.getElementById('modal-overlay').classList.remove('open');
+    // Liberar la instancia de flatpickr del modal "Nueva baja" si existe,
+    // si no se acumulan instancias en memoria cada vez que el usuario abre
+    // y cierra el modal sin guardar.
+    if (window._fpEfecto) { window._fpEfecto.destroy(); window._fpEfecto = null; }
 }
 
 function renderModalPaso() {
@@ -1445,11 +1495,23 @@ function renderModalPaso() {
         document.getElementById('modal-title').textContent    = `Baja de ${mTipo === 'local' ? 'Local' : 'Módulos'}`;
         document.getElementById('modal-subtitle').textContent = 'Selecciona el local';
 
-        const numLocales = parseInt(mCliente['Nº Locales'] || mCliente['Número de Locales'] || '0', 10) || 0;
+        // Preferimos los locales reales del cliente (con nombres) si existen.
+        // Caemos al fallback "Local 1, Local 2…" solo si solo tenemos el contador.
+        const localesReales = _localesDelCliente(mCliente);
+        const numFallback = parseInt(mCliente['Nº Locales'] || mCliente['Número de Locales'] || '0', 10) || 0;
         let localesHtml = '';
-        if (numLocales > 0) {
+        if (localesReales.length > 0) {
+            localesHtml = `<div class="local-grid">${localesReales.map((l, i) => {
+                const nombre = (l.nombre || '').trim() || `Local ${i + 1}`;
+                const sel = mLocal === nombre;
+                return `<div class="local-card ${sel?'selected':''}" onclick="selLocal('${escJs(nombre)}', ${i + 1})">
+                    <span class="local-card-icon">🏪</span>
+                    <div class="local-card-name">${esc(nombre)}</div>
+                </div>`;
+            }).join('')}</div>`;
+        } else if (numFallback > 0) {
             localesHtml = `<div class="local-grid">`;
-            for (let i = 1; i <= numLocales; i++) {
+            for (let i = 1; i <= numFallback; i++) {
                 const sel = mLocal === `Local ${i}`;
                 localesHtml += `<div class="local-card ${sel?'selected':''}" onclick="selLocal('Local ${i}', ${i})">
                     <span class="local-card-icon">🏪</span>
@@ -1458,10 +1520,11 @@ function renderModalPaso() {
             }
             localesHtml += `</div>`;
         }
+        const tieneLista = localesReales.length > 0 || numFallback > 0;
         localesHtml += `<div class="local-manual-wrap">
-            <label class="local-manual-label">${numLocales > 0 ? 'O escribe el nombre exacto del local' : 'Nombre del local'}</label>
+            <label class="local-manual-label">${tieneLista ? 'O escribe el nombre exacto del local' : 'Nombre del local'}</label>
             <input type="text" class="local-manual" id="local-manual-inp"
-                   value="${esc(mLocal && !mLocal.startsWith('Local ') ? mLocal : '')}"
+                   value="${esc(mLocal && !mLocal.startsWith('Local ') && !localesReales.some(l => (l.nombre||'').trim() === mLocal) ? mLocal : '')}"
                    placeholder="Ej: Local Madrid Centro"
                    oninput="onLocalManualModal()">
         </div>`;
@@ -1570,13 +1633,31 @@ function renderModalPaso() {
 }
 
 async function irModalPaso(n) {
+    // Capturar lo que el usuario haya escrito en MRR / Fecha de efecto
+    // antes de re-renderizar, para que no se pierda al cambiar de paso.
+    _capturarMrrYFechaActuales();
     if (n === 1) await cargarClientes();
     mPaso = n;
     renderModalPaso();
 }
 
+// Lee los inputs de MRR y fecha de efecto si están presentes y los persiste
+// en las variables de estado del modal.
+function _capturarMrrYFechaActuales() {
+    const mrrEl   = document.getElementById('mrr-input');
+    const fechaEl = document.getElementById('fecha-efecto-input');
+    if (mrrEl)   mMRR         = (mrrEl.value || '').trim();
+    if (fechaEl) mFechaEfecto = (fechaEl.value || '').trim();
+}
+
 // ── Selección tipo ────────────────────────────────────────────────
 function selTipo(t) {
+    // Si cambiamos de tipo después de haber avanzado, reseteamos el resto del
+    // estado para no arrastrar local/módulos del tipo anterior.
+    if (mTipo && mTipo !== t) {
+        mLocal = null;
+        mModulos.clear();
+    }
     mTipo = t;
     document.querySelectorAll('.tipo-card').forEach(el => {
         el.classList.toggle('selected', el.onclick.toString().includes(`'${t}'`));
@@ -1686,33 +1767,60 @@ function toggleMod(nombre, labelEl) {
 // ══════════════════════════════════════════════════════════════════
 //  GUARDAR BAJA
 // ══════════════════════════════════════════════════════════════════
+// Flag de envío en curso. Bloquea reentradas si el usuario hace doble click.
+let _guardandoBaja = false;
+
 async function guardarBaja() {
+    if (_guardandoBaja) return;
+    _guardandoBaja = true;
+
     const body = document.getElementById('modal-body');
     const ft   = document.getElementById('modal-ft');
+
+    // Capturar y validar MRR antes de bloquear el body
+    const mrrRaw = (document.getElementById('mrr-input')?.value || '').trim();
+    const mrrParsed = mrrRaw === '' ? null : parseFloat(mrrRaw.replace(',', '.'));
+    if (mrrRaw !== '' && (isNaN(mrrParsed) || mrrParsed < 0)) {
+        _guardandoBaja = false;
+        const inp = document.getElementById('mrr-input');
+        if (inp) { inp.classList.add('input-invalid'); inp.focus(); }
+        mostrarStatus('err', '⚠️ MRR no es un número válido');
+        return;
+    }
+    mMRR         = mrrRaw;
+    mFechaEfecto = (document.getElementById('fecha-efecto-input')?.value || '').trim();
+
     ft.innerHTML = `<div class="modal-saving" style="display:flex;"><div class="spinner"></div> Guardando baja…</div>`;
     body.style.opacity = '0.4';
     body.style.pointerEvents = 'none';
 
-    mMRR         = (document.getElementById('mrr-input')?.value || '').trim();
-    mFechaEfecto = (document.getElementById('fecha-efecto-input')?.value || '').trim();
     const motivoLabel = (MOTIVOS_BAJA.find(m => m.id === mMotivo)||{}).label || mMotivo;
     const ahora = new Date().toISOString();
+
+    // cliente_nombre: preferimos comercial si existe, si no la denominación social.
+    // No los mezclamos; cada uno va a su campo. cliente_denom es siempre la legal.
+    const denomSocial   = mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '';
+    const nombreComer   = mCliente['Nombre Comercial'] || '';
+    const clienteNombre = nombreComer || denomSocial || '(sin nombre)';
+
     const payload = {
-        tipo:           mTipo,
-        cliente_nombre: mCliente['Nombre Comercial'] || mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '',
-        cliente_denom:  mCliente['Nombre Sociedad'] || mCliente['Denominación Social'] || '',
-        cliente_cif:    mCliente['CIF/NIF'] || '',
-        cliente_email:  mCliente['Email'] || '',
-        cliente_id:     mCliente['ID'] || '',
-        motivo_id:      mMotivo,
-        motivo:         motivoLabel,
-        local:          mLocal || null,
-        modulos:        [...mModulos],
-        mrr:            mMRR !== '' ? parseFloat(mMRR) : null,
-        fecha_baja:     ahora,
-        fecha_efecto:   mFechaEfecto || null,
-        fecha:          ahora,   // compatibilidad legacy
-        Baja:           'Sí'
+        tipo:            mTipo,
+        cliente_nombre:  clienteNombre,
+        cliente_comercial: nombreComer,
+        cliente_denom:   denomSocial,
+        cliente_cif:     mCliente['CIF/NIF'] || '',
+        cliente_email:   mCliente['Email'] || '',
+        cliente_id:      mCliente['ID'] || '',
+        motivo_id:       mMotivo,
+        motivo:          motivoLabel,
+        local:           mLocal || null,
+        modulos:         [...mModulos],
+        mrr:             mrrParsed,
+        fecha_baja:      ahora,
+        fecha_efecto:    mFechaEfecto || null,
+        // 'Baja: Sí' solo si es baja total del cliente. Para local/módulos
+        // no marcamos al cliente entero como dado de baja.
+        Baja:            mTipo === 'cliente' ? 'Sí' : 'No'
     };
 
     const webhookMap = {
@@ -1724,9 +1832,9 @@ async function guardarBaja() {
 
     try {
         if (url) {
-            const res = await fetch(url, {
+            // Usamos apiFetch para incluir Authorization y manejar 401/403.
+            const res = await YurestConfig.apiFetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error('Error ' + res.status);
@@ -1739,32 +1847,35 @@ async function guardarBaja() {
         renderBajas();
         cerrarModal();
 
-        const nombre = payload.cliente_nombre;
         const extras = mTipo === 'modulos' ? ` · ${[...mModulos].join(', ')}` :
                        mTipo === 'local'   ? ` · ${mLocal}` : '';
-        mostrarStatus('ok', `✅ Baja registrada — <strong>${esc(nombre)}</strong>${esc(extras)}`);
-
+        mostrarStatus('ok', `✅ Baja registrada — <strong>${esc(clienteNombre)}</strong>${esc(extras)}`);
     } catch(err) {
+        console.warn('[guardarBaja]', err);
         body.style.opacity = '';
         body.style.pointerEvents = '';
         ft.innerHTML = `
-            <div style="color:#dc2626;font-size:0.83rem;flex:1;">⚠️ Error: ${esc(err.message)}</div>
+            <div style="color:#dc2626;font-size:0.83rem;flex:1;">⚠️ No se pudo guardar la baja. Inténtalo de nuevo.</div>
             <button class="btn-modal-back" onclick="renderModalPaso()">Reintentar</button>`;
+    } finally {
+        _guardandoBaja = false;
     }
 }
 
 // ══════════════════════════════════════════════════════════════════
 //  EDITAR BAJA
 // ══════════════════════════════════════════════════════════════════
-let _editIdx    = null;   // índice en bajasFiltradas
-let _editBaja   = null;   // objeto baja actual
-let _fpEditEfecto = null; // instancia flatpickr del campo fecha_efecto en edit modal
-let _editModulos = new Set();
+// Guardamos referencia al objeto, NO el índice. Si el usuario filtra
+// entre la apertura del modal y el guardado, el índice apuntaría a
+// otra fila. Con referencia siempre tocamos la baja correcta.
+let _editBaja     = null;
+let _fpEditEfecto = null;
+let _editModulos  = new Set();
 
 function editarBaja(idx) {
-    _editIdx  = idx;
     _editBaja = bajasFiltradas[idx];
-    const b   = _editBaja;
+    if (!_editBaja) return;
+    const b = _editBaja;
     const tipo = (b.tipo || '').toLowerCase();
 
     document.getElementById('edit-modal-sub').textContent =
@@ -1830,17 +1941,32 @@ function toggleEditMod(nombre, el) {
 function cerrarEditModal() {
     document.getElementById('edit-overlay').classList.remove('open');
     if (_fpEditEfecto) { _fpEditEfecto.destroy(); _fpEditEfecto = null; }
-    _editIdx = null; _editBaja = null;
+    _editBaja = null;
 }
 
+let _editandoBaja = false;
+
 async function guardarEdicion() {
-    const b         = _editBaja;
+    if (_editandoBaja) return;
+    const b = _editBaja;
+    if (!b) return;
+
     const tipo      = (b.tipo || '').toLowerCase();
     const motivoId  = document.getElementById('edit-motivo').value;
     const motivoObj = MOTIVOS_BAJA.find(m => m.id === motivoId) || {};
-    const mrr       = (document.getElementById('edit-mrr').value || '').trim();
+    const mrrRaw    = (document.getElementById('edit-mrr').value || '').trim();
     const fEfecto   = document.getElementById('edit-fecha-efecto').value || '';
     const local     = tipo !== 'cliente' ? (document.getElementById('edit-local')?.value || '').trim() : b.local;
+
+    // Validar MRR
+    const mrrParsed = mrrRaw === '' ? null : parseFloat(mrrRaw.replace(',', '.'));
+    if (mrrRaw !== '' && (isNaN(mrrParsed) || mrrParsed < 0)) {
+        const inp = document.getElementById('edit-mrr');
+        if (inp) { inp.classList.add('input-invalid'); inp.focus(); }
+        mostrarStatus('err', '⚠️ MRR no es un número válido');
+        return;
+    }
+    _editandoBaja = true;
 
     const payload = {
         accion:         'editar',
@@ -1853,9 +1979,11 @@ async function guardarEdicion() {
         motivo:         motivoObj.label || motivoId,
         local:          local || null,
         modulos:        tipo === 'modulos' ? [..._editModulos] : b.modulos,
-        mrr:            mrr !== '' ? parseFloat(mrr) : null,
+        mrr:            mrrParsed,
         fecha_efecto:   fEfecto || null,
-        Baja:           'Sí'
+        // Solo marcamos al cliente como dado de baja si la edición sigue
+        // siendo de tipo "cliente"; locales/módulos no cambian ese flag.
+        Baja:           tipo === 'cliente' ? 'Sí' : 'No'
     };
 
     const saveBtn = document.querySelector('.btn-edit-save');
@@ -1868,29 +1996,39 @@ async function guardarEdicion() {
         });
         if (!res.ok) throw new Error('Error ' + res.status);
 
-        // Actualizar objeto local
-        Object.assign(bajasFiltradas[_editIdx], {
-            motivo_id: motivoId, motivo: motivoObj.label || motivoId,
-            local, modulos: payload.modulos,
-            mrr: payload.mrr, fecha_efecto: fEfecto || null
+        // Actualizar el objeto referenciado en memoria. Como tenemos la
+        // referencia directa, no nos importa si el filtro cambió mientras.
+        Object.assign(b, {
+            motivo_id: motivoId,
+            motivo:    motivoObj.label || motivoId,
+            local,
+            modulos:   payload.modulos,
+            mrr:       payload.mrr,
+            fecha_efecto: fEfecto || null
         });
         renderTabla();
         cerrarEditModal();
         mostrarStatus('ok', `✅ Baja actualizada — <strong>${esc(b.cliente_nombre)}</strong>`);
     } catch(err) {
+        console.warn('[guardarEdicion]', err);
         if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar cambios'; }
-        mostrarStatus('err', `⚠️ Error al guardar: ${esc(err.message)}`);
+        mostrarStatus('err', `⚠️ No se pudieron guardar los cambios. Inténtalo de nuevo.`);
+    } finally {
+        _editandoBaja = false;
     }
 }
 
 // ══════════════════════════════════════════════════════════════════
 //  BORRAR BAJA
 // ══════════════════════════════════════════════════════════════════
-let _borrarIdx = null;
+// Igual que en edición: guardamos referencia al objeto, no el índice.
+let _borrarBaja = null;
+let _borrandoBaja = false;
 
 function confirmarBorrado(idx) {
-    _borrarIdx = idx;
-    const b = bajasFiltradas[idx];
+    _borrarBaja = bajasFiltradas[idx];
+    if (!_borrarBaja) return;
+    const b = _borrarBaja;
     document.getElementById('confirm-desc').innerHTML =
         `Se eliminará la baja de <strong>${esc(b.cliente_nombre || '—')}</strong>. Esta acción enviará una solicitud de eliminación al sistema.`;
     document.getElementById('confirm-overlay').classList.add('open');
@@ -1898,11 +2036,14 @@ function confirmarBorrado(idx) {
 
 function cerrarConfirm() {
     document.getElementById('confirm-overlay').classList.remove('open');
-    _borrarIdx = null;
+    _borrarBaja = null;
 }
 
 async function ejecutarBorrado() {
-    const b = bajasFiltradas[_borrarIdx];
+    if (_borrandoBaja) return;
+    const b = _borrarBaja;
+    if (!b) return;
+    _borrandoBaja = true;
     const delBtn = document.querySelector('.btn-confirm-delete');
     if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Eliminando…'; }
 
@@ -1920,28 +2061,37 @@ async function ejecutarBorrado() {
         });
         if (!res.ok) throw new Error('Error ' + res.status);
 
-        // Quitar de lista local
+        // Quitar de la lista canónica por referencia
         const idxEnTodos = todasBajas.indexOf(b);
         if (idxEnTodos !== -1) todasBajas.splice(idxEnTodos, 1);
         cerrarConfirm();
         filtrarBajas();
         mostrarStatus('ok', `🗑️ Baja eliminada — <strong>${esc(b.cliente_nombre)}</strong>`);
     } catch(err) {
+        console.warn('[ejecutarBorrado]', err);
         if (delBtn) { delBtn.disabled = false; delBtn.textContent = 'Eliminar'; }
-        mostrarStatus('err', `⚠️ Error al eliminar: ${esc(err.message)}`);
+        mostrarStatus('err', `⚠️ No se pudo eliminar la baja. Inténtalo de nuevo.`);
         cerrarConfirm();
+    } finally {
+        _borrandoBaja = false;
     }
 }
 
 // ══════════════════════════════════════════════════════════════════
 //  STATUS BANNER
 // ══════════════════════════════════════════════════════════════════
+let _statusTimeout = null;
 function mostrarStatus(tipo, html) {
     const b = document.getElementById('status-banner');
+    if (_statusTimeout) { clearTimeout(_statusTimeout); _statusTimeout = null; }
     b.className = 'status-banner ' + tipo;
     b.innerHTML = html;
     b.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(() => { b.className = 'status-banner'; b.innerHTML = ''; }, 6000);
+    _statusTimeout = setTimeout(() => {
+        b.className = 'status-banner';
+        b.innerHTML = '';
+        _statusTimeout = null;
+    }, 6000);
 }
 
 // ══════════════════════════════════════════════════════════════════
