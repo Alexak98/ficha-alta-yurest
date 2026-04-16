@@ -50,7 +50,6 @@
         proyectos:            `${WEBHOOK_BASE}/proyectos`,
         proyectosTarea:       `${WEBHOOK_BASE}/proyectos/tarea`,
         proyectosTareaMover:  `${WEBHOOK_BASE}/proyectos/tarea/mover`,
-        plantillas:           `${WEBHOOK_BASE}/plantillas`,
 
         // Integraciones externas
         asanaTasks:           `${WEBHOOK_BASE}/asana/tasks`,

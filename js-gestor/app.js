@@ -13,7 +13,6 @@ let dashboardFiltroActivo = null; // null, 'pausados', 'avanzando', 'terminados'
 document.addEventListener('DOMContentLoaded', async () => {
     showLoading();
     try {
-        await cargarPlantillas();
         proyectos = await cargarProyectos();
     } catch (err) {
         mostrarToast('Error cargando datos: ' + err.message, 'error');
@@ -654,114 +653,67 @@ async function _sincronizarDatosDesdeFicha(nombreCliente) {
 // Alias compatible con el nombre previo.
 const _sincronizarTpvDesdeFicha = _sincronizarDatosDesdeFicha;
 
+// Los proyectos sólo se crean desde "Sin asignar" (ficha → asignación a implementador).
+// Este modal es exclusivamente de edición.
 function abrirModalProyecto(id) {
-    const titulo = document.getElementById('modal-proyecto-titulo');
+    if (!id) return;
+    const p = proyectos.find(pr => pr.id === id);
+    if (!p) return;
+
     const inputId = document.getElementById('proyecto-id');
     const inputCliente = document.getElementById('proyecto-cliente');
     const selectImpl = document.getElementById('proyecto-implementador');
     const inputTipo = document.getElementById('proyecto-tipo');
     const selectEstado = document.getElementById('proyecto-estado');
     const inputFecha = document.getElementById('proyecto-fecha');
-    const plantillaGroup = document.getElementById('proyecto-plantilla-group');
-    const selectPlantilla = document.getElementById('proyecto-plantilla');
 
-    // Populate plantilla dropdown
-    selectPlantilla.innerHTML = plantillas.map(p =>
-        `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`
-    ).join('');
-
-    if (id) {
-        const p = proyectos.find(pr => pr.id === id);
-        if (!p) return;
-        titulo.textContent = 'Editar Proyecto';
-        inputId.value = p.id;
-        inputCliente.value = p.cliente;
-        selectImpl.value = p.implementador;
-        selectEstado.value = p.estado;
-        inputFecha.value = p.fechaInicio;
-        // Tipo y TPV vienen de la ficha — mostramos lo guardado y refrescamos en segundo plano
-        inputTipo.value = p.tipo || '';
-        document.getElementById('proyecto-tpv').value = p.tpv || '';
-        _sincronizarDatosDesdeFicha(p.cliente);
-        plantillaGroup.style.display = 'none';
-        window._proyectoParticipantes = [...(p.participantes || [])];
-    } else {
-        titulo.textContent = 'Nuevo Proyecto';
-        inputId.value = '';
-        inputCliente.value = '';
-        selectImpl.selectedIndex = 0;
-        inputTipo.value = '';
-        selectEstado.selectedIndex = 0;
-        inputFecha.value = new Date().toISOString().split('T')[0];
-        document.getElementById('proyecto-tpv').value = '';
-        plantillaGroup.style.display = '';
-        window._proyectoParticipantes = [];
-    }
-
-    // Auto-rellenar Tipo + TPV al cambiar el cliente (se registra una sola vez)
-    if (!inputCliente.dataset.tpvHook) {
-        inputCliente.addEventListener('change', () => _sincronizarDatosDesdeFicha(inputCliente.value));
-        inputCliente.addEventListener('blur', () => _sincronizarDatosDesdeFicha(inputCliente.value));
-        inputCliente.dataset.tpvHook = '1';
-    }
+    inputId.value = p.id;
+    inputCliente.value = p.cliente;
+    selectImpl.value = p.implementador;
+    selectEstado.value = p.estado;
+    inputFecha.value = p.fechaInicio;
+    // Tipo y TPV vienen de la ficha — mostramos lo guardado y refrescamos en segundo plano
+    inputTipo.value = p.tipo || '';
+    document.getElementById('proyecto-tpv').value = p.tpv || '';
+    _sincronizarDatosDesdeFicha(p.cliente);
+    window._proyectoParticipantes = [...(p.participantes || [])];
 
     renderParticipantesChips();
     abrirModal('modal-proyecto');
-    inputCliente.focus();
+    selectImpl.focus();
 }
 
 async function guardarProyecto() {
     const id = document.getElementById('proyecto-id').value;
+    if (!id) return; // edición únicamente
     const cliente = document.getElementById('proyecto-cliente').value.trim();
     const implementador = document.getElementById('proyecto-implementador').value;
     const estado = document.getElementById('proyecto-estado').value;
     const fechaInicio = document.getElementById('proyecto-fecha').value;
-    const plantillaId = document.getElementById('proyecto-plantilla').value;
 
-    if (!cliente) {
-        document.getElementById('proyecto-cliente').focus();
-        return;
-    }
+    if (!cliente) return;
 
     // Tipo y TPV se derivan siempre de la ficha del cliente — nunca del DOM editable.
     const ficha = await obtenerFichaPorCliente(cliente);
-    // Preservar valor previo si ya existía y no hay match en la ficha (p.ej. el backend está caído).
-    const proyectoPrev = id ? proyectos.find(p => p.id === id) : null;
-    const tipo = ficha ? (ficha.tipo || '') : (proyectoPrev ? (proyectoPrev.tipo || '') : '');
-    const tpv = ficha ? (ficha.tpv || '') : (proyectoPrev ? (proyectoPrev.tpv || '') : '');
+    // Preservar valor previo si no hay match en la ficha (p.ej. el backend está caído).
+    const idx = proyectos.findIndex(p => p.id === id);
+    if (idx === -1) return;
+    const proyectoPrev = proyectos[idx];
+    const tipo = ficha ? (ficha.tipo || '') : (proyectoPrev.tipo || '');
+    const tpv = ficha ? (ficha.tpv || '') : (proyectoPrev.tpv || '');
     document.getElementById('proyecto-tipo').value = tipo;
     document.getElementById('proyecto-tpv').value = tpv;
 
     showLoading();
     try {
-        if (id) {
-            const idx = proyectos.findIndex(p => p.id === id);
-            if (idx !== -1) {
-                proyectos[idx].cliente = cliente;
-                proyectos[idx].implementador = implementador;
-                proyectos[idx].tipo = tipo;
-                proyectos[idx].estado = estado;
-                proyectos[idx].fechaInicio = fechaInicio;
-                proyectos[idx].tpv = tpv;
-                proyectos[idx].participantes = window._proyectoParticipantes || [];
-                await actualizarProyectoAPI(proyectos[idx]);
-            }
-        } else {
-            const nuevoProyecto = {
-                id: generarId(),
-                cliente,
-                implementador,
-                tipo,
-                estado,
-                fechaInicio,
-                ultimaActividad: new Date().toISOString().split('T')[0],
-                tpv,
-                participantes: window._proyectoParticipantes || [],
-                secciones: plantillaId ? crearEstructuraDesdePlantilla(plantillaId) : crearEstructuraProyecto()
-            };
-            await crearProyectoAPI(nuevoProyecto);
-            proyectos.push(nuevoProyecto);
-        }
+        proyectoPrev.cliente = cliente;
+        proyectoPrev.implementador = implementador;
+        proyectoPrev.tipo = tipo;
+        proyectoPrev.estado = estado;
+        proyectoPrev.fechaInicio = fechaInicio;
+        proyectoPrev.tpv = tpv;
+        proyectoPrev.participantes = window._proyectoParticipantes || [];
+        await actualizarProyectoAPI(proyectoPrev);
 
         guardarProyectosLocal(proyectos);
         cerrarModal('modal-proyecto');
@@ -1696,185 +1648,6 @@ function renderParticipantesChips() {
     container.innerHTML = list.length > 0
         ? list.map((email, i) => `<span class="participante-chip">${escapeHtml(email)}<button onclick="quitarParticipanteProyecto(${i})">&times;</button></span>`).join('')
         : '<span style="font-size:12px;color:var(--text-muted)">Sin participantes</span>';
-}
-
-// ==========================================
-// PLANTILLAS (Templates CRUD)
-// ==========================================
-
-function abrirModalPlantillas() {
-    renderListaPlantillas();
-    abrirModal('modal-plantillas');
-}
-
-function renderListaPlantillas() {
-    const container = document.getElementById('plantillas-lista');
-    if (plantillas.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">No hay plantillas</div>';
-        return;
-    }
-
-    container.innerHTML = plantillas.map(pl => {
-        const totalTareas = pl.secciones.reduce((acc, s) => acc + s.tareas.length, 0);
-        const secConTareas = pl.secciones.filter(s => s.tareas.length > 0).length;
-        return `
-            <div class="plantilla-card">
-                <div class="plantilla-card-info">
-                    <div class="plantilla-card-name">${escapeHtml(pl.nombre)}</div>
-                    <div class="plantilla-card-desc">${escapeHtml(pl.descripcion || '')}</div>
-                    <div class="plantilla-card-meta">${totalTareas} tareas en ${secConTareas} secciones</div>
-                </div>
-                <div class="plantilla-card-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="abrirEditorPlantilla('${pl.id}')">Editar</button>
-                    <button class="btn btn-secondary btn-sm" onclick="duplicarPlantilla('${pl.id}')">Duplicar</button>
-                    ${pl.id !== 'default' ? `<button class="btn btn-danger btn-sm" onclick="eliminarPlantillaConfirm('${pl.id}')">Eliminar</button>` : ''}
-                </div>
-            </div>`;
-    }).join('');
-}
-
-function abrirEditorPlantilla(id) {
-    const titulo = document.getElementById('editor-plantilla-titulo');
-    const inputId = document.getElementById('plantilla-id');
-    const inputNombre = document.getElementById('plantilla-nombre');
-    const inputDesc = document.getElementById('plantilla-descripcion');
-    const seccionesContainer = document.getElementById('plantilla-secciones');
-
-    let seccionesData;
-
-    if (id) {
-        const pl = plantillas.find(p => p.id === id);
-        if (!pl) return;
-        titulo.textContent = 'Editar Plantilla';
-        inputId.value = pl.id;
-        inputNombre.value = pl.nombre;
-        inputDesc.value = pl.descripcion || '';
-        seccionesData = pl.secciones;
-    } else {
-        titulo.textContent = 'Nueva Plantilla';
-        inputId.value = '';
-        inputNombre.value = '';
-        inputDesc.value = '';
-        seccionesData = SECCIONES.map(nombre => ({ nombre, tareas: [] }));
-    }
-
-    // Render secciones con inputs de tareas
-    seccionesContainer.innerHTML = seccionesData.map((sec, i) => `
-        <div class="plantilla-seccion-block">
-            <div class="plantilla-seccion-header">${escapeHtml(sec.nombre)}</div>
-            <div class="plantilla-tareas-list" id="pl-tareas-${i}">
-                ${sec.tareas.map((t, ti) => `
-                    <div class="plantilla-tarea-chip">
-                        <span>${escapeHtml(t)}</span>
-                        <button onclick="quitarTareaPlantilla(${i}, ${ti})" title="Quitar">&times;</button>
-                    </div>
-                `).join('')}
-            </div>
-            <div class="plantilla-add-tarea">
-                <input type="text" class="form-control" placeholder="Nueva tarea..." id="pl-input-${i}"
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();agregarTareaPlantilla(${i})}">
-                <button class="btn btn-secondary btn-sm" onclick="agregarTareaPlantilla(${i})">+</button>
-            </div>
-        </div>
-    `).join('');
-
-    // Store current secciones data for manipulation
-    window._plantillaSeccionesEdit = JSON.parse(JSON.stringify(seccionesData));
-
-    abrirModal('modal-editar-plantilla');
-    inputNombre.focus();
-}
-
-function agregarTareaPlantilla(secIdx) {
-    const input = document.getElementById('pl-input-' + secIdx);
-    const nombre = input.value.trim();
-    if (!nombre) return;
-    window._plantillaSeccionesEdit[secIdx].tareas.push(nombre);
-    input.value = '';
-    // Re-render just the chips
-    renderChipsPlantilla(secIdx);
-    input.focus();
-}
-
-function quitarTareaPlantilla(secIdx, tareaIdx) {
-    window._plantillaSeccionesEdit[secIdx].tareas.splice(tareaIdx, 1);
-    renderChipsPlantilla(secIdx);
-}
-
-function renderChipsPlantilla(secIdx) {
-    const container = document.getElementById('pl-tareas-' + secIdx);
-    const tareas = window._plantillaSeccionesEdit[secIdx].tareas;
-    container.innerHTML = tareas.map((t, ti) => `
-        <div class="plantilla-tarea-chip">
-            <span>${escapeHtml(t)}</span>
-            <button onclick="quitarTareaPlantilla(${secIdx}, ${ti})" title="Quitar">&times;</button>
-        </div>
-    `).join('');
-}
-
-async function guardarPlantilla() {
-    const id = document.getElementById('plantilla-id').value;
-    const nombre = document.getElementById('plantilla-nombre').value.trim();
-    const descripcion = document.getElementById('plantilla-descripcion').value.trim();
-
-    if (!nombre) {
-        document.getElementById('plantilla-nombre').focus();
-        return;
-    }
-
-    const secciones = window._plantillaSeccionesEdit;
-
-    showLoading();
-    try {
-        if (id) {
-            const idx = plantillas.findIndex(p => p.id === id);
-            if (idx !== -1) {
-                plantillas[idx].nombre = nombre;
-                plantillas[idx].descripcion = descripcion;
-                plantillas[idx].secciones = secciones;
-                await actualizarPlantillaAPI(plantillas[idx]).catch(() => {});
-            }
-        } else {
-            const nueva = { id: generarId(), nombre, descripcion, secciones };
-            plantillas.push(nueva);
-            await crearPlantillaAPI(nueva).catch(() => {});
-        }
-
-        guardarPlantillasLocal(plantillas);
-        cerrarModal('modal-editar-plantilla');
-        renderListaPlantillas();
-        mostrarToast('Plantilla guardada', 'success');
-    } catch (err) {
-        mostrarToast('Error al guardar plantilla: ' + err.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-async function duplicarPlantilla(id) {
-    const pl = plantillas.find(p => p.id === id);
-    if (!pl) return;
-    const copia = {
-        id: generarId(),
-        nombre: pl.nombre + ' (copia)',
-        descripcion: pl.descripcion,
-        secciones: JSON.parse(JSON.stringify(pl.secciones))
-    };
-    plantillas.push(copia);
-    guardarPlantillasLocal(plantillas);
-    await crearPlantillaAPI(copia).catch(() => {});
-    renderListaPlantillas();
-    mostrarToast('Plantilla duplicada', 'success');
-}
-
-function eliminarPlantillaConfirm(id) {
-    mostrarConfirmacion('¿Eliminar esta plantilla?', async () => {
-        plantillas = plantillas.filter(p => p.id !== id);
-        guardarPlantillasLocal(plantillas);
-        await eliminarPlantillaAPI(id).catch(() => {});
-        renderListaPlantillas();
-        mostrarToast('Plantilla eliminada', 'success');
-    });
 }
 
 // ==========================================

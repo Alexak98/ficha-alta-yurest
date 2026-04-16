@@ -274,7 +274,6 @@
     document.addEventListener('DOMContentLoaded', async () => {
         showLoading();
         try {
-            await cargarPlantillas();
             proyectos = await cargarProyectos();
         } catch (_) { proyectos = []; }
         hideLoading();

@@ -3,7 +3,6 @@
 // ==========================================
 
 const STORAGE_KEY = 'gestor_proyectos_v3';
-const STORAGE_KEY_PLANTILLAS = 'gestor_plantillas_v1';
 
 // ==========================================
 // WEBHOOK ENDPOINTS (desde config.js centralizado)
@@ -18,7 +17,6 @@ const WEBHOOK_BASE                  = _YC ? _YC.WEBHOOK_BASE              : 'htt
 const WEBHOOK_PROYECTOS             = _YC ? _YC.ENDPOINTS.proyectos       : `${WEBHOOK_BASE}/proyectos`;
 const WEBHOOK_PROYECTOS_TAREA       = _YC ? _YC.ENDPOINTS.proyectosTarea  : `${WEBHOOK_BASE}/proyectos/tarea`;
 const WEBHOOK_PROYECTOS_TAREA_MOVER = _YC ? _YC.ENDPOINTS.proyectosTareaMover : `${WEBHOOK_BASE}/proyectos/tarea/mover`;
-const WEBHOOK_PLANTILLAS            = _YC ? _YC.ENDPOINTS.plantillas      : `${WEBHOOK_BASE}/plantillas`;
 const WEBHOOK_ALTAS                 = _YC ? _YC.ENDPOINTS.altas           : `${WEBHOOK_BASE}/018f3362-7969-4c49-9088-c78e4446c77f`;
 const WEBHOOK_ASANA_PROXY           = _YC ? _YC.ENDPOINTS.asanaTasks      : `${WEBHOOK_BASE}/asana/tasks`;
 const WEBHOOK_CALENDAR              = _YC ? _YC.ENDPOINTS.calendar        : `${WEBHOOK_BASE}/calendar/event`;
@@ -367,94 +365,6 @@ async function resetearDatosAPI() {
     }
     localStorage.removeItem(STORAGE_KEY);
     return DATOS_EJEMPLO;
-}
-
-// ==========================================
-// PLANTILLAS (Templates)
-// ==========================================
-
-// Genera la plantilla default a partir de las constantes actuales
-function obtenerPlantillaDefault() {
-    return {
-        id: 'default',
-        nombre: 'Default',
-        descripcion: 'Plantilla estandar con sesiones, puesta en marcha y carga de datos',
-        secciones: SECCIONES.map(nombre => {
-            let tareas = [];
-            if (nombre === 'Planificación de sesiones') tareas = [...SESIONES_PLANTILLA];
-            else if (nombre === 'Puesta en Marcha / Finalización') tareas = [...TAREAS_PUESTA_EN_MARCHA];
-            else if (nombre === 'Carga de Datos Yuload') tareas = [...TAREAS_CARGA_DATOS];
-            return { nombre, tareas };
-        })
-    };
-}
-
-let plantillas = [];
-
-async function cargarPlantillas() {
-    try {
-        const data = await apiRequest(WEBHOOK_PLANTILLAS, 'GET');
-        const lista = Array.isArray(data) ? data
-            : Array.isArray(data.plantillas) ? data.plantillas
-            : Array.isArray(data.data) ? data.data : [];
-        if (lista.length > 0) {
-            plantillas = lista;
-            guardarPlantillasLocal(plantillas);
-            return plantillas;
-        }
-    } catch (err) {
-        console.warn('Error cargando plantillas del backend:', err.message);
-    }
-    // Fallback a localStorage
-    const datos = localStorage.getItem(STORAGE_KEY_PLANTILLAS);
-    if (datos) {
-        plantillas = JSON.parse(datos);
-        if (plantillas.length > 0) return plantillas;
-    }
-    // Sin datos: crear plantilla default
-    plantillas = [obtenerPlantillaDefault()];
-    guardarPlantillasLocal(plantillas);
-    return plantillas;
-}
-
-function guardarPlantillasLocal(lista) {
-    localStorage.setItem(STORAGE_KEY_PLANTILLAS, JSON.stringify(lista));
-}
-
-async function crearPlantillaAPI(plantilla) {
-    return await apiRequest(WEBHOOK_PLANTILLAS, 'POST', { plantilla });
-}
-
-async function actualizarPlantillaAPI(plantilla) {
-    return await apiRequest(WEBHOOK_PLANTILLAS, 'PUT', { plantilla });
-}
-
-async function eliminarPlantillaAPI(id) {
-    return await apiRequest(WEBHOOK_PLANTILLAS, 'DELETE', { id });
-}
-
-// Genera estructura de secciones+tareas a partir de una plantilla
-function crearEstructuraDesdePlantilla(plantillaId) {
-    const pl = plantillas.find(p => p.id === plantillaId);
-    if (!pl) return crearEstructuraProyecto(); // fallback
-
-    return SECCIONES.map(secNombre => {
-        const secPlantilla = pl.secciones.find(s => s.nombre === secNombre);
-        const nombresTareas = secPlantilla ? secPlantilla.tareas : [];
-        return {
-            nombre: secNombre,
-            tareas: nombresTareas.map(nombre => ({
-                id: generarId(),
-                nombre,
-                completada: false,
-                show: null,
-                fechaEntrega: null,
-                tiempoEstimado: null,
-                notas: '',
-                subtareas: []
-            }))
-        };
-    });
 }
 
 // ==========================================

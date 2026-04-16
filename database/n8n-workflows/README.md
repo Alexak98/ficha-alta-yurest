@@ -26,7 +26,6 @@ Los nodos `n8n-nodes-base.supabase` referencian `SUPABASE_CREDENTIAL_ID` y los n
 |-----------------------------|-----------------------------------------------|
 | 01-proyectos-crud.json      | CRUD de proyectos de implementación          |
 | 02-proyectos-tareas.json    | CRUD de tareas/subtareas dentro de proyectos |
-| 03-plantillas-crud.json     | Plantillas de proyecto                       |
 | 04-fichas-alta.json         | CRUD de fichas de alta de clientes           |
 | 05-bajas.json               | Registro y consulta de bajas                 |
 | 06-distribucion.json        | Asignación implementador ↔ ficha             |

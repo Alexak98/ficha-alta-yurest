@@ -62,12 +62,6 @@
                 Proyectos
             </button>
         </nav>
-        <div class="header-actions">
-            <button class="btn btn-primary" onclick="abrirModalProyecto()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Nuevo Proyecto
-            </button>
-        </div>
     </header>
 
     <!-- ======================== VIEW: DASHBOARD ======================== -->
@@ -134,18 +128,19 @@
         </main>
     </div>
 
-    <!-- MODAL: Crear/Editar Proyecto -->
+    <!-- MODAL: Editar Proyecto -->
     <div class="modal-overlay" id="modal-proyecto" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="modal">
             <div class="modal-header">
-                <h2 id="modal-proyecto-titulo">Nuevo Proyecto</h2>
+                <h2 id="modal-proyecto-titulo">Editar Proyecto</h2>
                 <button class="modal-close" onclick="cerrarModal('modal-proyecto')">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="proyecto-id">
                 <div class="form-group">
                     <label>Cliente</label>
-                    <input type="text" id="proyecto-cliente" class="form-control" placeholder="Nombre del cliente">
+                    <input type="text" id="proyecto-cliente" class="form-control" readonly tabindex="-1" aria-readonly="true">
+                    <small class="form-hint">El cliente se asigna desde la sección "Sin asignar" y no se edita aquí.</small>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -174,13 +169,6 @@
                         <input type="text" id="proyecto-tpv" class="form-control" readonly tabindex="-1" aria-readonly="true" placeholder="Se obtiene de la ficha del cliente">
                         <small class="form-hint">Este campo se rellena automáticamente desde la ficha del cliente y no es editable.</small>
                     </div>
-                </div>
-                <div class="form-group" id="proyecto-plantilla-group">
-                    <label class="label-with-action">
-                        <span>Plantilla</span>
-                        <button type="button" class="label-action-link" onclick="abrirModalPlantillas()">Gestionar plantillas</button>
-                    </label>
-                    <select id="proyecto-plantilla" class="form-control"></select>
                 </div>
                 <div class="form-group">
                     <label>Participantes</label>
@@ -284,53 +272,6 @@
                     <button class="btn btn-secondary" onclick="cerrarModal('modal-confirm')">Cancelar</button>
                     <button class="btn btn-danger" id="confirm-btn" onclick="">Eliminar</button>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Lista de Plantillas -->
-    <div class="modal-overlay" id="modal-plantillas" role="dialog" aria-modal="true" aria-hidden="true">
-        <div class="modal modal-detail">
-            <div class="modal-header">
-                <h2>Gestionar Plantillas</h2>
-                <button class="modal-close" onclick="cerrarModal('modal-plantillas')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-                    <button class="btn btn-primary btn-sm" onclick="abrirEditorPlantilla()">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Nueva Plantilla
-                    </button>
-                </div>
-                <div id="plantillas-lista"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Editar Plantilla -->
-    <div class="modal-overlay" id="modal-editar-plantilla" role="dialog" aria-modal="true" aria-hidden="true">
-        <div class="modal modal-detail">
-            <div class="modal-header">
-                <h2 id="editor-plantilla-titulo">Nueva Plantilla</h2>
-                <button class="modal-close" onclick="cerrarModal('modal-editar-plantilla')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="plantilla-id">
-                <div class="form-row">
-                    <div class="form-group" style="flex:2">
-                        <label>Nombre</label>
-                        <input type="text" id="plantilla-nombre" class="form-control" placeholder="Nombre de la plantilla">
-                    </div>
-                    <div class="form-group" style="flex:1">
-                        <label>Descripcion</label>
-                        <input type="text" id="plantilla-descripcion" class="form-control" placeholder="Breve descripcion">
-                    </div>
-                </div>
-                <div class="plantilla-secciones" id="plantilla-secciones"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="cerrarModal('modal-editar-plantilla')">Cancelar</button>
-                <button class="btn btn-primary" onclick="guardarPlantilla()">Guardar Plantilla</button>
             </div>
         </div>
     </div>
