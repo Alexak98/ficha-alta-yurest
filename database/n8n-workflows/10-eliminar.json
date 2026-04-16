@@ -20,14 +20,14 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normaliza el payload. 'entity' ya no se usa para decidir rama porque\n// los IDs son UUIDs únicos entre fichas_alta y solicitudes: hacemos el\n// soft-delete en AMBAS tablas y solo la que tenga el UUID se actualiza.\n// Así eliminamos la dependencia de un IF node que no estaba enrutando\n// correctamente en n8n v2 y llevaba el request al branch equivocado.\nconst raw = $input.first().json;\nconst query = raw.query || {};\nconst body = raw.body || {};\n\nconst id = query.id || body.row_number || body.id || body.ID || '';\nif (!id) throw new Error('Falta ID para eliminar');\n\nconst entity = (query.entity || body.entity || '').toLowerCase();\n// 'entity' se acepta pero es informativo (devuelto en la respuesta).\n// Sin validación estricta: si viene algo raro, seguimos adelante.\n\nreturn [{ json: { id, entity: entity || 'desconocido' } }];"
+        "jsCode": "// Extrae id/entity del request. No validamos entity porque hacemos\n// soft-delete en AMBAS tablas: sólo la que contenga el UUID se\n// actualiza (UUIDs únicos entre fichas_alta y solicitudes).\nconst raw = $input.first().json;\nconst query = raw.query || {};\nconst body = raw.body || {};\nconst id = query.id || body.row_number || body.id || body.ID || '';\nif (!id) throw new Error('Falta ID para eliminar');\nconst entity = (query.entity || body.entity || '').toLowerCase() || 'desconocido';\nreturn [{ json: { id, entity } }];"
       },
       "id": "prepare-del",
       "name": "Preparar DELETE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
+        460,
         300
       ],
       "alwaysOutputData": true
@@ -43,7 +43,7 @@
             {
               "keyName": "id",
               "condition": "eq",
-              "keyValue": "={{ $json.id }}"
+              "keyValue": "={{ $('Preparar DELETE').first().json.id }}"
             }
           ]
         },
@@ -55,15 +55,14 @@
             }
           ]
         },
-        "options": {},
-        "alwaysOutputData": true
+        "options": {}
       },
       "id": "supa-del-ficha",
       "name": "Soft-delete Ficha",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        700,
+        680,
         300
       ],
       "credentials": {
@@ -72,20 +71,6 @@
           "name": "Supabase Yurest"
         }
       },
-      "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Recupera id/entity del paso Preparar DELETE (el Supabase update\n// anterior reemplaza $json con la fila actualizada o un objeto vacío).\nconst prep = $('Preparar DELETE').first().json;\nreturn [{ json: { id: prep.id, entity: prep.entity } }];"
-      },
-      "id": "restore-ctx-1",
-      "name": "Recuperar contexto",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        920,
-        300
-      ],
       "alwaysOutputData": true
     },
     {
@@ -99,7 +84,7 @@
             {
               "keyName": "id",
               "condition": "eq",
-              "keyValue": "={{ $json.id }}"
+              "keyValue": "={{ $('Preparar DELETE').first().json.id }}"
             }
           ]
         },
@@ -111,15 +96,14 @@
             }
           ]
         },
-        "options": {},
-        "alwaysOutputData": true
+        "options": {}
       },
       "id": "supa-del-sol",
       "name": "Soft-delete Solicitud",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1140,
+        900,
         300
       ],
       "credentials": {
@@ -162,7 +146,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1360,
+        1120,
         300
       ]
     }
@@ -191,17 +175,6 @@
       ]
     },
     "Soft-delete Ficha": {
-      "main": [
-        [
-          {
-            "node": "Recuperar contexto",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Recuperar contexto": {
       "main": [
         [
           {

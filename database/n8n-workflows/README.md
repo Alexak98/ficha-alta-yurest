@@ -20,6 +20,10 @@ Si n8n está detrás de un proxy (nginx/Caddy/Traefik), puedes también aplicar 
 
 Los nodos `n8n-nodes-base.supabase` referencian `SUPABASE_CREDENTIAL_ID` y los nodos Asana usan `ASANA_CREDENTIAL_ID`. Estos IDs son placeholders que se sustituyen al importar si ya hay una credencial con el nombre `Supabase Yurest` / `Asana Yurest`. Si no, créalas antes de activar los workflows.
 
+### Autenticación del portal (login)
+
+El webhook `GET Altas` en `04-fichas-alta.json` es el que valida el login — ahora usa **Basic Auth nativo de n8n**. Crea en n8n una credencial del tipo **"Header Auth" → Basic Auth** llamada **`Yurest Portal Auth`** con el `user` y `password` que quieras exigir, y asóciala al nodo `Webhook GET Altas`. Sin esta credencial el webhook aceptaría cualquier request, rompiendo la seguridad del portal.
+
 ## Listado
 
 | Archivo                     | Propósito                                     |
