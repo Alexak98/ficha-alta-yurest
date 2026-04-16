@@ -1870,7 +1870,7 @@
                         <div class="btn-ver-menu">
                             <a href="#" onclick="event.stopPropagation();abrirDrive(${idx});return false;"><span class="vm-icon">📁</span> Ver Drive</a>
                             <a href="#" onclick="event.stopPropagation();cerrarVerMenus();verFicha(${idx});return false;"><span class="vm-icon">📋</span> Ver ficha</a>
-                            <a href="#" onclick="event.stopPropagation()"><span class="vm-icon">📌</span> Ver proyecto</a>
+                            <a href="#" onclick="event.stopPropagation();return false;" style="pointer-events:none;opacity:0.4;cursor:default;"><span class="vm-icon">📌</span> Ver proyecto</a>
                         </div>
                     </div>
                     <button class="btn-edit" onclick="event.stopPropagation();editarFicha(${idx})">Editar</button>
