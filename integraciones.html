@@ -681,6 +681,15 @@
         const content = document.getElementById('content');
         content.style.display = '';
 
+        // Capturamos qué secciones tenía abiertas el usuario antes del re-render
+        // para restaurarlas después. Sin esto, cualquier filtro las cerraba todas
+        // porque se reemplaza content.innerHTML.
+        const seccionesAbiertasAntes = new Set(
+            [...document.querySelectorAll('.section-card.open')]
+                .map(c => c.dataset.sectionName)
+                .filter(Boolean)
+        );
+
         // Filtrar por secciones permitidas
         const setPermitidas = new Set(SECCIONES_PERMITIDAS);
         const tareasEnSecciones = todasLasTareas.filter(t => {
@@ -775,8 +784,10 @@
             const body = items.length
                 ? items.map(t => renderTaskCard(t, true)).join('')
                 : '<div style="color:#94a3b8;font-size:0.82rem;padding:8px 0;text-align:center;">Sin tareas</div>';
+            // Mantener abierta la sección si el usuario ya la había abierto
+            const openCls = seccionesAbiertasAntes.has(secNombre) ? ' open' : '';
             return `
-                <div class="section-card" data-section-name="${esc(secNombre)}" data-loaded="0">
+                <div class="section-card${openCls}" data-section-name="${esc(secNombre)}" data-loaded="0">
                     <div class="section-head" onclick="toggleSeccion(this)">
                         <span class="section-chevron">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -800,7 +811,8 @@
 
         content.innerHTML = filterBar + actions + `<div class="sections-list">${list}</div>`;
 
-        // Cargar comentarios solo de la primera sección (que está abierta por defecto)
+        // Cargar comentarios de cualquier sección que esté abierta (la inicial
+        // o las que el usuario tenía expandidas antes de cambiar el filtro).
         document.querySelectorAll('.section-card.open').forEach(card => {
             cargarComentariosSeccion(card);
         });
