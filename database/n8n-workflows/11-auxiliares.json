@@ -1,68 +1,6 @@
 {
-  "name": "Yurest - Auxiliares (Completar, Responder, Docs, Drive)",
+  "name": "Yurest - Auxiliares (Responder, Docs, Drive)",
   "nodes": [
-    {
-      "parameters": {
-        "httpMethod": "GET",
-        "path": "5a304fcd-ae1d-49e6-92d1-c5a5e007bbfd",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "id": "wh-completar",
-      "name": "Webhook Completar Ficha",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [240, 200],
-      "webhookId": "completar-ficha"
-    },
-    {
-      "parameters": {
-        "jsCode": "const query = $input.first().json.query || {};\nconst id = query.id || '';\nif (!id) throw new Error('Falta id en query params');\nreturn [{ json: { solicitudId: id } }];"
-      },
-      "id": "extract-completar-id",
-      "name": "Extraer ID Solicitud",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [440, 200]
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "tableId": "solicitudes",
-        "returnAll": true,
-        "options": {},
-        "alwaysOutputData": true
-      },
-      "id": "supa-get-all-sol-completar",
-      "name": "GET Solicitudes (Completar)",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [640, 200],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Buscar solicitud por ID Solicitud (numérico) dentro del campo datos\nconst { solicitudId } = $('Extraer ID Solicitud').first().json;\nconst allSol = $input.all().map(i => i.json).filter(s => s.id);\n\nlet datosCliente = null;\n\nfor (const sol of allSol) {\n  let datos = sol.datos;\n  if (typeof datos === 'string') {\n    try { datos = JSON.parse(datos); } catch(_) { datos = {}; }\n  }\n  const solId = datos['ID Solicitud'] || '';\n  if (String(solId) === String(solicitudId)) {\n    datosCliente = datos;\n    // Asegurar que tenga los campos esenciales\n    datosCliente.id = solicitudId;\n    datosCliente['ID Solicitud'] = solicitudId;\n    break;\n  }\n}\n\nif (!datosCliente) {\n  // No se encontró la solicitud — devolver objeto vacío con el ID para que el frontend no falle\n  datosCliente = { 'ID Solicitud': solicitudId, id: solicitudId };\n}\n\nreturn [{ json: datosCliente }];"
-      },
-      "id": "find-solicitud",
-      "name": "Buscar Solicitud",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [840, 200]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
-        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
-      },
-      "id": "respond-completar",
-      "name": "Respond Ficha",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1040, 200]
-    },
-
     {
       "parameters": {
         "httpMethod": "POST",
@@ -139,7 +77,7 @@
     {
       "parameters": {
         "resource": "folder",
-        "name": "={{ $json.denominacion }}",
+        "name": "={{ $json.nombre_comercial || $json.denominacion }}",
         "driveId": {
           "__rl": true,
           "value": "0AGFVnSzfPIg-Uk9PVA",
@@ -168,10 +106,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// Obtener ID de la ficha creada + URL de la carpeta Drive\nconst fichaId = $('INSERT Ficha Alta').first().json.id;\nconst driveId = $input.first().json.id;\nconst carpetaUrl = `https://drive.google.com/drive/u/1/folders/${driveId}`;\nreturn [{ json: { id: fichaId, carpeta_drive: carpetaUrl } }];"
+        "jsCode": "// Guardar solo el ID de la carpeta Drive (no la URL completa).\n// El frontend construirá la URL como https://drive.google.com/drive/u/1/folders/{id}\nconst fichaId = $('INSERT Ficha Alta').first().json.id;\nconst driveResult = $input.first().json;\n\n// El ID puede venir en diferentes campos según la respuesta del nodo Google Drive\nconst driveId = driveResult.id\n             || driveResult.fileId\n             || driveResult.folderId\n             || '';\n\nif (!driveId) {\n  throw new Error('No se pudo obtener el ID de la carpeta Drive. Campos disponibles: ' + Object.keys(driveResult).join(', '));\n}\n\nreturn [{ json: { id: fichaId, carpeta_drive: driveId } }];"
       },
       "id": "map-drive-url",
-      "name": "Map Drive URL",
+      "name": "Extraer ID Drive",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1640, 380]
@@ -354,10 +292,6 @@
     }
   ],
   "connections": {
-    "Webhook Completar Ficha": { "main": [[{ "node": "Extraer ID Solicitud", "type": "main", "index": 0 }]] },
-    "Extraer ID Solicitud": { "main": [[{ "node": "GET Solicitudes (Completar)", "type": "main", "index": 0 }]] },
-    "GET Solicitudes (Completar)": { "main": [[{ "node": "Buscar Solicitud", "type": "main", "index": 0 }]] },
-    "Buscar Solicitud": { "main": [[{ "node": "Respond Ficha", "type": "main", "index": 0 }]] },
 
     "Webhook Responder Solicitud": { "main": [[{ "node": "Guardar Body", "type": "main", "index": 0 }]] },
     "Guardar Body": { "main": [[{ "node": "GET Todas Solicitudes", "type": "main", "index": 0 }]] },
@@ -371,8 +305,8 @@
     ] },
     "Extraer Ficha": { "main": [[{ "node": "INSERT Ficha Alta", "type": "main", "index": 0 }]] },
     "INSERT Ficha Alta": { "main": [[{ "node": "Create Drive Folder", "type": "main", "index": 0 }]] },
-    "Create Drive Folder": { "main": [[{ "node": "Map Drive URL", "type": "main", "index": 0 }]] },
-    "Map Drive URL": { "main": [[{ "node": "UPDATE Ficha Drive", "type": "main", "index": 0 }]] },
+    "Create Drive Folder": { "main": [[{ "node": "Extraer ID Drive", "type": "main", "index": 0 }]] },
+    "Extraer ID Drive": { "main": [[{ "node": "UPDATE Ficha Drive", "type": "main", "index": 0 }]] },
     "Preparar Update Solicitud": { "main": [[{ "node": "UPDATE Solicitud Estado", "type": "main", "index": 0 }]] },
     "UPDATE Solicitud Estado": { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] },
     "Map Comercial Email": { "main": [[{ "node": "Email aviso al comercial", "type": "main", "index": 0 }]] },

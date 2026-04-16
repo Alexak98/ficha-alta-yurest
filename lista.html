@@ -2402,28 +2402,34 @@
         try {
             if (fichaParaEliminar) {
                 const { ficha } = fichaParaEliminar;
-                const rowNum = ficha['row_number'] || ficha['ID'] || ficha['id'] || '';
+                const id = ficha['id'] || ficha['ID'] || ficha['row_number'] || '';
                 console.log('[eliminar] Ficha completa:', ficha);
-                console.log('[eliminar] row_number enviado:', rowNum);
+                console.log('[eliminar] id enviado:', id);
                 const res = await fetch(WEBHOOK_ELIMINAR_FICHA, {
-                    method: 'DELETE',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
-                    body: JSON.stringify({ row_number: rowNum })
+                    body: JSON.stringify({ action: 'delete', id: id, row_number: id })
                 });
                 const txt = await res.text();
                 console.log('[eliminar] Respuesta status:', res.status, '| body:', txt);
                 if (!res.ok) throw new Error('Error ' + res.status);
+                // Eliminar de memoria inmediatamente
+                const fichaRef = fichaParaEliminar.ficha;
+                todasFichas = todasFichas.filter(f => f !== fichaRef);
+                fichasFiltradas = fichasFiltradas.filter(f => f !== fichaRef);
+                renderTabla(fichasFiltradas);
+                cerrarPanel();
                 cerrarModalEliminar();
                 recargarFichas();
             } else if (solicitudParaEliminar) {
                 const { solicitud } = solicitudParaEliminar;
-                const rowNum = solicitud['row_number'] || solicitud['ID'] || solicitud['id'] || '';
+                const id = solicitud['id'] || solicitud['ID'] || solicitud['row_number'] || '';
                 console.log('[eliminar] Solicitud completa:', solicitud);
-                console.log('[eliminar] row_number enviado:', rowNum);
+                console.log('[eliminar] id enviado:', id);
                 const res = await fetch(WEBHOOK_ELIMINAR_SOLICITUD, {
-                    method: 'DELETE',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
-                    body: JSON.stringify({ row_number: rowNum })
+                    body: JSON.stringify({ action: 'delete', id: id, row_number: id })
                 });
                 const txt = await res.text();
                 console.log('[eliminar] Respuesta status:', res.status, '| body:', txt);
@@ -2497,7 +2503,14 @@
             const raw = Array.isArray(data) ? data
                 : Array.isArray(data.solicitudes) ? data.solicitudes
                 : Array.isArray(data.data) ? data.data : [];
-            const solicitudes = raw.map(normalizarFicha);
+            // Solo mostrar solicitudes pendientes
+            const solicitudes = raw.filter(s => {
+                // Comprobar TODOS los campos posibles de estado (raw, antes de normalizar)
+                const e1 = (s['Estado'] || '').toLowerCase().trim();
+                const e2 = (s['estado'] || '').toLowerCase().trim();
+                const estado = e1 || e2 || 'pendiente';
+                return estado === 'pendiente';
+            }).map(normalizarFicha);
             renderSolicitudes(solicitudes);
         } catch (err) {
             if (err.name !== 'AbortError') mostrarError('No se pudieron cargar las solicitudes: ' + err.message);
