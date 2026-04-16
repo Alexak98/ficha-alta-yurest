@@ -154,7 +154,8 @@
                     </div>
                     <div class="form-group">
                         <label>Tipo</label>
-                        <select id="proyecto-tipo" class="form-control"></select>
+                        <input type="text" id="proyecto-tipo" class="form-control" readonly tabindex="-1" aria-readonly="true" placeholder="Se obtiene de la ficha del cliente">
+                        <small class="form-hint">Viene de la ficha del cliente y no es editable.</small>
                     </div>
                 </div>
                 <div class="form-row">
@@ -170,11 +171,15 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Integracion TPV</label>
-                        <input type="text" id="proyecto-tpv" class="form-control" placeholder="Ej: Revo, Agora, Last...">
+                        <input type="text" id="proyecto-tpv" class="form-control" readonly tabindex="-1" aria-readonly="true" placeholder="Se obtiene de la ficha del cliente">
+                        <small class="form-hint">Este campo se rellena automáticamente desde la ficha del cliente y no es editable.</small>
                     </div>
                 </div>
                 <div class="form-group" id="proyecto-plantilla-group">
-                    <label>Plantilla</label>
+                    <label class="label-with-action">
+                        <span>Plantilla</span>
+                        <button type="button" class="label-action-link" onclick="abrirModalPlantillas()">Gestionar plantillas</button>
+                    </label>
                     <select id="proyecto-plantilla" class="form-control"></select>
                 </div>
                 <div class="form-group">

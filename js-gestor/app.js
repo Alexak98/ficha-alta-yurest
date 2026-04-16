@@ -40,7 +40,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+            // Cerrar sólo el último modal abierto (para no colapsar stacks como detalle+confirm)
+            const abiertos = document.querySelectorAll('.modal-overlay.active');
+            if (abiertos.length > 0) {
+                const top = abiertos[abiertos.length - 1];
+                cerrarModal(top.id);
+            }
         }
     });
 });
@@ -70,10 +75,8 @@ function inicializarFiltros() {
         proyImpl.innerHTML += `<option value="${impl}">${impl}</option>`;
     });
 
-    const proyTipo = document.getElementById('proyecto-tipo');
-    TIPOS_PROYECTO.forEach(tipo => {
-        proyTipo.innerHTML += `<option value="${tipo}">${tipo}</option>`;
-    });
+    // El campo proyecto-tipo es un input readonly que se rellena desde la ficha del cliente.
+    // No se popula con opciones aquí.
 
     const proyEstado = document.getElementById('proyecto-estado');
     ESTADOS_PROYECTO.forEach(estado => {
@@ -390,7 +393,12 @@ function filtrarDashboard(tipo) {
     }
 
     dashboardFiltroActivo = tipo;
+    renderizarFiltradoDashboard(tipo, true);
+    renderizarEstadisticas(); // re-render to update active state
+}
 
+// Re-renderiza el panel filtrado sin toggle ni scroll (para refrescarTodo tras editar).
+function renderizarFiltradoDashboard(tipo, scroll) {
     let filtrados;
     if (tipo === 'total') {
         filtrados = proyectos;
@@ -398,19 +406,17 @@ function filtrarDashboard(tipo) {
         const estadoBuscado = ESTADO_MAP[tipo];
         filtrados = proyectos.filter(p => obtenerEstadoDashboard(p) === estadoBuscado);
     }
-
-    mostrarCardsFiltradas(LABELS_FILTRO[tipo], filtrados);
-    renderizarEstadisticas(); // re-render to update active state
+    mostrarCardsFiltradas(LABELS_FILTRO[tipo], filtrados, scroll);
 }
 
 function filtrarDashboardPorImplementador(impl) {
     dashboardFiltroActivo = null;
     const filtrados = proyectos.filter(p => p.implementador === impl);
-    mostrarCardsFiltradas(`Proyectos de ${impl}`, filtrados);
+    mostrarCardsFiltradas(`Proyectos de ${impl}`, filtrados, true);
     renderizarEstadisticas();
 }
 
-function mostrarCardsFiltradas(titulo, lista) {
+function mostrarCardsFiltradas(titulo, lista, scroll) {
     const container = document.getElementById('dashboard-filtered');
     const cardsGrid = document.getElementById('dashboard-cards');
     const titleEl = document.getElementById('filtered-title');
@@ -424,7 +430,7 @@ function mostrarCardsFiltradas(titulo, lista) {
     }
 
     container.style.display = '';
-    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (scroll) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function cerrarFiltradoDashboard() {
@@ -438,23 +444,30 @@ function refrescarTodo() {
     if (vistaActual === 'proyectos') {
         renderizarDashboard();
     }
-    // Re-render filtered dashboard cards if active
+    // Re-render filtered dashboard cards if active (sin toggle ni scroll)
     if (dashboardFiltroActivo) {
-        filtrarDashboard(dashboardFiltroActivo);
+        renderizarFiltradoDashboard(dashboardFiltroActivo, false);
     }
+}
+
+// Normaliza texto para búsqueda: minúsculas, sin acentos, trim.
+function _normBusqueda(s) {
+    return String(s == null ? '' : s)
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().trim();
 }
 
 function obtenerProyectosFiltrados() {
     const implSeleccionados = [...document.querySelectorAll('.filtro-impl-cb:checked')].map(cb => cb.value);
     const tiposSeleccionados = [...document.querySelectorAll('.filtro-tipo-cb:checked')].map(cb => cb.value);
     const estadosSeleccionados = [...document.querySelectorAll('.filtro-estado-cb:checked')].map(cb => cb.value);
-    const buscar = (document.getElementById('buscar-proyecto')?.value || '').toLowerCase().trim();
+    const buscar = _normBusqueda(document.getElementById('buscar-proyecto')?.value || '');
 
     return proyectos.filter(p => {
         if (implSeleccionados.length > 0 && !implSeleccionados.includes(p.implementador)) return false;
         if (tiposSeleccionados.length > 0 && !tiposSeleccionados.includes(p.tipo)) return false;
         if (estadosSeleccionados.length > 0 && !estadosSeleccionados.includes(p.estado)) return false;
-        if (buscar && !p.cliente.toLowerCase().includes(buscar) && !p.implementador.toLowerCase().includes(buscar)) return false;
+        if (buscar && !_normBusqueda(p.cliente).includes(buscar) && !_normBusqueda(p.implementador).includes(buscar)) return false;
         return true;
     });
 }
@@ -581,12 +594,72 @@ function cerrarModal(id) {
 // CRUD PROYECTOS
 // ==========================================
 
+// Cache de altas para resolver datos de la ficha por nombre de cliente.
+// La ficha del cliente es la fuente de verdad para TPV y Tipo — el proyecto no los edita.
+let _altasCachePromise = null;
+let _altasCacheTs = 0;
+const _ALTAS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+function _cargarAltasCache(forzar) {
+    const ahora = Date.now();
+    if (!forzar && _altasCachePromise && (ahora - _altasCacheTs) < _ALTAS_CACHE_TTL_MS) {
+        return _altasCachePromise;
+    }
+    _altasCacheTs = ahora;
+    _altasCachePromise = (async () => {
+        try {
+            const res = await fetch(WEBHOOK_ALTAS, { method: 'GET', headers: getAuthHeaders() });
+            if (!res.ok) return [];
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+            const raw = Array.isArray(data) ? data
+                : Array.isArray(data.clientes) ? data.clientes
+                : Array.isArray(data.data) ? data.data : [];
+            return raw.map(normalizarAlta).filter(a => a.nombre);
+        } catch (_) {
+            return [];
+        }
+    })();
+    return _altasCachePromise;
+}
+
+// Devuelve la ficha normalizada asociada a un cliente, o null si no hay match.
+async function obtenerFichaPorCliente(nombreCliente) {
+    const clave = normalizarNombreCliente(nombreCliente);
+    if (!clave) return null;
+    const altas = await _cargarAltasCache();
+    return altas.find(a => normalizarNombreCliente(a.nombre) === clave) || null;
+}
+
+// Helper compatible: devuelve el TPV asociado a un cliente.
+async function obtenerTpvDeFicha(nombreCliente) {
+    const ficha = await obtenerFichaPorCliente(nombreCliente);
+    return ficha ? (ficha.tpv || '') : '';
+}
+
+// Rellena (o vacía) los inputs de TPV y Tipo a partir del nombre de cliente indicado.
+// Si el endpoint de altas está caído (cache vacío), no sobrescribimos lo que ya haya,
+// para no perder el valor almacenado mientras se edita.
+async function _sincronizarDatosDesdeFicha(nombreCliente) {
+    const inputTpv = document.getElementById('proyecto-tpv');
+    const inputTipo = document.getElementById('proyecto-tipo');
+    const altas = await _cargarAltasCache();
+    if (!altas.length) return; // probable fallo de red; mantener valores actuales
+    const clave = normalizarNombreCliente(nombreCliente);
+    const ficha = clave ? altas.find(a => normalizarNombreCliente(a.nombre) === clave) : null;
+    if (inputTpv) inputTpv.value = ficha ? (ficha.tpv || '') : '';
+    if (inputTipo) inputTipo.value = ficha ? (ficha.tipo || '') : '';
+}
+
+// Alias compatible con el nombre previo.
+const _sincronizarTpvDesdeFicha = _sincronizarDatosDesdeFicha;
+
 function abrirModalProyecto(id) {
     const titulo = document.getElementById('modal-proyecto-titulo');
     const inputId = document.getElementById('proyecto-id');
     const inputCliente = document.getElementById('proyecto-cliente');
     const selectImpl = document.getElementById('proyecto-implementador');
-    const selectTipo = document.getElementById('proyecto-tipo');
+    const inputTipo = document.getElementById('proyecto-tipo');
     const selectEstado = document.getElementById('proyecto-estado');
     const inputFecha = document.getElementById('proyecto-fecha');
     const plantillaGroup = document.getElementById('proyecto-plantilla-group');
@@ -604,10 +677,12 @@ function abrirModalProyecto(id) {
         inputId.value = p.id;
         inputCliente.value = p.cliente;
         selectImpl.value = p.implementador;
-        selectTipo.value = p.tipo;
         selectEstado.value = p.estado;
         inputFecha.value = p.fechaInicio;
+        // Tipo y TPV vienen de la ficha — mostramos lo guardado y refrescamos en segundo plano
+        inputTipo.value = p.tipo || '';
         document.getElementById('proyecto-tpv').value = p.tpv || '';
+        _sincronizarDatosDesdeFicha(p.cliente);
         plantillaGroup.style.display = 'none';
         window._proyectoParticipantes = [...(p.participantes || [])];
     } else {
@@ -615,12 +690,19 @@ function abrirModalProyecto(id) {
         inputId.value = '';
         inputCliente.value = '';
         selectImpl.selectedIndex = 0;
-        selectTipo.selectedIndex = 0;
+        inputTipo.value = '';
         selectEstado.selectedIndex = 0;
         inputFecha.value = new Date().toISOString().split('T')[0];
         document.getElementById('proyecto-tpv').value = '';
         plantillaGroup.style.display = '';
         window._proyectoParticipantes = [];
+    }
+
+    // Auto-rellenar Tipo + TPV al cambiar el cliente (se registra una sola vez)
+    if (!inputCliente.dataset.tpvHook) {
+        inputCliente.addEventListener('change', () => _sincronizarDatosDesdeFicha(inputCliente.value));
+        inputCliente.addEventListener('blur', () => _sincronizarDatosDesdeFicha(inputCliente.value));
+        inputCliente.dataset.tpvHook = '1';
     }
 
     renderParticipantesChips();
@@ -632,16 +714,23 @@ async function guardarProyecto() {
     const id = document.getElementById('proyecto-id').value;
     const cliente = document.getElementById('proyecto-cliente').value.trim();
     const implementador = document.getElementById('proyecto-implementador').value;
-    const tipo = document.getElementById('proyecto-tipo').value;
     const estado = document.getElementById('proyecto-estado').value;
     const fechaInicio = document.getElementById('proyecto-fecha').value;
     const plantillaId = document.getElementById('proyecto-plantilla').value;
-    const tpv = document.getElementById('proyecto-tpv').value.trim();
 
     if (!cliente) {
         document.getElementById('proyecto-cliente').focus();
         return;
     }
+
+    // Tipo y TPV se derivan siempre de la ficha del cliente — nunca del DOM editable.
+    const ficha = await obtenerFichaPorCliente(cliente);
+    // Preservar valor previo si ya existía y no hay match en la ficha (p.ej. el backend está caído).
+    const proyectoPrev = id ? proyectos.find(p => p.id === id) : null;
+    const tipo = ficha ? (ficha.tipo || '') : (proyectoPrev ? (proyectoPrev.tipo || '') : '');
+    const tpv = ficha ? (ficha.tpv || '') : (proyectoPrev ? (proyectoPrev.tpv || '') : '');
+    document.getElementById('proyecto-tipo').value = tipo;
+    document.getElementById('proyecto-tpv').value = tpv;
 
     showLoading();
     try {
@@ -710,24 +799,32 @@ function eliminarProyecto(id) {
 let detalleProyectoId = null;
 
 function abrirDetalle(id) {
+    const overlay = document.getElementById('modal-detalle');
+    const yaAbierto = overlay.classList.contains('active') && detalleProyectoId === id;
     detalleProyectoId = id;
     const proyecto = proyectos.find(p => p.id === id);
     if (!proyecto) return;
 
     document.getElementById('detalle-titulo').textContent = proyecto.cliente;
 
-    // Reset tabs
-    document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector('.detail-tab[data-dtab="tareas"]').classList.add('active');
-    document.getElementById('detalle-tareas').style.display = '';
-    document.getElementById('detalle-contactos').style.display = 'none';
-    document.getElementById('detalle-desarrollos').style.display = 'none';
-    document.getElementById('detalle-anotaciones').style.display = 'none';
+    // Solo resetear tabs si es la primera apertura (o cambio de proyecto)
+    if (!yaAbierto) {
+        document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.detail-tab[data-dtab="tareas"]').classList.add('active');
+        document.getElementById('detalle-tareas').style.display = '';
+        document.getElementById('detalle-contactos').style.display = 'none';
+        document.getElementById('detalle-desarrollos').style.display = 'none';
+        document.getElementById('detalle-anotaciones').style.display = 'none';
+    }
 
-    // Render Tareas tab
-    renderDetalleTareas(proyecto);
+    // Re-render sólo el tab activo para preservar el contexto del usuario
+    const tabActivo = document.querySelector('.detail-tab.active')?.dataset.dtab || 'tareas';
+    if (tabActivo === 'tareas') renderDetalleTareas(proyecto);
+    else if (tabActivo === 'contactos') renderDetalleContactos(proyecto);
+    else if (tabActivo === 'desarrollos') renderDetalleDesarrollos(proyecto);
+    else if (tabActivo === 'anotaciones') renderDetalleAnotaciones(proyecto);
 
-    abrirModal('modal-detalle');
+    if (!yaAbierto) abrirModal('modal-detalle');
 }
 
 function renderDetalleTareas(proyecto) {
@@ -1108,7 +1205,7 @@ function agregarAdjuntos(event) {
         }
 
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             proyecto.adjuntos.push({
                 id: generarId(),
                 nombre: file.name,
@@ -1120,6 +1217,7 @@ function agregarAdjuntos(event) {
             procesados++;
             if (procesados === total) {
                 guardarProyectosLocal(proyectos);
+                try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
                 renderDetalleAnotaciones(proyecto);
                 mostrarToast(`${proyecto.adjuntos.length} adjunto(s) en total`, 'success');
             }
@@ -1134,9 +1232,10 @@ function agregarAdjuntos(event) {
 function eliminarAdjunto(index) {
     const proyecto = proyectos.find(p => p.id === detalleProyectoId);
     if (!proyecto || !proyecto.adjuntos) return;
-    mostrarConfirmacion('¿Eliminar este adjunto?', () => {
+    mostrarConfirmacion('¿Eliminar este adjunto?', async () => {
         proyecto.adjuntos.splice(index, 1);
         guardarProyectosLocal(proyectos);
+        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
         renderDetalleAnotaciones(proyecto);
         mostrarToast('Adjunto eliminado', 'success');
     });
@@ -1884,6 +1983,14 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         ? partList.map(email => `<label class="participante-check-item"><input type="checkbox" value="${escapeHtml(email)}" class="sub-part-cb"> ${escapeHtml(email)}</label>`).join('')
         : '<span style="font-size:12px;color:var(--text-muted)">Agrega participantes al proyecto primero</span>';
 
+    // Reset del checkbox de agendar y su label (por defecto editable, sin hint)
+    const agendarCb = document.getElementById('subtarea-agendar');
+    const agendarLabel = agendarCb.parentElement;
+    agendarCb.checked = false;
+    agendarCb.disabled = false;
+    agendarLabel.querySelector('.subtarea-agendada-hint')?.remove();
+    agendarLabel.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ' Agendar en Google Calendar'; });
+
     if (subtareaId) {
         const subtarea = (tarea.subtareas || []).find(s => s.id === subtareaId);
         if (!subtarea) return;
@@ -1897,7 +2004,18 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         // Check participantes
         const subPart = subtarea.participantes || [];
         partContainer.querySelectorAll('.sub-part-cb').forEach(cb => { cb.checked = subPart.includes(cb.value); });
-        document.getElementById('subtarea-agendar').checked = false;
+        // Si ya está agendada, evitar duplicar: deshabilitar checkbox y mostrar hint
+        if (subtarea.agendado) {
+            agendarCb.disabled = true;
+            agendarLabel.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ' Ya agendada en Google Calendar'; });
+            const hint = document.createElement('span');
+            hint.className = 'subtarea-agendada-hint';
+            hint.textContent = ' ✓';
+            hint.style.color = 'var(--success, #059669)';
+            hint.style.marginLeft = '4px';
+            hint.style.fontWeight = '700';
+            agendarLabel.appendChild(hint);
+        }
     } else {
         document.getElementById('modal-subtarea-titulo').textContent = 'Nueva Subtarea';
         document.getElementById('subtarea-id').value = '';
