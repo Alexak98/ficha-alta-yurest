@@ -7,6 +7,7 @@
     <script src="config.js"></script>
     <script>YurestConfig.requireAuth();</script>
     <link rel="stylesheet" href="style.css">
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 </head>
 <body>
 
@@ -30,7 +31,8 @@
     <div id="status-msg" class="status-msg hidden"></div>
     <div id="alta-rapida-banner" style="display:none;align-items:center;gap:10px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:0.88rem;color:#166534;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span><strong>Alta rápida</strong> — Rellena los datos básicos y guarda. Para completar el resto de la ficha (JP, firmante, financiero, módulos…) pulsa <strong>Editar</strong> desde el listado.</span>
+        <span style="flex:1"><strong>Alta rápida</strong> — Rellena los datos básicos y guarda. Para completar el resto de la ficha (JP, firmante, financiero, módulos…) pulsa <strong>Editar</strong> desde el listado.</span>
+        <button type="button" aria-label="Cerrar aviso" onclick="document.getElementById('alta-rapida-banner').style.display='none'" style="background:transparent;border:none;color:#166534;cursor:pointer;font-size:1.1rem;padding:0 4px;line-height:1">×</button>
     </div>
 
     <div id="edit-banner" style="display:none;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:0.88rem;color:#1d4ed8;">
@@ -212,6 +214,11 @@
             <div class="form-group col-6">
                 <label for="email_cc">Con copia</label>
                 <input type="email" id="email_cc" placeholder="cc@ejemplo.com">
+            </div>
+            <div class="form-group col-12">
+                <label for="iban">IBAN</label>
+                <input type="text" id="iban" placeholder="ES12 3456 7890 1234 5678 9012"
+                       maxlength="34" oninput="this.value=this.value.toUpperCase()" onblur="validarIBANBlur(this)">
             </div>
         </div>
     </div>
@@ -734,7 +741,14 @@
     }
 
     function eliminarLocal(btn) {
-        btn.closest('.local-card').remove();
+        const card = btn.closest('.local-card');
+        // Comprobar si el local tiene algún dato relleno antes de pedir confirmación
+        const tieneDatos = [...card.querySelectorAll('[data-field]')]
+            .some(input => (input.type === 'checkbox' ? input.checked : (input.value || '').trim()));
+        if (tieneDatos && !confirm('Este local tiene datos rellenos. ¿Seguro que quieres eliminarlo?')) {
+            return;
+        }
+        card.remove();
         actualizarNumeracion();
     }
 
@@ -758,13 +772,17 @@
         chevron.classList.toggle('fin-chevron--up', !collapsed);
     }
 
+    // Dominio para auto-generar credenciales. Centralizado para evitar
+    // tener que tocar el código si cambia el dominio corporativo.
+    const CRED_EMAIL_DOMAIN = 'yurest.com';
+
     function actualizarCredenciales() {
         const nombre = document.getElementById('nombreComercial').value;
         const slug = nombre.toLowerCase()
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/[^a-z0-9]/g, '');
-        document.getElementById('cred_master').value = slug ? `master${slug}@yurest.com` : '';
-        document.getElementById('cred_yurest').value = slug ? `admin${slug}@yurest.com`  : '';
+        document.getElementById('cred_master').value = slug ? `master${slug}@${CRED_EMAIL_DOMAIN}` : '';
+        document.getElementById('cred_yurest').value = slug ? `admin${slug}@${CRED_EMAIL_DOMAIN}`  : '';
     }
 
     function toggleSeccionDistribuidor(show) {
@@ -1068,6 +1086,12 @@
     }
 
     function recalcularCarrito(tipo) {
+        // Si todavía no se ha seleccionado ningún tipo de cliente, no hay
+        // carrito que recalcular; salimos para evitar lecturas/escrituras de
+        // elementos ocultos que podrían meter NaN en el resumen flotante.
+        const _tipoSeleccionado = (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value;
+        if (!_tipoSeleccionado && !tipo) return;
+
         let subtotal = 0;
         const _corpSetupEl = document.getElementById('corp-setup-cart');
         const _isCorporate = _corpSetupEl && !_corpSetupEl.classList.contains('hidden');
@@ -1518,6 +1542,53 @@
         }
     }
 
+    // ── Validador IBAN (mod 97 sobre la secuencia rearrangeada) ──────────────
+    function esIBANValido(v) {
+        v = (v || '').toUpperCase().replace(/\s+/g, '');
+        if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(v)) return false;
+        // Mover los 4 primeros al final, convertir letras a números (A=10..Z=35)
+        const reordenado = v.slice(4) + v.slice(0, 4);
+        let acc = '';
+        for (const c of reordenado) {
+            acc += /[0-9]/.test(c) ? c : (c.charCodeAt(0) - 55).toString();
+        }
+        // mod 97 a trozos para evitar overflow
+        let rem = 0;
+        for (let i = 0; i < acc.length; i += 7) {
+            rem = parseInt(String(rem) + acc.substr(i, 7), 10) % 97;
+        }
+        return rem === 1;
+    }
+
+    function validarIBANBlur(input) {
+        const v = input.value.trim();
+        if (v && !esIBANValido(v)) {
+            input.classList.add('input-invalid');
+        } else {
+            input.classList.remove('input-invalid');
+        }
+    }
+
+    // Validadores genéricos de email y teléfono
+    function esEmailValido(v) {
+        return !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    }
+    function esTelefonoValido(v) {
+        // Formato laxo: dígitos, espacios, +, (), -, mínimo 6 caracteres
+        return !v || /^[+\d\s().-]{6,20}$/.test(v);
+    }
+    // Aplicable a cualquier <input type="email">. Se llama desde onblur.
+    function validarEmailBlur(input) {
+        const v = input.value.trim();
+        if (v && !esEmailValido(v)) input.classList.add('input-invalid');
+        else input.classList.remove('input-invalid');
+    }
+    function validarTelefonoBlur(input) {
+        const v = input.value.trim();
+        if (v && !esTelefonoValido(v)) input.classList.add('input-invalid');
+        else input.classList.remove('input-invalid');
+    }
+
     function validarDNIBlur(input) {
         const v = input.value.trim();
         // Para el firmante aceptamos DNI o NIE (no CIF)
@@ -1595,9 +1666,58 @@
         document.getElementById('lite-section').classList.toggle('hidden', value !== 'si');
     }
 
+    // Helpers para extraer datos del carrito sin repetir lógica.
+
+    // Devuelve el subtotal de setup (todos los items "único" marcados,
+    // ya sea Lite, Planes o Corporate). Aplica multiplicadores de locales
+    // en Corporate.
+    function _calcularSubtotalSetup() {
+        const _isCorporate = !document.getElementById('corp-setup-cart')?.classList.contains('hidden');
+        const _planesIds   = getPlanesCheckedIds();
+        const _planesProductoActivo = _planesIds.has('plan_basic') || _planesIds.has('plan_pro');
+        let subtotal = 0;
+        document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked').forEach(cb => {
+            if (_planesProductoActivo && (cb.value === 'plan_rrhh' || cb.value === 'plan_operaciones')) return;
+            const pi = document.getElementById('precio_' + cb.value);
+            if (pi) {
+                const mult = _isCorporate ? getModuleLocalsMult(cb.value) : 1;
+                subtotal += (parseFloat(pi.value) || 0) * mult;
+            }
+        });
+        return subtotal;
+    }
+
+    // Devuelve el precio unitario de un item del carrito si está marcado, 0 si no.
+    function _precioCartItem(itemId) {
+        const cb = document.querySelector(`input[name="cart_item"][value="${itemId}"]:checked`);
+        if (!cb) return 0;
+        const pi = document.getElementById('precio_' + itemId);
+        return parseFloat(pi?.value) || 0;
+    }
+
+    // IDs seleccionados como array, para guardar el carrito completo.
+    function _itemsCarritoSeleccionados() {
+        return [...document.querySelectorAll('input[name="cart_item"]:checked')].map(cb => ({
+            id: cb.value,
+            pago: cb.dataset.pago || '',
+            precio: parseFloat(document.getElementById('precio_' + cb.value)?.value) || 0
+        }));
+    }
+
+    // Mensualidad total (suma de los importes/local + descuento si lo hay).
+    function _calcularMensualidadTotal() {
+        let t = 0;
+        document.querySelectorAll('.mensual-local-precio').forEach(i => { t += parseFloat(i.value) || 0; });
+        const desc = parseFloat(document.getElementById('cart_descuento')?.value) || 0;
+        return Math.max(0, t * (1 - desc / 100));
+    }
+
     function collectFormData() {
-        const isLite = document.getElementById('lite_check').checked;
-        const hasTablet = (document.querySelector('input[name="tablet"]:checked') || {}).value === 'si';
+        const isLite      = document.getElementById('lite_check').checked;
+        const hasTablet   = (document.querySelector('input[name="tablet"]:checked') || {}).value === 'si';
+        const tipoCliente = (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value || '';
+        const subtotalSetup = _calcularSubtotalSetup();
+
         const data = {
             'Comercial':      document.getElementById('comercial').value,
             'Nombre Sociedad':document.getElementById('denominacion').value.trim(),
@@ -1607,10 +1727,11 @@
             'CP':             document.getElementById('cp').value.trim(),
             'Municipio':      document.getElementById('municipio').value.trim(),
             'Provincia':      document.getElementById('provincia').value.trim(),
-            'CIF/NIF':        document.getElementById('cif').value.trim(),
+            'CIF/NIF':        document.getElementById('cif').value.trim().toUpperCase(),
             'Email':          document.getElementById('email').value.trim(),
             'Email Factura':  document.getElementById('email_factura').value.trim(),
             'Email CC':       document.getElementById('email_cc').value.trim(),
+            'IBAN':           (document.getElementById('iban')?.value.trim().replace(/\s+/g, '') || '').toUpperCase(),
             'Firmas Contratadas': (document.querySelector('input[name="firmas"]:checked') || {}).value || '',
             'JP Nombre':      document.getElementById('jp_nombre').value.trim(),
             'JP Apellidos':   document.getElementById('jp_apellidos').value.trim(),
@@ -1620,7 +1741,7 @@
             'Firmante Nombre':    document.getElementById('firm_nombre').value.trim(),
             'Firmante Apellidos': document.getElementById('firm_apellidos').value.trim(),
             'Firmante Mail':      document.getElementById('firm_mail').value.trim(),
-            'Firmante DNI':       document.getElementById('firm_dni').value.trim(),
+            'Firmante DNI':       document.getElementById('firm_dni').value.trim().toUpperCase(),
             'Firmante Puesto':    document.getElementById('firm_puesto').value.trim(),
             'TPV':            document.getElementById('tpv').value,
             'TPV Contacto':   document.getElementById('tpv_contacto').value.trim(),
@@ -1630,34 +1751,48 @@
             'TPV NI Contacto':  document.getElementById('tpv_ni_contacto').value.trim(),
             'TPV NI Email':     document.getElementById('tpv_ni_email').value.trim(),
             'Lite':           isLite ? 'Sí' : '',
+            // Lite: necesidad de envío de tablet
+            'Necesita Tablet': isLite ? (hasTablet ? 'Sí' : 'No') : '',
+            // Dirección de entrega + contacto (cliente Lite con tablet)
+            'Entrega Calle':      document.getElementById('entrega_calle')?.value.trim()      || '',
+            'Entrega Número':     document.getElementById('entrega_numero')?.value.trim()     || '',
+            'Entrega CP':         document.getElementById('entrega_cp')?.value.trim()         || '',
+            'Entrega Municipio':  document.getElementById('entrega_municipio')?.value.trim()  || '',
+            'Entrega Provincia':  document.getElementById('entrega_provincia')?.value.trim()  || '',
+            'Contacto Nombre':    document.getElementById('contacto_nombre')?.value.trim()    || '',
+            'Contacto Email':     document.getElementById('contacto_email')?.value.trim()     || '',
+            'Contacto Teléfono':  document.getElementById('contacto_telefono')?.value.trim()  || '',
             'Distribuidor':   document.getElementById('dist_check').checked ? 'Sí' : '',
             'Dist. Empresa':  document.getElementById('dist_empresa').value.trim(),
-            'Dist. CIF':      document.getElementById('dist_cif').value.trim(),
+            'Dist. CIF':      document.getElementById('dist_cif').value.trim().toUpperCase(),
             'Dist. Dirección':document.getElementById('dist_direccion').value.trim(),
             'Dist. CP':       document.getElementById('dist_cp').value.trim(),
             'Dist. Contacto': document.getElementById('dist_contacto').value.trim(),
             'Dist. Mail':     document.getElementById('dist_mail').value.trim(),
             'Dist. Teléfono': document.getElementById('dist_telefono').value.trim(),
-            'Dist. Comisión Implementación (%)': (() => {
-                                let cartTotal = 0;
-                                document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked').forEach(cb => {
-                                    const pi = document.getElementById('precio_' + cb.value);
-                                    if (pi) cartTotal += parseFloat(pi.value) || 0;
-                                });
-                                return Math.round(cartTotal * getComisionRate() * 100) / 100;
-                            })(),
-            'Tipo Cliente':   (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value || '',
+            'Dist. Comisión Implementación (%)': Math.round(subtotalSetup * getComisionRate() * 100) / 100,
+            'Tipo Cliente':   tipoCliente,
             'ImporteSetup':   (parseFloat(document.getElementById('corp_setup_precio')?.value) || ''),
             'Descuentosetup': (parseFloat(document.getElementById('corp_setup_descuento')?.value) || ''),
             'Credencial Master': document.getElementById('cred_master').value.trim(),
             'Credencial Yurest': document.getElementById('cred_yurest').value.trim(),
             'Comentarios':    document.getElementById('comentarios').value.trim(),
-            'Mensualidad Total Locales': (() => {
-                                let t = 0;
-                                document.querySelectorAll('.mensual-local-precio').forEach(i => { t += parseFloat(i.value) || 0; });
-                                const desc = parseFloat(document.getElementById('cart_descuento')?.value) || 0;
-                                return Math.max(0, t * (1 - desc / 100));
-                            })(),
+            'Mensualidad Total Locales': _calcularMensualidadTotal(),
+
+            // ─── Carrito completo: cada plan/módulo va con su precio aplicado ───
+            // (lo que muestra lista.html en el panel de detalle)
+            'Proyecto de Implementación': _precioCartItem('proy_implementacion'),
+            'Plan Producto BASIC':        _precioCartItem('plan_basic'),
+            'Plan Producto PRO':          _precioCartItem('plan_pro'),
+            'Plan RRHH':                  _precioCartItem('plan_rrhh'),
+            'Plan Operaciones':           _precioCartItem('plan_operaciones'),
+            'Yurest Lite':                _precioCartItem('lite_setup'),
+            'Integraciones':              _precioCartItem('integraciones'),
+            // Mensualidad anualizada (mensual × 12) — útil para el dashboard
+            'Mensualidad Anualizada':     Math.round(_calcularMensualidadTotal() * 12 * 100) / 100,
+            // Snapshot del carrito completo (para reconstruir al editar)
+            'paquetes_carrito':           _itemsCarritoSeleccionados(),
+
             'Baja':           'No',
             'Estado':         'Rellenado',
             locales: [],
@@ -1680,25 +1815,67 @@
         return data;
     }
 
+    // Helper: muestra error y mueve el foco asegurando que el campo entra en viewport.
+    function _focoCampoError(id, mensaje) {
+        showStatus(mensaje, 'error');
+        const el = document.getElementById(id);
+        if (!el) return;
+        // scrollIntoView con block:center para no dejar el campo pegado al borde
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setTimeout(() => el.focus(), 200);
+    }
+
     function validateForm(data) {
         if (!data['Nombre Sociedad']) {
-            showStatus('La Denominación Social es obligatoria.', 'error');
-            document.getElementById('denominacion').focus();
+            _focoCampoError('denominacion', 'La Denominación Social es obligatoria.');
             return false;
         }
         // Validar CP de empresa
         const cp = data['CP'];
         if (cp && !/^[0-9]{5}$/.test(cp)) {
-            showStatus('El Código Postal debe tener 5 dígitos.', 'error');
-            document.getElementById('cp').focus();
+            _focoCampoError('cp', 'El Código Postal debe tener 5 dígitos.');
             return false;
         }
         // Validar CIF/NIF de empresa
         const cif = data['CIF/NIF'];
         if (cif && !esCIFValido(cif)) {
-            showStatus('El CIF/NIF introducido no es válido.', 'error');
-            document.getElementById('cif').focus();
+            _focoCampoError('cif', 'El CIF/NIF introducido no es válido.');
             return false;
+        }
+        // Validar IBAN si se rellenó
+        if (data['IBAN'] && !esIBANValido(data['IBAN'])) {
+            _focoCampoError('iban', 'El IBAN introducido no es válido.');
+            return false;
+        }
+        // Validar emails opcionales (formato básico)
+        const emailsAValidar = [
+            ['email',          data['Email'],           'Email principal'],
+            ['email_factura',  data['Email Factura'],   'Email de facturación'],
+            ['email_cc',       data['Email CC'],        'Email CC'],
+            ['jp_mail',        data['JP Mail'],         'Email del Jefe de Proyecto'],
+            ['firm_mail',      data['Firmante Mail'],   'Email del firmante'],
+            ['tpv_email',      data['TPV Email'],       'Email del TPV'],
+            ['tpv_ni_email',   data['TPV NI Email'],    'Email del TPV no integrado'],
+            ['contacto_email', data['Contacto Email'],  'Email de contacto Lite'],
+            ['dist_mail',      data['Dist. Mail'],      'Email del distribuidor']
+        ];
+        for (const [id, val, etiqueta] of emailsAValidar) {
+            if (val && !esEmailValido(val)) {
+                _focoCampoError(id, `${etiqueta} no tiene un formato válido.`);
+                return false;
+            }
+        }
+        // Validar teléfonos opcionales
+        const telefonos = [
+            ['jp_telefono',       data['JP Teléfono'],        'Teléfono del Jefe de Proyecto'],
+            ['contacto_telefono', data['Contacto Teléfono'],  'Teléfono de contacto Lite'],
+            ['dist_telefono',     data['Dist. Teléfono'],     'Teléfono del distribuidor']
+        ];
+        for (const [id, val, etiqueta] of telefonos) {
+            if (val && !esTelefonoValido(val)) {
+                _focoCampoError(id, `${etiqueta} no es un teléfono válido.`);
+                return false;
+            }
         }
         // Validar DNI del firmante (solo si se rellenó)
         const dni = data['Firmante DNI'];
@@ -1706,8 +1883,7 @@
             const isDNI = /^[0-9]{8}[A-Z]$/.test(dni);
             const isNIE = /^[XYZ][0-9]{7}[A-Z]$/.test(dni);
             if (!isDNI && !isNIE) {
-                showStatus('El DNI/NIE del firmante no es válido.', 'error');
-                document.getElementById('firm_dni').focus();
+                _focoCampoError('firm_dni', 'El DNI/NIE del firmante no es válido.');
                 return false;
             }
             const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
@@ -1719,8 +1895,7 @@
                 num = parseInt(primerDigito + dni.slice(1, 8), 10);
             }
             if (dni[dni.length - 1] !== letras[num % 23]) {
-                showStatus('La letra del DNI/NIE del firmante es incorrecta.', 'error');
-                document.getElementById('firm_dni').focus();
+                _focoCampoError('firm_dni', 'La letra del DNI/NIE del firmante es incorrecta.');
                 return false;
             }
         }
@@ -1733,22 +1908,63 @@
         return true;
     }
 
-    async function guardarCambios() {
-        const data = collectFormData();
-        if (!validateForm(data)) return;
+    // Acepta UUIDs de Supabase y enteros (numero_ficha de la tabla legacy).
+    // Rechaza cualquier otra cosa para no editar la fila equivocada.
+    function _esEditIdValido(id) {
+        if (id == null) return false;
+        const s = String(id).trim();
+        if (!s) return false;
+        // UUID v4 (los más probables) o números enteros
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
+            || /^[0-9]{1,12}$/.test(s);
+    }
 
+    // Flag de envío en curso. Bloquea reentradas del handler aunque el usuario
+    // pulse "Guardar" varias veces antes de que se deshabilite el botón.
+    let _enviando = false;
+
+    async function guardarCambios() {
+        if (_enviando) return;
+        _enviando = true;
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
         btn.textContent = 'Guardando...';
-        showStatus('', '');
-
-        // En modo edición incluir el ID para que n8n actualice la fila correcta.
-        // En alta nueva el ID lo genera Supabase (UUID) y numero_ficha (SERIAL).
-        if (_editId) {
-            data.id = _editId;
-        }
 
         try {
+            const data = collectFormData();
+            if (!validateForm(data)) {
+                btn.disabled = false;
+                btn.textContent = 'Guardar';
+                return;
+            }
+            showStatus('', '');
+
+            // En modo edición incluir el ID para que n8n actualice la fila correcta.
+            // En alta nueva el ID lo genera Supabase (UUID) y numero_ficha (SERIAL).
+            if (_editId) {
+                if (!_esEditIdValido(_editId)) {
+                    showStatus('ID de ficha en edición no válido. Vuelve al listado y selecciona la ficha de nuevo.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Guardar';
+                    return;
+                }
+                // Detectar si otra pestaña abrió una ficha distinta entre tanto
+                try {
+                    const stored = JSON.parse(sessionStorage.getItem('yurest_edit_ficha') || '{}');
+                    const storedId = stored['ID'] || stored['id'] || stored['ID Solicitud'] || stored['id_solicitud'] || null;
+                    const trackedId = document.body.dataset.editingId || '';
+                    if (storedId && trackedId && String(storedId) !== trackedId) {
+                        const ok = confirm('Otra pestaña abrió una ficha distinta. Si guardas ahora se sobrescribirán los datos de esta pestaña. ¿Continuar?');
+                        if (!ok) {
+                            btn.disabled = false;
+                            btn.textContent = 'Guardar';
+                            return;
+                        }
+                    }
+                } catch (_) { /* sessionStorage indisponible: continuar */ }
+                data.id = _editId;
+            }
+
             const res = await YurestConfig.apiFetch(WEBHOOK_GUARDAR, {
                 method: 'POST',
                 body: JSON.stringify(data)
@@ -1759,19 +1975,32 @@
                                     : '✅ Ficha guardada correctamente. Redirigiendo al listado…';
                 showStatus(msg, 'success');
                 sessionStorage.removeItem('yurest_edit_ficha');
+                sessionStorage.removeItem('yurest_completar_id');
                 sessionStorage.setItem('yurest_refresh_lista', '1');
                 resetForm();
                 setTimeout(() => { window.location.href = 'lista.html'; }, 1800);
             } else {
-                let msg = '';
-                try { const r = await res.json(); msg = r.error || r.message || ''; } catch (_) { msg = await res.text().catch(() => ''); }
-                showStatus('Error al guardar (' + res.status + ')' + (msg ? ': ' + msg : '.'), 'error');
+                // Intentamos parsear errores por campo: { errors: { cp: '...' } }
+                let body = null, txt = '';
+                try { body = await res.clone().json(); } catch (_) {}
+                if (!body) { try { txt = await res.text(); } catch (_) {} }
+                if (body && body.errors && typeof body.errors === 'object') {
+                    const [campo, error] = Object.entries(body.errors)[0];
+                    _focoCampoError(campo, error);
+                } else {
+                    const msg = (body && (body.error || body.message)) || txt || '';
+                    showStatus('Error al guardar (' + res.status + ')' + (msg ? ': ' + msg : '.'), 'error');
+                }
+                btn.disabled = false;
+                btn.textContent = 'Guardar';
             }
         } catch (err) {
-            showStatus('Error de conexión: ' + err.message, 'error');
-        } finally {
+            console.warn('[guardarCambios]', err);
+            showStatus('No se pudo guardar la ficha. Revisa tu conexión y vuelve a intentarlo.', 'error');
             btn.disabled = false;
             btn.textContent = 'Guardar';
+        } finally {
+            _enviando = false;
         }
     }
 
@@ -1838,6 +2067,11 @@
         // Acepta tanto fichas (ID) como solicitudes (ID Solicitud)
         _editId = f['ID'] || f['id'] || f['ID Solicitud'] || f['id_solicitud'] || null;
 
+        // Marcamos en el body el id que esta pestaña está editando. Si otra
+        // pestaña abre otra ficha, sobrescribirá sessionStorage; al guardar
+        // detectaremos el desajuste y avisaremos al usuario.
+        document.body.dataset.editingId = String(_editId || '');
+
         // Banner
         const banner = document.getElementById('edit-banner');
         document.getElementById('edit-banner-id').textContent = _editId ? '#' + _editId : '';
@@ -1866,6 +2100,16 @@
         set('email',          'Email', 'email', 'Email contacto');
         set('email_factura',  'Email Factura', 'email_factura');
         set('email_cc',       'Email CC', 'email_cc');
+        set('iban',           'IBAN', 'iban');
+        // Dirección de entrega + contacto (cliente Lite)
+        set('entrega_calle',     'Entrega Calle',     'entrega_calle');
+        set('entrega_numero',    'Entrega Número',    'Entrega Numero', 'entrega_numero');
+        set('entrega_cp',        'Entrega CP',        'entrega_cp');
+        set('entrega_municipio', 'Entrega Municipio', 'entrega_municipio');
+        set('entrega_provincia', 'Entrega Provincia', 'entrega_provincia');
+        set('contacto_nombre',   'Contacto Nombre',   'contacto_nombre');
+        set('contacto_email',    'Contacto Email',    'contacto_email');
+        set('contacto_telefono', 'Contacto Teléfono', 'Contacto Telefono', 'contacto_telefono');
         set('jp_nombre',      'JP Nombre', 'jp_nombre');
         set('jp_apellidos',   'JP Apellidos', 'jp_apellidos');
         set('jp_rol',         'JP Rol', 'jp_rol');
@@ -1910,6 +2154,15 @@
         if (f['Lite'] === 'Sí' || f.lite === true || f.lite === 'true') {
             document.getElementById('lite_check').checked = true;
             toggleLite(true);
+            // Restaurar respuesta de "necesita tablet" si se guardó
+            const tabletVal = (f['Necesita Tablet'] || f.necesita_tablet || '').toLowerCase();
+            if (tabletVal === 'sí' || tabletVal === 'si') {
+                document.getElementById('tablet_si').checked = true;
+                toggleTablet('si');
+            } else if (tabletVal === 'no') {
+                document.getElementById('tablet_no').checked = true;
+                toggleTablet('no');
+            }
         }
 
         // ── Tipo cliente ──────────────────────────────────────────────────────
@@ -1947,10 +2200,16 @@
 
         recalcularCarrito();
 
-        // Si las credenciales están vacías, generarlas a partir del Nombre Comercial precargado
+        // Si las credenciales están vacías Y la ficha no las tiene en el backend
+        // (ni siquiera vacías guardadas), generarlas a partir del Nombre Comercial.
+        // Si la ficha vino con creds explícitamente vacías ("" guardado por el
+        // comercial a propósito), respetamos esa decisión y no autorrellenamos.
         const credMaster = document.getElementById('cred_master');
         const credYurest = document.getElementById('cred_yurest');
-        if (credMaster && credYurest && !credMaster.value && !credYurest.value) {
+        const credenMaster = f['Credencial Master'] ?? f.cred_master;
+        const credYurestKey = f['Credencial Yurest'] ?? f.cred_yurest;
+        const fichaTraeCredenciales = (credenMaster !== undefined) || (credYurestKey !== undefined);
+        if (credMaster && credYurest && !credMaster.value && !credYurest.value && !fichaTraeCredenciales) {
             actualizarCredenciales();
         }
     }
@@ -2000,11 +2259,12 @@
     async function completarFichaDesdeWebhook(solId) {
         const WEBHOOK_COMPLETAR_FICHA = YurestConfig.ENDPOINTS.completarFicha;
 
-        // Mostrar spinner de carga en el formulario
+        // Mostrar spinner inline + texto, en vez de un mensaje en blanco
         const statusEl = document.getElementById('status-msg');
         if (statusEl) {
-            statusEl.textContent = 'Cargando datos del cliente…';
+            statusEl.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;vertical-align:middle;margin-right:8px;animation:spin 0.7s linear infinite"></span>Cargando datos del cliente…';
             statusEl.className = 'status-msg info';
+            statusEl.classList.remove('hidden');
         }
 
         try {
@@ -2018,12 +2278,24 @@
             bloquearTipoCliente();
             if (statusEl) { statusEl.textContent = ''; statusEl.className = 'status-msg hidden'; }
         } catch (err) {
+            console.warn('[completarFicha]', err);
             if (statusEl) {
-                statusEl.textContent = 'No se pudieron cargar los datos: ' + err.message;
+                statusEl.textContent = 'No se pudieron cargar los datos. Vuelve al listado y prueba de nuevo.';
                 statusEl.className = 'status-msg error';
             }
         }
     }
+
+    // Conectar validadores onblur a TODOS los inputs de email y teléfono.
+    // Se hace en bulk para no tener que tocar cada <input> uno a uno.
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[type="email"]').forEach(el => {
+            el.addEventListener('blur', () => validarEmailBlur(el));
+        });
+        document.querySelectorAll('input[type="tel"]').forEach(el => {
+            el.addEventListener('blur', () => validarTelefonoBlur(el));
+        });
+    });
 
     // Detectar modo al cargar
     (function() {
@@ -2032,7 +2304,7 @@
             try {
                 const raw = sessionStorage.getItem('yurest_edit_ficha');
                 if (raw) { cargarModoEdicion(JSON.parse(raw)); }
-            } catch(e) { console.error('Error cargando ficha edición', e); }
+            } catch(e) { console.warn('[index] error cargando ficha edición:', e); }
         } else if (params.get('completar') === '1') {
             // Primero intentar por URL (sobrevive al refresh), luego sessionStorage
             const solId = params.get('id') || sessionStorage.getItem('yurest_completar_id');

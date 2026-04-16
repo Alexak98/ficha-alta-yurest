@@ -2045,11 +2045,21 @@
         const dir = [f['Calle'], f['Número'] ? 'Nº ' + f['Número'] : '', f['CP'], f['Municipio'], f['Provincia']].filter(Boolean).join(', ');
 
         // ── Locales ───────────────────────────────────────────────────────────
+        // Soporta tres formas: array JS (Supabase JSONB devuelto como objeto),
+        // string JSON (incluso con espacios al inicio) y vacío/null.
         let locales = [];
         try {
-            const raw = f['Locales'] || f['locales'] || '';
-            locales = typeof raw === 'string' && raw.startsWith('[') ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
-        } catch (_) { locales = []; }
+            const raw = f['Locales'] ?? f['locales'] ?? null;
+            if (Array.isArray(raw)) {
+                locales = raw;
+            } else if (typeof raw === 'string') {
+                const s = raw.trim();
+                if (s.startsWith('[') || s.startsWith('{')) {
+                    const parsed = JSON.parse(s);
+                    locales = Array.isArray(parsed) ? parsed : [];
+                }
+            }
+        } catch (e) { console.warn('[panel] no se pudo parsear locales:', e); locales = []; }
 
         const localesHtml = locales.length ? `<div class="locales-list">${locales.map((l, i) => {
             const dirLocal = [l.calle, l.numero ? 'Nº ' + l.numero : '', l.cp, l.municipio, l.provincia].filter(Boolean).join(', ');
