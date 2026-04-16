@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst proyectos = items.map(item => item.json).filter(p => p && p.id);\nreturn [{ json: { proyectos } }];"
+        "jsCode": "const items = $input.all();\nconst proyectos = items.map(item => item.json).filter(p => p && p.id && !p.deleted_at);\nreturn [{ json: { proyectos } }];"
       },
       "id": "format-get",
       "name": "Formatear GET",

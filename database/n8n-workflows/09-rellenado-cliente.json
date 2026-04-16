@@ -46,7 +46,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all().filter(i => i.json && i.json.id);\nconst solicitudes = items.map(item => item.json);\nreturn [{ json: { solicitudes } }];"
+        "jsCode": "const items = $input.all().filter(i => i.json && i.json.id && !i.json.deleted_at);\nconst solicitudes = items.map(item => item.json);\nreturn [{ json: { solicitudes } }];"
       },
       "id": "format-get-rell",
       "name": "Formatear GET",

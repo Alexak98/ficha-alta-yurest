@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst bajas = items.map(item => {\n  const row = (item && item.json) || {};\n  let datos = row.datos;\n  if (typeof datos === 'string') {\n    try { datos = JSON.parse(datos); } catch (e) { datos = {}; }\n  }\n  if (!datos || typeof datos !== 'object') datos = {};\n  // Aplanar datos JSONB (cliente_nombre, modulos, mrr, tipo...) al nivel raíz;\n  // las columnas reales (id, cliente, motivo, fecha_baja) tienen prioridad.\n  return Object.assign({}, datos, row, { datos });\n}).filter(b => b && b.id);\nreturn [{ json: { bajas } }];"
+        "jsCode": "const items = $input.all();\nconst bajas = items.map(item => {\n  const row = (item && item.json) || {};\n  let datos = row.datos;\n  if (typeof datos === 'string') {\n    try { datos = JSON.parse(datos); } catch (e) { datos = {}; }\n  }\n  if (!datos || typeof datos !== 'object') datos = {};\n  // Aplanar datos JSONB (cliente_nombre, modulos, mrr, tipo...) al nivel raíz;\n  // las columnas reales (id, cliente, motivo, fecha_baja) tienen prioridad.\n  return Object.assign({}, datos, row, { datos });\n}).filter(b => b && b.id && !b.deleted_at);\nreturn [{ json: { bajas } }];"
       },
       "id": "format-get-bajas",
       "name": "Formatear GET",

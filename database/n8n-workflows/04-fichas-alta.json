@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const fichas = $input.all().map(i => i.json).filter(f => f && f.id);\nreturn [{ json: { clientes: fichas } }];"
+        "jsCode": "const fichas = $input.all().map(i => i.json).filter(f => f && f.id && !f.deleted_at);\nreturn [{ json: { clientes: fichas } }];"
       },
       "id": "format-get-altas",
       "name": "Formatear GET",
