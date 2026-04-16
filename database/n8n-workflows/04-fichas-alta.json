@@ -409,6 +409,11 @@
             "node": "Preparar Locales",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "respond-post-altas",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -429,6 +434,11 @@
         [
           {
             "node": "Preparar Locales",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "respond-post-altas",
             "type": "main",
             "index": 0
           }
