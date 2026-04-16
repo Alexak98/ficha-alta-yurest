@@ -165,9 +165,17 @@
       "parameters": {
         "operation": "update",
         "tableId": "fichas_alta",
-        "matchingColumns": [
-          "id"
-        ],
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
         "dataToSend": "autoMapInputData",
         "options": {}
       },
