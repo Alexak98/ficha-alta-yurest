@@ -12,7 +12,10 @@
       "name": "Webhook CF",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "completar-ficha"
     },
     {
@@ -23,7 +26,10 @@
       "name": "Extraer ID CF",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
@@ -37,8 +43,16 @@
       "name": "GET Fichas CF",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [640, 300],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        640,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -48,7 +62,10 @@
       "name": "Empaquetar Fichas",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [840, 300]
+      "position": [
+        840,
+        300
+      ]
     },
     {
       "parameters": {
@@ -62,8 +79,16 @@
       "name": "GET Solicitudes CF",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1040, 300],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        1040,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -73,29 +98,125 @@
       "name": "Buscar Datos CF",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1240, 300]
+      "position": [
+        1240,
+        300
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}",
-        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       },
       "id": "respond-cf",
       "name": "Respond CF",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1440, 300]
+      "position": [
+        1440,
+        300
+      ]
     }
   ],
   "connections": {
-    "Webhook CF": { "main": [[{ "node": "Extraer ID CF", "type": "main", "index": 0 }]] },
-    "Extraer ID CF": { "main": [[{ "node": "GET Fichas CF", "type": "main", "index": 0 }]] },
-    "GET Fichas CF": { "main": [[{ "node": "Empaquetar Fichas", "type": "main", "index": 0 }]] },
-    "Empaquetar Fichas": { "main": [[{ "node": "GET Solicitudes CF", "type": "main", "index": 0 }]] },
-    "GET Solicitudes CF": { "main": [[{ "node": "Buscar Datos CF", "type": "main", "index": 0 }]] },
-    "Buscar Datos CF": { "main": [[{ "node": "Respond CF", "type": "main", "index": 0 }]] }
+    "Webhook CF": {
+      "main": [
+        [
+          {
+            "node": "Extraer ID CF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer ID CF": {
+      "main": [
+        [
+          {
+            "node": "GET Fichas CF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Fichas CF": {
+      "main": [
+        [
+          {
+            "node": "Empaquetar Fichas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empaquetar Fichas": {
+      "main": [
+        [
+          {
+            "node": "GET Solicitudes CF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Solicitudes CF": {
+      "main": [
+        [
+          {
+            "node": "Buscar Datos CF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Datos CF": {
+      "main": [
+        [
+          {
+            "node": "Respond CF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "yurest" }, { "name": "completar" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "completar"
+    }
+  ]
 }

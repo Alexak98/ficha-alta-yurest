@@ -12,7 +12,10 @@
       "name": "Webhook DELETE",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "eliminar"
     },
     {
@@ -23,17 +26,27 @@
       "name": "Preparar DELETE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "leftValue": "={{ $json.entity }}",
               "rightValue": "ficha",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ]
         },
@@ -43,7 +56,10 @@
       "name": "¿Es ficha?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ]
     },
     {
       "parameters": {
@@ -53,12 +69,19 @@
         "matchType": "allFilters",
         "filters": {
           "conditions": [
-            { "keyName": "id", "condition": "eq", "keyValue": "={{ $json.id }}" }
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
           ]
         },
         "fieldsUi": {
           "fieldValues": [
-            { "fieldId": "deleted_at", "fieldValue": "={{ $now.toISOString() }}" }
+            {
+              "fieldId": "deleted_at",
+              "fieldValue": "={{ $now.toISOString() }}"
+            }
           ]
         },
         "options": {},
@@ -68,8 +91,16 @@
       "name": "Soft-delete Ficha",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [920, 200],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        920,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -79,12 +110,19 @@
         "matchType": "allFilters",
         "filters": {
           "conditions": [
-            { "keyName": "id", "condition": "eq", "keyValue": "={{ $json.id }}" }
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
           ]
         },
         "fieldsUi": {
           "fieldValues": [
-            { "fieldId": "deleted_at", "fieldValue": "={{ $now.toISOString() }}" }
+            {
+              "fieldId": "deleted_at",
+              "fieldValue": "={{ $now.toISOString() }}"
+            }
           ]
         },
         "options": {},
@@ -94,8 +132,16 @@
       "name": "Soft-delete Solicitud",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [920, 400],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        920,
+        400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -104,8 +150,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -114,19 +174,85 @@
       "name": "Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1140, 300]
+      "position": [
+        1140,
+        300
+      ]
     }
   ],
   "connections": {
-    "Webhook DELETE":   { "main": [[{ "node": "Preparar DELETE", "type": "main", "index": 0 }]] },
-    "Preparar DELETE":  { "main": [[{ "node": "¿Es ficha?",     "type": "main", "index": 0 }]] },
-    "¿Es ficha?":       { "main": [
-      [{ "node": "Soft-delete Ficha",    "type": "main", "index": 0 }],
-      [{ "node": "Soft-delete Solicitud", "type": "main", "index": 0 }]
-    ] },
-    "Soft-delete Ficha":     { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] },
-    "Soft-delete Solicitud": { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] }
+    "Webhook DELETE": {
+      "main": [
+        [
+          {
+            "node": "Preparar DELETE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar DELETE": {
+      "main": [
+        [
+          {
+            "node": "¿Es ficha?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es ficha?": {
+      "main": [
+        [
+          {
+            "node": "Soft-delete Ficha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Soft-delete Solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Soft-delete Ficha": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Soft-delete Solicitud": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "yurest" }, { "name": "eliminar" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "eliminar"
+    }
+  ]
 }

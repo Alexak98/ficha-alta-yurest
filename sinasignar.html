@@ -263,7 +263,7 @@
     </div>
 
     <!-- MODAL: Asignar Proyecto -->
-    <div class="modal-overlay" id="modal-asignar">
+    <div class="modal-overlay" id="modal-asignar" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="modal">
             <div class="modal-header">
                 <h2>Asignar Proyecto</h2>
@@ -546,8 +546,14 @@
 
     // ── Helpers ──
     function escapeHtml(t) { const d=document.createElement('div');d.textContent=t;return d.innerHTML }
-    function abrirModal(id) { document.getElementById(id).classList.add('active') }
-    function cerrarModal(id) { document.getElementById(id).classList.remove('active') }
+    function abrirModal(id) {
+        document.getElementById(id).classList.add('active');
+        YurestConfig.a11yAbrirModal(id);
+    }
+    function cerrarModal(id) {
+        document.getElementById(id).classList.remove('active');
+        YurestConfig.a11yCerrarModal(id);
+    }
     function openSidebar() { document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('open') }
     function closeSidebar() { document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open') }
 

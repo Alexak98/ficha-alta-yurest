@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ficha de Alta - Yurest</title>
+    <script src="config.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
         .sol-success {
@@ -66,7 +67,7 @@
 
 <div class="container">
 
-    <div id="status-msg" class="status-msg hidden"></div>
+    <div id="status-msg" class="status-msg hidden" role="alert" aria-live="polite"></div>
 
     <!-- Error: enlace inválido -->
     <div id="invalid-state" class="hidden">
@@ -269,6 +270,12 @@
             </div>
         </div>
 
+        <!-- Honeypot anti-bots: campo oculto que un humano no rellena. -->
+        <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+            <label for="company_website">No rellenes este campo</label>
+            <input type="text" id="company_website" tabindex="-1" autocomplete="off">
+        </div>
+
         <div class="actions">
             <div class="main-btns">
                 <button class="btn btn-primary" id="submitBtn" onclick="enviarFormulario()">Enviar datos</button>
@@ -281,8 +288,13 @@
 
 <script>
     // ─── CONFIGURACIÓN ────────────────────────────────────────────────────────
-    const WEBHOOK_RESPONDER_SOLICITUD = 'https://n8n-soporte.data.yurest.dev/webhook/6da4274f-5a6d-4981-a92a-f9d7eb734144';
+    const WEBHOOK_RESPONDER_SOLICITUD = YurestConfig.ENDPOINTS.responderSolicitud;
+    const REQUEST_TIMEOUT_MS = 20000;
+    const HUMAN_MIN_TIME_MS  = 3000;  // tiempo mínimo humano para rellenar
     // ─────────────────────────────────────────────────────────────────────────
+
+    // Marca el momento en que se mostró el formulario (para anti-bot)
+    let _formShownAt = 0;
 
     function showStatus(msg, type) {
         const el = document.getElementById('status-msg');
@@ -291,31 +303,85 @@
         el.classList.toggle('hidden', !msg);
     }
 
+    // ── Validaciones ──────────────────────────────────────────────────────────
+    // El ID de solicitud que genera el back son números enteros. Rechazamos
+    // cualquier cosa que no encaje para no aceptar inyecciones por URL.
+    function esIdSolicitudValido(id) {
+        return /^[0-9]{1,10}$/.test(String(id || ''));
+    }
+    function esEmail(v) {
+        return !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    }
+    function esCP(v) {
+        return !v || /^[0-9]{5}$/.test(v);
+    }
+    function esCIF(v) {
+        // Básico: NIF/NIE/CIF españoles. No exhaustivo, solo forma.
+        return !v || /^[A-Z0-9][0-9]{7}[A-Z0-9]$/i.test(v);
+    }
+    function esTelefono(v) {
+        return !v || /^[+\d\s().-]{6,20}$/.test(v);
+    }
+
     // ── Leer parámetros de la URL ─────────────────────────────────────────────
     const params      = new URLSearchParams(window.location.search);
     const solicitudId = params.get('id');
-    const preNombre   = params.get('nombre')   || '';
     const preEmail    = params.get('email')    || '';
     const preSociedad = params.get('sociedad') || '';
 
-    if (!solicitudId) {
+    if (!esIdSolicitudValido(solicitudId)) {
         document.getElementById('invalid-state').classList.remove('hidden');
     } else {
         document.getElementById('form-state').classList.remove('hidden');
         document.getElementById('sol-id-text').textContent = solicitudId;
+        _formShownAt = Date.now();
 
-        // Pre-rellenar con los datos que vienen en la URL
+        // Pre-rellenar con los datos que vienen en la URL (siempre validados)
         if (preSociedad) document.getElementById('denominacion').value = preSociedad;
-        if (preEmail)    document.getElementById('email').value        = preEmail;
+        if (preEmail && esEmail(preEmail)) document.getElementById('email').value = preEmail;
     }
 
     // ── Enviar formulario ─────────────────────────────────────────────────────
     async function enviarFormulario() {
-        const denominacion = document.getElementById('denominacion').value.trim();
+        // Honeypot: si el campo oculto está relleno, es un bot.
+        if (document.getElementById('company_website').value) {
+            showStatus('No se pudo enviar. Intenta de nuevo.', 'error');
+            return;
+        }
+        // Too-fast check (humanos tardan al menos unos segundos)
+        if (Date.now() - _formShownAt < HUMAN_MIN_TIME_MS) {
+            showStatus('Por favor, revisa los datos antes de enviar.', 'error');
+            return;
+        }
+
+        const getVal = id => document.getElementById(id).value.trim();
+        const denominacion = getVal('denominacion');
+
+        // Requeridos
         if (!denominacion) {
             showStatus('La Denominación Social es obligatoria.', 'error');
             document.getElementById('denominacion').focus();
             return;
+        }
+
+        // Validación de campos con formato
+        const validaciones = [
+            ['cp',            esCP,        'CP inválido (5 dígitos).'],
+            ['cif',           esCIF,       'CIF/NIF inválido.'],
+            ['email',         esEmail,     'Email de contacto inválido.'],
+            ['email_factura', esEmail,     'Email de facturación inválido.'],
+            ['email_cc',      esEmail,     'Email CC inválido.'],
+            ['jp_mail',       esEmail,     'Email del JP inválido.'],
+            ['firm_mail',     esEmail,     'Email del firmante inválido.'],
+            ['tpv_email',     esEmail,     'Email del TPV inválido.'],
+            ['jp_telefono',   esTelefono,  'Teléfono del JP inválido.']
+        ];
+        for (const [id, fn, msg] of validaciones) {
+            if (!fn(getVal(id))) {
+                showStatus(msg, 'error');
+                document.getElementById(id).focus();
+                return;
+            }
         }
 
         const btn = document.getElementById('submitBtn');
@@ -327,36 +393,40 @@
             'ID Solicitud':     solicitudId,
             'Estado':           'Rellenado cliente',
             'Nombre Sociedad':  denominacion,
-            'Nombre Comercial': document.getElementById('nombreComercial').value.trim(),
-            'Calle':            document.getElementById('calle').value.trim(),
-            'Número':           document.getElementById('numero').value.trim(),
-            'CP':               document.getElementById('cp').value.trim(),
-            'Municipio':        document.getElementById('municipio').value.trim(),
-            'Provincia':        document.getElementById('provincia').value.trim(),
-            'CIF/NIF':          document.getElementById('cif').value.trim(),
-            'Email':            document.getElementById('email').value.trim(),
-            'Email Factura':    document.getElementById('email_factura').value.trim(),
-            'Email CC':         document.getElementById('email_cc').value.trim(),
-            'JP Nombre':        document.getElementById('jp_nombre').value.trim(),
-            'JP Apellidos':     document.getElementById('jp_apellidos').value.trim(),
-            'JP Rol':           document.getElementById('jp_rol').value.trim(),
-            'JP Teléfono':      document.getElementById('jp_telefono').value.trim(),
-            'JP Mail':          document.getElementById('jp_mail').value.trim(),
-            'Firmante Nombre':    document.getElementById('firm_nombre').value.trim(),
-            'Firmante Apellidos': document.getElementById('firm_apellidos').value.trim(),
-            'Firmante Mail':      document.getElementById('firm_mail').value.trim(),
-            'Firmante DNI':       document.getElementById('firm_dni').value.trim(),
-            'Firmante Puesto':    document.getElementById('firm_puesto').value.trim(),
+            'Nombre Comercial': getVal('nombreComercial'),
+            'Calle':            getVal('calle'),
+            'Número':           getVal('numero'),
+            'CP':               getVal('cp'),
+            'Municipio':        getVal('municipio'),
+            'Provincia':        getVal('provincia'),
+            'CIF/NIF':          getVal('cif').toUpperCase(),
+            'Email':            getVal('email'),
+            'Email Factura':    getVal('email_factura'),
+            'Email CC':         getVal('email_cc'),
+            'JP Nombre':        getVal('jp_nombre'),
+            'JP Apellidos':     getVal('jp_apellidos'),
+            'JP Rol':           getVal('jp_rol'),
+            'JP Teléfono':      getVal('jp_telefono'),
+            'JP Mail':          getVal('jp_mail'),
+            'Firmante Nombre':    getVal('firm_nombre'),
+            'Firmante Apellidos': getVal('firm_apellidos'),
+            'Firmante Mail':      getVal('firm_mail'),
+            'Firmante DNI':       getVal('firm_dni').toUpperCase(),
+            'Firmante Puesto':    getVal('firm_puesto'),
             'TPV':              document.getElementById('tpv').value,
-            'TPV Contacto':     document.getElementById('tpv_contacto').value.trim(),
-            'TPV Email':        document.getElementById('tpv_email').value.trim(),
+            'TPV Contacto':     getVal('tpv_contacto'),
+            'TPV Email':        getVal('tpv_email')
         };
 
+        // Timeout por si el backend cuelga
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         try {
             const res = await fetch(WEBHOOK_RESPONDER_SOLICITUD, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                signal: controller.signal
             });
 
             if (!res.ok) throw new Error('Error ' + res.status);
@@ -364,9 +434,15 @@
             document.getElementById('form-state').classList.add('hidden');
             document.getElementById('success-state').classList.remove('hidden');
         } catch (err) {
-            showStatus('Error al enviar el formulario: ' + err.message, 'error');
+            console.warn('[solicitud] error enviar:', err);
+            const msg = err.name === 'AbortError'
+                ? 'La solicitud tardó demasiado. Revisa tu conexión y vuelve a intentarlo.'
+                : 'No se pudo enviar el formulario. Inténtalo de nuevo en unos minutos.';
+            showStatus(msg, 'error');
             btn.disabled = false;
             btn.textContent = 'Enviar datos';
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 </script>

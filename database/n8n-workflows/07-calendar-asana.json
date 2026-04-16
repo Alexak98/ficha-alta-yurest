@@ -12,7 +12,10 @@
       "name": "Webhook Calendar",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 200],
+      "position": [
+        240,
+        200
+      ],
       "webhookId": "calendar-event"
     },
     {
@@ -23,7 +26,10 @@
       "name": "Preparar Evento",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 200]
+      "position": [
+        480,
+        200
+      ]
     },
     {
       "parameters": {
@@ -32,8 +38,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -42,9 +62,11 @@
       "name": "Respond Calendar",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [700, 200]
+      "position": [
+        700,
+        200
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "GET",
@@ -56,7 +78,10 @@
       "name": "Webhook Asana Proxy",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 480],
+      "position": [
+        240,
+        480
+      ],
       "webhookId": "asana-tasks"
     },
     {
@@ -67,7 +92,10 @@
       "name": "Extraer Project ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 480]
+      "position": [
+        480,
+        480
+      ]
     },
     {
       "parameters": {
@@ -84,7 +112,10 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "opt_fields", "value": "gid,name,completed,due_on,created_at,permalink_url,assignee.name,notes,memberships.section.name,custom_fields.name,custom_fields.display_value,custom_fields.enum_value.name,custom_fields.text_value" }
+            {
+              "name": "opt_fields",
+              "value": "gid,name,completed,due_on,created_at,permalink_url,assignee.name,notes,memberships.section.name,custom_fields.name,custom_fields.display_value,custom_fields.enum_value.name,custom_fields.text_value"
+            }
           ]
         }
       },
@@ -92,7 +123,10 @@
       "name": "GET Asana Tasks",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [700, 480],
+      "position": [
+        700,
+        480
+      ],
       "credentials": {
         "asanaApi": {
           "id": "ASANA_CREDENTIAL_ID",
@@ -108,7 +142,10 @@
       "name": "Formatear Asana",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 480]
+      "position": [
+        920,
+        480
+      ]
     },
     {
       "parameters": {
@@ -117,8 +154,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -127,9 +178,11 @@
       "name": "Respond Asana",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1140, 480]
+      "position": [
+        1140,
+        480
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "GET",
@@ -141,7 +194,10 @@
       "name": "Webhook Asana Stories",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 720],
+      "position": [
+        240,
+        720
+      ],
       "webhookId": "asana-task-stories"
     },
     {
@@ -152,7 +208,10 @@
       "name": "Extraer Task ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 720]
+      "position": [
+        480,
+        720
+      ]
     },
     {
       "parameters": {
@@ -169,7 +228,10 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "opt_fields", "value": "text,html_text,type,resource_subtype,created_at,created_by.name" }
+            {
+              "name": "opt_fields",
+              "value": "text,html_text,type,resource_subtype,created_at,created_by.name"
+            }
           ]
         }
       },
@@ -177,7 +239,10 @@
       "name": "GET Asana Stories",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [700, 720],
+      "position": [
+        700,
+        720
+      ],
       "credentials": {
         "asanaApi": {
           "id": "ASANA_CREDENTIAL_ID",
@@ -193,7 +258,10 @@
       "name": "Formatear Comentario",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 720]
+      "position": [
+        920,
+        720
+      ]
     },
     {
       "parameters": {
@@ -202,8 +270,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -212,46 +294,133 @@
       "name": "Respond Stories",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1140, 720]
+      "position": [
+        1140,
+        720
+      ]
     }
   ],
   "connections": {
     "Webhook Calendar": {
-      "main": [[{ "node": "Preparar Evento", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Evento": {
-      "main": [[{ "node": "Respond Calendar", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook Asana Proxy": {
-      "main": [[{ "node": "Extraer Project ID", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Extraer Project ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extraer Project ID": {
-      "main": [[{ "node": "GET Asana Tasks", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GET Asana Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GET Asana Tasks": {
-      "main": [[{ "node": "Formatear Asana", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Formatear Asana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Formatear Asana": {
-      "main": [[{ "node": "Respond Asana", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond Asana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook Asana Stories": {
-      "main": [[{ "node": "Extraer Task ID", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Extraer Task ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extraer Task ID": {
-      "main": [[{ "node": "GET Asana Stories", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GET Asana Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GET Asana Stories": {
-      "main": [[{ "node": "Formatear Comentario", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Formatear Comentario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Formatear Comentario": {
-      "main": [[{ "node": "Respond Stories", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
   "tags": [
-    { "name": "yurest" },
-    { "name": "integraciones" }
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "integraciones"
+    }
   ]
 }

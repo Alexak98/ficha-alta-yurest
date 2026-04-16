@@ -12,7 +12,10 @@
       "name": "Webhook GET",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 200],
+      "position": [
+        240,
+        200
+      ],
       "webhookId": "proyectos-get"
     },
     {
@@ -26,7 +29,10 @@
       "name": "GET Proyectos",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [480, 200],
+      "position": [
+        480,
+        200
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -42,7 +48,10 @@
       "name": "Formatear GET",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 200]
+      "position": [
+        700,
+        200
+      ]
     },
     {
       "parameters": {
@@ -51,8 +60,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -61,9 +84,11 @@
       "name": "Respond GET",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 200]
+      "position": [
+        920,
+        200
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
@@ -75,7 +100,10 @@
       "name": "Webhook POST",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 420],
+      "position": [
+        240,
+        420
+      ],
       "webhookId": "proyectos-post"
     },
     {
@@ -86,7 +114,10 @@
       "name": "Preparar INSERT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 420]
+      "position": [
+        480,
+        420
+      ]
     },
     {
       "parameters": {
@@ -99,7 +130,10 @@
       "name": "INSERT Proyecto",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [700, 420],
+      "position": [
+        700,
+        420
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -114,8 +148,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -124,9 +172,11 @@
       "name": "Respond POST",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 420]
+      "position": [
+        920,
+        420
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "PUT",
@@ -138,7 +188,10 @@
       "name": "Webhook PUT",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 640],
+      "position": [
+        240,
+        640
+      ],
       "webhookId": "proyectos-put"
     },
     {
@@ -149,13 +202,18 @@
       "name": "Preparar UPDATE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 640]
+      "position": [
+        480,
+        640
+      ]
     },
     {
       "parameters": {
         "operation": "update",
         "tableId": "proyectos",
-        "matchingColumns": ["id"],
+        "matchingColumns": [
+          "id"
+        ],
         "dataToSend": "autoMapInputData",
         "options": {}
       },
@@ -163,7 +221,10 @@
       "name": "UPDATE Proyecto",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [700, 640],
+      "position": [
+        700,
+        640
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -178,8 +239,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -188,9 +263,11 @@
       "name": "Respond PUT",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 640]
+      "position": [
+        920,
+        640
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "DELETE",
@@ -202,7 +279,10 @@
       "name": "Webhook DELETE",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 860],
+      "position": [
+        240,
+        860
+      ],
       "webhookId": "proyectos-delete"
     },
     {
@@ -213,20 +293,28 @@
       "name": "Preparar DELETE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 860]
+      "position": [
+        480,
+        860
+      ]
     },
     {
       "parameters": {
         "operation": "delete",
         "tableId": "proyectos",
-        "matchingColumns": ["id"],
+        "matchingColumns": [
+          "id"
+        ],
         "options": {}
       },
       "id": "supa-delete",
       "name": "DELETE Proyecto",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [700, 860],
+      "position": [
+        700,
+        860
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -241,8 +329,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -251,52 +353,155 @@
       "name": "Respond DELETE",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 860]
+      "position": [
+        920,
+        860
+      ]
     }
   ],
   "connections": {
     "Webhook GET": {
-      "main": [[{ "node": "GET Proyectos", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GET Proyectos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GET Proyectos": {
-      "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Formatear GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Formatear GET": {
-      "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook POST": {
-      "main": [[{ "node": "Preparar INSERT", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar INSERT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar INSERT": {
-      "main": [[{ "node": "INSERT Proyecto", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "INSERT Proyecto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "INSERT Proyecto": {
-      "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond POST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook PUT": {
-      "main": [[{ "node": "Preparar UPDATE", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar UPDATE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar UPDATE": {
-      "main": [[{ "node": "UPDATE Proyecto", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "UPDATE Proyecto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "UPDATE Proyecto": {
-      "main": [[{ "node": "Respond PUT", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond PUT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook DELETE": {
-      "main": [[{ "node": "Preparar DELETE", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar DELETE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar DELETE": {
-      "main": [[{ "node": "DELETE Proyecto", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "DELETE Proyecto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "DELETE Proyecto": {
-      "main": [[{ "node": "Respond DELETE", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond DELETE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
   "tags": [
-    { "name": "yurest" },
-    { "name": "proyectos" }
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "proyectos"
+    }
   ]
 }

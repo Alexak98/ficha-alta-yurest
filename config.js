@@ -55,7 +55,10 @@
         // Integraciones externas
         asanaTasks:           `${WEBHOOK_BASE}/asana/tasks`,
         asanaStories:         `${WEBHOOK_BASE}/asana/task/stories`,
-        calendar:             `${WEBHOOK_BASE}/calendar/event`
+        calendar:             `${WEBHOOK_BASE}/calendar/event`,
+
+        // Formulario público (cliente rellena desde email)
+        responderSolicitud:   `${WEBHOOK_BASE}/6da4274f-5a6d-4981-a92a-f9d7eb734144`
     };
 
     // ──────────────────────────────────────────────────────────
@@ -96,7 +99,11 @@
     }
 
     function clearSession() {
-        sessionStorage.clear();
+        // Solo borramos las claves del dominio auth. Otras claves
+        // transitorias (yurest_edit_ficha, yurest_completar_id, etc.)
+        // se gestionan desde el código que las creó.
+        sessionStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem('yurest_fichas');
     }
 
     function requireAuth() {
@@ -177,6 +184,88 @@
     }
 
     // ──────────────────────────────────────────────────────────
+    //  ACCESIBILIDAD DE MODALES
+    // ──────────────────────────────────────────────────────────
+    // Los proyectos usan la convención:
+    //   <div class="modal-overlay" id="..."> <div class="modal"> ... </div> </div>
+    // Esta función:
+    //   - pone role="dialog" + aria-modal="true" en el .modal interno,
+    //   - marca aria-hidden en el resto de la página para screen readers,
+    //   - mueve el foco al primer elemento focusable del modal,
+    //   - recuerda el elemento que tenía el foco antes, para devolvérselo al cerrar,
+    //   - atrapa Tab dentro del modal mientras esté abierto.
+    //
+    // Las llamadas a `abrirModal/cerrarModal` ya existentes en el código del proyecto
+    // deben delegar aquí. Para no romper nada, exponemos los helpers como opt-in.
+
+    let _previousFocus = null;
+    let _trapListener = null;
+
+    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    function a11yAbrirModal(overlayId) {
+        const overlay = document.getElementById(overlayId);
+        if (!overlay) return;
+        const modal = overlay.querySelector('.modal, [role="dialog"]') || overlay;
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-hidden', 'false');
+        // Marcar aria-hidden en el resto de la página
+        document.querySelectorAll('body > *').forEach(el => {
+            if (el !== overlay && !el.contains(overlay)) {
+                el.setAttribute('data-a11y-hidden-before', el.getAttribute('aria-hidden') || '');
+                el.setAttribute('aria-hidden', 'true');
+            }
+        });
+        _previousFocus = document.activeElement;
+        // Foco al primer elemento focusable. Ignoramos readonly/aria-hidden.
+        const focusables = [...modal.querySelectorAll(FOCUSABLE)].filter(el =>
+            !el.hasAttribute('readonly') &&
+            el.offsetParent !== null &&
+            el.getAttribute('aria-hidden') !== 'true'
+        );
+        if (focusables.length) {
+            const preferred = focusables.find(el =>
+                (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')
+            ) || focusables[0];
+            setTimeout(() => preferred.focus(), 20);
+        }
+        // Trap de Tab
+        _trapListener = (e) => {
+            if (e.key !== 'Tab') return;
+            const items = [...modal.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null);
+            if (!items.length) return;
+            const first = items[0], last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault(); last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault(); first.focus();
+            }
+        };
+        document.addEventListener('keydown', _trapListener);
+    }
+
+    function a11yCerrarModal(overlayId) {
+        const overlay = overlayId ? document.getElementById(overlayId) : null;
+        if (overlay) overlay.setAttribute('aria-hidden', 'true');
+        // Restaurar aria-hidden previo del resto de la página
+        document.querySelectorAll('[data-a11y-hidden-before]').forEach(el => {
+            const prev = el.getAttribute('data-a11y-hidden-before');
+            if (prev) el.setAttribute('aria-hidden', prev);
+            else el.removeAttribute('aria-hidden');
+            el.removeAttribute('data-a11y-hidden-before');
+        });
+        if (_trapListener) {
+            document.removeEventListener('keydown', _trapListener);
+            _trapListener = null;
+        }
+        if (_previousFocus && typeof _previousFocus.focus === 'function') {
+            setTimeout(() => _previousFocus.focus(), 10);
+        }
+        _previousFocus = null;
+    }
+
+    // ──────────────────────────────────────────────────────────
     //  BADGE "SIN ASIGNAR" — se usa en varias páginas
     // ──────────────────────────────────────────────────────────
     // Actualiza el <span id="badge-sinasignar"> con el número de fichas
@@ -225,6 +314,8 @@
         escAttr,
         escJsInAttr,
         generarId,
-        actualizarBadgeSinAsignar
+        actualizarBadgeSinAsignar,
+        a11yAbrirModal,
+        a11yCerrarModal
     };
 })(window);

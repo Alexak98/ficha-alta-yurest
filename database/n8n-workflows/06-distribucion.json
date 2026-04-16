@@ -12,7 +12,10 @@
       "name": "Webhook Distribución",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "distribucion"
     },
     {
@@ -23,7 +26,10 @@
       "name": "Preparar Distribución",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
@@ -33,13 +39,18 @@
       "name": "Map Update Ficha",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 300]
+      "position": [
+        700,
+        300
+      ]
     },
     {
       "parameters": {
         "operation": "update",
         "tableId": "fichas_alta",
-        "matchingColumns": ["id"],
+        "matchingColumns": [
+          "id"
+        ],
         "dataToSend": "autoMapInputData",
         "options": {}
       },
@@ -47,7 +58,10 @@
       "name": "UPDATE Ficha Implementador",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [920, 300],
+      "position": [
+        920,
+        300
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -63,7 +77,10 @@
       "name": "Map Insert Distribución",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1140, 300]
+      "position": [
+        1140,
+        300
+      ]
     },
     {
       "parameters": {
@@ -76,7 +93,10 @@
       "name": "INSERT Distribución",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1360, 300],
+      "position": [
+        1360,
+        300
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -91,8 +111,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -101,34 +135,89 @@
       "name": "Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1580, 300]
+      "position": [
+        1580,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook Distribución": {
-      "main": [[{ "node": "Preparar Distribución", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Distribución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Distribución": {
-      "main": [[{ "node": "Map Update Ficha", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Map Update Ficha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Map Update Ficha": {
-      "main": [[{ "node": "UPDATE Ficha Implementador", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "UPDATE Ficha Implementador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "UPDATE Ficha Implementador": {
-      "main": [[{ "node": "Map Insert Distribución", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Map Insert Distribución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Map Insert Distribución": {
-      "main": [[{ "node": "INSERT Distribución", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "INSERT Distribución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "INSERT Distribución": {
-      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
   "tags": [
-    { "name": "yurest" },
-    { "name": "distribucion" }
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "distribucion"
+    }
   ]
 }

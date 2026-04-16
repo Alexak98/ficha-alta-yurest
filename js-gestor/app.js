@@ -565,10 +565,16 @@ function renderCard(proyecto) {
 
 function abrirModal(id) {
     document.getElementById(id).classList.add('active');
+    if (window.YurestConfig && window.YurestConfig.a11yAbrirModal) {
+        window.YurestConfig.a11yAbrirModal(id);
+    }
 }
 
 function cerrarModal(id) {
     document.getElementById(id).classList.remove('active');
+    if (window.YurestConfig && window.YurestConfig.a11yCerrarModal) {
+        window.YurestConfig.a11yCerrarModal(id);
+    }
 }
 
 // ==========================================

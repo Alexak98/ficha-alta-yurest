@@ -12,7 +12,10 @@
       "name": "Webhook GET Altas",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 200],
+      "position": [
+        240,
+        200
+      ],
       "webhookId": "altas-get"
     },
     {
@@ -26,7 +29,10 @@
       "name": "GET Fichas",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [480, 200],
+      "position": [
+        480,
+        200
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -42,7 +48,10 @@
       "name": "Formatear GET",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 200]
+      "position": [
+        700,
+        200
+      ]
     },
     {
       "parameters": {
@@ -51,8 +60,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -61,9 +84,11 @@
       "name": "Respond GET",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 200]
+      "position": [
+        920,
+        200
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
@@ -75,7 +100,10 @@
       "name": "Webhook POST Guardar",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 480],
+      "position": [
+        240,
+        480
+      ],
       "webhookId": "altas-guardar"
     },
     {
@@ -86,17 +114,27 @@
       "name": "Preparar Ficha",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 480]
+      "position": [
+        480,
+        480
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "leftValue": "={{ $json.isEdit }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "equals" }
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ]
         }
@@ -105,7 +143,10 @@
       "name": "Es Edición?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [700, 480]
+      "position": [
+        700,
+        480
+      ]
     },
     {
       "parameters": {
@@ -115,13 +156,18 @@
       "name": "Extraer UPDATE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 380]
+      "position": [
+        920,
+        380
+      ]
     },
     {
       "parameters": {
         "operation": "update",
         "tableId": "fichas_alta",
-        "matchingColumns": ["id"],
+        "matchingColumns": [
+          "id"
+        ],
         "dataToSend": "autoMapInputData",
         "options": {}
       },
@@ -129,7 +175,10 @@
       "name": "UPDATE Ficha",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1140, 380],
+      "position": [
+        1140,
+        380
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -145,7 +194,10 @@
       "name": "Extraer INSERT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 580]
+      "position": [
+        920,
+        580
+      ]
     },
     {
       "parameters": {
@@ -158,7 +210,10 @@
       "name": "INSERT Ficha",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1140, 580],
+      "position": [
+        1140,
+        580
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -174,7 +229,10 @@
       "name": "Preparar Locales",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1360, 480]
+      "position": [
+        1360,
+        480
+      ]
     },
     {
       "parameters": {
@@ -187,7 +245,10 @@
       "name": "INSERT Locales",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1580, 480],
+      "position": [
+        1580,
+        480
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -202,8 +263,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -212,55 +287,162 @@
       "name": "Respond Guardar OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1800, 480]
+      "position": [
+        1800,
+        480
+      ]
     }
   ],
   "connections": {
     "Webhook GET Altas": {
-      "main": [[{ "node": "GET Fichas", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GET Fichas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GET Fichas": {
-      "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Formatear GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Formatear GET": {
-      "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Webhook POST Guardar": {
-      "main": [[{ "node": "Preparar Ficha", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Ficha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Ficha": {
-      "main": [[{ "node": "Es Edición?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Es Edición?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Es Edición?": {
       "main": [
-        [{ "node": "Extraer UPDATE", "type": "main", "index": 0 }],
-        [{ "node": "Extraer INSERT", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Extraer UPDATE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extraer INSERT",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Extraer UPDATE": {
-      "main": [[{ "node": "UPDATE Ficha", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "UPDATE Ficha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "UPDATE Ficha": {
-      "main": [[{ "node": "Preparar Locales", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Locales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extraer INSERT": {
-      "main": [[{ "node": "INSERT Ficha", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "INSERT Ficha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "INSERT Ficha": {
-      "main": [[{ "node": "Preparar Locales", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Locales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Locales": {
-      "main": [[{ "node": "INSERT Locales", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "INSERT Locales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "INSERT Locales": {
-      "main": [[{ "node": "Respond Guardar OK", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond Guardar OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1"
   },
   "tags": [
-    { "name": "yurest" },
-    { "name": "fichas" }
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "fichas"
+    }
   ]
 }

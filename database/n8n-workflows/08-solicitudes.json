@@ -12,7 +12,10 @@
       "name": "Webhook GET Solicitudes",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 200],
+      "position": [
+        240,
+        200
+      ],
       "webhookId": "solicitudes-get"
     },
     {
@@ -27,8 +30,16 @@
       "name": "GET Solicitudes",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [480, 200],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        480,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -38,21 +49,47 @@
       "name": "Formatear GET",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 200]
+      "position": [
+        700,
+        200
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}",
-        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       },
       "id": "respond-get-sol",
       "name": "Respond GET",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 200]
+      "position": [
+        920,
+        200
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
@@ -64,7 +101,10 @@
       "name": "Crear Solicitud",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 460],
+      "position": [
+        240,
+        460
+      ],
       "webhookId": "solicitudes-crear"
     },
     {
@@ -75,7 +115,10 @@
       "name": "Preparar Solicitud",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 460]
+      "position": [
+        480,
+        460
+      ]
     },
     {
       "parameters": {
@@ -88,20 +131,52 @@
       "name": "INSERT Solicitud",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [700, 460],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        700,
+        460
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true, data: $json }) }}",
-        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       },
       "id": "respond-post-sol",
       "name": "Respond POST",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 460]
+      "position": [
+        920,
+        460
+      ]
     },
     {
       "parameters": {
@@ -113,7 +188,10 @@
       },
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [700, 660],
+      "position": [
+        700,
+        660
+      ],
       "id": "email-solicitud",
       "name": "Envio de mail al cliente",
       "credentials": {
@@ -125,15 +203,87 @@
     }
   ],
   "connections": {
-    "Webhook GET Solicitudes": { "main": [[{ "node": "GET Solicitudes", "type": "main", "index": 0 }]] },
-    "GET Solicitudes": { "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]] },
-    "Formatear GET": { "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]] },
-    "Crear Solicitud": { "main": [[{ "node": "Preparar Solicitud", "type": "main", "index": 0 }]] },
-    "Preparar Solicitud": { "main": [[{ "node": "INSERT Solicitud", "type": "main", "index": 0 }]] },
-    "INSERT Solicitud": { "main": [
-      [{ "node": "Respond POST", "type": "main", "index": 0 }, { "node": "Envio de mail al cliente", "type": "main", "index": 0 }]
-    ] }
+    "Webhook GET Solicitudes": {
+      "main": [
+        [
+          {
+            "node": "GET Solicitudes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Solicitudes": {
+      "main": [
+        [
+          {
+            "node": "Formatear GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear GET": {
+      "main": [
+        [
+          {
+            "node": "Respond GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Solicitud": {
+      "main": [
+        [
+          {
+            "node": "Preparar Solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Solicitud": {
+      "main": [
+        [
+          {
+            "node": "INSERT Solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSERT Solicitud": {
+      "main": [
+        [
+          {
+            "node": "Respond POST",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Envio de mail al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "yurest" }, { "name": "solicitudes" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "solicitudes"
+    }
+  ]
 }

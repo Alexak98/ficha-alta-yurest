@@ -12,7 +12,10 @@
       "name": "Webhook Responder Solicitud",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 500],
+      "position": [
+        240,
+        500
+      ],
       "webhookId": "responder-solicitud"
     },
     {
@@ -23,7 +26,10 @@
       "name": "Guardar Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 500]
+      "position": [
+        440,
+        500
+      ]
     },
     {
       "parameters": {
@@ -37,8 +43,16 @@
       "name": "GET Todas Solicitudes",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [640, 500],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        640,
+        500
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -48,7 +62,10 @@
       "name": "Merge Solicitud + Cliente",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [840, 500]
+      "position": [
+        840,
+        500
+      ]
     },
     {
       "parameters": {
@@ -58,7 +75,10 @@
       "name": "Extraer Ficha",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 380]
+      "position": [
+        1040,
+        380
+      ]
     },
     {
       "parameters": {
@@ -71,8 +91,16 @@
       "name": "INSERT Ficha Alta",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1240, 380],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        1240,
+        380
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -94,7 +122,10 @@
       },
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [1440, 380],
+      "position": [
+        1440,
+        380
+      ],
       "id": "create-drive-folder",
       "name": "Create Drive Folder",
       "credentials": {
@@ -112,7 +143,10 @@
       "name": "Extraer ID Drive",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1640, 380]
+      "position": [
+        1640,
+        380
+      ]
     },
     {
       "parameters": {
@@ -136,8 +170,16 @@
       "name": "UPDATE Ficha Drive",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1840, 380],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        1840,
+        380
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -147,7 +189,10 @@
       "name": "Preparar Update Solicitud",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 560]
+      "position": [
+        1040,
+        560
+      ]
     },
     {
       "parameters": {
@@ -171,8 +216,16 @@
       "name": "UPDATE Solicitud Estado",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1240, 560],
-      "credentials": { "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" } }
+      "position": [
+        1240,
+        560
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      }
     },
     {
       "parameters": {
@@ -182,7 +235,10 @@
       "name": "Map Comercial Email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 740]
+      "position": [
+        1040,
+        740
+      ]
     },
     {
       "parameters": {
@@ -194,7 +250,10 @@
       },
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [1240, 740],
+      "position": [
+        1240,
+        740
+      ],
       "id": "email-comercial",
       "name": "Email aviso al comercial",
       "credentials": {
@@ -208,15 +267,38 @@
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ success: true }) }}",
-        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       },
       "id": "respond-responder",
       "name": "Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1440, 560]
+      "position": [
+        1440,
+        560
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "GET",
@@ -228,7 +310,10 @@
       "name": "Webhook Docs Subidos",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 960],
+      "position": [
+        240,
+        960
+      ],
       "webhookId": "docs-subidos"
     },
     {
@@ -239,21 +324,47 @@
       "name": "Procesar Docs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 960]
+      "position": [
+        480,
+        960
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}",
-        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       },
       "id": "respond-docs",
       "name": "Respond Docs",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [700, 960]
+      "position": [
+        700,
+        960
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "GET",
@@ -265,7 +376,10 @@
       "name": "Webhook Get Drive",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 1140],
+      "position": [
+        240,
+        1140
+      ],
       "webhookId": "get-drive"
     },
     {
@@ -276,46 +390,234 @@
       "name": "Procesar Drive",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 1140]
+      "position": [
+        480,
+        1140
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}",
-        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }, { "name": "Content-Type", "value": "application/json" }] } }
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       },
       "id": "respond-drive",
       "name": "Respond Drive",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [700, 1140]
+      "position": [
+        700,
+        1140
+      ]
     }
   ],
   "connections": {
-
-    "Webhook Responder Solicitud": { "main": [[{ "node": "Guardar Body", "type": "main", "index": 0 }]] },
-    "Guardar Body": { "main": [[{ "node": "GET Todas Solicitudes", "type": "main", "index": 0 }]] },
-    "GET Todas Solicitudes": { "main": [[{ "node": "Merge Solicitud + Cliente", "type": "main", "index": 0 }]] },
-    "Merge Solicitud + Cliente": { "main": [
-      [
-        { "node": "Extraer Ficha", "type": "main", "index": 0 },
-        { "node": "Preparar Update Solicitud", "type": "main", "index": 0 },
-        { "node": "Map Comercial Email", "type": "main", "index": 0 }
+    "Webhook Responder Solicitud": {
+      "main": [
+        [
+          {
+            "node": "Guardar Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
-    ] },
-    "Extraer Ficha": { "main": [[{ "node": "INSERT Ficha Alta", "type": "main", "index": 0 }]] },
-    "INSERT Ficha Alta": { "main": [[{ "node": "Create Drive Folder", "type": "main", "index": 0 }]] },
-    "Create Drive Folder": { "main": [[{ "node": "Extraer ID Drive", "type": "main", "index": 0 }]] },
-    "Extraer ID Drive": { "main": [[{ "node": "UPDATE Ficha Drive", "type": "main", "index": 0 }]] },
-    "Preparar Update Solicitud": { "main": [[{ "node": "UPDATE Solicitud Estado", "type": "main", "index": 0 }]] },
-    "UPDATE Solicitud Estado": { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] },
-    "Map Comercial Email": { "main": [[{ "node": "Email aviso al comercial", "type": "main", "index": 0 }]] },
-
-    "Webhook Docs Subidos": { "main": [[{ "node": "Procesar Docs", "type": "main", "index": 0 }]] },
-    "Procesar Docs": { "main": [[{ "node": "Respond Docs", "type": "main", "index": 0 }]] },
-    "Webhook Get Drive": { "main": [[{ "node": "Procesar Drive", "type": "main", "index": 0 }]] },
-    "Procesar Drive": { "main": [[{ "node": "Respond Drive", "type": "main", "index": 0 }]] }
+    },
+    "Guardar Body": {
+      "main": [
+        [
+          {
+            "node": "GET Todas Solicitudes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Todas Solicitudes": {
+      "main": [
+        [
+          {
+            "node": "Merge Solicitud + Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Solicitud + Cliente": {
+      "main": [
+        [
+          {
+            "node": "Extraer Ficha",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Preparar Update Solicitud",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Map Comercial Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Ficha": {
+      "main": [
+        [
+          {
+            "node": "INSERT Ficha Alta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSERT Ficha Alta": {
+      "main": [
+        [
+          {
+            "node": "Create Drive Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Drive Folder": {
+      "main": [
+        [
+          {
+            "node": "Extraer ID Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer ID Drive": {
+      "main": [
+        [
+          {
+            "node": "UPDATE Ficha Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Update Solicitud": {
+      "main": [
+        [
+          {
+            "node": "UPDATE Solicitud Estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE Solicitud Estado": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Comercial Email": {
+      "main": [
+        [
+          {
+            "node": "Email aviso al comercial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Docs Subidos": {
+      "main": [
+        [
+          {
+            "node": "Procesar Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Docs": {
+      "main": [
+        [
+          {
+            "node": "Respond Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Get Drive": {
+      "main": [
+        [
+          {
+            "node": "Procesar Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Drive": {
+      "main": [
+        [
+          {
+            "node": "Respond Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "yurest" }, { "name": "auxiliares" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "yurest"
+    },
+    {
+      "name": "auxiliares"
+    }
+  ]
 }
