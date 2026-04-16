@@ -29,7 +29,8 @@
       "position": [
         480,
         300
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -100,7 +101,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -141,7 +143,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {

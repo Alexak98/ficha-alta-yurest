@@ -38,7 +38,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -51,7 +52,8 @@
       "position": [
         700,
         200
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -117,7 +119,8 @@
       "position": [
         480,
         480
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -159,7 +162,8 @@
       "position": [
         920,
         380
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -192,7 +196,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -205,7 +210,8 @@
       "position": [
         920,
         580
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -227,7 +233,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -240,7 +247,8 @@
       "position": [
         1360,
         480
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -262,7 +270,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {

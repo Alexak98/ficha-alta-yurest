@@ -29,7 +29,8 @@
       "position": [
         480,
         200
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -95,7 +96,8 @@
       "position": [
         480,
         480
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -145,7 +147,8 @@
       "position": [
         920,
         480
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -211,7 +214,8 @@
       "position": [
         480,
         720
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -261,7 +265,8 @@
       "position": [
         920,
         720
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {

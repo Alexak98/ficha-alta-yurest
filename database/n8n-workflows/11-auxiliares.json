@@ -29,7 +29,8 @@
       "position": [
         440,
         500
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -52,7 +53,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -65,7 +67,8 @@
       "position": [
         840,
         500
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -78,7 +81,8 @@
       "position": [
         1040,
         380
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -100,7 +104,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -146,7 +151,8 @@
       "position": [
         1640,
         380
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -179,7 +185,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -192,7 +199,8 @@
       "position": [
         1040,
         560
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -225,7 +233,8 @@
           "id": "SUPABASE_CREDENTIAL_ID",
           "name": "Supabase Yurest"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -238,7 +247,8 @@
       "position": [
         1040,
         740
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -327,7 +337,8 @@
       "position": [
         480,
         960
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -393,7 +404,8 @@
       "position": [
         480,
         1140
-      ]
+      ],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
