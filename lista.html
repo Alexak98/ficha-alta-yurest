@@ -1946,7 +1946,7 @@
         const fichasRellenadas = fichasFiltradas.filter(f => { const e = (f['Estado']||'').trim(); return e==='Rellenado'||e===''; });
         const rowIdx = fichasRellenadas.indexOf(ficha);
         if (rows[rowIdx]) {
-            const cell = rows[rowIdx].querySelectorAll('td')[7]; // columna Docs
+            const cell = rows[rowIdx].querySelectorAll('td')[6]; // columna Docs
             if (cell) cell.innerHTML = docsToggleHtml(ficha, idx);
         }
 
