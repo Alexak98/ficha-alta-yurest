@@ -1439,6 +1439,13 @@
         }
     }
 
+    // Sincroniza checkboxes de Módulos con los paquetes del carrito.
+    // Añade automáticamente los módulos de paquetes seleccionados y quita los
+    // que fueron auto-añadidos antes y ya no aplican, pero RESPETA los módulos
+    // marcados manualmente por el usuario (no llevan data-auto) y los que el
+    // flujo de edición restauró desde la ficha (p.ej. cuando todavía no se ha
+    // restaurado el carrito o la ficha se rellenó antes de que existiera el
+    // snapshot del carrito en BD).
     function sincronizarModulos() {
         const checkedIds = Array.from(document.querySelectorAll('input[name="cart_item"]:checked')).map(cb => cb.value);
         const modulosActivos = new Set();
@@ -1446,7 +1453,15 @@
             if (checkedIds.includes(p.id)) p.modulos.forEach(m => modulosActivos.add(m));
         });
         document.querySelectorAll('input[name="modulo"]').forEach(cb => {
-            cb.checked = modulosActivos.has(cb.value);
+            if (modulosActivos.has(cb.value)) {
+                cb.checked = true;
+                cb.dataset.auto = '1';
+            } else if (cb.dataset.auto === '1') {
+                // Solo desmarcamos los que habíamos auto-añadido nosotros
+                cb.checked = false;
+                delete cb.dataset.auto;
+            }
+            // else: módulo marcado manualmente o restaurado desde ficha → intacto
         });
     }
 
@@ -1704,12 +1719,62 @@
         }));
     }
 
+    // Snapshot COMPLETO del carrito: items + descuentos + periodos + precios
+    // mensuales por local + asignación de locales a cada módulo Corporate.
+    // Se guarda en el JSONB `paquetes_carrito` para poder restaurar el estado
+    // al editar la ficha.
+    function _snapshotCarrito() {
+        const num = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+        const corpModuleLocales = {};
+        PAQUETES.corporate.forEach(p => {
+            const checked = [...document.querySelectorAll(`input[name="corp_ml_${p.id}"]:checked`)].map(cb => parseInt(cb.value, 10));
+            if (checked.length) corpModuleLocales[p.id] = checked;
+        });
+        return {
+            items: _itemsCarritoSeleccionados(),
+            descuentos: {
+                cart:         num('cart_descuento'),
+                corp_setup:   num('corp_setup_descuento'),
+                corp_recur:   num('corp_recur_descuento'),
+                planes_setup: num('planes_setup_descuento'),
+                planes_recur: num('planes_recur_descuento')
+            },
+            periodos: {
+                corp:              (document.querySelector('input[name="corp_periodo"]:checked') || {}).value || 'mensual',
+                planes:            (document.querySelector('input[name="planes_periodo"]:checked') || {}).value || 'mensual',
+                mensual_anualizada: !!document.getElementById('mensual_anualizada')?.checked
+            },
+            locales_mensual:   [...document.querySelectorAll('.mensual-local-precio')].map(i => parseFloat(i.value) || 0),
+            corp_module_locales: corpModuleLocales
+        };
+    }
+
     // Mensualidad total (suma de los importes/local + descuento si lo hay).
     function _calcularMensualidadTotal() {
         let t = 0;
         document.querySelectorAll('.mensual-local-precio').forEach(i => { t += parseFloat(i.value) || 0; });
         const desc = parseFloat(document.getElementById('cart_descuento')?.value) || 0;
         return Math.max(0, t * (1 - desc / 100));
+    }
+
+    // Determina el par (importeSetup, descuentoSetup) correcto según el tipo.
+    //  - Corporate: el campo manual "Importe" + su descuento de setup.
+    //  - Planes:    subtotal de packages marcados + descuento de setup planes.
+    //  - Lite:      subtotal de setup (el único item 'único' es lite_setup),
+    //               sin descuento de setup (Lite usa cart_descuento para el
+    //               mensual, no tiene descuento propio de setup).
+    function _importeYDescuentoSetup(tipoCliente) {
+        const num = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+        if (tipoCliente === 'corporate') {
+            return { importe: num('corp_setup_precio'), descuento: num('corp_setup_descuento') };
+        }
+        if (tipoCliente === 'planes') {
+            return { importe: _calcularSubtotalSetup(),  descuento: num('planes_setup_descuento') };
+        }
+        if (tipoCliente === 'lite') {
+            return { importe: _calcularSubtotalSetup(),  descuento: 0 };
+        }
+        return { importe: 0, descuento: 0 };
     }
 
     function collectFormData() {
@@ -1772,8 +1837,10 @@
             'Dist. Teléfono': document.getElementById('dist_telefono').value.trim(),
             'Dist. Comisión Implementación (%)': Math.round(subtotalSetup * getComisionRate() * 100) / 100,
             'Tipo Cliente':   tipoCliente,
-            'ImporteSetup':   (parseFloat(document.getElementById('corp_setup_precio')?.value) || ''),
-            'Descuentosetup': (parseFloat(document.getElementById('corp_setup_descuento')?.value) || ''),
+            // ImporteSetup/Descuentosetup se calculan según tipo: corp usa su
+            // importe manual, planes/lite usan el subtotal del carrito.
+            'ImporteSetup':   _importeYDescuentoSetup(tipoCliente).importe || '',
+            'Descuentosetup': _importeYDescuentoSetup(tipoCliente).descuento || '',
             'Credencial Master': document.getElementById('cred_master').value.trim(),
             'Credencial Yurest': document.getElementById('cred_yurest').value.trim(),
             'Comentarios':    document.getElementById('comentarios').value.trim(),
@@ -1790,8 +1857,10 @@
             'Integraciones':              _precioCartItem('integraciones'),
             // Mensualidad anualizada (mensual × 12) — útil para el dashboard
             'Mensualidad Anualizada':     Math.round(_calcularMensualidadTotal() * 12 * 100) / 100,
-            // Snapshot del carrito completo (para reconstruir al editar)
-            'paquetes_carrito':           _itemsCarritoSeleccionados(),
+            // Snapshot COMPLETO del carrito (items + descuentos + periodos +
+            // precios por local + locales asignados a cada módulo corporate).
+            // Guardado como JSONB para poder reconstruir el estado al editar.
+            'paquetes_carrito':           _snapshotCarrito(),
 
             'Baja':           'No',
             'Estado':         'Rellenado',
@@ -2033,7 +2102,10 @@
         if (corpPeriodoEl) corpPeriodoEl.checked = true;
         actualizarComisionDistribuidor(0);
         actualizarCredenciales();
-        document.querySelectorAll('input[name="modulo"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('input[name="modulo"]').forEach(cb => {
+            cb.checked = false;
+            delete cb.dataset.auto;
+        });
         document.querySelectorAll('input[name="tipo_cliente"]').forEach(r => r.checked = false);
         document.querySelectorAll('input[name="cart_item"]').forEach(cb => cb.checked = false);
         const descEl = document.getElementById('cart_descuento');
@@ -2172,18 +2244,8 @@
             if (radio) { radio.checked = true; seleccionarTipo(tipo); }
         }
 
-        // ── Módulos ───────────────────────────────────────────────────────────
-        const rawModulos = f['Módulos'] || f['modulos'] || f.modulos;
-        if (rawModulos) {
-            const mods = Array.isArray(rawModulos)
-                ? rawModulos.map(m => m.trim().toLowerCase())
-                : String(rawModulos).split(',').map(m => m.trim().toLowerCase());
-            document.querySelectorAll('input[name="modulo"]').forEach(cb => {
-                if (mods.includes(cb.value.toLowerCase())) cb.checked = true;
-            });
-        }
-
-        // ── Locales ───────────────────────────────────────────────────────────
+        // ── Locales (antes del carrito: los precios mensuales por local y los
+        //   multiplicadores corp_ml_* dependen de los locales ya creados) ─────
         try {
             const rawL = f['Locales'] || f['locales'] || f._locales || '';
             const locales = typeof rawL === 'string' && rawL.startsWith('[') ? JSON.parse(rawL) : (Array.isArray(rawL) ? rawL : []);
@@ -2198,7 +2260,85 @@
             });
         } catch (_) {}
 
+        // ── Carrito completo (items + precios + descuentos + periodos) ───────
+        // `paquetes_carrito` puede venir como array (formato legacy: solo
+        // items) o como objeto {items, descuentos, periodos, ...} (nuevo).
+        // Restauramos antes de recalcular para que `sincronizarModulos` y el
+        // subtotal coincidan con lo guardado.
+        const rawCart = f['paquetes_carrito'] || f.paquetes_carrito;
+        const cartSnap = (rawCart && !Array.isArray(rawCart)) ? rawCart
+                       : (Array.isArray(rawCart) ? { items: rawCart } : null);
+        if (cartSnap) {
+            // Items + precios individuales
+            (cartSnap.items || []).forEach(it => {
+                if (!it || !it.id) return;
+                const cb = document.querySelector(`input[name="cart_item"][value="${it.id}"]`);
+                if (cb) cb.checked = true;
+                const pi = document.getElementById('precio_' + it.id);
+                if (pi && (it.precio || it.precio === 0)) pi.value = it.precio;
+            });
+            // Descuentos
+            const d = cartSnap.descuentos || {};
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+            setVal('cart_descuento',         d.cart);
+            setVal('corp_setup_descuento',   d.corp_setup);
+            setVal('corp_recur_descuento',   d.corp_recur);
+            setVal('planes_setup_descuento', d.planes_setup);
+            setVal('planes_recur_descuento', d.planes_recur);
+            // Periodos
+            const per = cartSnap.periodos || {};
+            if (per.corp === 'anual')   document.getElementById('corp_periodo_anual').checked   = true;
+            if (per.planes === 'anual') document.getElementById('planes_periodo_anual').checked = true;
+            if (per.mensual_anualizada) document.getElementById('mensual_anualizada').checked   = true;
+            cartSnap._pending_module_locales = cartSnap.corp_module_locales || {};
+            cartSnap._pending_locales_mensual = cartSnap.locales_mensual || [];
+        }
+
+        // ── Módulos (restaurar DESPUÉS del carrito para preservar las
+        //   selecciones manuales que no vienen implicadas por ningún paquete) ─
+        const rawModulos = f['Módulos'] || f['modulos'] || f.modulos;
+        if (rawModulos) {
+            const mods = Array.isArray(rawModulos)
+                ? rawModulos.map(m => String(m).trim().toLowerCase())
+                : String(rawModulos).split(',').map(m => m.trim().toLowerCase());
+            document.querySelectorAll('input[name="modulo"]').forEach(cb => {
+                if (mods.includes(cb.value.toLowerCase())) {
+                    cb.checked = true;
+                    // Marcamos con data-auto los módulos que ya los aporta un
+                    // paquete seleccionado, para que sincronizarModulos pueda
+                    // gestionarlos. El resto queda como "manual" (sin auto)
+                    // y sobrevive a cambios del carrito.
+                    const auto = Object.values(PAQUETES).flat().some(p => {
+                        const inCart = document.querySelector(`input[name="cart_item"][value="${p.id}"]:checked`);
+                        return inCart && (p.modulos || []).includes(cb.value);
+                    });
+                    if (auto) cb.dataset.auto = '1';
+                }
+            });
+        }
+
         recalcularCarrito();
+
+        // Tras el primer recalcularCarrito() ya existen los pills de locales
+        // por módulo; ahora podemos aplicar los valores guardados.
+        if (cartSnap) {
+            // Restaurar locales asignados a cada módulo corporate
+            Object.entries(cartSnap._pending_module_locales || {}).forEach(([pid, arr]) => {
+                arr.forEach(idx => {
+                    const cb = document.getElementById(`corp_ml_${pid}_${idx}`);
+                    if (cb) cb.checked = true;
+                });
+            });
+            // Restaurar precios mensuales por local (el orden del DOM coincide
+            // con el orden de creación de locales).
+            const rows = document.querySelectorAll('.mensual-local-precio');
+            (cartSnap._pending_locales_mensual || []).forEach((v, i) => {
+                if (rows[i] && v != null) rows[i].value = v;
+            });
+            // Re-recalcular ahora que todo está en su sitio
+            recalcularCarrito();
+            recalcularMensual();
+        }
 
         // Si las credenciales están vacías Y la ficha no las tiene en el backend
         // (ni siquiera vacías guardadas), generarlas a partir del Nombre Comercial.
@@ -2294,6 +2434,11 @@
         });
         document.querySelectorAll('input[type="tel"]').forEach(el => {
             el.addEventListener('blur', () => validarTelefonoBlur(el));
+        });
+        // Al pulsar un módulo manualmente quitamos el marcador data-auto
+        // para que sincronizarModulos() no lo desmarque al cambiar el carrito.
+        document.querySelectorAll('input[name="modulo"]').forEach(cb => {
+            cb.addEventListener('click', () => { delete cb.dataset.auto; });
         });
     });
 
