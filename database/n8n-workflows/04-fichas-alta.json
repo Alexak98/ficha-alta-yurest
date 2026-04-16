@@ -204,7 +204,8 @@
           "name": "Supabase Yurest"
         }
       },
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -241,7 +242,8 @@
           "name": "Supabase Yurest"
         }
       },
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -278,7 +280,8 @@
           "name": "Supabase Yurest"
         }
       },
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "continueOnFail": true
     },
     {
       "parameters": {
