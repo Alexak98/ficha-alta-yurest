@@ -143,7 +143,7 @@
                 </div>
                 <div class="form-group">
                     <label for="cif">CIF / NIF</label>
-                    <input type="text" id="cif" placeholder="A00000000">
+                    <input type="text" id="cif" placeholder="A00000000 o 12345678A" maxlength="9" oninput="onCIFInput(this)" onblur="validarCIFBlur(this)">
                 </div>
 
                 <div class="form-group col-6">
@@ -222,7 +222,7 @@
                 </div>
                 <div class="form-group col-4">
                     <label for="firm_dni">DNI</label>
-                    <input type="text" id="firm_dni" placeholder="12345678A">
+                    <input type="text" id="firm_dni" placeholder="12345678A" maxlength="9" oninput="onDNIInput(this)" onblur="validarDNIBlur(this)">
                 </div>
                 <div class="form-group col-4">
                     <label for="firm_puesto">Puesto</label>
@@ -315,12 +315,95 @@
     function esCP(v) {
         return !v || /^[0-9]{5}$/.test(v);
     }
+    // Validador CIF/NIF/DNI/NIE con dígito de control.
+    function esCIFValido(v) {
+        v = (v || '').toUpperCase().trim();
+        if (!/^[A-Z0-9][0-9]{7}[A-Z0-9]$/.test(v)) return false;
+        // DNI: 8 dígitos + letra
+        if (/^[0-9]{8}[A-Z]$/.test(v)) {
+            const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+            const num = parseInt(v.slice(0, 8), 10);
+            return v[8] === letras[num % 23];
+        }
+        // NIE: X/Y/Z + 7 dígitos + letra
+        if (/^[XYZ][0-9]{7}[A-Z]$/.test(v)) {
+            const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+            const primerDigito = { X: '0', Y: '1', Z: '2' }[v[0]];
+            const num = parseInt(primerDigito + v.slice(1, 8), 10);
+            return v[8] === letras[num % 23];
+        }
+        // CIF: letra + 7 dígitos + letra/dígito
+        if (/^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(v)) {
+            const digits = v.slice(1, 8);
+            let sumaPar = 0, sumaImpar = 0;
+            for (let i = 0; i < 7; i++) {
+                const n = parseInt(digits[i], 10);
+                if (i % 2 === 0) {
+                    const doble = n * 2;
+                    sumaImpar += Math.floor(doble / 10) + (doble % 10);
+                } else {
+                    sumaPar += n;
+                }
+            }
+            const suma = sumaPar + sumaImpar;
+            const unidad = (10 - (suma % 10)) % 10;
+            const letraControl = 'JABCDEFGHI'[unidad];
+            const control = v[8];
+            if ('KPQRSNW'.indexOf(v[0]) !== -1) return control === letraControl;
+            return control === String(unidad) || control === letraControl;
+        }
+        return false;
+    }
+    // Compatibilidad: acepta vacío; si hay valor debe ser CIF/NIF/NIE válido
     function esCIF(v) {
-        // Básico: NIF/NIE/CIF españoles. No exhaustivo, solo forma.
-        return !v || /^[A-Z0-9][0-9]{7}[A-Z0-9]$/i.test(v);
+        return !v || esCIFValido(v);
+    }
+    // DNI o NIE (para el firmante, no CIF)
+    function esDNIValido(v) {
+        v = (v || '').toUpperCase().trim();
+        const isDNI = /^[0-9]{8}[A-Z]$/.test(v);
+        const isNIE = /^[XYZ][0-9]{7}[A-Z]$/.test(v);
+        if (!isDNI && !isNIE) return false;
+        const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+        let num;
+        if (isDNI) {
+            num = parseInt(v.slice(0, 8), 10);
+        } else {
+            const primerDigito = { X: '0', Y: '1', Z: '2' }[v[0]];
+            num = parseInt(primerDigito + v.slice(1, 8), 10);
+        }
+        return v[v.length - 1] === letras[num % 23];
+    }
+    function esDNI(v) {
+        return !v || esDNIValido(v);
     }
     function esTelefono(v) {
         return !v || /^[+\d\s().-]{6,20}$/.test(v);
+    }
+
+    // ── Handlers real-time para CIF y DNI ─────────────────────────────────────
+    // Fuerza mayúsculas mientras se teclea y marca inválido en tiempo real.
+    function onCIFInput(input) {
+        input.value = input.value.toUpperCase();
+        const v = input.value.trim();
+        if (v && !esCIFValido(v)) input.classList.add('input-invalid');
+        else input.classList.remove('input-invalid');
+    }
+    function validarCIFBlur(input) {
+        const v = input.value.trim();
+        if (v && !esCIFValido(v)) input.classList.add('input-invalid');
+        else input.classList.remove('input-invalid');
+    }
+    function onDNIInput(input) {
+        input.value = input.value.toUpperCase();
+        const v = input.value.trim();
+        if (v && !esDNIValido(v)) input.classList.add('input-invalid');
+        else input.classList.remove('input-invalid');
+    }
+    function validarDNIBlur(input) {
+        const v = input.value.trim();
+        if (v && !esDNIValido(v)) input.classList.add('input-invalid');
+        else input.classList.remove('input-invalid');
     }
 
     // ── Leer parámetros de la URL ─────────────────────────────────────────────
@@ -368,6 +451,7 @@
         const validaciones = [
             ['cp',            esCP,        'CP inválido (5 dígitos).'],
             ['cif',           esCIF,       'CIF/NIF inválido.'],
+            ['firm_dni',      esDNI,       'DNI/NIE del firmante inválido.'],
             ['email',         esEmail,     'Email de contacto inválido.'],
             ['email_factura', esEmail,     'Email de facturación inválido.'],
             ['email_cc',      esEmail,     'Email CC inválido.'],
