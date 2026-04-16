@@ -2010,7 +2010,10 @@
 
             // En modo edición incluir el ID para que n8n actualice la fila correcta.
             // En alta nueva el ID lo genera Supabase (UUID) y numero_ficha (SERIAL).
-            if (_editId) {
+            // Rechazamos también strings "undefined"/"null" (además del regex de
+            // _esEditIdValido) para evitar que un bug aguas arriba acabe en
+            // Supabase con "invalid input syntax for type uuid: \"undefined\"".
+            if (_editId && _editId !== 'undefined' && _editId !== 'null') {
                 if (!_esEditIdValido(_editId)) {
                     showStatus('ID de ficha en edición no válido. Vuelve al listado y selecciona la ficha de nuevo.', 'error');
                     btn.disabled = false;
@@ -2136,8 +2139,14 @@
     let _editId = null;
 
     function cargarModoEdicion(f) {
-        // Acepta tanto fichas (ID) como solicitudes (ID Solicitud)
-        _editId = f['ID'] || f['id'] || f['ID Solicitud'] || f['id_solicitud'] || null;
+        // Acepta tanto fichas (ID) como solicitudes (ID Solicitud).
+        // Saneamos: descartamos strings "undefined"/"null" que podrían
+        // venir de un f['ID'] = String(undefined) aguas arriba — si se
+        // colaran, Postgres rompería con "invalid input syntax for type
+        // uuid: \"undefined\"" al hacer UPDATE.
+        const rawId = f['ID'] ?? f['id'] ?? f['ID Solicitud'] ?? f['id_solicitud'];
+        const strId = (rawId == null) ? '' : String(rawId).trim();
+        _editId = (!strId || strId === 'undefined' || strId === 'null') ? null : strId;
 
         // Marcamos en el body el id que esta pestaña está editando. Si otra
         // pestaña abre otra ficha, sobrescribirá sessionStorage; al guardar
