@@ -108,7 +108,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json.body;\nconst accion = d.accion || 'crear';\n\nconst row = {\n  cliente: d.cliente_nombre || '',\n  motivo: d.motivo || d.motivo_id || '',\n  fecha_baja: d.fecha_baja ? new Date(d.fecha_baja).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],\n  implementador: d.implementador || '',\n  tipo_cliente: d.tipo || '',\n  datos: JSON.stringify({\n    tipo: d.tipo || '',\n    cliente_id: d.cliente_id || '',\n    cliente_nombre: d.cliente_nombre || '',\n    cliente_denom: d.cliente_denom || '',\n    cliente_cif: d.cliente_cif || '',\n    cliente_email: d.cliente_email || '',\n    motivo_id: d.motivo_id || '',\n    motivo: d.motivo || '',\n    local: d.local || null,\n    modulos: d.modulos || [],\n    mrr: d.mrr || null,\n    fecha_efecto: d.fecha_efecto || null\n  })\n};\n\n// Si es editar, necesitamos buscar por cliente_id + fecha para actualizar\nif (accion === 'editar' && d.cliente_id) {\n  row._accion = 'editar';\n  row._cliente_id = d.cliente_id;\n  row._fecha_baja_original = d.fecha_baja;\n}\n\n// Vincular con ficha si hay cliente_id\nif (d.cliente_id) row.ficha_id = d.cliente_id;\n\nreturn [{ json: { row, accion } }];"
+        "jsCode": "const d = $input.first().json.body;\nconst accion = d.accion || 'crear';\n\nconst row = {\n  cliente: d.cliente_nombre || '',\n  motivo: d.motivo || d.motivo_id || '',\n  fecha_baja: d.fecha_baja ? new Date(d.fecha_baja).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],\n  implementador: d.implementador || '',\n  tipo_cliente: d.tipo || '',\n  datos: JSON.stringify({\n    tipo: d.tipo || '',\n    cliente_id: d.cliente_id || '',\n    cliente_nombre: d.cliente_nombre || '',\n    cliente_denom: d.cliente_denom || '',\n    cliente_cif: d.cliente_cif || '',\n    cliente_email: d.cliente_email || '',\n    motivo_id: d.motivo_id || '',\n    motivo: d.motivo || '',\n    local: d.local || null,\n    modulos: d.modulos || [],\n    mrr: d.mrr || null,\n    fecha_efecto: d.fecha_efecto || null\n  })\n};\n\n// Si es editar, preservar el id UUID de la fila existente en bajas\nconst rawId = d.id;\nconst cleanId = (rawId == null || rawId === 'undefined' || rawId === 'null' || String(rawId).trim() === '') ? null : rawId;\nif (accion === 'editar' && cleanId) {\n  row.id = cleanId;\n}\n\n// Vincular con ficha solo si cliente_id parece un UUID (evita fallar el cast)\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (d.cliente_id && UUID_RE.test(String(d.cliente_id))) row.ficha_id = d.cliente_id;\n\nreturn [{ json: { row, accion } }];"
       },
       "id": "prepare-baja",
       "name": "Preparar Baja",
@@ -150,7 +150,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\nreturn [{ json: row }];"
+        "jsCode": "const { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\ndelete row.id; // INSERT: dejar que Supabase genere el UUID\nreturn [{ json: row }];"
       },
       "id": "extract-insert-baja",
       "name": "Extraer INSERT",
@@ -185,7 +185,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Para editar, usar los datos del row\nconst { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\nreturn [{ json: row }];"
+        "jsCode": "// Para editar, usar los datos del row (incluye id UUID)\nconst { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\nreturn [{ json: row }];"
       },
       "id": "extract-update-baja",
       "name": "Extraer UPDATE",
@@ -284,7 +284,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json.body;\n// Buscar la baja por datos del cliente\nreturn [{ json: { \n  cliente: d.cliente_nombre || '',\n  cliente_id: d.cliente_id || '',\n  fecha_baja: d.fecha_baja || ''\n} }];"
+        "jsCode": "const d = $input.first().json.body;\nconst rawId = d.id;\nconst cleanId = (rawId == null || rawId === 'undefined' || rawId === 'null' || String(rawId).trim() === '') ? null : rawId;\nif (!cleanId) throw new Error('Falta el id UUID de la baja para borrar');\nreturn [{ json: { id: cleanId } }];"
       },
       "id": "prepare-borrar",
       "name": "Preparar Borrado",

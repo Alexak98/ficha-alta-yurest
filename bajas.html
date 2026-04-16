@@ -1970,6 +1970,7 @@ async function guardarEdicion() {
 
     const payload = {
         accion:         'editar',
+        id:             b.id,
         tipo:           b.tipo,
         cliente_id:     b.cliente_id,
         cliente_nombre: b.cliente_nombre,
@@ -2052,6 +2053,7 @@ async function ejecutarBorrado() {
             method: 'POST',
             body: JSON.stringify({
                 accion:         'borrar',
+                id:             b.id,
                 tipo:           b.tipo,
                 cliente_id:     b.cliente_id,
                 cliente_nombre: b.cliente_nombre,
