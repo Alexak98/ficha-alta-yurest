@@ -29,6 +29,7 @@
       "name": "GET Bajas",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [
         480,
         200
@@ -48,6 +49,7 @@
       "name": "Formatear GET",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         700,
         200
@@ -114,6 +116,7 @@
       "name": "Preparar Baja",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         480,
         480
@@ -156,6 +159,7 @@
       "name": "Extraer INSERT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         920,
         580
@@ -172,6 +176,7 @@
       "name": "INSERT Baja",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [
         1140,
         580
@@ -191,6 +196,7 @@
       "name": "Extraer UPDATE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         920,
         380
@@ -218,6 +224,7 @@
       "name": "UPDATE Baja",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [
         1140,
         380
@@ -290,6 +297,7 @@
       "name": "Preparar Borrado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         480,
         760
@@ -316,6 +324,7 @@
       "name": "DELETE Baja",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [
         700,
         760

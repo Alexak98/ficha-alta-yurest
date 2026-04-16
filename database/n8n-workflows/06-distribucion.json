@@ -26,6 +26,7 @@
       "name": "Preparar Distribución",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         480,
         300
@@ -39,6 +40,7 @@
       "name": "Map Update Ficha",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         700,
         300
@@ -66,6 +68,7 @@
       "name": "UPDATE Ficha Implementador",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [
         920,
         300
@@ -85,6 +88,7 @@
       "name": "Map Insert Distribución",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "alwaysOutputData": true,
       "position": [
         1140,
         300
@@ -101,6 +105,7 @@
       "name": "INSERT Distribución",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
+      "alwaysOutputData": true,
       "position": [
         1360,
         300
