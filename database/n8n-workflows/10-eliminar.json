@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normaliza el payload y DECIDE qué tabla tocar en función de 'entity'.\n// Esto evita el bug de borrado cruzado: antes la misma request borraba\n// en fichas_alta Y solicitudes en paralelo usando el mismo id.\nconst raw = $input.first().json;\nconst query = raw.query || {};\nconst body = raw.body || {};\n\nconst id = query.id || body.row_number || body.id || body.ID || '';\nif (!id) throw new Error('Falta ID para eliminar');\n\n// entity: 'ficha' | 'solicitud' — requerido para decidir tabla\nconst entity = (query.entity || body.entity || '').toLowerCase();\nif (!['ficha', 'solicitud'].includes(entity)) {\n  throw new Error(\"Falta o es inválido el campo 'entity' (debe ser 'ficha' o 'solicitud').\");\n}\n\nreturn [{ json: { id, entity } }];"
+        "jsCode": "// Normaliza el payload. 'entity' ya no se usa para decidir rama porque\n// los IDs son UUIDs únicos entre fichas_alta y solicitudes: hacemos el\n// soft-delete en AMBAS tablas y solo la que tenga el UUID se actualiza.\n// Así eliminamos la dependencia de un IF node que no estaba enrutando\n// correctamente en n8n v2 y llevaba el request al branch equivocado.\nconst raw = $input.first().json;\nconst query = raw.query || {};\nconst body = raw.body || {};\n\nconst id = query.id || body.row_number || body.id || body.ID || '';\nif (!id) throw new Error('Falta ID para eliminar');\n\nconst entity = (query.entity || body.entity || '').toLowerCase();\n// 'entity' se acepta pero es informativo (devuelto en la respuesta).\n// Sin validación estricta: si viene algo raro, seguimos adelante.\n\nreturn [{ json: { id, entity: entity || 'desconocido' } }];"
       },
       "id": "prepare-del",
       "name": "Preparar DELETE",
@@ -31,36 +31,6 @@
         300
       ],
       "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": false,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.entity }}",
-              "rightValue": "ficha",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "if-entity",
-      "name": "¿Es ficha?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        700,
-        300
-      ]
     },
     {
       "parameters": {
@@ -93,8 +63,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        920,
-        200
+        700,
+        300
       ],
       "credentials": {
         "supabaseApi": {
@@ -102,6 +72,20 @@
           "name": "Supabase Yurest"
         }
       },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recupera id/entity del paso Preparar DELETE (el Supabase update\n// anterior reemplaza $json con la fila actualizada o un objeto vacío).\nconst prep = $('Preparar DELETE').first().json;\nreturn [{ json: { id: prep.id, entity: prep.entity } }];"
+      },
+      "id": "restore-ctx-1",
+      "name": "Recuperar contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        300
+      ],
       "alwaysOutputData": true
     },
     {
@@ -135,8 +119,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        920,
-        400
+        1140,
+        300
       ],
       "credentials": {
         "supabaseApi": {
@@ -149,7 +133,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, entity: $json.entity || 'ficha' }) }}",
+        "responseBody": "={{ JSON.stringify({ success: true, entity: $('Preparar DELETE').first().json.entity, id: $('Preparar DELETE').first().json.id }) }}",
         "options": {
           "responseHeaders": {
             "entries": [
@@ -178,7 +162,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1140,
+        1360,
         300
       ]
     }
@@ -199,25 +183,7 @@
       "main": [
         [
           {
-            "node": "¿Es ficha?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Es ficha?": {
-      "main": [
-        [
-          {
             "node": "Soft-delete Ficha",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Soft-delete Solicitud",
             "type": "main",
             "index": 0
           }
@@ -228,7 +194,18 @@
       "main": [
         [
           {
-            "node": "Respond OK",
+            "node": "Recuperar contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recuperar contexto": {
+      "main": [
+        [
+          {
+            "node": "Soft-delete Solicitud",
             "type": "main",
             "index": 0
           }
