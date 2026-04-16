@@ -286,7 +286,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "responseBody": "={{ JSON.stringify($json) }}",
         "options": {
           "responseHeaders": {
             "entries": [
@@ -316,7 +316,7 @@
       "typeVersion": 1.1,
       "position": [
         1800,
-        480
+        580
       ]
     }
   ],
@@ -414,7 +414,7 @@
             "index": 0
           },
           {
-            "node": "respond-post-altas",
+            "node": "Respond Guardar OK",
             "type": "main",
             "index": 0
           }
@@ -441,7 +441,7 @@
             "index": 0
           },
           {
-            "node": "respond-post-altas",
+            "node": "Respond Guardar OK",
             "type": "main",
             "index": 0
           }
