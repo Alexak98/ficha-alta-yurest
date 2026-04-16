@@ -65,7 +65,7 @@
             "entries": [
               {
                 "name": "Access-Control-Allow-Origin",
-                "value": "={{ ['https://alexak98.github.io', 'http://127.0.0.1:8090', 'http://localhost:8090'].includes($request.headers.origin) ? $request.headers.origin : 'https://alexak98.github.io' }}"
+                "value": "*"
               },
               {
                 "name": "Access-Control-Allow-Methods",
