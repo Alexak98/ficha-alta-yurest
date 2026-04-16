@@ -111,7 +111,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json.body;\n\n// El frontend envía datos con claves españolas\nconst row = {\n  tipo: d['Tipo Cliente'] || d.tipo || '',\n  estado: d['Estado'] || d.estado || 'pendiente',\n  notas: d['email_body'] || d.notas || '',\n  datos: JSON.stringify(d)\n};\n\nreturn [{ json: row }];"
+        "jsCode": "const d = $input.first().json.body;\n\n// Normalizar estado al set permitido por la CHECK constraint en prod\n// (solo lowercase: 'pendiente','en_progreso','completado'). El frontend\n// envía 'Pendiente' con capital — si pasara tal cual, Supabase rechaza.\nconst raw = String(d['Estado'] || d.estado || 'pendiente').toLowerCase().trim();\nlet estado = 'pendiente';\nif (raw === 'completado' || raw === 'completada' || raw.startsWith('rellenad')) estado = 'completado';\nelse if (raw === 'en_progreso' || raw === 'en progreso') estado = 'en_progreso';\n\nconst row = {\n  tipo: d['Tipo Cliente'] || d.tipo || '',\n  estado: estado,\n  notas: d['email_body'] || d.notas || '',\n  datos: JSON.stringify(d)\n};\n\nreturn [{ json: row }];"
       },
       "id": "prepare-sol",
       "name": "Preparar Solicitud",
