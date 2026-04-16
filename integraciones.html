@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Integraciones - Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth();</script>
     <style>
         * { margin:0;padding:0;box-sizing:border-box }
         body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b }
@@ -366,7 +368,7 @@
 
 <!-- Header -->
 <div class="page-header">
-    <button class="btn-menu" onclick="openSidebar()">
+    <button class="btn-menu" onclick="openSidebar()" title="Menú" aria-label="Abrir menú lateral">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
@@ -419,22 +421,13 @@
         document.getElementById('sidebar').classList.remove('open');
         document.getElementById('sidebar-overlay').classList.remove('open');
     }
-    function cerrarSesion() {
-        sessionStorage.clear();
-        window.location.replace('login.html');
-    }
+    function cerrarSesion() { YurestConfig.cerrarSesion(); }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
 
-    // ── Auth ───────────────────────────────────────────────────────────────
-    (function checkAuth() {
-        const session = sessionStorage.getItem('yurest_auth');
-        if (!session) window.location.replace('login.html');
-    })();
-
     // ── Config ─────────────────────────────────────────────────────────────
-    const ASANA_PROJECT_ID = '1207920061546505';
-    const WEBHOOK_ASANA = 'https://n8n-soporte.data.yurest.dev/webhook/asana/tasks';
-    const WEBHOOK_ASANA_STORIES = 'https://n8n-soporte.data.yurest.dev/webhook/asana/task/stories';
+    const ASANA_PROJECT_ID      = '1207920061546505';
+    const WEBHOOK_ASANA         = YurestConfig.ENDPOINTS.asanaTasks;
+    const WEBHOOK_ASANA_STORIES = YurestConfig.ENDPOINTS.asanaStories;
 
     // Cache de comentarios por taskId
     const commentsCache = {};
@@ -472,9 +465,8 @@
         return '';
     }
 
-    function esc(s) {
-        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+    function esc(s) { return YurestConfig.escHtml(s); }
+    function escJs(s) { return YurestConfig.escJsInAttr(s); }
 
     function formatFecha(v) {
         if (!v) return '';
@@ -512,12 +504,7 @@
         return           { key: 'critical', label: '+ de 2 meses',      short: `${Math.round(dias/30*10)/10}m` };
     }
 
-    function getAuthHeaders() {
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-        const headers = { 'Content-Type': 'application/json' };
-        if (session.basicAuth) headers['Authorization'] = 'Basic ' + session.basicAuth;
-        return headers;
-    }
+    const getAuthHeaders = () => YurestConfig.getAuthHeaders();
 
     // Fetch del último comentario de una tarea (con cache)
     async function fetchLastComment(taskId) {
@@ -591,10 +578,11 @@
             }
             renderTareas(tasks);
         } catch (err) {
+            console.warn('[integraciones] error:', err);
             loading.style.display = 'none';
             empty.style.display = '';
             document.getElementById('empty-msg').textContent =
-                'No se pudieron cargar las tareas: ' + err.message;
+                'No se pudieron cargar las tareas. Revisa la conexión y vuelve a intentarlo.';
         }
     }
 
@@ -816,7 +804,7 @@
                 </button>
                 ${tpvNames.map(tpv => `
                     <button class="chip-filter ${filtrosTPV.has(tpv) ? 'active' : ''}"
-                            onclick="toggleFiltroTPV('${esc(tpv).replace(/'/g, "\\'")}')">
+                            onclick="toggleFiltroTPV('${escJs(tpv)}')">
                         ${esc(tpv)} <span class="chip-count">${countsByTPV[tpv]}</span>
                     </button>
                 `).join('')}

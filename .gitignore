@@ -1,2 +1,28 @@
+# Sistema
 .DS_Store
+Thumbs.db
+*.log
+
+# Entorno
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Dependencias
+node_modules/
+
+# Editores
 .claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporales
+tmp/
+.cache/
+dist/
+build/

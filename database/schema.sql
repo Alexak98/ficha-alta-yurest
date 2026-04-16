@@ -1,6 +1,14 @@
 -- =============================================
--- YUREST GESTOR - PostgreSQL Schema para Supabase
--- Versión 2.0 - Completa y corregida
+-- YUREST GESTOR - PostgreSQL Schema (Supabase)
+-- Versión 3.0 - Endurecido para QA
+--
+-- Cambios principales vs 2.0:
+--   · Constraints CHECK en campos con dominio fijo (baja, cp, cif).
+--   · Soft-delete con columna deleted_at (evita CASCADE destructivo).
+--   · password_hash con CHECK de longitud mínima (bcrypt = 60 chars).
+--   · Índices adicionales para filtros habituales del front.
+--   · Índice GIN para búsqueda por módulos.
+--   · Políticas RLS preparadas para separar lectura anon y escritura service_role.
 -- =============================================
 
 -- Extensiones
@@ -23,12 +31,12 @@ CREATE TABLE fichas_alta (
     email TEXT,
     email_factura TEXT,
     email_cc TEXT,
-    tipo_cliente TEXT, -- 'lite', 'planes', 'corporate'
+    tipo_cliente TEXT CHECK (tipo_cliente IS NULL OR tipo_cliente IN ('lite', 'planes', 'corporate')),
 
     -- Direccion
     calle TEXT,
     numero TEXT,
-    cp TEXT,
+    cp TEXT CHECK (cp IS NULL OR cp ~ '^[0-9]{5}$'),
     municipio TEXT,
     provincia TEXT,
 
@@ -47,7 +55,7 @@ CREATE TABLE fichas_alta (
     firm_puesto TEXT,
 
     -- Servicios
-    firmas_contratadas TEXT, -- '100', '200', '300' o vacío
+    firmas_contratadas TEXT CHECK (firmas_contratadas IS NULL OR firmas_contratadas IN ('', '100', '200', '300')),
     ocr_activo BOOLEAN DEFAULT false,
     lite BOOLEAN DEFAULT false,
 
@@ -63,7 +71,7 @@ CREATE TABLE fichas_alta (
     -- Dirección de entrega (para clientes Lite)
     entrega_calle TEXT,
     entrega_numero TEXT,
-    entrega_cp TEXT,
+    entrega_cp TEXT CHECK (entrega_cp IS NULL OR entrega_cp ~ '^[0-9]{5}$'),
     entrega_municipio TEXT,
     entrega_provincia TEXT,
 
@@ -106,13 +114,18 @@ CREATE TABLE fichas_alta (
     cred_yurest TEXT,
 
     -- Otros
-    paquetes_carrito JSONB DEFAULT '[]', -- items del carrito seleccionados
+    paquetes_carrito JSONB DEFAULT '[]',
     comentarios TEXT,
     implementador TEXT,
-    baja TEXT DEFAULT 'No', -- 'No' o 'Sí'
+
+    -- Indicador de baja (preferido booleano; conservamos 'No'/'Sí' por compat)
+    baja TEXT DEFAULT 'No' CHECK (baja IN ('No', 'Sí', 'Si')),
 
     -- Estado del alta
-    estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'completada', 'en_proceso', 'rellenado')),
+    estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'completada', 'en_proceso', 'rellenado', 'Rellenado')),
+
+    -- Soft-delete
+    deleted_at TIMESTAMPTZ,
 
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -124,13 +137,13 @@ CREATE TABLE fichas_alta (
 -- =============================================
 CREATE TABLE locales (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ficha_id UUID NOT NULL REFERENCES fichas_alta(id) ON DELETE CASCADE,
+    ficha_id UUID NOT NULL REFERENCES fichas_alta(id) ON DELETE RESTRICT,
 
     nombre TEXT NOT NULL,
     email TEXT,
     calle TEXT,
     numero TEXT,
-    cp TEXT,
+    cp TEXT CHECK (cp IS NULL OR cp ~ '^[0-9]{5}$'),
 
     -- Datos societarios del local
     sociedad_cif TEXT,
@@ -144,6 +157,7 @@ CREATE TABLE locales (
     -- Mensualidad del local
     mensualidad DECIMAL(10,2) DEFAULT 0,
 
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -171,7 +185,7 @@ CREATE TABLE proyectos (
 
     cliente TEXT NOT NULL,
     implementador TEXT NOT NULL,
-    tipo TEXT NOT NULL, -- 'Planes', 'Corporate sin cocina', 'Corporate con cocina'
+    tipo TEXT NOT NULL CHECK (tipo IN ('Planes', 'Corporate sin cocina', 'Corporate con cocina')),
     estado TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo', 'completado', 'pausado')),
     fecha_inicio DATE,
     ultima_actividad DATE,
@@ -191,35 +205,18 @@ CREATE TABLE proyectos (
 
     -- Contactos del proyecto (array JSONB)
     contactos JSONB DEFAULT '[]',
-    -- [{ "nombre": "", "apellidos": "", "email": "", "puesto": "", "telefono": "" }]
 
     -- Participantes (emails)
     participantes TEXT[] DEFAULT '{}',
 
     -- Adjuntos (metadatos, archivos en Supabase Storage)
     adjuntos JSONB DEFAULT '[]',
-    -- [{ "id": "", "nombre": "", "tipo": "", "size": 0, "url": "", "fecha": "" }]
 
     -- Secciones con tareas (estructura completa del proyecto)
     secciones JSONB NOT NULL DEFAULT '[]',
-    -- [{
-    --   "nombre": "Sección",
-    --   "tareas": [{
-    --     "id": "abc123",
-    --     "nombre": "Tarea",
-    --     "completada": false,
-    --     "show": null,          -- null | "Show" | "No Show"
-    --     "fechaEntrega": null,  -- "YYYY-MM-DD"
-    --     "tiempoEstimado": null,-- minutos
-    --     "notas": "",
-    --     "subtareas": [{
-    --       "id": "def456",
-    --       "nombre": "Subtarea",
-    --       "completada": false,
-    --       "fechaEntrega": null
-    --     }]
-    --   }]
-    -- }]
+
+    -- Soft-delete
+    deleted_at TIMESTAMPTZ,
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -241,6 +238,7 @@ CREATE TABLE bajas (
     -- Datos adicionales flexibles
     datos JSONB DEFAULT '{}',
 
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -250,17 +248,18 @@ CREATE TABLE bajas (
 -- =============================================
 CREATE TABLE solicitudes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ficha_id UUID REFERENCES fichas_alta(id) ON DELETE CASCADE,
+    ficha_id UUID REFERENCES fichas_alta(id) ON DELETE SET NULL,
 
     tipo TEXT,
-    estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'en_progreso', 'completado')),
-    asignado_a TEXT, -- implementador
+    estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'en_progreso', 'completado', 'Rellenado', 'Pendiente')),
+    asignado_a TEXT,
 
     fecha_vencimiento DATE,
-    documentos JSONB DEFAULT '[]', -- [{ "nombre": "", "url": "" }]
+    documentos JSONB DEFAULT '[]',
     notas TEXT,
-    datos JSONB DEFAULT '{}', -- body completo de la solicitud
+    datos JSONB DEFAULT '{}',
 
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -271,9 +270,10 @@ CREATE TABLE solicitudes (
 CREATE TABLE distribucion (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     implementador TEXT NOT NULL,
-    ficha_id UUID REFERENCES fichas_alta(id) ON DELETE CASCADE,
+    ficha_id UUID REFERENCES fichas_alta(id) ON DELETE SET NULL,
     datos JSONB DEFAULT '{}',
 
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -283,7 +283,9 @@ CREATE TABLE distribucion (
 CREATE TABLE usuarios (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    -- Esperado: hash bcrypt (60 chars) o argon2.
+    -- Se rechaza cualquier valor demasiado corto (típicamente contraseñas en plano).
+    password_hash TEXT NOT NULL CHECK (length(password_hash) >= 40),
     nombre TEXT,
     rol TEXT DEFAULT 'user' CHECK (rol IN ('admin', 'user', 'implementador')),
     activo BOOLEAN DEFAULT true,
@@ -296,36 +298,43 @@ CREATE TABLE usuarios (
 -- =============================================
 
 -- fichas_alta
-CREATE INDEX idx_fichas_estado ON fichas_alta(estado);
-CREATE INDEX idx_fichas_tipo ON fichas_alta(tipo_cliente);
-CREATE INDEX idx_fichas_implementador ON fichas_alta(implementador);
-CREATE INDEX idx_fichas_comercial ON fichas_alta(comercial);
-CREATE INDEX idx_fichas_denominacion ON fichas_alta(denominacion);
-CREATE INDEX idx_fichas_cif ON fichas_alta(cif);
-CREATE INDEX idx_fichas_created ON fichas_alta(created_at DESC);
+CREATE INDEX idx_fichas_estado          ON fichas_alta(estado);
+CREATE INDEX idx_fichas_tipo            ON fichas_alta(tipo_cliente);
+CREATE INDEX idx_fichas_implementador   ON fichas_alta(implementador);
+CREATE INDEX idx_fichas_comercial       ON fichas_alta(comercial);
+CREATE INDEX idx_fichas_denominacion    ON fichas_alta(denominacion);
+CREATE INDEX idx_fichas_cif             ON fichas_alta(cif);
+CREATE INDEX idx_fichas_created         ON fichas_alta(created_at DESC);
+CREATE INDEX idx_fichas_updated         ON fichas_alta(updated_at DESC);
+CREATE INDEX idx_fichas_deleted         ON fichas_alta(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_fichas_modulos_gin     ON fichas_alta USING GIN (modulos);
 
 -- proyectos
-CREATE INDEX idx_proyectos_estado ON proyectos(estado);
-CREATE INDEX idx_proyectos_tipo ON proyectos(tipo);
-CREATE INDEX idx_proyectos_implementador ON proyectos(implementador);
-CREATE INDEX idx_proyectos_ficha ON proyectos(ficha_id);
-CREATE INDEX idx_proyectos_cliente ON proyectos(cliente);
-CREATE INDEX idx_proyectos_created ON proyectos(created_at DESC);
+CREATE INDEX idx_proyectos_estado         ON proyectos(estado);
+CREATE INDEX idx_proyectos_tipo           ON proyectos(tipo);
+CREATE INDEX idx_proyectos_implementador  ON proyectos(implementador);
+CREATE INDEX idx_proyectos_ficha          ON proyectos(ficha_id);
+CREATE INDEX idx_proyectos_cliente        ON proyectos(cliente);
+CREATE INDEX idx_proyectos_ultima_actv    ON proyectos(ultima_actividad DESC);
+CREATE INDEX idx_proyectos_created        ON proyectos(created_at DESC);
+CREATE INDEX idx_proyectos_deleted        ON proyectos(deleted_at) WHERE deleted_at IS NULL;
 
 -- bajas
-CREATE INDEX idx_bajas_ficha ON bajas(ficha_id);
-CREATE INDEX idx_bajas_fecha ON bajas(fecha_baja DESC);
+CREATE INDEX idx_bajas_ficha    ON bajas(ficha_id);
+CREATE INDEX idx_bajas_fecha    ON bajas(fecha_baja DESC);
+CREATE INDEX idx_bajas_cliente  ON bajas(cliente);
 
 -- solicitudes
-CREATE INDEX idx_solicitudes_ficha ON solicitudes(ficha_id);
-CREATE INDEX idx_solicitudes_estado ON solicitudes(estado);
+CREATE INDEX idx_solicitudes_ficha   ON solicitudes(ficha_id);
+CREATE INDEX idx_solicitudes_estado  ON solicitudes(estado);
+CREATE INDEX idx_solicitudes_created ON solicitudes(created_at DESC);
 
 -- locales
 CREATE INDEX idx_locales_ficha ON locales(ficha_id);
 
 -- distribucion
 CREATE INDEX idx_distribucion_implementador ON distribucion(implementador);
-CREATE INDEX idx_distribucion_ficha ON distribucion(ficha_id);
+CREATE INDEX idx_distribucion_ficha          ON distribucion(ficha_id);
 
 -- =============================================
 -- TRIGGER: actualizar updated_at automáticamente
@@ -338,41 +347,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_fichas_updated BEFORE UPDATE ON fichas_alta FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_proyectos_updated BEFORE UPDATE ON proyectos FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_plantillas_updated BEFORE UPDATE ON plantillas FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_bajas_updated BEFORE UPDATE ON bajas FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_solicitudes_updated BEFORE UPDATE ON solicitudes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_fichas_updated      BEFORE UPDATE ON fichas_alta  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_proyectos_updated   BEFORE UPDATE ON proyectos    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_plantillas_updated  BEFORE UPDATE ON plantillas   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_bajas_updated       BEFORE UPDATE ON bajas        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_solicitudes_updated BEFORE UPDATE ON solicitudes  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- =============================================
 -- ROW LEVEL SECURITY (RLS)
 -- =============================================
--- Habilitar RLS en todas las tablas
-ALTER TABLE fichas_alta ENABLE ROW LEVEL SECURITY;
-ALTER TABLE locales ENABLE ROW LEVEL SECURITY;
-ALTER TABLE plantillas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE proyectos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bajas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE solicitudes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fichas_alta  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE locales      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plantillas   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE proyectos    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bajas        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE solicitudes  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE distribucion ENABLE ROW LEVEL SECURITY;
-ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE usuarios     ENABLE ROW LEVEL SECURITY;
 
--- Política permisiva para service_role (n8n usa service_role key)
--- Estas políticas permiten acceso completo vía service_role
-CREATE POLICY "service_role_all" ON fichas_alta FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON locales FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON plantillas FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON proyectos FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON bajas FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON solicitudes FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON distribucion FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON usuarios FOR ALL USING (true) WITH CHECK (true);
+-- service_role (usado por n8n) mantiene acceso completo.
+CREATE POLICY "service_role_all" ON fichas_alta  FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all" ON locales      FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all" ON plantillas   FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all" ON proyectos    FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all" ON bajas        FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all" ON solicitudes  FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all" ON distribucion FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_role_all" ON usuarios     FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- Clave anónima: SIN acceso. Si se llega a filtrar no da lectura a nadie.
+-- (Por ausencia de políticas TO anon, RLS bloquea automáticamente.)
+-- Si en el futuro se necesita acceso de lectura limitado, añadir políticas
+-- explícitas TO anon con filtros USING (...) cuidadosos.
 
 -- =============================================
 -- DATOS INICIALES
 -- =============================================
 
--- Plantilla default
+-- Plantilla default (coincide con data.js del frontend)
 INSERT INTO plantillas (id, nombre, descripcion, secciones) VALUES (
     '00000000-0000-0000-0000-000000000001',
     'Default',
@@ -384,4 +396,5 @@ INSERT INTO plantillas (id, nombre, descripcion, secciones) VALUES (
         {"nombre": "Planificación de sesiones", "tareas": ["Planificacion", "Sesión de Bienvenida", "Modulo Compras", "Modulo Cocina", "Modulo Stock", "Modulo Financiero", "Modulo Checklist", "Modulo APPCC", "Modulo Auditorias", "Modulo Comunicación", "Modulo RRHH", "Modulo Cocina Produccion", "Modulo Almacén Central", "Modulo Gestor documental", "Módulo Analítica de ventas", "Módulo Dashboard dinamicos", "Módulo Firmas Digitales", "Sesiones Extra"]},
         {"nombre": "Módulos terminados de implementar", "tareas": []}
     ]'::jsonb
-);
+)
+ON CONFLICT (id) DO NOTHING;

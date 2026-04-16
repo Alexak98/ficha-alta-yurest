@@ -256,13 +256,12 @@
 
     </div>
 
+    <script src="config.js"></script>
     <script>
-        // Si ya hay sesión activa, redirigir directamente
-        if (sessionStorage.getItem('yurest_auth')) {
+        // Si ya hay sesión activa (no expirada), redirigir directamente
+        if (YurestConfig.getSession()) {
             window.location.replace('lista.html');
         }
-
-        const WEBHOOK_URL = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
 
         async function handleLogin(e) {
             e.preventDefault();
@@ -279,7 +278,7 @@
 
             try {
                 const basicAuth = btoa(user + ':' + pass);
-                const res = await fetch(WEBHOOK_URL, {
+                const res = await fetch(YurestConfig.ENDPOINTS.login, {
                     method: 'GET',
                     headers: { 'Authorization': 'Basic ' + basicAuth }
                 });
@@ -288,12 +287,11 @@
                     let data = {};
                     try { data = await res.json(); } catch (_) {}
 
-                    sessionStorage.setItem('yurest_auth', JSON.stringify({
+                    YurestConfig.setSession({
                         user,
                         token: data.token || data.access_token || 'authenticated',
-                        basicAuth: basicAuth,
-                        ts: Date.now()
-                    }));
+                        basicAuth: basicAuth
+                    });
 
                     const fichas = Array.isArray(data) ? data
                                  : Array.isArray(data.clientes) ? data.clientes

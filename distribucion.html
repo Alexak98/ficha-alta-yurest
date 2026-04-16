@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Distribución Implementadores - Yurest</title>
-    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth();</script>
     <link rel="stylesheet" href="style.css">
     <style>
         /* ── Sidebar ── */
@@ -626,9 +627,9 @@
         <div class="filter-chips" id="impl-chips">
             <button class="chip active" data-impl=""                  onclick="setFiltroImpl(this,'')">Todos <span class="chip-count" id="count-impl-todos">0</span></button>
             <button class="chip"        data-impl="Carlos Aparicio"   onclick="setFiltroImpl(this,'Carlos Aparicio')">Carlos Aparicio <span class="chip-count" id="count-impl-carlos">0</span></button>
-            <button class="chip"        data-impl="Hugo Zalazar"      onclick="setFiltroImpl(this,'Hugo Zalazar')">Hugo Zalazar <span class="chip-count" id="count-impl-hugo">0</span></button>
             <button class="chip"        data-impl="Mario Labrandero"  onclick="setFiltroImpl(this,'Mario Labrandero')">Mario Labrandero <span class="chip-count" id="count-impl-mario">0</span></button>
-            <button class="chip"        data-impl="Javier Feliu"      onclick="setFiltroImpl(this,'Javier Feliu')">Javier Feliu <span class="chip-count" id="count-impl-javier">0</span></button>
+            <button class="chip"        data-impl="Hugo Zalazar"      onclick="setFiltroImpl(this,'Hugo Zalazar')">Hugo Zalazar <span class="chip-count" id="count-impl-hugo">0</span></button>
+            <button class="chip"        data-impl="Rino Luigi"        onclick="setFiltroImpl(this,'Rino Luigi')">Rino Luigi <span class="chip-count" id="count-impl-rino">0</span></button>
         </div>
     </div>
 
@@ -698,9 +699,9 @@
     }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
 
-    const WEBHOOK_LOGIN           = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
-    const WEBHOOK_GUARDAR_DIST    = 'https://n8n-soporte.data.yurest.dev/webhook/6d3ed726-c86a-4b86-a2ae-7f07da9630a5';
-    const IMPLEMENTADORES         = ['Carlos Aparicio', 'Hugo Zalazar', 'Mario Labrandero', 'Javier Feliu'];
+    const WEBHOOK_LOGIN           = YurestConfig.ENDPOINTS.login;
+    const WEBHOOK_GUARDAR_DIST    = YurestConfig.ENDPOINTS.guardarDist;
+    const IMPLEMENTADORES         = YurestConfig.IMPLEMENTADORES;
 
     let todasFichas     = [];   // todas las rellenadas
     let fichasFiltradas = [];  // tras filtros
@@ -708,15 +709,10 @@
     let filtroImpl      = '';
     let filtroCocina    = '';
 
-    // ── Auth ────────────────────────────────────────────────────────────────────
-    function cerrarSesion() {
-        sessionStorage.clear();
-        window.location.replace('login.html');
-    }
+    function cerrarSesion() { YurestConfig.cerrarSesion(); }
 
-    function esc(str) {
-        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+    function esc(str) { return YurestConfig.escHtml(str); }
+    function escJs(str) { return YurestConfig.escJsInAttr(str); }
 
     function formatFecha(val) {
         if (!val) return '—';
@@ -756,15 +752,10 @@
 
     // ── Cargar fichas ───────────────────────────────────────────────────────────
     async function cargarFichas() {
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-
         // Siempre fetch fresco para tener los implementadores actualizados
         let fichas = [];
         try {
-            const res = await fetch(WEBHOOK_LOGIN, {
-                method: 'GET',
-                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
-            });
+            const res = await YurestConfig.apiFetch(WEBHOOK_LOGIN, { method: 'GET' });
             if (!res.ok) throw new Error('Error ' + res.status);
             let data = {};
             try { data = await res.json(); } catch (_) {}
@@ -869,9 +860,9 @@
 
         document.getElementById('count-impl-todos').textContent  = fichas.length;
         document.getElementById('count-impl-carlos').textContent = fichas.filter(f => (f['Implementador'] || '').trim() === 'Carlos Aparicio').length;
-        document.getElementById('count-impl-hugo').textContent   = fichas.filter(f => (f['Implementador'] || '').trim() === 'Hugo Zalazar').length;
         document.getElementById('count-impl-mario').textContent  = fichas.filter(f => (f['Implementador'] || '').trim() === 'Mario Labrandero').length;
-        document.getElementById('count-impl-javier').textContent = fichas.filter(f => (f['Implementador'] || '').trim() === 'Javier Feliu').length;
+        document.getElementById('count-impl-hugo').textContent   = fichas.filter(f => (f['Implementador'] || '').trim() === 'Hugo Zalazar').length;
+        document.getElementById('count-impl-rino').textContent   = fichas.filter(f => (f['Implementador'] || '').trim() === 'Rino Luigi').length;
     }
 
     // ── Filtros ──────────────────────────────────────────────────────────────────
@@ -1073,8 +1064,6 @@
     // ── Init ────────────────────────────────────────────────────────────────────
     cargarFichas();
 </script>
-<script>
-(async()=>{try{const b=document.getElementById('badge-sinasignar');if(!b)return;const s=JSON.parse(sessionStorage.getItem('yurest_auth')||'{}');const h=s.basicAuth?{'Authorization':'Basic '+s.basicAuth}:{};const r=await fetch('https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f',{headers:h});if(!r.ok)return;const d=await r.json();const raw=Array.isArray(d)?d:Array.isArray(d.clientes)?d.clientes:Array.isArray(d.data)?d.data:[];const p=JSON.parse(localStorage.getItem('gestor_proyectos_v3')||'[]');const ex=new Set(p.map(x=>x.cliente.toLowerCase().trim()));const c=raw.filter(a=>{const n=((a['Denominación Social']||a['Denominacion Social']||a.denominacion||a['Nombre Sociedad']||a['Nombre Comercial']||a.nombreComercial||a.Nombre||'')).toString().trim();return n&&!ex.has(n.toLowerCase().trim())}).length;b.textContent=c>0?c:''}catch(e){}})();
-</script>
+<script>YurestConfig.actualizarBadgeSinAsignar();</script>
 </body>
 </html>

@@ -1353,17 +1353,31 @@ function eliminarSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
     });
 }
 
+// Abre el modal-confirm en modo aviso (solo "Entendido"). Siempre deja el
+// botón en su estado por defecto al cerrar para no contaminar la próxima
+// confirmación de borrado.
 function mostrarAviso(mensaje) {
+    _configurarBotonConfirm('Entendido', 'btn btn-primary', () => cerrarModal('modal-confirm'));
     document.getElementById('confirm-mensaje').textContent = mensaje;
-    const btn = document.getElementById('confirm-btn');
-    btn.textContent = 'Entendido';
-    btn.className = 'btn btn-primary';
-    btn.onclick = () => {
-        cerrarModal('modal-confirm');
-        btn.textContent = 'Eliminar';
-        btn.className = 'btn btn-danger';
-    };
     abrirModal('modal-confirm');
+}
+
+// Helper interno para resetear el estado del botón del modal-confirm tras su uso.
+function _configurarBotonConfirm(texto, clase, onClick) {
+    const btn = document.getElementById('confirm-btn');
+    btn.textContent = texto;
+    btn.className = clase;
+    btn.onclick = (e) => {
+        try { onClick(e); } finally { _resetBotonConfirm(); }
+    };
+}
+
+function _resetBotonConfirm() {
+    const btn = document.getElementById('confirm-btn');
+    if (!btn) return;
+    btn.textContent = 'Eliminar';
+    btn.className = 'btn btn-danger';
+    btn.onclick = null;
 }
 
 function abrirModalTarea(proyectoId, seccionNombre, tareaId) {
@@ -1508,12 +1522,11 @@ function agregarTarea(proyectoId, seccionNombre) {
 // ==========================================
 
 function mostrarConfirmacion(mensaje, callback) {
-    document.getElementById('confirm-mensaje').textContent = mensaje;
-    const btn = document.getElementById('confirm-btn');
-    btn.onclick = () => {
+    _configurarBotonConfirm('Eliminar', 'btn btn-danger', () => {
         cerrarModal('modal-confirm');
         callback();
-    };
+    });
+    document.getElementById('confirm-mensaje').textContent = mensaje;
     abrirModal('modal-confirm');
 }
 
@@ -1521,18 +1534,28 @@ function mostrarConfirmacion(mensaje, callback) {
 // RESET
 // ==========================================
 
+// Botón peligroso: sobreescribe todos los proyectos con DATOS_EJEMPLO.
+// Se pide doble confirmación para evitar que alguien lo pulse por error
+// en producción (los datos de ejemplo son nombres de clientes ficticios).
 function resetearYRecargar() {
-    mostrarConfirmacion('¿Resetear todos los datos a los valores de ejemplo?', async () => {
-        showLoading();
-        try {
-            proyectos = await resetearDatosAPI();
-            refrescarTodo();
-            mostrarToast('Datos reseteados correctamente', 'success');
-        } catch (err) {
-            mostrarToast('Error al resetear: ' + err.message, 'error');
-        } finally {
-            hideLoading();
+    mostrarConfirmacion('¿Resetear todos los datos a los valores de ejemplo? Esta acción NO se puede deshacer.', () => {
+        const confirmacion = prompt('Escribe exactamente RESET para confirmar:');
+        if (confirmacion !== 'RESET') {
+            mostrarToast('Reset cancelado', 'warning');
+            return;
         }
+        (async () => {
+            showLoading();
+            try {
+                proyectos = await resetearDatosAPI();
+                refrescarTodo();
+                mostrarToast('Datos reseteados correctamente', 'success');
+            } catch (err) {
+                mostrarToast('Error al resetear: ' + err.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        })();
     });
 }
 
@@ -2020,8 +2043,8 @@ async function actualizarBadgeSinAsignar() {
             : Array.isArray(data.clientes) ? data.clientes
             : Array.isArray(data.data) ? data.data : [];
         const todas = raw.map(normalizarAlta).filter(a => a.nombre);
-        const nombresExistentes = new Set(proyectos.map(p => p.cliente.toLowerCase().trim()));
-        const sinAsignar = todas.filter(a => !nombresExistentes.has(a.nombre.toLowerCase().trim()));
+        const nombresExistentes = new Set(proyectos.map(p => normalizarNombreCliente(p.cliente)));
+        const sinAsignar = todas.filter(a => !nombresExistentes.has(normalizarNombreCliente(a.nombre)));
         badge.textContent = sinAsignar.length > 0 ? sinAsignar.length : '';
     } catch (_) {}
 }
@@ -2031,13 +2054,22 @@ async function actualizarBadgeSinAsignar() {
 // ==========================================
 
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    // Delegamos en config.js (escapa también < > " ')
+    return (window.YurestConfig && window.YurestConfig.escHtml)
+        ? window.YurestConfig.escHtml(text)
+        : String(text == null ? '' : text)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Escape para strings inyectados en literales JS dentro de atributos HTML
+// (p.ej. onclick="fn('...')"). Evita romper comillas + XSS por payload.
 function escapeAttr(text) {
-    return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return (window.YurestConfig && window.YurestConfig.escJsInAttr)
+        ? window.YurestConfig.escJsInAttr(text)
+        : String(text == null ? '' : text)
+            .replace(/\\/g, '\\\\').replace(/'/g, '\\x27').replace(/"/g, '&quot;')
+            .replace(/</g, '\\x3c').replace(/>/g, '\\x3e');
 }
 
 function capitalizar(text) {

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulario de Alta - Yurest</title>
-    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth();</script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -722,8 +723,7 @@
 
 <script>
     // ─── CONFIGURACIÓN ───────────────────────────────────────────────────────
-    const WEBHOOK_GUARDAR = 'https://n8n-soporte.data.yurest.dev/webhook/57e04029-bae4-4124-8c43-c535e831a147';
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz86m5MUshH_xzvH4JTITkMhm61P8M4KhOFJb35IlUjJccZfaFo-DSFvz6UEbcmN3Iq/exec';
+    const WEBHOOK_GUARDAR = YurestConfig.ENDPOINTS.guardarFicha;
     // ─────────────────────────────────────────────────────────────────────────
 
     function agregarLocal() {
@@ -1733,18 +1733,6 @@
         return true;
     }
 
-    async function getNextId() {
-        if (!APPS_SCRIPT_URL) return null;
-        try {
-            const res = await fetch(APPS_SCRIPT_URL + '?action=nextId');
-            if (!res.ok) return null;
-            const json = await res.json();
-            return (json.success && json.nextId) ? json.nextId : null;
-        } catch (e) {
-            return null;
-        }
-    }
-
     async function guardarCambios() {
         const data = collectFormData();
         if (!validateForm(data)) return;
@@ -1754,30 +1742,15 @@
         btn.textContent = 'Guardando...';
         showStatus('', '');
 
-        // Recuperar credenciales de la sesión activa
-        const _session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-        const _headers = { 'Content-Type': 'application/json' };
-        if (_session.basicAuth) _headers['Authorization'] = 'Basic ' + _session.basicAuth;
-
-        // En modo edición incluir el ID para que n8n actualice la fila correcta
+        // En modo edición incluir el ID para que n8n actualice la fila correcta.
+        // En alta nueva el ID lo genera Supabase (UUID) y numero_ficha (SERIAL).
         if (_editId) {
             data.id = _editId;
-        } else {
-            // Alta nueva: obtener el siguiente ID disponible desde Sheets
-            const nextId = await getNextId();
-            if (nextId === null) {
-                showStatus('No se pudo obtener el siguiente ID. Verifica APPS_SCRIPT_URL en la configuración.', 'error');
-                btn.disabled = false;
-                btn.textContent = 'Guardar';
-                return;
-            }
-            data.id = nextId;
         }
 
         try {
-            const res = await fetch(WEBHOOK_GUARDAR, {
+            const res = await YurestConfig.apiFetch(WEBHOOK_GUARDAR, {
                 method: 'POST',
-                headers: _headers,
                 body: JSON.stringify(data)
             });
 
@@ -2025,8 +1998,7 @@
 
     // ── Completar ficha desde solicitud (carga webhook al abrir) ──────────────
     async function completarFichaDesdeWebhook(solId) {
-        const WEBHOOK_COMPLETAR_FICHA = 'https://n8n-soporte.data.yurest.dev/webhook/5a304fcd-ae1d-49e6-92d1-c5a5e007bbfd';
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
+        const WEBHOOK_COMPLETAR_FICHA = YurestConfig.ENDPOINTS.completarFicha;
 
         // Mostrar spinner de carga en el formulario
         const statusEl = document.getElementById('status-msg');
@@ -2037,10 +2009,7 @@
 
         try {
             const url = WEBHOOK_COMPLETAR_FICHA + '?id=' + encodeURIComponent(solId);
-            const res = await fetch(url, {
-                method: 'GET',
-                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
-            });
+            const res = await YurestConfig.apiFetch(url, { method: 'GET' });
             if (!res.ok) throw new Error('Error ' + res.status);
             const data = await res.json();
             const ficha = Array.isArray(data) ? data[0] : data;

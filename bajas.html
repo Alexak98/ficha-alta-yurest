@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bajas - Yurest</title>
-    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth();</script>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
     <style>
         /* ── Sidebar ── */
@@ -1025,13 +1026,13 @@
 // ══════════════════════════════════════════════════════════════════
 //  CONFIG
 // ══════════════════════════════════════════════════════════════════
-const WEBHOOK_LOGIN   = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
-const WEBHOOK_BAJAS   = 'https://n8n-soporte.data.yurest.dev/webhook/84f094b2-9e55-448f-8ad9-f28721841873';
-const WEBHOOK_BAJA_CLIENTE = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
-const WEBHOOK_BAJA_LOCAL   = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
-const WEBHOOK_BAJA_MODULOS = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
-const WEBHOOK_BAJA_EDITAR  = 'https://n8n-soporte.data.yurest.dev/webhook/73ce8d34-9980-4c65-bd82-c0767f1483cf';
-const WEBHOOK_BAJA_BORRAR  = 'https://n8n-soporte.data.yurest.dev/webhook/95d5ed5d-1139-45b9-88c2-3066bc49e45b';
+const WEBHOOK_LOGIN        = YurestConfig.ENDPOINTS.login;
+const WEBHOOK_BAJAS        = YurestConfig.ENDPOINTS.bajas;
+const WEBHOOK_BAJA_CLIENTE = YurestConfig.ENDPOINTS.bajaCliente;
+const WEBHOOK_BAJA_LOCAL   = YurestConfig.ENDPOINTS.bajaLocal;
+const WEBHOOK_BAJA_MODULOS = YurestConfig.ENDPOINTS.bajaModulos;
+const WEBHOOK_BAJA_EDITAR  = YurestConfig.ENDPOINTS.bajaEditar;
+const WEBHOOK_BAJA_BORRAR  = YurestConfig.ENDPOINTS.bajaBorrar;
 
 const TODOS_MODULOS = [
     'Compras','Cocina','Stock','Analítica de Ventas','Finanzas',
@@ -1075,7 +1076,11 @@ const MOTIVOS_BAJA = [
 //  UTILS
 // ══════════════════════════════════════════════════════════════════
 function esc(s) {
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return YurestConfig.escHtml(s);
+}
+// Escape para literales JS dentro de atributos (onclick="fn('...')")
+function escJs(s) {
+    return YurestConfig.escJsInAttr(s);
 }
 function formatFecha(v) {
     if (!v) return '—';
@@ -1083,7 +1088,7 @@ function formatFecha(v) {
     if (isNaN(d)) return String(v);
     return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
 }
-function cerrarSesion() { sessionStorage.clear(); window.location.replace('login.html'); }
+function cerrarSesion() { YurestConfig.cerrarSesion(); }
 
 // ══════════════════════════════════════════════════════════════════
 //  SIDEBAR
@@ -1106,12 +1111,8 @@ async function cargarBajas() {
         renderBajas();
         return;
     }
-    const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
     try {
-        const res = await fetch(WEBHOOK_BAJAS, {
-            method: 'GET',
-            headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
-        });
+        const res = await YurestConfig.apiFetch(WEBHOOK_BAJAS, { method: 'GET' });
         if (!res.ok) throw new Error('Error ' + res.status);
         let data = {};
         try { data = await res.json(); } catch(_) {}
@@ -1119,8 +1120,10 @@ async function cargarBajas() {
                    : Array.isArray(data.bajas) ? data.bajas : [];
         renderBajas();
     } catch(err) {
+        // Mostramos un mensaje genérico al usuario y dejamos el detalle en consola.
+        console.warn('[bajas] error al cargar:', err);
         document.getElementById('loading-state').innerHTML =
-            `<p style="color:#dc2626;">Error al cargar bajas: ${esc(err.message)}</p>`;
+            `<p style="color:#dc2626;">No se pudieron cargar las bajas. Intenta recargar.</p>`;
     }
 }
 
@@ -1323,12 +1326,8 @@ function renderTabla() {
 // ══════════════════════════════════════════════════════════════════
 async function cargarClientes() {
     if (todosClientes.length) return; // ya cargados
-    const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
     try {
-        const res = await fetch(WEBHOOK_LOGIN, {
-            method: 'GET',
-            headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
-        });
+        const res = await YurestConfig.apiFetch(WEBHOOK_LOGIN, { method: 'GET' });
         if (!res.ok) throw new Error('Error ' + res.status);
         let data = {};
         try { data = await res.json(); } catch(_) {}
@@ -1461,7 +1460,7 @@ function renderModalPaso() {
             </span>
             <div class="motivo-grid">
                 ${MOTIVOS_BAJA.map(mv => `
-                <div class="motivo-card ${mMotivo===mv.id?'selected':''}" onclick="selMotivo('${mv.id}', this)">
+                <div class="motivo-card ${mMotivo===mv.id?'selected':''}" onclick="selMotivo('${escJs(mv.id)}', this)">
                     <span class="motivo-icon">${mv.icon}</span>
                     <span class="motivo-label">${esc(mv.label)}</span>
                 </div>`).join('')}
@@ -1600,7 +1599,7 @@ function renderModalPaso() {
             </span>
             <div class="modulos-grid">
                 ${TODOS_MODULOS.map(m => `
-                <label class="modulo-item ${mModulos.has(m)?'checked':''}" onclick="toggleMod('${m.replace(/'/g,"\\'")}', this)">
+                <label class="modulo-item ${mModulos.has(m)?'checked':''}" onclick="toggleMod('${escJs(m)}', this)">
                     <input type="checkbox" ${mModulos.has(m)?'checked':''}>
                     <div class="mcheck"></div>
                     <span class="modulo-item-name">${esc(m)}</span>
@@ -1854,7 +1853,7 @@ function editarBaja(idx) {
             <div class="edit-modulos-grid" id="edit-modulos-grid">
                 ${TODOS_MODULOS.map(m => `
                 <span class="edit-mod-item ${_editModulos.has(m) ? 'checked' : ''}"
-                      onclick="toggleEditMod('${m.replace(/'/g,"\\'")}'  , this)">${esc(m)}</span>`
+                      onclick="toggleEditMod('${escJs(m)}', this)">${esc(m)}</span>`
                 ).join('')}
             </div>
         </div>` : '';
@@ -1928,10 +1927,8 @@ async function guardarEdicion() {
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando…'; }
 
     try {
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-        const res = await fetch(WEBHOOK_BAJA_EDITAR, {
+        const res = await YurestConfig.apiFetch(WEBHOOK_BAJA_EDITAR, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
             body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('Error ' + res.status);
@@ -1975,10 +1972,8 @@ async function ejecutarBorrado() {
     if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Eliminando…'; }
 
     try {
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-        const res = await fetch(WEBHOOK_BAJA_BORRAR, {
+        const res = await YurestConfig.apiFetch(WEBHOOK_BAJA_BORRAR, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
             body: JSON.stringify({
                 accion:         'borrar',
                 tipo:           b.tipo,
@@ -2053,8 +2048,6 @@ function initFechaEfectoPicker() {
 cargarBajas();
 initFilterDatePickers();
 </script>
-<script>
-(async()=>{try{const b=document.getElementById('badge-sinasignar');if(!b)return;const s=JSON.parse(sessionStorage.getItem('yurest_auth')||'{}');const h=s.basicAuth?{'Authorization':'Basic '+s.basicAuth}:{};const r=await fetch('https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f',{headers:h});if(!r.ok)return;const d=await r.json();const raw=Array.isArray(d)?d:Array.isArray(d.clientes)?d.clientes:Array.isArray(d.data)?d.data:[];const p=JSON.parse(localStorage.getItem('gestor_proyectos_v3')||'[]');const ex=new Set(p.map(x=>x.cliente.toLowerCase().trim()));const c=raw.filter(a=>{const n=((a['Denominación Social']||a['Denominacion Social']||a.denominacion||a['Nombre Sociedad']||a['Nombre Comercial']||a.nombreComercial||a.Nombre||'')).toString().trim();return n&&!ex.has(n.toLowerCase().trim())}).length;b.textContent=c>0?c:''}catch(e){}})();
-</script>
+<script>YurestConfig.actualizarBadgeSinAsignar();</script>
 </body>
 </html>

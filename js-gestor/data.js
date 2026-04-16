@@ -6,19 +6,24 @@ const STORAGE_KEY = 'gestor_proyectos_v3';
 const STORAGE_KEY_PLANTILLAS = 'gestor_plantillas_v1';
 
 // ==========================================
-// WEBHOOK ENDPOINTS (n8n backend)
+// WEBHOOK ENDPOINTS (desde config.js centralizado)
 // ==========================================
 
-const WEBHOOK_BASE = 'https://n8n-soporte.data.yurest.dev/webhook';
-const WEBHOOK_PROYECTOS = `${WEBHOOK_BASE}/proyectos`;
-const WEBHOOK_PROYECTOS_TAREA = `${WEBHOOK_BASE}/proyectos/tarea`;
-const WEBHOOK_PROYECTOS_TAREA_MOVER = `${WEBHOOK_BASE}/proyectos/tarea/mover`;
-const WEBHOOK_PLANTILLAS = `${WEBHOOK_BASE}/plantillas`;
-const WEBHOOK_ALTAS = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
-const WEBHOOK_ASANA_PROXY = `${WEBHOOK_BASE}/asana/tasks`;
-const WEBHOOK_CALENDAR = `${WEBHOOK_BASE}/calendar/event`;
+const _YC = (typeof window !== 'undefined' && window.YurestConfig) ? window.YurestConfig : null;
+if (!_YC) {
+    console.error('[gestor] config.js no está cargado — el gestor requiere YurestConfig');
+}
 
-const IMPLEMENTADORES = [
+const WEBHOOK_BASE                  = _YC ? _YC.WEBHOOK_BASE              : 'https://n8n-soporte.data.yurest.dev/webhook';
+const WEBHOOK_PROYECTOS             = _YC ? _YC.ENDPOINTS.proyectos       : `${WEBHOOK_BASE}/proyectos`;
+const WEBHOOK_PROYECTOS_TAREA       = _YC ? _YC.ENDPOINTS.proyectosTarea  : `${WEBHOOK_BASE}/proyectos/tarea`;
+const WEBHOOK_PROYECTOS_TAREA_MOVER = _YC ? _YC.ENDPOINTS.proyectosTareaMover : `${WEBHOOK_BASE}/proyectos/tarea/mover`;
+const WEBHOOK_PLANTILLAS            = _YC ? _YC.ENDPOINTS.plantillas      : `${WEBHOOK_BASE}/plantillas`;
+const WEBHOOK_ALTAS                 = _YC ? _YC.ENDPOINTS.altas           : `${WEBHOOK_BASE}/018f3362-7969-4c49-9088-c78e4446c77f`;
+const WEBHOOK_ASANA_PROXY           = _YC ? _YC.ENDPOINTS.asanaTasks      : `${WEBHOOK_BASE}/asana/tasks`;
+const WEBHOOK_CALENDAR              = _YC ? _YC.ENDPOINTS.calendar        : `${WEBHOOK_BASE}/calendar/event`;
+
+const IMPLEMENTADORES = _YC ? _YC.IMPLEMENTADORES : [
     'Carlos Aparicio',
     'Mario Labrandero',
     'Hugo Zalazar',
@@ -92,7 +97,11 @@ const INICIALES_IMPLEMENTADOR = {
 };
 
 function generarId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+    if (_YC && typeof _YC.generarId === 'function') return _YC.generarId();
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 11);
 }
 
 // Crea la estructura de secciones con tareas para un nuevo proyecto
@@ -236,32 +245,28 @@ const DATOS_EJEMPLO = [
 // ==========================================
 
 function getAuthHeaders() {
+    if (_YC) return _YC.getAuthHeaders();
+    // Fallback si config.js no cargó
     const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
     const headers = { 'Content-Type': 'application/json' };
-    if (session.basicAuth) {
-        headers['Authorization'] = 'Basic ' + session.basicAuth;
-    }
+    if (session.basicAuth) headers['Authorization'] = 'Basic ' + session.basicAuth;
     return headers;
 }
 
 async function apiRequest(url, method = 'GET', body = null) {
-    const opts = {
-        method,
-        headers: getAuthHeaders()
-    };
-    if (body !== null) {
-        opts.body = JSON.stringify(body);
-    }
-    const res = await fetch(url, opts);
+    const opts = { method, headers: getAuthHeaders() };
+    if (body !== null) opts.body = JSON.stringify(body);
+
+    // Preferimos apiFetch para que maneje 401/403 automáticamente
+    const res = _YC
+        ? await _YC.apiFetch(url, opts)
+        : await fetch(url, opts);
+
     if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Error ${res.status}${text ? ': ' + text : ''}`);
     }
-    try {
-        return await res.json();
-    } catch (_) {
-        return {};
-    }
+    try { return await res.json(); } catch (_) { return {}; }
 }
 
 // ==========================================
@@ -512,6 +517,17 @@ function obtenerUltimaSubtareaCompletada(proyecto) {
     return maxFecha;
 }
 
+// Normaliza un nombre de cliente para comparación (sin acentos, minúsculas, trim,
+// espacios colapsados). Usar en deduplicación cruzada entre proyectos y altas.
+function normalizarNombreCliente(nombre) {
+    return String(nombre || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')  // quitar diacríticos
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 // Normaliza datos de una ficha de alta
 function normalizarAlta(f) {
     const get = (keys) => {
@@ -568,13 +584,17 @@ function obtenerEstadoDashboard(proyecto) {
     return 'inicio';
 }
 
-// Calcula semanas parado desde ultimaActividad
+// Calcula semanas parado desde ultimaActividad (comparación a día, sin horas)
 function calcularSemanasParado(proyecto) {
     if (!proyecto.ultimaActividad) return null;
+    // Normalizar ambas fechas a medianoche local para no depender de la hora actual
     const hoy = new Date();
-    const ultima = new Date(proyecto.ultimaActividad + 'T00:00:00');
-    const diffMs = hoy - ultima;
-    const diffSemanas = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7));
+    hoy.setHours(0, 0, 0, 0);
+    const partes = proyecto.ultimaActividad.split('-');
+    if (partes.length !== 3) return null;
+    const ultima = new Date(+partes[0], +partes[1] - 1, +partes[2]);
+    const diffDias = Math.floor((hoy - ultima) / (1000 * 60 * 60 * 24));
+    const diffSemanas = Math.floor(diffDias / 7);
     return diffSemanas > 0 ? diffSemanas : null;
 }
 
@@ -700,14 +720,17 @@ function generarEstadisticasDuracion(proyectos) {
     const mediaGlobal = calcularMedia(todosDias);
     const medianaGlobal = calcularMediana(todosDias);
 
-    const tiposStats = Object.entries(porTipo).map(([tipo, data]) => ({
-        tipo,
-        count: data.count,
-        mediaDias: calcularMedia(data.dias),
-        mediaSem: calcularMedia(data.dias.map(d => d / 5)),
-        medianaDias: calcularMediana(data.dias),
-        medianaSem: calcularMedia([calcularMediana(data.dias) / 5])
-    })).sort((a, b) => b.mediaDias - a.mediaDias);
+    const tiposStats = Object.entries(porTipo).map(([tipo, data]) => {
+        const mediana = calcularMediana(data.dias);
+        return {
+            tipo,
+            count: data.count,
+            mediaDias: calcularMedia(data.dias),
+            mediaSem: calcularMedia(data.dias.map(d => d / 5)),
+            medianaDias: mediana,
+            medianaSem: Math.round((mediana / 5) * 10) / 10
+        };
+    }).sort((a, b) => b.mediaDias - a.mediaDias);
 
     const implStats = Object.entries(porImpl).map(([impl, data]) => ({
         impl,

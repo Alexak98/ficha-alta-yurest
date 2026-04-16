@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fichas de Clientes - Yurest</title>
-    <script>if (!sessionStorage.getItem('yurest_auth')) window.location.replace('login.html');</script>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth();</script>
     <link rel="stylesheet" href="style.css">
     <style>
         /* ── Sidebar ── */
@@ -1523,15 +1524,11 @@
         return String(val).split(',').filter(m => m.trim()).length;
     }
 
-    function esc(str) {
-        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+    function esc(str) { return YurestConfig.escHtml(str); }
+    function escJs(str) { return YurestConfig.escJsInAttr(str); }
 
     // ── Cerrar sesión ─────────────────────────────────────────────────────────
-    function cerrarSesion() {
-        sessionStorage.clear();
-        window.location.replace('login.html');
-    }
+    function cerrarSesion() { YurestConfig.cerrarSesion(); }
 
     // ── Normalizar claves del objeto (trim espacios) ──────────────────────────
     function normalizarFicha(f) {
@@ -1613,15 +1610,9 @@
 
     // ── Recarga fichas desde el webhook ──────────────────────────────────────
     async function recargarFichas(signal) {
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-        const WEBHOOK_LOGIN = 'https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f';
-
         try {
-            const res = await fetch(WEBHOOK_LOGIN, {
+            const res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.login, {
                 method: 'GET',
-                headers: {
-                    'Authorization': 'Basic ' + (session.basicAuth || '')
-                },
                 signal
             });
 
@@ -1812,7 +1803,7 @@
     let filtroDocumentos = '';
 
     // ── Webhook docs subidos ───────────────────────────────────────────────────
-    const WEBHOOK_DOCS_SUBIDOS = 'https://n8n-soporte.data.yurest.dev/webhook/bdef8517-9b76-4640-8f82-d940fd0ab96b';
+    const WEBHOOK_DOCS_SUBIDOS = YurestConfig.ENDPOINTS.docsSubidos;
 
     // ── Badge tipo cliente ────────────────────────────────────────────────────
     function tipoBadge(f) {
@@ -2025,17 +2016,12 @@
 
         // Llamar al webhook si está configurado y el valor es "si"
         if (WEBHOOK_DOCS_SUBIDOS && val === 'si') {
-            const session         = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
             const fichaId         = ficha['ID'] || ficha['Id'] || ficha['id'] || ficha['row_number'] || '';
             const nombreComercial = ficha['Nombre comercial'] || ficha['nombre_comercial'] || ficha['Nombre Comercial'] || '';
             const tipoCliente     = ficha['Tipo de cliente'] || ficha['tipo_de_cliente'] || ficha['Tipo cliente'] || ficha['tipo_cliente'] || '';
             try {
-                await fetch(WEBHOOK_DOCS_SUBIDOS, {
+                await YurestConfig.apiFetch(WEBHOOK_DOCS_SUBIDOS, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Basic ' + (session.basicAuth || '')
-                    },
                     body: JSON.stringify({ id: fichaId, nombre_comercial: nombreComercial, tipo_cliente: tipoCliente, documentos_subidos: true })
                 });
             } catch (err) {
@@ -2340,19 +2326,22 @@
     }
 
     // ── Error ─────────────────────────────────────────────────────────────────
+    // Muestra un banner de error. Preferimos un mensaje genérico al usuario
+    // y el detalle completo en consola para no exponer info interna del backend.
     function mostrarError(msg) {
+        console.warn('[lista] ' + msg);
         const el = document.getElementById('error-container');
-        el.innerHTML = `<div class="error-banner">${msg}</div>`;
+        el.innerHTML = `<div class="error-banner">${esc(msg)}</div>`;
         el.classList.remove('hidden');
     }
 
-    // ─── WEBHOOKS SOLICITUDES ─────────────────────────────────────────────────
-    const WEBHOOK_CREAR_SOLICITUD            = 'https://n8n-soporte.data.yurest.dev/webhook/b0629324-e611-47d4-835f-3ac9bcd4dc9b';
-    const WEBHOOK_LISTA_SOLICITUDES          = 'https://n8n-soporte.data.yurest.dev/webhook/1757fdcc-7fa7-4cb9-93b9-eb8118adaa1e';
-    const WEBHOOK_LISTA_RELLENADO            = 'https://n8n-soporte.data.yurest.dev/webhook/fa16b994-5af1-4368-ba6b-592e633937c3';
-    const WEBHOOK_ELIMINAR_FICHA             = 'https://n8n-soporte.data.yurest.dev/webhook/a2b1b1d6-a1dc-4366-b60e-b5e4506faa3d';
-    const WEBHOOK_ELIMINAR_SOLICITUD         = 'https://n8n-soporte.data.yurest.dev/webhook/a2b1b1d6-a1dc-4366-b60e-b5e4506faa3d';
-    const WEBHOOK_GET_DRIVE                  = 'https://n8n-soporte.data.yurest.dev/webhook/2010bb2b-72e9-4bae-afb1-d5a937c59009';
+    // ─── WEBHOOKS (desde config.js) ──────────────────────────────────────────
+    const WEBHOOK_CREAR_SOLICITUD            = YurestConfig.ENDPOINTS.crearSolicitud;
+    const WEBHOOK_LISTA_SOLICITUDES          = YurestConfig.ENDPOINTS.listaSolicitudes;
+    const WEBHOOK_LISTA_RELLENADO            = YurestConfig.ENDPOINTS.listaRellenado;
+    const WEBHOOK_ELIMINAR_FICHA             = YurestConfig.ENDPOINTS.eliminarFicha;
+    const WEBHOOK_ELIMINAR_SOLICITUD         = YurestConfig.ENDPOINTS.eliminarSolicitud;
+    const WEBHOOK_GET_DRIVE                  = YurestConfig.ENDPOINTS.getDrive;
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── Eliminar ficha / solicitud ────────────────────────────────────────────
@@ -2397,21 +2386,14 @@
         const btn = document.getElementById('btn-del-confirm');
         btn.disabled = true;
         btn.textContent = 'Eliminando…';
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-
         try {
             if (fichaParaEliminar) {
                 const { ficha } = fichaParaEliminar;
                 const id = ficha['id'] || ficha['ID'] || ficha['row_number'] || '';
-                console.log('[eliminar] Ficha completa:', ficha);
-                console.log('[eliminar] id enviado:', id);
-                const res = await fetch(WEBHOOK_ELIMINAR_FICHA, {
+                const res = await YurestConfig.apiFetch(WEBHOOK_ELIMINAR_FICHA, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
-                    body: JSON.stringify({ action: 'delete', id: id, row_number: id })
+                    body: JSON.stringify({ action: 'delete', entity: 'ficha', id: id, row_number: id })
                 });
-                const txt = await res.text();
-                console.log('[eliminar] Respuesta status:', res.status, '| body:', txt);
                 if (!res.ok) throw new Error('Error ' + res.status);
                 // Eliminar de memoria inmediatamente
                 const fichaRef = fichaParaEliminar.ficha;
@@ -2424,15 +2406,10 @@
             } else if (solicitudParaEliminar) {
                 const { solicitud } = solicitudParaEliminar;
                 const id = solicitud['id'] || solicitud['ID'] || solicitud['row_number'] || '';
-                console.log('[eliminar] Solicitud completa:', solicitud);
-                console.log('[eliminar] id enviado:', id);
-                const res = await fetch(WEBHOOK_ELIMINAR_SOLICITUD, {
+                const res = await YurestConfig.apiFetch(WEBHOOK_ELIMINAR_SOLICITUD, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + (session.basicAuth || '') },
-                    body: JSON.stringify({ action: 'delete', id: id, row_number: id })
+                    body: JSON.stringify({ action: 'delete', entity: 'solicitud', id: id, row_number: id })
                 });
-                const txt = await res.text();
-                console.log('[eliminar] Respuesta status:', res.status, '| body:', txt);
                 if (!res.ok) throw new Error('Error ' + res.status);
                 cerrarModalEliminar();
                 loadSolicitudes();
@@ -2490,11 +2467,9 @@
         document.getElementById('sol-table-wrap').classList.add('hidden');
         document.getElementById('sol-empty').classList.add('hidden');
 
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
         try {
-            const res = await fetch(WEBHOOK_LISTA_SOLICITUDES, {
+            const res = await YurestConfig.apiFetch(WEBHOOK_LISTA_SOLICITUDES, {
                 method: 'GET',
-                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') },
                 signal
             });
             if (!res.ok) throw new Error('Error ' + res.status);
@@ -2590,7 +2565,7 @@
                 <td class="td-center">${tipoBadgeHtml}</td>
                 <td class="td-center"><span class="${badgeCls}">${esc(estado)}</span></td>
                 <td class="td-actions">
-                    <button class="btn-ver" onclick="event.stopPropagation();reenviarSolicitud('${esc(solId)}','${esc(nombre)}','${esc(email)}','${esc(comercial)}','${esc(sociedad)}')" title="Reenviar email">✉</button>
+                    <button class="btn-ver" onclick="event.stopPropagation();reenviarSolicitud('${escJs(solId)}','${escJs(nombre)}','${escJs(email)}','${escJs(comercial)}','${escJs(sociedad)}')" title="Reenviar email">✉</button>
                     <button class="btn-del" onclick="event.stopPropagation();eliminarSolicitud(${i})">Eliminar</button>
                 </td>
             </tr>`;
@@ -2617,11 +2592,9 @@
         document.getElementById('rc-table-wrap').classList.add('hidden');
         document.getElementById('rc-empty').classList.add('hidden');
 
-        const session = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
         try {
-            const res = await fetch(WEBHOOK_LISTA_RELLENADO, {
+            const res = await YurestConfig.apiFetch(WEBHOOK_LISTA_RELLENADO, {
                 method: 'GET',
-                headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') },
                 signal
             });
             if (!res.ok) throw new Error('Error ' + res.status);
@@ -2703,7 +2676,7 @@
                 <td>${esc(comercial || '—')}</td>
                 <td class="td-center">${tipoBadgeHtml}</td>
                 <td class="td-actions">
-                    <button class="btn-edit" onclick="editarSolicitud('${esc(solId)}')">Completar ficha</button>
+                    <button class="btn-edit" onclick="editarSolicitud('${escJs(solId)}')">Completar ficha</button>
                 </td>
             </tr>`;
         }).join('');
@@ -2735,13 +2708,10 @@
     // aunque el webhook no devuelva aún la fila recién creada.
     let _lastUsedSolicitudId = 0;
 
-    async function getNextSolicitudId(session) {
+    async function getNextSolicitudId() {
         const fetchItems = async (url) => {
             try {
-                const res = await fetch(url, {
-                    method: 'GET',
-                    headers: { 'Authorization': 'Basic ' + (session.basicAuth || '') }
-                });
+                const res = await YurestConfig.apiFetch(url, { method: 'GET' });
                 if (!res.ok) return [];
                 let data = {};
                 try { data = await res.json(); } catch (_) {}
@@ -2842,8 +2812,7 @@
         btn.disabled = true;
         btn.textContent = 'Creando solicitud…';
 
-        const session     = JSON.parse(sessionStorage.getItem('yurest_auth') || '{}');
-        const solicitudId = await getNextSolicitudId(session);
+        const solicitudId = await getNextSolicitudId();
         const fecha       = new Date().toISOString().slice(0, 10);
 
         // Construir URL y cuerpo del email ANTES del POST para incluirlos en el body
@@ -2987,8 +2956,6 @@
     loadRellenadoCliente();
 </script>
 
-<script>
-(async()=>{try{const b=document.getElementById('badge-sinasignar');if(!b)return;const s=JSON.parse(sessionStorage.getItem('yurest_auth')||'{}');const h=s.basicAuth?{'Authorization':'Basic '+s.basicAuth}:{};const r=await fetch('https://n8n-soporte.data.yurest.dev/webhook/018f3362-7969-4c49-9088-c78e4446c77f',{headers:h});if(!r.ok)return;const d=await r.json();const raw=Array.isArray(d)?d:Array.isArray(d.clientes)?d.clientes:Array.isArray(d.data)?d.data:[];const p=JSON.parse(localStorage.getItem('gestor_proyectos_v3')||'[]');const ex=new Set(p.map(x=>x.cliente.toLowerCase().trim()));const c=raw.filter(a=>{const n=((a['Denominación Social']||a['Denominacion Social']||a.denominacion||a['Nombre Sociedad']||a['Nombre Comercial']||a.nombreComercial||a.Nombre||'')).toString().trim();return n&&!ex.has(n.toLowerCase().trim())}).length;b.textContent=c>0?c:''}catch(e){}})();
-</script>
+<script>YurestConfig.actualizarBadgeSinAsignar();</script>
 </body>
 </html>
