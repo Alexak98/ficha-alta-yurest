@@ -1326,7 +1326,6 @@
             <table class="fichas-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Fecha</th>
                         <th>Sociedad / Cliente</th>
                         <th>Email</th>
@@ -2504,7 +2503,6 @@
                 ? `${esc(sociedad)}${nombre ? `<br><span style="font-weight:400;font-size:0.78rem;color:#94a3b8;">${esc(nombre)}</span>` : ''}`
                 : esc(nombre || '—');
             return `<tr>
-                <td style="font-family:monospace;font-size:0.82rem;color:#64748b">${esc(solId || '—')}</td>
                 <td class="td-fecha">${formatFecha(s['Fecha Solicitud'] || s['Fecha solicitud'] || s['fecha_solicitud'] || s['Fecha'])}</td>
                 <td class="td-denom">${nombreCell}</td>
                 <td style="color:#64748b;font-size:0.85rem">${esc(email || '—')}</td>
