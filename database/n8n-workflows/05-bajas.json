@@ -42,7 +42,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst bajas = items.map(item => item.json);\nreturn [{ json: { bajas } }];"
+        "jsCode": "const items = $input.all();\nconst bajas = items.map(item => {\n  const row = item.json || {};\n  // Aplanar datos JSONB: los campos tipo/cliente_nombre/cliente_cif/modulos/mrr/etc.\n  // viven dentro de datos, pero el frontend los lee a nivel raíz.\n  let datos = row.datos;\n  if (typeof datos === 'string') {\n    try { datos = JSON.parse(datos); } catch { datos = {}; }\n  }\n  if (!datos || typeof datos !== 'object') datos = {};\n  return { ...datos, ...row, datos };\n}).filter(b => b && b.id);\nreturn [{ json: { bajas } }];"
       },
       "id": "format-get-bajas",
       "name": "Formatear GET",
@@ -185,7 +185,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Para editar, usar los datos del row (incluye id UUID)\nconst { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\nreturn [{ json: row }];"
+        "jsCode": "// Para editar, usar los datos del row (incluye id UUID)\nconst { row } = $input.first().json;\ndelete row._accion;\ndelete row._cliente_id;\ndelete row._fecha_baja_original;\nif (!row.id) {\n  throw new Error('Falta el id UUID de la baja para actualizar (revisa que el frontend lo envíe y que la caché esté limpia)');\n}\nreturn [{ json: row }];"
       },
       "id": "extract-update-baja",
       "name": "Extraer UPDATE",
