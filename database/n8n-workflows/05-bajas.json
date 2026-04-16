@@ -42,7 +42,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst bajas = items.map(item => {\n  const row = item.json || {};\n  // Aplanar datos JSONB: los campos tipo/cliente_nombre/cliente_cif/modulos/mrr/etc.\n  // viven dentro de datos, pero el frontend los lee a nivel raíz.\n  let datos = row.datos;\n  if (typeof datos === 'string') {\n    try { datos = JSON.parse(datos); } catch { datos = {}; }\n  }\n  if (!datos || typeof datos !== 'object') datos = {};\n  return { ...datos, ...row, datos };\n}).filter(b => b && b.id);\nreturn [{ json: { bajas } }];"
+        "jsCode": "const items = $input.all();\nconst bajas = [];\nfor (const item of items) {\n  const row = item.json || {};\n  if (!row.id) continue; // descarta el item vacío que n8n inyecta cuando 0 rows\n  let datos = row.datos;\n  if (typeof datos === 'string') {\n    try { datos = JSON.parse(datos); } catch (e) { datos = {}; }\n  }\n  if (!datos || typeof datos !== 'object') datos = {};\n  // Aplanar datos JSONB: el frontend lee b.cliente_nombre, b.modulos, etc. a nivel raíz.\n  // Las columnas reales (id, cliente, motivo, fecha_baja, tipo_cliente) tienen prioridad.\n  bajas.push(Object.assign({}, datos, row, { datos }));\n}\nreturn [{ json: { bajas } }];"
       },
       "id": "format-get-bajas",
       "name": "Formatear GET",
