@@ -160,35 +160,8 @@
         .doc-fechafirma { font-size:.72rem; color:#94a3b8; margin-top:5px; text-align:right; }
         .doc-foot { font-size:.68rem; color:#475569; text-align:center; margin-top:14px; }
 
-        /* Estilos sólo para imprimir/PDF: una sola hoja A4 sin márgenes raros. */
-        @page { size: A4 portrait; margin: 10mm; }
-        @media print {
-            html, body { background:#fff !important; margin:0 !important; padding:0 !important; }
-            body * { visibility: hidden !important; }
-            #sepa-doc, #sepa-doc * { visibility: visible !important; }
-            #sepa-doc {
-                position: absolute !important;
-                left: 0 !important; top: 0 !important;
-                width: 100% !important;
-                margin: 0 !important; padding: 0 !important;
-                font-size: 10.5pt;
-            }
-            #sepa-doc h2 { font-size: 14pt; margin: 0 0 2pt; }
-            #sepa-doc .doc-sub { font-size: 9pt; margin: 0 0 8pt; }
-            .doc-block { margin: 5pt 0; page-break-inside: avoid; }
-            .doc-block-body { padding: 6pt 10pt; }
-            .doc-row { padding: 3pt 0; font-size: 9.5pt; grid-template-columns: 170pt 1fr; }
-            .doc-row .lbl { font-size: 8pt; }
-            .doc-legal { font-size: 8pt; padding: 6pt 10pt; margin: 6pt 0; page-break-inside: avoid; }
-            .doc-legal-en { font-size: 7.5pt; }
-            .doc-firma { page-break-inside: avoid; }
-            .doc-firma-box { min-height: 70pt; }
-            .doc-firma-box img { max-height: 80pt; }
-            .doc-foot { font-size: 7.5pt; margin-top: 8pt; }
-            .modal-overlay { position:static !important; padding:0 !important; background:none !important; }
-            .modal { box-shadow:none !important; max-height:none !important; max-width:none !important; }
-            .modal-hd { display:none !important; }
-        }
+        /* La impresión a PDF usa una ventana popup independiente
+           (ver imprimirSepa() en JS), no @media print. */
     </style>
 </head>
 <body>
@@ -463,12 +436,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
     }
 
     // ── Modal mandato SEPA + impresión PDF ─────────────────────────────────
+    let _sepaModalSociedad = '';
     function abrirSepaModal(fichaId) {
         const f = fichas.find(x => x.id === fichaId);
         if (!f || !f._sepa) {
             mostrarToast('Esta ficha no tiene mandato SEPA', 'warning');
             return;
         }
+        _sepaModalSociedad = (f.denominacion || f._sepa.deudor?.nombre || 'mandato').toString().trim();
         const s = f._sepa;
         const a = s.acreedor || {};
         const d = s.deudor || {};
@@ -538,10 +513,53 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
     }
     window.cerrarSepaModal = cerrarSepaModal;
 
+    // Abre una ventana popup minimal con SOLO el documento y dispara print.
+    // Así el PDF resultante:
+    //   - Lleva como título "<Sociedad> - SEPA" (no "Contabilidad — Yurest").
+    //   - No arrastra el layout del modal ni deja huecos verticales en blanco.
+    //   - Cabe limpio en una hoja A4 con los estilos embebidos abajo.
     function imprimirSepa() {
-        // Usa el diálogo nativo del navegador → "Guardar como PDF" siempre
-        // disponible. CSS @media print oculta todo menos #sepa-doc.
-        window.print();
+        const docEl = document.getElementById('sepa-doc');
+        if (!docEl) return;
+        const sociedad = (_sepaModalSociedad || 'mandato').replace(/[^\w\s\-.áéíóúüñÁÉÍÓÚÜÑ]/g, '').trim() || 'mandato';
+        const titulo = `${sociedad} - SEPA`;
+        const docHtml = docEl.innerHTML;
+        const css = `
+            @page { size: A4 portrait; margin: 12mm; }
+            * { box-sizing: border-box; }
+            body { margin:0; padding:0; font-family:'Helvetica',Arial,sans-serif; color:#0f172a; font-size:10.5pt; line-height:1.4; }
+            h2 { font-size: 14pt; text-align: center; margin: 0 0 2pt; }
+            .doc-sub { text-align:center; font-style:italic; color:#475569; font-size: 9pt; margin: 0 0 8pt; }
+            .doc-block { border:1.5px solid #1e3a8a; border-radius:6px; margin:5pt 0; page-break-inside:avoid; }
+            .doc-block-label { display:block; background:#1e3a8a; color:#fff; font-size:8pt; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:4pt 10pt; border-radius:5pt 5pt 0 0; }
+            .doc-block-body { padding:6pt 10pt; }
+            .doc-row { display:grid; grid-template-columns:170pt 1fr; gap:3pt 14pt; padding:3pt 0; border-bottom:1px dotted #cbd5e1; font-size:9.5pt; }
+            .doc-row:last-child { border-bottom:none; }
+            .doc-row .lbl { font-weight:600; color:#1e3a8a; font-size:8pt; text-transform:uppercase; letter-spacing:.04em; align-self:center; }
+            .doc-row .val { color:#0f172a; word-break:break-word; }
+            .doc-row .val.mono { font-family:monospace; font-size:9.5pt; letter-spacing:.04em; }
+            .doc-legal { font-size:8pt; color:#475569; line-height:1.5; padding:6pt 10pt; background:#fffbeb; border:1px solid #fde68a; border-radius:6px; margin:6pt 0; page-break-inside:avoid; }
+            .doc-legal strong { color:#92400e; }
+            .doc-legal-en { display:block; color:#94a3b8; font-style:italic; margin-top:4pt; font-size:7.5pt; }
+            .doc-pago { display:flex; gap:24px; padding:6pt 0; font-size:9.5pt; }
+            .doc-pago strong { color:#1e3a8a; }
+            .doc-pago .check { display:inline-block; width:11pt; height:11pt; border:1.5px solid #1e3a8a; border-radius:2pt; margin-right:5pt; vertical-align:middle; text-align:center; font-size:9pt; color:#1e3a8a; line-height:11pt; }
+            .doc-firma { margin-top:8pt; page-break-inside:avoid; }
+            .doc-firma-box { border:1px solid #94a3b8; border-radius:6px; padding:6pt; background:#fff; min-height:60pt; display:flex; align-items:center; justify-content:center; }
+            .doc-firma-box img { max-width:100%; max-height:80pt; }
+            .doc-fechafirma { font-size:8pt; color:#94a3b8; margin-top:4pt; text-align:right; }
+            .doc-foot { font-size:7.5pt; color:#475569; text-align:center; margin-top:8pt; }
+        `;
+        const autoprintScript = '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print();},150);};window.onafterprint=function(){window.close();};</scr' + 'ipt>';
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title><style>${css}</style></head><body>${docHtml}${autoprintScript}</body></html>`;
+        const w = window.open('', '_blank', 'width=900,height=1100');
+        if (!w) {
+            mostrarToast('El navegador bloqueó el popup. Permite ventanas emergentes para descargar el PDF.', 'warning', 5000);
+            return;
+        }
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
     }
     window.imprimirSepa = imprimirSepa;
 
