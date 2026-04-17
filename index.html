@@ -2368,6 +2368,17 @@
         if (credMaster && credYurest && !credMaster.value && !credYurest.value && !fichaTraeCredenciales) {
             actualizarCredenciales();
         }
+
+        // Asegurar que el resumen flotante refleje todos los importes restaurados.
+        // recalcularCarrito ya lo llama, pero algunas dependencias (precios por
+        // local, recurrencia planes) se restauran en pasos posteriores. Forzamos
+        // una reejecución cuando ya todo está en su sitio.
+        requestAnimationFrame(() => {
+            recalcularCarrito();
+            recalcularMensual();
+            sincronizarPlanesRecurrencia();
+            actualizarResumenFlotante();
+        });
     }
 
     // ── Bloquear selector de tipo (completar ficha desde solicitud) ──────────
