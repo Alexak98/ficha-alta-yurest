@@ -4,6 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Yurest — Documentación de la API</title>
+<script src="../config.js"></script>
+<style>
+        /* ── Sidebar (compartido con el portal) ── */
+        .sidebar-overlay { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:500; opacity:0; pointer-events:none; transition:opacity .25s; }
+        .sidebar-overlay.open { opacity:1; pointer-events:all; }
+        .sidebar { position:fixed; top:0; left:0; width:248px; height:100vh; background:#fff; z-index:600; transform:translateX(-100%); transition:transform .26s cubic-bezier(.4,0,.2,1); box-shadow:4px 0 24px rgba(0,0,0,.13); display:flex; flex-direction:column; }
+        .sidebar.open { transform:translateX(0); }
+        .sidebar-hd { display:flex; align-items:center; justify-content:space-between; padding:20px 18px 16px; border-bottom:1.5px solid #f1f5f9; }
+        .sidebar-brand { display:flex; align-items:center; gap:8px; font-size:.78rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:#fc5858; }
+        .sidebar-brand-dot { width:8px; height:8px; background:#fc5858; border-radius:50%; box-shadow:0 0 0 3px rgba(252,88,88,.25); }
+        .sidebar-close { width:28px; height:28px; border-radius:8px; border:1.5px solid #e2e8f0; background:#f8fafc; color:#64748b; font-size:.9rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        .sidebar-close:hover { background:#fee2e2; border-color:#fecaca; color:#dc2626; }
+        .sidebar-label { padding:16px 18px 6px; font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#94a3b8; }
+        .sidebar-item { display:flex; align-items:center; gap:12px; padding:11px 18px; margin:2px 10px; border-radius:10px; font-size:.88rem; font-weight:500; color:#334155; text-decoration:none; cursor:pointer; }
+        .sidebar-item:hover { background:#f8fafc; color:#1e293b; }
+        .sidebar-item.active { background:#fff1f1; color:#fc5858; font-weight:700; }
+        .sidebar-item svg { flex-shrink:0; opacity:.7; }
+        .sidebar-item.active svg { opacity:1; }
+        .sidebar-group { margin:2px 0; }
+        .sidebar-group-header { display:flex; align-items:center; gap:12px; padding:11px 18px; margin:2px 10px; border-radius:10px; font-size:.88rem; font-weight:500; color:#334155; cursor:pointer; user-select:none; }
+        .sidebar-group-header:hover { background:#f8fafc; color:#1e293b; }
+        .sidebar-group-header svg { flex-shrink:0; opacity:.7; }
+        .sidebar-group-chevron { margin-left:auto; transition:transform .18s; }
+        .sidebar-group.open .sidebar-group-chevron { transform:rotate(90deg); }
+        .sidebar-group-children { max-height:0; overflow:hidden; transition:max-height .2s ease; }
+        .sidebar-group.open .sidebar-group-children { max-height:500px; }
+        .sidebar-group-children .sidebar-item { padding-left:44px; font-size:.84rem; position:relative; }
+        .sidebar-group-children .sidebar-item::before { content:''; position:absolute; left:30px; top:50%; width:8px; height:1.5px; background:#cbd5e1; }
+        .sidebar-badge { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 8px; font-size:11px; font-weight:800; color:#fff; background:linear-gradient(135deg,#fb923c,#f59e0b); border-radius:999px; margin-left:auto; box-shadow:0 1px 3px rgba(245,158,11,.35); letter-spacing:.02em }
+        .sidebar-badge:empty { display:none }
+        .sidebar-ft { margin-top:auto; padding:16px 18px; border-top:1.5px solid #f1f5f9 }
+        .sidebar-ft button { display:flex; align-items:center; gap:8px; width:100%; padding:10px 14px; border-radius:10px; border:1.5px solid #fecaca; background:#fff5f5; color:#dc2626; font-size:.85rem; font-weight:600; font-family:inherit; cursor:pointer }
+        .sidebar-ft button:hover { background:#fee2e2 }
+        .docs-back-btn {
+            position:fixed; top:16px; left:16px; z-index:101;
+            width:42px; height:42px; border-radius:10px;
+            background:#fff; border:1.5px solid #e2e8f0; color:#64748b;
+            display:flex; align-items:center; justify-content:center;
+            cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+        .docs-back-btn:hover { border-color:#fc5858; color:#fc5858; background:#fff1f1; }
+        @media print { .docs-back-btn, .sidebar, .sidebar-overlay { display:none !important; } }
+</style>
 <style>
     @page { size: A4 portrait; margin: 12mm; }
     * { box-sizing: border-box; }
@@ -73,6 +116,36 @@
 </style>
 </head>
 <body>
+
+<button class="docs-back-btn" onclick="openSidebar()" title="Abrir menú">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar"></nav>
+<script src="../sidebar.js"></script>
+<script>
+    YurestSidebar.render('');
+    function openSidebar() {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sidebar-overlay').classList.add('open');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-overlay').classList.remove('open');
+    }
+    document.querySelectorAll('#sidebar a[href]').forEach(a => {
+        const h = a.getAttribute('href');
+        if (h && !h.startsWith('http') && !h.startsWith('/') && !h.startsWith('..')) {
+            a.setAttribute('href', '../' + h);
+        }
+    });
+    document.querySelectorAll('#sidebar button[onclick*="docs/"]').forEach(b => {
+        const oc = b.getAttribute('onclick');
+        b.setAttribute('onclick', oc.replace(/docs\//g, ''));
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+</script>
+
 <div class="layout">
 
 <nav class="toc">
