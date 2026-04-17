@@ -139,6 +139,21 @@
         .sepa-pago-pill.active {
             background: #fff1f1; border-color: #fecaca; color: #dc2626;
         }
+        /* IBAN en bloques */
+        .sepa-iban-grid {
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        }
+        .sepa-iban-grid .sepa-iban-block {
+            width: 78px !important; min-width: 64px; flex: 0 0 auto;
+            text-align: center; letter-spacing: 0.12em;
+            text-transform: uppercase; font-family: monospace; font-size: 0.95rem;
+            padding: 9px 6px;
+        }
+        .sepa-iban-sep {
+            color: #cbd5e1; font-weight: 700; user-select: none;
+        }
+        .sepa-iban-block.invalid { border-color: #fc5858; background: #fef2f2; }
+        .sepa-iban-block.valid   { border-color: #16a34a; background: #f0fdf4; }
     </style>
 </head>
 <body>
@@ -415,8 +430,21 @@
                     <input type="text" id="sepa_swift" maxlength="11" placeholder="BSCHESMM" style="text-transform:uppercase">
                 </div>
                 <div class="form-group col-12">
-                    <label for="sepa_iban">Número de cuenta - IBAN * <span style="color:#94a3b8;font-weight:400">(España: 24 caracteres, empieza por ES)</span></label>
-                    <input type="text" id="sepa_iban" maxlength="34" placeholder="ES00 0000 0000 0000 0000 0000" style="text-transform:uppercase;font-family:monospace">
+                    <label>Número de cuenta - IBAN * <span style="color:#94a3b8;font-weight:400">(España: 24 caracteres, en bloques de 4)</span></label>
+                    <div class="sepa-iban-grid">
+                        <input type="text" id="sepa_iban_1" class="sepa-iban-block" maxlength="4" placeholder="ES##" autocomplete="off" oninput="onIbanBlockInput(this,1)" onkeydown="onIbanBlockKey(event,1)">
+                        <span class="sepa-iban-sep">·</span>
+                        <input type="text" id="sepa_iban_2" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,2)" onkeydown="onIbanBlockKey(event,2)">
+                        <span class="sepa-iban-sep">·</span>
+                        <input type="text" id="sepa_iban_3" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,3)" onkeydown="onIbanBlockKey(event,3)">
+                        <span class="sepa-iban-sep">·</span>
+                        <input type="text" id="sepa_iban_4" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,4)" onkeydown="onIbanBlockKey(event,4)">
+                        <span class="sepa-iban-sep">·</span>
+                        <input type="text" id="sepa_iban_5" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,5)" onkeydown="onIbanBlockKey(event,5)">
+                        <span class="sepa-iban-sep">·</span>
+                        <input type="text" id="sepa_iban_6" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,6)" onkeydown="onIbanBlockKey(event,6)">
+                    </div>
+                    <small id="sepa-iban-hint" style="display:block;font-size:0.72rem;color:#94a3b8;margin-top:6px">Pega el IBAN completo en cualquier bloque y se repartirá automáticamente.</small>
                 </div>
                 <div class="form-group col-6">
                     <label>Tipo de pago</label>
@@ -723,6 +751,77 @@
         return canvas ? canvas.toDataURL('image/png') : null;
     }
 
+    // ── IBAN en bloques de 4 ────────────────────────────────────────────────
+    function _focusIbanBlock(n) {
+        const el = document.getElementById('sepa_iban_' + n);
+        if (el) { el.focus(); el.select(); }
+    }
+    function getIbanCompleto() {
+        let v = '';
+        for (let i = 1; i <= 6; i++) {
+            v += (document.getElementById('sepa_iban_' + i)?.value || '');
+        }
+        return v.replace(/\s+/g, '').toUpperCase();
+    }
+    function setIbanFromString(raw) {
+        const clean = String(raw || '').replace(/\s+/g, '').toUpperCase().slice(0, 24);
+        for (let i = 1; i <= 6; i++) {
+            const el = document.getElementById('sepa_iban_' + i);
+            if (el) el.value = clean.slice((i - 1) * 4, i * 4);
+        }
+        _refreshIbanValidationStyle();
+    }
+    function _refreshIbanValidationStyle() {
+        const v = getIbanCompleto();
+        const blocks = document.querySelectorAll('.sepa-iban-block');
+        if (v.length === 0) {
+            blocks.forEach(b => b.classList.remove('valid', 'invalid'));
+            return;
+        }
+        const ok = esIBAN_ES(v);
+        blocks.forEach(b => {
+            b.classList.toggle('valid', ok);
+            b.classList.toggle('invalid', v.length === 24 && !ok);
+        });
+    }
+    function onIbanBlockInput(input, idx) {
+        // Si el usuario pega el IBAN completo en un bloque, lo repartimos.
+        if (input.value.replace(/\s+/g, '').length > 4) {
+            setIbanFromString((idx === 1 ? '' : getIbanCompleto().slice(0, (idx - 1) * 4)) + input.value);
+            // Foco al último bloque con contenido
+            const v = getIbanCompleto();
+            const lastFull = Math.min(6, Math.ceil(v.length / 4));
+            _focusIbanBlock(lastFull);
+            return;
+        }
+        // Bloque 1: ES + 2 dígitos. Forzamos formato.
+        if (idx === 1) {
+            input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+        } else {
+            input.value = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+        }
+        if (input.value.length === 4 && idx < 6) _focusIbanBlock(idx + 1);
+        _refreshIbanValidationStyle();
+    }
+    window.onIbanBlockInput = onIbanBlockInput;
+
+    function onIbanBlockKey(ev, idx) {
+        // Backspace en bloque vacío → ir al anterior
+        if (ev.key === 'Backspace' && !ev.target.value && idx > 1) {
+            ev.preventDefault();
+            const prev = document.getElementById('sepa_iban_' + (idx - 1));
+            if (prev) { prev.focus(); prev.value = prev.value.slice(0, -1); _refreshIbanValidationStyle(); }
+        }
+        // Flechas para moverse entre bloques
+        if (ev.key === 'ArrowLeft' && ev.target.selectionStart === 0 && idx > 1) {
+            ev.preventDefault(); _focusIbanBlock(idx - 1);
+        }
+        if (ev.key === 'ArrowRight' && ev.target.selectionStart === ev.target.value.length && idx < 6) {
+            ev.preventDefault(); _focusIbanBlock(idx + 1);
+        }
+    }
+    window.onIbanBlockKey = onIbanBlockKey;
+
     // ── Validación IBAN España (sin espacios, 24 caracteres, MOD-97 = 1) ─────
     function esIBAN_ES(raw) {
         const v = String(raw || '').replace(/\s+/g, '').toUpperCase();
@@ -806,10 +905,10 @@
             document.getElementById('sepa_deudor_cp').focus();
             return;
         }
-        const ibanRaw = getVal('sepa_iban');
+        const ibanRaw = getIbanCompleto();
         if (!esIBAN_ES(ibanRaw)) {
-            showStatus('IBAN inválido. Debe empezar por ES y tener 24 caracteres.', 'error');
-            document.getElementById('sepa_iban').focus();
+            showStatus('IBAN inválido. Revisa los 24 caracteres (ES + 22 dígitos).', 'error');
+            _focusIbanBlock(1);
             return;
         }
         if (!esBIC_OPC(getVal('sepa_swift'))) {
