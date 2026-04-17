@@ -1177,14 +1177,67 @@ async function desvincularAsana() {
     });
 }
 
+// ID de la entrada de bitácora que está actualmente en modo edición (o null).
+let bitacoraEditandoId = null;
+
+function _bitacoraUsuarioActual() {
+    try {
+        if (window.YurestConfig && typeof window.YurestConfig.getSession === 'function') {
+            const s = window.YurestConfig.getSession();
+            if (s && s.user) return s.user;
+        }
+    } catch (_) {}
+    return 'desconocido';
+}
+
+function _formatearFechaBitacora(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleString('es-ES', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function _bitacoraIniciales(nombre) {
+    const partes = String(nombre || '?').trim().split(/\s+/);
+    return ((partes[0]?.[0] || '?') + (partes[1]?.[0] || '')).toUpperCase();
+}
+
 function renderDetalleAnotaciones(proyecto) {
-    const anotaciones = proyecto.anotaciones || '';
+    const bitacora = Array.isArray(proyecto.anotaciones) ? proyecto.anotaciones : [];
     const adjuntos = proyecto.adjuntos || [];
+    // Más recientes primero
+    const ordenadas = [...bitacora].sort((a, b) =>
+        String(b.fechaCreacion || '').localeCompare(String(a.fechaCreacion || ''))
+    );
+    const usuario = _bitacoraUsuarioActual();
 
     document.getElementById('detalle-anotaciones').innerHTML = `
         <div class="anotaciones-editor">
-            <label style="font-weight:600;margin-bottom:8px;display:block">Anotaciones del proyecto</label>
-            <textarea id="anotaciones-text" class="form-control anotaciones-textarea" placeholder="Escribe notas, observaciones, acuerdos...">${escapeHtml(anotaciones)}</textarea>
+            <label style="font-weight:600;margin-bottom:8px;display:block">Cuaderno de bitácora</label>
+
+            <div class="bitacora-nueva">
+                <div class="bitacora-meta-nueva">
+                    <span class="bitacora-avatar">${escapeHtml(_bitacoraIniciales(usuario))}</span>
+                    <span>${escapeHtml(usuario)}</span>
+                </div>
+                <textarea id="bitacora-nueva-text" class="form-control bitacora-textarea"
+                    placeholder="Escribe una nueva entrada (acuerdos, llamadas, incidencias, próximos pasos…)"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                    <button class="btn btn-primary btn-sm" onclick="agregarEntradaBitacora()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Añadir entrada
+                    </button>
+                </div>
+            </div>
+
+            <div class="bitacora-lista" id="bitacora-lista">
+                ${ordenadas.length === 0
+                    ? '<div class="bitacora-empty">Aún no hay entradas. Crea la primera arriba.</div>'
+                    : ordenadas.map(e => renderEntradaBitacora(e)).join('')}
+            </div>
 
             <div class="adjuntos-section">
                 <div class="adjuntos-header">
@@ -1199,14 +1252,134 @@ function renderDetalleAnotaciones(proyecto) {
                     ${adjuntos.length > 0 ? adjuntos.map((adj, i) => renderAdjunto(adj, i)).join('') : '<div class="adjuntos-empty">Sin archivos adjuntos</div>'}
                 </div>
             </div>
-
-            <div style="display:flex;justify-content:flex-end;margin-top:12px">
-                <button class="btn btn-primary btn-sm" onclick="guardarAnotaciones()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                    Guardar todo
-                </button>
-            </div>
         </div>`;
+}
+
+function renderEntradaBitacora(entrada) {
+    const editando = bitacoraEditandoId === entrada.id;
+    const editadaTxt = entrada.fechaEdicion
+        ? ` · editado ${escapeHtml(_formatearFechaBitacora(entrada.fechaEdicion))}`
+        : '';
+    return `
+        <article class="bitacora-entrada" data-id="${escapeAttr(entrada.id)}">
+            <div class="bitacora-entrada-header">
+                <span class="bitacora-avatar">${escapeHtml(_bitacoraIniciales(entrada.usuario))}</span>
+                <div class="bitacora-entrada-meta">
+                    <span class="bitacora-usuario">${escapeHtml(entrada.usuario || '—')}</span>
+                    <span class="bitacora-fecha">${escapeHtml(_formatearFechaBitacora(entrada.fechaCreacion))}${editadaTxt}</span>
+                </div>
+                ${editando ? '' : `
+                    <div class="bitacora-acciones">
+                        <button class="bitacora-btn-icon" title="Editar" onclick="iniciarEdicionBitacora('${escapeAttr(entrada.id)}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                        <button class="bitacora-btn-icon bitacora-btn-danger" title="Eliminar" onclick="eliminarEntradaBitacora('${escapeAttr(entrada.id)}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                    </div>
+                `}
+            </div>
+            ${editando ? `
+                <textarea class="form-control bitacora-textarea bitacora-edit-text" id="bitacora-edit-text-${escapeAttr(entrada.id)}">${escapeHtml(entrada.texto)}</textarea>
+                <div class="bitacora-edit-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="cancelarEdicionBitacora()">Cancelar</button>
+                    <button class="btn btn-primary btn-sm" onclick="guardarEdicionBitacora('${escapeAttr(entrada.id)}')">Guardar</button>
+                </div>
+            ` : `
+                <div class="bitacora-texto">${escapeHtml(entrada.texto)}</div>
+            `}
+        </article>`;
+}
+
+async function _persistirBitacora(proyecto) {
+    guardarProyectosLocal(proyectos);
+    try {
+        await actualizarAnotacionesAPI(proyecto.id, proyecto.anotaciones);
+    } catch (err) {
+        mostrarToast('No se pudo sincronizar con el servidor: ' + err.message, 'warning');
+    }
+}
+
+async function agregarEntradaBitacora() {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    const ta = document.getElementById('bitacora-nueva-text');
+    const texto = (ta?.value || '').trim();
+    if (!texto) {
+        mostrarToast('Escribe el contenido de la entrada', 'warning');
+        ta?.focus();
+        return;
+    }
+    if (!Array.isArray(proyecto.anotaciones)) proyecto.anotaciones = [];
+    proyecto.anotaciones.push({
+        id: generarId(),
+        texto,
+        usuario: _bitacoraUsuarioActual(),
+        fechaCreacion: new Date().toISOString(),
+        fechaEdicion: null
+    });
+    await _persistirBitacora(proyecto);
+    renderDetalleAnotaciones(proyecto);
+    mostrarToast('Entrada añadida', 'success');
+}
+
+function iniciarEdicionBitacora(entradaId) {
+    bitacoraEditandoId = entradaId;
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    renderDetalleAnotaciones(proyecto);
+    // Auto-foco en el textarea recién renderizado
+    setTimeout(() => {
+        const ta = document.getElementById('bitacora-edit-text-' + entradaId);
+        if (ta) {
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+        }
+    }, 0);
+}
+
+function cancelarEdicionBitacora() {
+    bitacoraEditandoId = null;
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (proyecto) renderDetalleAnotaciones(proyecto);
+}
+
+async function guardarEdicionBitacora(entradaId) {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto || !Array.isArray(proyecto.anotaciones)) return;
+    const ta = document.getElementById('bitacora-edit-text-' + entradaId);
+    const nuevoTexto = (ta?.value || '').trim();
+    if (!nuevoTexto) {
+        mostrarToast('La entrada no puede estar vacía', 'warning');
+        return;
+    }
+    const entrada = proyecto.anotaciones.find(e => e.id === entradaId);
+    if (!entrada) return;
+    if (entrada.texto !== nuevoTexto) {
+        entrada.texto = nuevoTexto;
+        entrada.fechaEdicion = new Date().toISOString();
+        // Si quien edita es distinto al autor, dejamos constancia en usuario
+        // de la última edición.
+        const editor = _bitacoraUsuarioActual();
+        if (editor && editor !== entrada.usuario) {
+            entrada.editadoPor = editor;
+        }
+        await _persistirBitacora(proyecto);
+        mostrarToast('Entrada actualizada', 'success');
+    }
+    bitacoraEditandoId = null;
+    renderDetalleAnotaciones(proyecto);
+}
+
+function eliminarEntradaBitacora(entradaId) {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto || !Array.isArray(proyecto.anotaciones)) return;
+    mostrarConfirmacion('¿Eliminar esta entrada de la bitácora?\n\nLa acción no se puede deshacer.', async () => {
+        proyecto.anotaciones = proyecto.anotaciones.filter(e => e.id !== entradaId);
+        await _persistirBitacora(proyecto);
+        renderDetalleAnotaciones(proyecto);
+        mostrarToast('Entrada eliminada', 'success');
+    });
 }
 
 function renderAdjunto(adj, index) {
@@ -1301,18 +1474,6 @@ function abrirAdjunto(index) {
     } else {
         win.document.write(`<html><head><title>${escapeHtml(adj.nombre)}</title></head><body style="margin:0"><iframe src="${adj.data}" style="width:100%;height:100vh;border:none"></iframe></body></html>`);
     }
-}
-
-async function guardarAnotaciones() {
-    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
-    if (!proyecto) return;
-    const texto = document.getElementById('anotaciones-text').value;
-    proyecto.anotaciones = texto;
-    guardarProyectosLocal(proyectos);
-    try {
-        await actualizarAnotacionesAPI(proyecto.id, texto).catch(() => {});
-    } catch (_) {}
-    mostrarToast('Anotaciones guardadas', 'success');
 }
 
 function renderSeccion(proyectoId, seccion, seccionIndex) {

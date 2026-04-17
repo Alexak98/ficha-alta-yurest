@@ -208,8 +208,9 @@ CREATE TABLE proyectos (
     asana_project_id TEXT,
     asana_project_url TEXT,
 
-    -- Notas libres
-    anotaciones TEXT,
+    -- Cuaderno de bitácora del proyecto. Cada entrada:
+    --   { id, texto, usuario, fechaCreacion, fechaEdicion|null, editadoPor? }
+    anotaciones JSONB NOT NULL DEFAULT '[]',
 
     -- Contactos del proyecto (array JSONB)
     contactos JSONB DEFAULT '[]',

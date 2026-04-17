@@ -1145,6 +1145,157 @@ body {
     line-height: 1.6;
 }
 
+/* ── Cuaderno de bitácora ───────────────────────────────────── */
+.bitacora-textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.bitacora-nueva {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.bitacora-meta-nueva {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.bitacora-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #4F46E5;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.bitacora-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.bitacora-empty {
+    text-align: center;
+    padding: 28px 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px dashed var(--border);
+}
+
+.bitacora-entrada {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 3px solid #4F46E5;
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.bitacora-entrada:hover {
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.bitacora-entrada-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.bitacora-entrada-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+}
+
+.bitacora-usuario {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.bitacora-fecha {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.bitacora-acciones {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.bitacora-entrada:hover .bitacora-acciones,
+.bitacora-entrada:focus-within .bitacora-acciones {
+    opacity: 1;
+}
+
+.bitacora-btn-icon {
+    background: none;
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitacora-btn-icon:hover {
+    background: #f1f5f9;
+    color: var(--text);
+}
+
+.bitacora-btn-danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.bitacora-texto {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.bitacora-edit-text {
+    margin-top: 4px;
+}
+
+.bitacora-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+}
+
 /* Adjuntos */
 .adjuntos-section {
     margin-top: 16px;

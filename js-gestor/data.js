@@ -415,6 +415,7 @@ function migrarProyectos(lista) {
         p.secciones = parseJSONBField(p.secciones, []);
         p.contactos = parseJSONBField(p.contactos, []);
         p.adjuntos = parseJSONBField(p.adjuntos, []);
+        p.anotaciones = normalizarBitacora(p.anotaciones);
 
         if (Array.isArray(p.secciones)) {
             p.secciones = p.secciones.filter(s => s && seccionesValidas.has(s.nombre));
@@ -423,7 +424,7 @@ function migrarProyectos(lista) {
         }
         if (!p.participantes) p.participantes = [];
         if (!p.contactos) p.contactos = [];
-        if (!p.anotaciones) p.anotaciones = '';
+        if (!Array.isArray(p.anotaciones)) p.anotaciones = [];
         if (!p.adjuntos) p.adjuntos = [];
         if (!p.tpv) p.tpv = '';
         if (!p.motivoPausa) p.motivoPausa = '';
@@ -507,7 +508,48 @@ async function obtenerTareasAsana(asanaProjectId) {
     }
 }
 
+// Normaliza el campo `anotaciones` a un array de entradas. Acepta:
+//  - array → tal cual (saneando entradas inválidas)
+//  - string JSON → parseado
+//  - string libre legacy → envuelto como una entrada migrada
+//  - null/undefined → []
+function normalizarBitacora(raw) {
+    if (raw == null) return [];
+    let arr = raw;
+    if (typeof raw === 'string') {
+        const t = raw.trim();
+        if (t === '') return [];
+        if (t.startsWith('[') || t.startsWith('{')) {
+            try { arr = JSON.parse(t); } catch (_) { arr = null; }
+        } else {
+            // Texto plano antiguo: lo conservamos como una entrada inicial.
+            return [{
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : ('bit-' + Date.now()),
+                texto: raw,
+                usuario: '—',
+                fechaCreacion: new Date().toISOString(),
+                fechaEdicion: null
+            }];
+        }
+    }
+    if (!Array.isArray(arr)) return [];
+    return arr
+        .filter(e => e && typeof e === 'object' && (e.texto || e.text))
+        .map(e => ({
+            id:            e.id || ((typeof crypto !== 'undefined' && crypto.randomUUID)
+                                       ? crypto.randomUUID()
+                                       : ('bit-' + Date.now() + '-' + Math.random().toString(36).slice(2,7))),
+            texto:         String(e.texto ?? e.text ?? '').trim(),
+            usuario:       String(e.usuario ?? e.user ?? '—'),
+            fechaCreacion: e.fechaCreacion || e.fecha_creacion || e.fecha || new Date().toISOString(),
+            fechaEdicion:  e.fechaEdicion || e.fecha_edicion || null
+        }));
+}
+
 async function actualizarAnotacionesAPI(proyectoId, anotaciones) {
+    // anotaciones es un array; el workflow lo serializa a JSONB.
     return await apiRequest(`${WEBHOOK_PROYECTOS}/anotaciones`, 'PUT', { proyectoId, anotaciones });
 }
 
