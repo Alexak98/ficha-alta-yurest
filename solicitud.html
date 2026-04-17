@@ -50,6 +50,95 @@
             margin-bottom: 20px;
             font-family: monospace;
         }
+        /* ── SEPA: bloques fijo (acreedor) y editable (deudor) ── */
+        .sepa-block {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+        }
+        .sepa-block-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin: 0 0 10px;
+        }
+        .sepa-row {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 8px 14px;
+            font-size: 0.86rem;
+            color: #1e293b;
+            padding: 4px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .sepa-row:last-child { border-bottom: none; }
+        .sepa-row strong { color: #475569; font-weight: 600; }
+        .sepa-legal {
+            font-size: 0.72rem;
+            color: #64748b;
+            line-height: 1.55;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+        }
+        .sepa-legal strong { color: #92400e; }
+        .sepa-legal-en { color: #94a3b8; font-style: italic; margin-top: 6px; display: block; }
+        /* Firma: canvas + acciones */
+        .sepa-firma-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sepa-firma-canvas {
+            width: 100%;
+            height: 180px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            background: #fff;
+            cursor: crosshair;
+            touch-action: none;
+            display: block;
+        }
+        .sepa-firma-canvas.has-signature { border-style: solid; border-color: #94a3b8; }
+        .sepa-firma-actions {
+            display: flex; align-items: center; gap: 10px; justify-content: space-between;
+            font-size: 0.78rem; color: #94a3b8;
+        }
+        .sepa-firma-clear {
+            border: 1.5px solid #fecaca;
+            background: #fff5f5;
+            color: #dc2626;
+            padding: 5px 12px;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .sepa-firma-clear:hover { background: #fee2e2; }
+        .sepa-pago-group {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .sepa-pago-pill {
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .sepa-pago-pill.active {
+            background: #fff1f1; border-color: #fecaca; color: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -270,6 +359,93 @@
             </div>
         </div>
 
+        <!-- 06 Mandato SEPA -->
+        <div class="card">
+            <div class="card-header">
+                <span class="section-num">06</span>
+                <h3>Orden de domiciliación de adeudo directo SEPA</h3>
+            </div>
+
+            <!-- Datos del acreedor (fijo, no editable) -->
+            <div class="sepa-block">
+                <p class="sepa-block-title">A cumplimentar por el acreedor / To be completed by the creditor</p>
+                <div class="sepa-row"><strong>Referencia de la orden</strong><span id="sepa-ref">—</span></div>
+                <div class="sepa-row"><strong>Identificador del acreedor</strong><span id="sepa-acreedor-id">—</span></div>
+                <div class="sepa-row"><strong>Nombre del acreedor</strong><span id="sepa-acreedor-nombre">—</span></div>
+                <div class="sepa-row"><strong>Dirección</strong><span id="sepa-acreedor-direccion">—</span></div>
+                <div class="sepa-row"><strong>CP · Población · Provincia</strong><span id="sepa-acreedor-cpp">—</span></div>
+                <div class="sepa-row"><strong>País</strong><span id="sepa-acreedor-pais">—</span></div>
+            </div>
+
+            <!-- Texto legal bilingüe -->
+            <div class="sepa-legal">
+                Mediante la firma de esta orden de domiciliación, el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta y (B) a la entidad para efectuar los adeudos en su cuenta siguiendo las instrucciones del acreedor. Como parte de sus derechos, el deudor está legitimado al reembolso por su entidad en los términos y condiciones del contrato suscrito con la misma. <strong>La solicitud de reembolso deberá efectuarse dentro de las ocho semanas que siguen a la fecha de adeudo en cuenta.</strong> Puede obtener información adicional sobre sus derechos en su entidad financiera.
+                <span class="sepa-legal-en">By signing this mandate form, you authorise (A) the Creditor to send instructions to your bank to debit your account and (B) your bank to debit your account in accordance with the instructions from the Creditor. A refund must be claimed within eight weeks starting from the date on which your account was debited.</span>
+            </div>
+
+            <!-- Datos del deudor (editable) -->
+            <p class="sepa-block-title" style="margin:8px 4px">A cumplimentar por el deudor / To be completed by the debtor</p>
+            <div class="form-grid">
+                <div class="form-group col-12">
+                    <label for="sepa_deudor_nombre">Nombre del deudor (titular/es de la cuenta de cargo) *</label>
+                    <input type="text" id="sepa_deudor_nombre" placeholder="Nombre y apellidos o razón social">
+                </div>
+                <div class="form-group col-8">
+                    <label for="sepa_deudor_direccion">Dirección del deudor *</label>
+                    <input type="text" id="sepa_deudor_direccion" placeholder="Calle y número">
+                </div>
+                <div class="form-group col-4">
+                    <label for="sepa_deudor_cp">CP *</label>
+                    <input type="text" id="sepa_deudor_cp" maxlength="5" placeholder="46002">
+                </div>
+                <div class="form-group col-6">
+                    <label for="sepa_deudor_poblacion">Población *</label>
+                    <input type="text" id="sepa_deudor_poblacion" placeholder="Valencia">
+                </div>
+                <div class="form-group col-6">
+                    <label for="sepa_deudor_provincia">Provincia *</label>
+                    <input type="text" id="sepa_deudor_provincia" placeholder="Valencia">
+                </div>
+                <div class="form-group col-6">
+                    <label for="sepa_deudor_pais">País del deudor *</label>
+                    <input type="text" id="sepa_deudor_pais" value="España">
+                </div>
+                <div class="form-group col-6">
+                    <label for="sepa_swift">SWIFT BIC <span style="color:#94a3b8;font-weight:400">(8 u 11 caracteres, opcional)</span></label>
+                    <input type="text" id="sepa_swift" maxlength="11" placeholder="BSCHESMM" style="text-transform:uppercase">
+                </div>
+                <div class="form-group col-12">
+                    <label for="sepa_iban">Número de cuenta - IBAN * <span style="color:#94a3b8;font-weight:400">(España: 24 caracteres, empieza por ES)</span></label>
+                    <input type="text" id="sepa_iban" maxlength="34" placeholder="ES00 0000 0000 0000 0000 0000" style="text-transform:uppercase;font-family:monospace">
+                </div>
+                <div class="form-group col-6">
+                    <label>Tipo de pago</label>
+                    <div class="sepa-pago-group">
+                        <button type="button" class="sepa-pago-pill active" data-pago="recurrente" onclick="seleccionarTipoPagoSEPA('recurrente')">Pago recurrente</button>
+                        <button type="button" class="sepa-pago-pill" data-pago="unico" onclick="seleccionarTipoPagoSEPA('unico')">Pago único</button>
+                    </div>
+                </div>
+                <div class="form-group col-3">
+                    <label for="sepa_fecha">Fecha</label>
+                    <input type="date" id="sepa_fecha">
+                </div>
+                <div class="form-group col-3">
+                    <label for="sepa_localidad">Localidad de firma *</label>
+                    <input type="text" id="sepa_localidad" placeholder="Valencia">
+                </div>
+                <div class="form-group col-12">
+                    <label>Firma del deudor *</label>
+                    <div class="sepa-firma-wrap">
+                        <canvas id="sepa-firma-canvas" class="sepa-firma-canvas" width="800" height="180"></canvas>
+                        <div class="sepa-firma-actions">
+                            <span>Firma con el ratón o el dedo dentro del recuadro.</span>
+                            <button type="button" class="sepa-firma-clear" onclick="limpiarFirmaSEPA()">Borrar firma</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Honeypot anti-bots: campo oculto que un humano no rellena. -->
         <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
             <label for="company_website">No rellenes este campo</label>
@@ -291,6 +467,21 @@
     const WEBHOOK_RESPONDER_SOLICITUD = YurestConfig.ENDPOINTS.responderSolicitud;
     const REQUEST_TIMEOUT_MS = 20000;
     const HUMAN_MIN_TIME_MS  = 3000;  // tiempo mínimo humano para rellenar
+
+    // ─── DATOS DEL ACREEDOR (mandato SEPA) ────────────────────────────────────
+    // Los dos dígitos de control del identificador SEPA los emite el banco al
+    // dar de alta el contrato de domiciliación. Mientras Yurest no nos dé el
+    // identificador definitivo dejamos los caracteres "##" como recordatorio.
+    const SEPA_ACREEDOR = {
+        identificador: 'ES##ZZZB40597437',
+        nombre:        'Yurest Solutions Sociedad Limitada',
+        direccion:     'Calle Transits, 6',
+        cp:            '46002',
+        poblacion:     'Valencia',
+        provincia:     'Valencia',
+        pais:          'España',
+        tipoPagoDefault: 'recurrente'
+    };
     // ─────────────────────────────────────────────────────────────────────────
 
     // Marca el momento en que se mostró el formulario (para anti-bot)
@@ -422,6 +613,131 @@
         // Pre-rellenar con los datos que vienen en la URL (siempre validados)
         if (preSociedad) document.getElementById('denominacion').value = preSociedad;
         if (preEmail && esEmail(preEmail)) document.getElementById('email').value = preEmail;
+
+        inicializarSEPA();
+    }
+
+    // ── SEPA: pintar acreedor + canvas firma + helpers ────────────────────────
+    let _sepaTipoPago = SEPA_ACREEDOR.tipoPagoDefault;
+    let _sepaFirmaPainted = false;
+
+    function inicializarSEPA() {
+        // Datos fijos del acreedor
+        document.getElementById('sepa-ref').textContent           = 'YUREST-' + solicitudId;
+        document.getElementById('sepa-acreedor-id').textContent   = SEPA_ACREEDOR.identificador;
+        document.getElementById('sepa-acreedor-nombre').textContent    = SEPA_ACREEDOR.nombre;
+        document.getElementById('sepa-acreedor-direccion').textContent = SEPA_ACREEDOR.direccion;
+        document.getElementById('sepa-acreedor-cpp').textContent       = `${SEPA_ACREEDOR.cp} · ${SEPA_ACREEDOR.poblacion} · ${SEPA_ACREEDOR.provincia}`;
+        document.getElementById('sepa-acreedor-pais').textContent      = SEPA_ACREEDOR.pais;
+
+        // Pre-rellenar fecha de firma con hoy
+        const hoy = new Date().toISOString().slice(0, 10);
+        document.getElementById('sepa_fecha').value = hoy;
+
+        // Sincronizar nombre del deudor con la denominación social al rellenar
+        const denomEl = document.getElementById('denominacion');
+        const deudorEl = document.getElementById('sepa_deudor_nombre');
+        denomEl.addEventListener('blur', () => {
+            if (!deudorEl.value.trim() && denomEl.value.trim()) deudorEl.value = denomEl.value.trim();
+        });
+
+        configurarFirmaSEPA();
+    }
+
+    function seleccionarTipoPagoSEPA(tipo) {
+        _sepaTipoPago = tipo;
+        document.querySelectorAll('.sepa-pago-pill').forEach(p => {
+            p.classList.toggle('active', p.dataset.pago === tipo);
+        });
+    }
+    window.seleccionarTipoPagoSEPA = seleccionarTipoPagoSEPA;
+
+    // ── Canvas de firma del deudor ────────────────────────────────────────────
+    function configurarFirmaSEPA() {
+        const canvas = document.getElementById('sepa-firma-canvas');
+        if (!canvas) return;
+        // Resolución alta para que la firma quede nítida al exportar.
+        const ratio = window.devicePixelRatio || 1;
+        const cssW = canvas.clientWidth || 800;
+        const cssH = 180;
+        canvas.width  = cssW * ratio;
+        canvas.height = cssH * ratio;
+        canvas.style.height = cssH + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(ratio, ratio);
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#0f172a';
+
+        let drawing = false;
+        let last = null;
+
+        function pos(ev) {
+            const rect = canvas.getBoundingClientRect();
+            const t = ev.touches ? ev.touches[0] : ev;
+            return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+        }
+        function start(ev) {
+            ev.preventDefault();
+            drawing = true;
+            last = pos(ev);
+        }
+        function move(ev) {
+            if (!drawing) return;
+            ev.preventDefault();
+            const p = pos(ev);
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            last = p;
+            if (!_sepaFirmaPainted) {
+                _sepaFirmaPainted = true;
+                canvas.classList.add('has-signature');
+            }
+        }
+        function end(ev) { drawing = false; last = null; }
+
+        canvas.addEventListener('mousedown', start);
+        canvas.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+        canvas.addEventListener('touchstart', start, { passive: false });
+        canvas.addEventListener('touchmove', move,  { passive: false });
+        canvas.addEventListener('touchend', end);
+    }
+
+    function limpiarFirmaSEPA() {
+        const canvas = document.getElementById('sepa-firma-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        _sepaFirmaPainted = false;
+        canvas.classList.remove('has-signature');
+    }
+    window.limpiarFirmaSEPA = limpiarFirmaSEPA;
+
+    function obtenerFirmaSEPABase64() {
+        if (!_sepaFirmaPainted) return null;
+        const canvas = document.getElementById('sepa-firma-canvas');
+        return canvas ? canvas.toDataURL('image/png') : null;
+    }
+
+    // ── Validación IBAN España (sin espacios, 24 caracteres, MOD-97 = 1) ─────
+    function esIBAN_ES(raw) {
+        const v = String(raw || '').replace(/\s+/g, '').toUpperCase();
+        if (!/^ES[0-9]{22}$/.test(v)) return false;
+        // MOD-97: mover los 4 primeros al final, convertir letras a 10..35.
+        const reordered = v.slice(4) + v.slice(0, 4);
+        const numeric = reordered.replace(/[A-Z]/g, c => (c.charCodeAt(0) - 55).toString());
+        // BigInt mod 97
+        let resto = 0;
+        for (const ch of numeric) resto = (resto * 10 + Number(ch)) % 97;
+        return resto === 1;
+    }
+    function esBIC_OPC(raw) {
+        const v = String(raw || '').replace(/\s+/g, '').toUpperCase();
+        return !v || /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(v);
     }
 
     // ── Enviar formulario ─────────────────────────────────────────────────────
@@ -468,6 +784,46 @@
             }
         }
 
+        // ── Validaciones SEPA (todos los campos del deudor son obligatorios) ─
+        const sepaCampos = [
+            ['sepa_deudor_nombre',    'Indica el nombre del titular de la cuenta para el mandato SEPA.'],
+            ['sepa_deudor_direccion', 'Indica la dirección del deudor para el mandato SEPA.'],
+            ['sepa_deudor_cp',        'CP del deudor obligatorio (5 dígitos).'],
+            ['sepa_deudor_poblacion', 'Indica la población del deudor.'],
+            ['sepa_deudor_provincia', 'Indica la provincia del deudor.'],
+            ['sepa_deudor_pais',      'Indica el país del deudor.'],
+            ['sepa_localidad',        'Indica la localidad de firma del mandato SEPA.']
+        ];
+        for (const [id, msg] of sepaCampos) {
+            if (!getVal(id)) {
+                showStatus(msg, 'error');
+                document.getElementById(id).focus();
+                return;
+            }
+        }
+        if (!esCP(getVal('sepa_deudor_cp'))) {
+            showStatus('CP del deudor inválido (5 dígitos).', 'error');
+            document.getElementById('sepa_deudor_cp').focus();
+            return;
+        }
+        const ibanRaw = getVal('sepa_iban');
+        if (!esIBAN_ES(ibanRaw)) {
+            showStatus('IBAN inválido. Debe empezar por ES y tener 24 caracteres.', 'error');
+            document.getElementById('sepa_iban').focus();
+            return;
+        }
+        if (!esBIC_OPC(getVal('sepa_swift'))) {
+            showStatus('SWIFT BIC inválido (8 u 11 caracteres alfanuméricos).', 'error');
+            document.getElementById('sepa_swift').focus();
+            return;
+        }
+        const firmaB64 = obtenerFirmaSEPABase64();
+        if (!firmaB64) {
+            showStatus('Falta la firma del mandato SEPA. Firma dentro del recuadro.', 'error');
+            document.getElementById('sepa-firma-canvas').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
         btn.textContent = 'Enviando...';
@@ -499,7 +855,26 @@
             'Firmante Puesto':    getVal('firm_puesto'),
             'TPV':              document.getElementById('tpv').value,
             'TPV Contacto':     getVal('tpv_contacto'),
-            'TPV Email':        getVal('tpv_email')
+            'TPV Email':        getVal('tpv_email'),
+            'SEPA': {
+                referencia:       'YUREST-' + solicitudId,
+                acreedor:         { ...SEPA_ACREEDOR },
+                deudor: {
+                    nombre:    getVal('sepa_deudor_nombre'),
+                    direccion: getVal('sepa_deudor_direccion'),
+                    cp:        getVal('sepa_deudor_cp'),
+                    poblacion: getVal('sepa_deudor_poblacion'),
+                    provincia: getVal('sepa_deudor_provincia'),
+                    pais:      getVal('sepa_deudor_pais')
+                },
+                swift:        getVal('sepa_swift').replace(/\s+/g,'').toUpperCase(),
+                iban:         ibanRaw.replace(/\s+/g,'').toUpperCase(),
+                tipo_pago:    _sepaTipoPago,
+                fecha_firma:  getVal('sepa_fecha'),
+                localidad:    getVal('sepa_localidad'),
+                firma_base64: firmaB64,
+                firmado_at:   new Date().toISOString()
+            }
         };
 
         // Timeout por si el backend cuelga

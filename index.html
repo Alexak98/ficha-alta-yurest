@@ -668,6 +668,33 @@
         </div>
     </div>
 
+    <div class="card" id="sepa-section">
+        <div class="card-header">
+            <span class="section-num">11</span>
+            <h3>Mandato SEPA</h3>
+            <span id="sepa-badge" style="margin-left:auto;font-size:0.72rem;font-weight:600;padding:4px 10px;border-radius:999px;background:#f1f5f9;color:#64748b">Sin firmar</span>
+        </div>
+        <div id="sepa-vacio" style="text-align:center;padding:24px 16px;color:#94a3b8;font-size:0.86rem;background:#f8fafc;border:1px dashed #e2e8f0;border-radius:8px">
+            El cliente todavía no ha firmado la orden de domiciliación SEPA.
+        </div>
+        <div id="sepa-detalle" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px 14px;font-size:0.85rem;color:#1e293b;margin-bottom:14px">
+                <div><strong style="color:#64748b">Referencia</strong><br><span id="sepa-d-ref">—</span></div>
+                <div><strong style="color:#64748b">Tipo de pago</strong><br><span id="sepa-d-tipo">—</span></div>
+                <div><strong style="color:#64748b">Titular</strong><br><span id="sepa-d-titular">—</span></div>
+                <div><strong style="color:#64748b">IBAN</strong><br><span id="sepa-d-iban" style="font-family:monospace">—</span></div>
+                <div><strong style="color:#64748b">SWIFT BIC</strong><br><span id="sepa-d-swift" style="font-family:monospace">—</span></div>
+                <div><strong style="color:#64748b">Fecha · Localidad</strong><br><span id="sepa-d-fecha">—</span></div>
+                <div style="grid-column:1/-1"><strong style="color:#64748b">Dirección del deudor</strong><br><span id="sepa-d-direccion">—</span></div>
+            </div>
+            <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#fff">
+                <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Firma del deudor</div>
+                <img id="sepa-d-firma" alt="Firma" style="max-width:100%;height:auto;background:#fff;border-radius:4px">
+                <div style="font-size:0.72rem;color:#94a3b8;margin-top:6px"><span id="sepa-d-firmado-at">—</span></div>
+            </div>
+        </div>
+    </div>
+
     <div class="card" id="documentos-section">
         <div class="card-header">
             <span class="section-num">12</span>
@@ -1836,6 +1863,44 @@
         return { importe: 0, descuento: 0 };
     }
 
+    // ── Mandato SEPA: render solo lectura ─────────────────────────────────────
+    function _renderSepaMandato(raw) {
+        const sec = document.getElementById('sepa-section');
+        if (!sec) return;
+        let s = raw;
+        if (typeof s === 'string') {
+            try { s = s.trim().startsWith('{') ? JSON.parse(s) : null; } catch (_) { s = null; }
+        }
+        const badge = document.getElementById('sepa-badge');
+        const vacio = document.getElementById('sepa-vacio');
+        const det   = document.getElementById('sepa-detalle');
+        if (!s || !s.firma_base64) {
+            badge.textContent = 'Sin firmar';
+            badge.style.background = '#f1f5f9';
+            badge.style.color = '#64748b';
+            vacio.style.display = '';
+            det.style.display = 'none';
+            return;
+        }
+        badge.textContent = '✓ Firmado';
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#15803d';
+        vacio.style.display = 'none';
+        det.style.display = '';
+        const d = s.deudor || {};
+        const dirCompleta = [d.direccion, d.cp, d.poblacion, d.provincia, d.pais].filter(Boolean).join(' · ');
+        const tipo = s.tipo_pago === 'unico' ? 'Pago único' : 'Pago recurrente';
+        document.getElementById('sepa-d-ref').textContent       = s.referencia || '—';
+        document.getElementById('sepa-d-tipo').textContent      = tipo;
+        document.getElementById('sepa-d-titular').textContent   = d.nombre || '—';
+        document.getElementById('sepa-d-iban').textContent      = (s.iban || '').replace(/(.{4})/g, '$1 ').trim() || '—';
+        document.getElementById('sepa-d-swift').textContent     = s.swift || '—';
+        document.getElementById('sepa-d-fecha').textContent     = [s.fecha_firma, s.localidad].filter(Boolean).join(' · ') || '—';
+        document.getElementById('sepa-d-direccion').textContent = dirCompleta || '—';
+        document.getElementById('sepa-d-firma').src             = s.firma_base64;
+        document.getElementById('sepa-d-firmado-at').textContent = s.firmado_at ? 'Firmado el ' + new Date(s.firmado_at).toLocaleString('es-ES') : '';
+    }
+
     // ── Adjuntos de la ficha (PDF / JPG / PNG) ────────────────────────────────
     // Estado en memoria. Se persiste como JSONB en la columna `adjuntos` de
     // fichas_alta. Cada item: { id, nombre, tipo, size, data (base64), fecha }.
@@ -2530,6 +2595,9 @@
         if (credMaster && credYurest && !credMaster.value && !credYurest.value && !fichaTraeCredenciales) {
             actualizarCredenciales();
         }
+
+        // ── Mandato SEPA firmado por el cliente al rellenar la solicitud ─────
+        _renderSepaMandato(f['SEPA'] || f.sepa_mandato || null);
 
         // ── Adjuntos (PDF / JPG / PNG persistidos como JSONB en columna adjuntos) ─
         const rawAdj = f['Adjuntos'] || f['adjuntos'] || f.adjuntos;

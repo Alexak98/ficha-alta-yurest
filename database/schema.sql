@@ -220,6 +220,10 @@ CREATE TABLE proyectos (
     -- Adjuntos (metadatos, archivos en Supabase Storage)
     adjuntos JSONB DEFAULT '[]',
 
+    -- Orden de domiciliación SEPA firmada por el cliente al rellenar la
+    -- solicitud (datos del acreedor + deudor + IBAN/BIC + firma base64).
+    sepa_mandato JSONB,
+
     -- Secciones con tareas (estructura completa del proyecto)
     secciones JSONB NOT NULL DEFAULT '[]',
 
