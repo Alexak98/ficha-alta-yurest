@@ -1850,13 +1850,18 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         ? partList.map(email => `<label class="participante-check-item"><input type="checkbox" value="${escapeHtml(email)}" class="sub-part-cb"> ${escapeHtml(email)}</label>`).join('')
         : '<span style="font-size:12px;color:var(--text-muted)">Agrega participantes al proyecto primero</span>';
 
-    // Reset del checkbox de agendar y su label (por defecto editable, sin hint)
+    // Reset del checkbox de agendar y su label (por defecto editable, sin hint).
+    // Solo tocamos el text node con contenido visible — antes pisábamos también
+    // el whitespace previo al input, lo que duplicaba el texto a ambos lados
+    // del checkbox al reabrir el modal.
     const agendarCb = document.getElementById('subtarea-agendar');
     const agendarLabel = agendarCb.parentElement;
     agendarCb.checked = false;
     agendarCb.disabled = false;
     agendarLabel.querySelector('.subtarea-agendada-hint')?.remove();
-    agendarLabel.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ' Agendar en Google Calendar'; });
+    agendarLabel.childNodes.forEach(n => {
+        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' Agendar en Google Calendar';
+    });
 
     if (subtareaId) {
         const subtarea = (tarea.subtareas || []).find(s => s.id === subtareaId);
@@ -1874,7 +1879,9 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         // Si ya está agendada, evitar duplicar: deshabilitar checkbox y mostrar hint
         if (subtarea.agendado) {
             agendarCb.disabled = true;
-            agendarLabel.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ' Ya agendada en Google Calendar'; });
+            agendarLabel.childNodes.forEach(n => {
+                if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' Ya agendada en Google Calendar';
+            });
             const hint = document.createElement('span');
             hint.className = 'subtarea-agendada-hint';
             hint.textContent = ' ✓';
