@@ -3,6 +3,12 @@
 // ==========================================
 
 const STORAGE_KEY = 'gestor_proyectos_v3';
+// Lista de IDs de proyectos borrados localmente que el backend todavía no ha
+// confirmado como eliminados. Actúa de red de seguridad: si la propagación
+// del soft-delete (deleted_at) falla o se demora, igualmente filtramos esos
+// proyectos en el cliente. Se limpian automáticamente cuando el backend deja
+// de devolverlos.
+const STORAGE_KEY_ELIMINADOS = 'gestor_proyectos_eliminados_v1';
 
 // ==========================================
 // WEBHOOK ENDPOINTS (desde config.js centralizado)
@@ -337,15 +343,57 @@ async function apiRequest(url, method = 'GET', body = null) {
 async function cargarProyectos() {
     try {
         const data = await apiRequest(WEBHOOK_PROYECTOS, 'GET');
-        const lista = Array.isArray(data) ? data
+        let lista = Array.isArray(data) ? data
             : Array.isArray(data.proyectos) ? data.proyectos
             : Array.isArray(data.data) ? data.data : [];
+        // Aplicar tombstones locales: si borramos un proyecto y el backend
+        // aún lo devuelve (latencia/fallo en el soft-delete), lo filtramos
+        // aquí para mantener consistencia de UI.
+        const eliminados = obtenerProyectosEliminadosLocal();
+        if (eliminados.size > 0) {
+            const idsBackend = new Set(lista.map(p => p && p.id).filter(Boolean));
+            lista = lista.filter(p => !eliminados.has(p && p.id));
+            // Limpiar lápidas que el backend ya no devuelve (eliminación
+            // confirmada): purga IDs que ya no están en la respuesta.
+            purgarTombstonesConfirmados(idsBackend);
+        }
         return migrarProyectos(lista);
     } catch (err) {
         console.warn('Error cargando proyectos del backend:', err.message);
         mostrarToast('No se pudo conectar al backend.', 'warning');
         return [];
     }
+}
+
+// ──────────────────────────────────────────────────────────
+// Tombstones locales para proyectos eliminados
+// ──────────────────────────────────────────────────────────
+function obtenerProyectosEliminadosLocal() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY_ELIMINADOS);
+        return new Set(raw ? JSON.parse(raw) : []);
+    } catch (_) { return new Set(); }
+}
+
+function marcarProyectoEliminadoLocal(id) {
+    if (!id) return;
+    try {
+        const set = obtenerProyectosEliminadosLocal();
+        set.add(id);
+        localStorage.setItem(STORAGE_KEY_ELIMINADOS, JSON.stringify([...set]));
+    } catch (_) { /* sin localStorage: ignorar */ }
+}
+
+// Si el backend ya no devuelve un proyecto que tenemos en lápidas, significa
+// que el soft-delete realmente se aplicó: podemos retirar la lápida.
+function purgarTombstonesConfirmados(idsBackend) {
+    try {
+        const set = obtenerProyectosEliminadosLocal();
+        if (set.size === 0) return;
+        const restantes = [...set].filter(id => idsBackend.has(id));
+        if (restantes.length === set.size) return;
+        localStorage.setItem(STORAGE_KEY_ELIMINADOS, JSON.stringify(restantes));
+    } catch (_) {}
 }
 
 // Parsea campos JSONB que vienen como string desde Supabase

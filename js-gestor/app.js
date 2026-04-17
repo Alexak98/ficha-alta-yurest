@@ -768,6 +768,10 @@ function eliminarProyecto(id) {
         showLoading();
         try {
             await eliminarProyectoAPI(id);
+            // Marcar tombstone local: si el backend tarda en propagar el
+            // soft-delete (o falla en silencio), la UI seguirá viendo el
+            // proyecto como eliminado en todas las páginas.
+            marcarProyectoEliminadoLocal(id);
             proyectos = proyectos.filter(p => p.id !== id);
             guardarProyectosLocal(proyectos);
             cerrarModal('modal-detalle');
