@@ -57,7 +57,10 @@
         calendar:             `${WEBHOOK_BASE}/calendar/event`,
 
         // Formulario público (cliente rellena desde email)
-        responderSolicitud:   `${WEBHOOK_BASE}/6da4274f-5a6d-4981-a92a-f9d7eb734144`
+        responderSolicitud:   `${WEBHOOK_BASE}/6da4274f-5a6d-4981-a92a-f9d7eb734144`,
+
+        // Contabilidad
+        grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`
     };
 
     // ──────────────────────────────────────────────────────────

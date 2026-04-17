@@ -1,0 +1,109 @@
+{
+  "name": "Yurest - Toggle grabado_a3 en fichas_alta",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yurest-grabado-a3",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-a3",
+      "name": "Webhook Toggle A3",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "yurest-grabado-a3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recibe { id, grabado_a3 }. Devuelve los campos normalizados para el UPDATE.\nconst raw = $input.first().json;\nconst body = raw.body || raw;\nconst id = body.id || body.ID || '';\nif (!id) throw new Error('Falta id');\n// Acepta true/false o 'true'/'false'.\nconst rawVal = body.grabado_a3;\nlet grabado;\nif (typeof rawVal === 'boolean') grabado = rawVal;\nelse if (rawVal === 'true' || rawVal === 1 || rawVal === '1') grabado = true;\nelse if (rawVal === 'false' || rawVal === 0 || rawVal === '0') grabado = false;\nelse throw new Error('grabado_a3 debe ser boolean');\nreturn [{ json: { id, grabado_a3: grabado } }];"
+      },
+      "id": "prep-a3",
+      "name": "Preparar UPDATE A3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "fichas_alta",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "grabado_a3",
+              "fieldValue": "={{ $json.grabado_a3 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supa-update-a3",
+      "name": "UPDATE grabado_a3",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verifica resultado del UPDATE y devuelve diagnóstico al cliente.\nconst { id, grabado_a3 } = $('Preparar UPDATE A3').first().json;\nconst items = $input.all();\nlet count = 0;\nconst errores = [];\nfor (const it of items) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) {\n    errores.push(String(j.error.message || j.error));\n    continue;\n  }\n  if (j.id) count++;\n}\nreturn [{ json: { success: count > 0, id, grabado_a3, affected: count, errores } }];"
+      },
+      "id": "verify-a3",
+      "name": "Verificar A3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-a3",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Toggle A3": { "main": [[{ "node": "Preparar UPDATE A3", "type": "main", "index": 0 }]] },
+    "Preparar UPDATE A3": { "main": [[{ "node": "UPDATE grabado_a3",  "type": "main", "index": 0 }]] },
+    "UPDATE grabado_a3":  { "main": [[{ "node": "Verificar A3",       "type": "main", "index": 0 }]] },
+    "Verificar A3":       { "main": [[{ "node": "Respond OK",         "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [ { "name": "yurest" }, { "name": "contabilidad" } ]
+}

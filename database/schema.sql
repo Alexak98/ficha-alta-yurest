@@ -224,6 +224,10 @@ CREATE TABLE proyectos (
     -- solicitud (datos del acreedor + deudor + IBAN/BIC + firma base64).
     sepa_mandato JSONB,
 
+    -- Contabilidad: flag de cuándo se ha dado de alta el cliente en A3.
+    grabado_a3    BOOLEAN     NOT NULL DEFAULT FALSE,
+    grabado_a3_at TIMESTAMPTZ,
+
     -- Secciones con tareas (estructura completa del proyecto)
     secciones JSONB NOT NULL DEFAULT '[]',
 
