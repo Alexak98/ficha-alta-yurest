@@ -2003,6 +2003,36 @@
         el.classList.remove('hidden');
     }
 
+    // Toast inline para feedback de acciones puntuales (eliminar, copiar, etc.)
+    // tipos: 'success' | 'warning' | 'error'.
+    function mostrarToast(msg, tipo = 'success', ms = 3500) {
+        let host = document.getElementById('toast-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'toast-host';
+            host.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+            document.body.appendChild(host);
+        }
+        const colors = {
+            success: { bg:'#dcfce7', border:'#86efac', color:'#15803d', icon:'✓' },
+            warning: { bg:'#fef3c7', border:'#fcd34d', color:'#b45309', icon:'⚠' },
+            error:   { bg:'#fee2e2', border:'#fca5a5', color:'#b91c1c', icon:'✕' }
+        };
+        const c = colors[tipo] || colors.success;
+        const t = document.createElement('div');
+        t.style.cssText = `background:${c.bg};color:${c.color};border:1.5px solid ${c.border};padding:10px 16px;border-radius:10px;font-size:0.86rem;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.10);max-width:360px;display:flex;gap:10px;align-items:center;animation:toastIn .25s ease;pointer-events:auto`;
+        t.innerHTML = `<span style="font-weight:700;font-size:1rem">${c.icon}</span><span>${esc(msg)}</span>`;
+        host.appendChild(t);
+        setTimeout(() => { t.style.transition='opacity .25s'; t.style.opacity='0'; setTimeout(()=>t.remove(),250); }, ms);
+    }
+    // Animación entrada
+    if (!document.getElementById('toast-anim-style')) {
+        const s = document.createElement('style');
+        s.id = 'toast-anim-style';
+        s.textContent = '@keyframes toastIn { from { transform: translateY(-8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }';
+        document.head.appendChild(s);
+    }
+
     // ─── WEBHOOKS (desde config.js) ──────────────────────────────────────────
     const WEBHOOK_CREAR_SOLICITUD            = YurestConfig.ENDPOINTS.crearSolicitud;
     const WEBHOOK_LISTA_SOLICITUDES          = YurestConfig.ENDPOINTS.listaSolicitudes;
@@ -2050,6 +2080,41 @@
         solicitudParaEliminar = null;
     }
 
+    // Helper: ejecuta el POST de borrado y devuelve el body parseado.
+    // Lanza un Error con .code para diferenciar:
+    //   'http'        → fallo de red o status HTTP no-2xx
+    //   'not_found'   → backend OK pero 0 filas afectadas (id ya no existe)
+    //   'tech'        → backend devolvió errores Supabase (RLS, schema, etc.)
+    async function _doDelete(endpoint, payload) {
+        let res;
+        try {
+            res = await YurestConfig.apiFetch(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+        } catch (e) {
+            const err = new Error('No se pudo conectar con el servidor');
+            err.code = 'http';
+            throw err;
+        }
+        if (!res.ok) {
+            const err = new Error('HTTP ' + res.status);
+            err.code = 'http';
+            throw err;
+        }
+        let body = {};
+        try { body = await res.json(); } catch (_) {}
+        if (body && body.success === false) {
+            const tieneErrores = Array.isArray(body.errores) && body.errores.length > 0;
+            if (tieneErrores) {
+                const err = new Error(body.errores.join(' · '));
+                err.code = 'tech';
+                throw err;
+            }
+            const err = new Error('El registro ya no existe en la base de datos');
+            err.code = 'not_found';
+            throw err;
+        }
+        return body;
+    }
+
     async function confirmarEliminar() {
         const btn = document.getElementById('btn-del-confirm');
         btn.disabled = true;
@@ -2058,35 +2123,38 @@
             if (fichaParaEliminar) {
                 const { ficha } = fichaParaEliminar;
                 const id = ficha['id'] || ficha['ID'] || ficha['row_number'] || '';
-                const res = await YurestConfig.apiFetch(WEBHOOK_ELIMINAR_FICHA, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'delete', entity: 'ficha', id: id, row_number: id })
-                });
-                if (!res.ok) throw new Error('Error ' + res.status);
-                // Eliminar de memoria inmediatamente
+                if (!id) throw Object.assign(new Error('La ficha no tiene un id válido'), { code: 'tech' });
+                await _doDelete(WEBHOOK_ELIMINAR_FICHA, { action: 'delete', entity: 'ficha', id: id, row_number: id });
                 const fichaRef = fichaParaEliminar.ficha;
-                todasFichas = todasFichas.filter(f => f !== fichaRef);
+                todasFichas     = todasFichas.filter(f => f !== fichaRef);
                 fichasFiltradas = fichasFiltradas.filter(f => f !== fichaRef);
                 renderTabla(fichasFiltradas);
                 cerrarPanel();
                 cerrarModalEliminar();
                 recargarFichas();
+                mostrarToast('Ficha eliminada', 'success');
             } else if (solicitudParaEliminar) {
                 const { solicitud } = solicitudParaEliminar;
                 const id = solicitud['id'] || solicitud['ID'] || solicitud['row_number'] || '';
-                const res = await YurestConfig.apiFetch(WEBHOOK_ELIMINAR_SOLICITUD, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'delete', entity: 'solicitud', id: id, row_number: id })
-                });
-                if (!res.ok) throw new Error('Error ' + res.status);
+                if (!id) throw Object.assign(new Error('La solicitud no tiene un id válido'), { code: 'tech' });
+                await _doDelete(WEBHOOK_ELIMINAR_SOLICITUD, { action: 'delete', entity: 'solicitud', id: id, row_number: id });
                 cerrarModalEliminar();
                 loadSolicitudes();
+                mostrarToast('Solicitud eliminada', 'success');
             }
         } catch (err) {
-            mostrarError('No se pudo eliminar: ' + err.message);
+            cerrarModalEliminar();
             btn.textContent = 'Eliminar';
             btn.disabled = false;
-            cerrarModalEliminar();
+            if (err.code === 'not_found') {
+                mostrarToast('No se borró: el registro ya no existía. Refrescando listado…', 'warning');
+                recargarFichas();
+                if (typeof loadSolicitudes === 'function') loadSolicitudes();
+            } else if (err.code === 'http') {
+                mostrarToast('Sin conexión con el servidor. Inténtalo en unos segundos.', 'error');
+            } else {
+                mostrarToast('Error técnico al eliminar: ' + err.message, 'error', 6000);
+            }
         }
     }
 
