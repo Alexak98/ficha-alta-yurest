@@ -190,7 +190,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { solicitudUUID } = $('Merge Solicitud + Cliente').first().json;\nif (!solicitudUUID) {\n  return [{ json: { skip: true } }];\n}\nreturn [{ json: { id: solicitudUUID, estado: 'completado' } }];"
+        "jsCode": "// Marca la solicitud como completada y la enlaza a la ficha recién\n// insertada (ficha_id). El UPDATE de ficha_id activa el trigger\n// solicitud_propagar_fecha_a_ficha que copia solicitudes.created_at →\n// fichas_alta.fecha_solicitud (clave para la analítica de Ventas).\nconst { solicitudUUID } = $('Merge Solicitud + Cliente').first().json;\nif (!solicitudUUID) {\n  return [{ json: { skip: true } }];\n}\nconst fichaResult = $('INSERT Ficha Alta').first().json;\nconst fichaId = fichaResult && fichaResult.id ? fichaResult.id : null;\nconst row = { id: solicitudUUID, estado: 'completado' };\nif (fichaId) row.ficha_id = fichaId;\nreturn [{ json: row }];"
       },
       "id": "prepare-update-sol",
       "name": "Preparar Update Solicitud",
