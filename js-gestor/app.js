@@ -456,6 +456,12 @@ function _normBusqueda(s) {
         .toLowerCase().trim();
 }
 
+function _hayFiltrosActivos() {
+    const anyCheck = document.querySelectorAll('.filtro-impl-cb:checked, .filtro-tipo-cb:checked, .filtro-estado-cb:checked').length > 0;
+    const texto = (document.getElementById('buscar-proyecto')?.value || '').trim();
+    return anyCheck || texto.length > 0;
+}
+
 function obtenerProyectosFiltrados() {
     const implSeleccionados = [...document.querySelectorAll('.filtro-impl-cb:checked')].map(cb => cb.value);
     const tiposSeleccionados = [...document.querySelectorAll('.filtro-tipo-cb:checked')].map(cb => cb.value);
@@ -482,12 +488,23 @@ function renderizarDashboard() {
     document.getElementById('stats').innerHTML = `Mostrando <strong>${filtrados.length}</strong> de <strong>${proyectos.length}</strong> proyectos`;
 
     if (filtrados.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-                <h3>No hay proyectos</h3>
-                <p>Crea un nuevo proyecto para empezar</p>
-            </div>`;
+        const hayFiltros = _hayFiltrosActivos();
+        if (hayFiltros) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <h3>Sin resultados</h3>
+                    <p>Ningún proyecto coincide con los filtros aplicados.</p>
+                    <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros()" style="margin-top:12px">Limpiar filtros</button>
+                </div>`;
+        } else {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                    <h3>No hay proyectos</h3>
+                    <p>Los proyectos se generan desde la sección "Sin asignar" cuando se da de alta un cliente.</p>
+                </div>`;
+        }
         return;
     }
 
@@ -580,12 +597,23 @@ function abrirModal(id) {
     if (window.YurestConfig && window.YurestConfig.a11yAbrirModal) {
         window.YurestConfig.a11yAbrirModal(id);
     }
+    // Cuando se abre el modal-confirm, bloquea la interacción con otros modales
+    // abiertos para evitar que un click "atravesado" dispare acciones destructivas
+    // (p.ej. el botón Eliminar del proyecto detrás del confirm).
+    if (id === 'modal-confirm') {
+        document.querySelectorAll('.modal-overlay.active').forEach(el => {
+            if (el.id !== 'modal-confirm') el.setAttribute('inert', '');
+        });
+    }
 }
 
 function cerrarModal(id) {
     document.getElementById(id).classList.remove('active');
     if (window.YurestConfig && window.YurestConfig.a11yCerrarModal) {
         window.YurestConfig.a11yCerrarModal(id);
+    }
+    if (id === 'modal-confirm') {
+        document.querySelectorAll('.modal-overlay[inert]').forEach(el => el.removeAttribute('inert'));
     }
 }
 
@@ -727,7 +755,16 @@ async function guardarProyecto() {
 }
 
 function eliminarProyecto(id) {
-    mostrarConfirmacion('¿Eliminar este proyecto y todas sus tareas?', async () => {
+    const proyecto = proyectos.find(p => p.id === id);
+    if (!proyecto) return;
+    const cliente = proyecto.cliente || '';
+    const mensaje = `¿Eliminar el proyecto de "${cliente}" y todas sus tareas?\n\nPara confirmar, en el siguiente paso deberás escribir el nombre del cliente.`;
+    mostrarConfirmacion(mensaje, async () => {
+        const escrito = (prompt(`Esta acción es irreversible.\nEscribe exactamente el nombre del cliente para confirmar:\n\n${cliente}`) || '').trim();
+        if (escrito !== cliente) {
+            mostrarToast('Cancelado: el nombre no coincide', 'warning');
+            return;
+        }
         showLoading();
         try {
             await eliminarProyectoAPI(id);
@@ -987,9 +1024,14 @@ async function guardarContactoDetalle() {
     const puesto = document.getElementById('contacto-puesto').value.trim();
     const telefono = document.getElementById('contacto-telefono').value.trim();
 
-    if (!email || !email.includes('@')) {
+    if (!nombre) {
+        document.getElementById('contacto-nombre').focus();
+        mostrarToast('El nombre es obligatorio', 'warning');
+        return;
+    }
+    if (!email || !email.includes('@') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         document.getElementById('contacto-email').focus();
-        mostrarToast('Email es obligatorio', 'warning');
+        mostrarToast('Email obligatorio y con formato válido', 'warning');
         return;
     }
 
@@ -1028,30 +1070,62 @@ async function eliminarContactoDetalle(idx) {
     });
 }
 
+// Extrae el projectId numérico de una URL de Asana o devuelve el valor si ya es un ID.
+function _parseAsanaInput(raw) {
+    const v = String(raw || '').trim();
+    if (!v) return { id: '', url: '' };
+    if (/^\d{6,}$/.test(v)) {
+        return { id: v, url: `https://app.asana.com/0/${v}/list` };
+    }
+    try {
+        const u = new URL(v);
+        if (!/asana\.com$/i.test(u.hostname)) return { id: '', url: v, error: 'La URL debe ser de app.asana.com' };
+        const m = u.pathname.match(/\/(\d{6,})/);
+        if (!m) return { id: '', url: v, error: 'No se pudo extraer el ID del proyecto desde la URL' };
+        return { id: m[1], url: v };
+    } catch (_) {
+        return { id: '', url: v, error: 'URL no válida' };
+    }
+}
+
 async function renderDetalleDesarrollos(proyecto) {
     const container = document.getElementById('detalle-desarrollos');
     const asanaId = proyecto.asanaProjectId || '';
+    const asanaUrl = proyecto.asanaProjectUrl || (asanaId ? `https://app.asana.com/0/${asanaId}/list` : '');
 
     container.innerHTML = `
         <div class="desarrollos-config">
-            <div class="form-row" style="align-items:flex-end">
-                <div class="form-group" style="flex:1">
-                    <label>Asana Project ID</label>
-                    <input type="text" id="asana-project-id" class="form-control" placeholder="Ej: 1234567890" value="${escapeHtml(asanaId)}">
+            <div class="form-row" style="align-items:flex-end;flex-wrap:wrap;gap:8px">
+                <div class="form-group" style="flex:1;min-width:240px">
+                    <label>URL del proyecto en Asana</label>
+                    <input type="url" id="asana-project-url" class="form-control" placeholder="https://app.asana.com/0/1234567890/list" value="${escapeHtml(asanaUrl)}">
+                    <small class="form-hint">Pega la URL completa del proyecto desde Asana. Se guardará en el proyecto y se usará para listar sus tareas aquí.</small>
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="vincularAsana()" style="margin-bottom:0;height:38px">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                    Vincular
-                </button>
+                <div style="display:flex;gap:6px;margin-bottom:0">
+                    <button class="btn btn-primary btn-sm" onclick="vincularAsana()" style="height:38px">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                        ${asanaId ? 'Actualizar' : 'Vincular'}
+                    </button>
+                    ${asanaId ? `
+                        <a class="btn btn-secondary btn-sm" href="${escapeHtml(asanaUrl)}" target="_blank" rel="noopener" style="height:38px;display:inline-flex;align-items:center;gap:6px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            Abrir en Asana
+                        </a>
+                        <button class="btn btn-secondary btn-sm" onclick="desvincularAsana()" style="height:38px" title="Desvincular">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    ` : ''}
+                </div>
             </div>
         </div>
         <div id="asana-tasks-list" class="desarrollos-list">
-            ${asanaId ? '<div class="loading-inline"><div class="spinner"></div> Cargando tareas de Asana...</div>' : '<div style="text-align:center;padding:32px;color:var(--text-muted)">Vincula un proyecto de Asana para ver sus desarrollos</div>'}
+            ${asanaId ? '<div class="loading-inline"><div class="spinner"></div> Cargando tareas de Asana...</div>' : '<div style="text-align:center;padding:32px;color:var(--text-muted)">Pega la URL del proyecto Asana para ver sus desarrollos</div>'}
         </div>`;
 
     if (asanaId) {
         const tasks = await obtenerTareasAsana(asanaId);
         const listEl = document.getElementById('asana-tasks-list');
+        if (!listEl) return;
         if (tasks.length > 0) {
             listEl.innerHTML = tasks.map(t => `
                 <div class="asana-task-row ${t.completed ? 'completed' : ''}">
@@ -1067,16 +1141,36 @@ async function renderDetalleDesarrollos(proyecto) {
 }
 
 async function vincularAsana() {
-    const asanaId = document.getElementById('asana-project-id').value.trim();
+    const input = document.getElementById('asana-project-url').value;
+    const parsed = _parseAsanaInput(input);
     const proyecto = proyectos.find(p => p.id === detalleProyectoId);
     if (!proyecto) return;
 
-    proyecto.asanaProjectId = asanaId;
+    if (input.trim() && !parsed.id) {
+        mostrarToast(parsed.error || 'No se pudo identificar el proyecto Asana', 'warning');
+        return;
+    }
+
+    proyecto.asanaProjectId = parsed.id;
+    proyecto.asanaProjectUrl = parsed.id ? parsed.url : '';
     guardarProyectosLocal(proyectos);
     try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
 
     renderDetalleDesarrollos(proyecto);
-    mostrarToast(asanaId ? 'Proyecto Asana vinculado' : 'Vinculacion removida', 'success');
+    mostrarToast(parsed.id ? 'Proyecto Asana vinculado' : 'Vinculación eliminada', 'success');
+}
+
+async function desvincularAsana() {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    mostrarConfirmacion('¿Desvincular el proyecto Asana?', async () => {
+        proyecto.asanaProjectId = '';
+        proyecto.asanaProjectUrl = '';
+        guardarProyectosLocal(proyectos);
+        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+        renderDetalleDesarrollos(proyecto);
+        mostrarToast('Vinculación eliminada', 'success');
+    });
 }
 
 function renderDetalleAnotaciones(proyecto) {

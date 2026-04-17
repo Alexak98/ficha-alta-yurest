@@ -2134,11 +2134,64 @@ textarea.form-control {
 
 @media (max-width: 768px) {
     .header {
-        padding: 12px 16px;
+        padding: 10px 14px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .header-left {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .header h1 {
+        font-size: 16px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-logo-img {
+        height: 26px;
+    }
+
+    .header-nav {
+        flex: 1 1 100%;
+        order: 99;
+        justify-content: center;
+    }
+
+    .nav-tab {
+        padding: 7px 14px;
+        font-size: 13px;
+        flex: 1;
+        justify-content: center;
     }
 
     .filters-bar {
-        padding: 10px 16px;
+        padding: 10px 14px;
+        gap: 8px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .filters-bar > * {
+        flex-shrink: 0;
+    }
+
+    .filters-bar .search-group {
+        flex: 1 1 160px;
+        min-width: 140px;
+    }
+
+    .filters-bar .stats {
+        margin-left: 0;
+        order: 99;
+        flex-basis: 100%;
+        padding-top: 4px;
     }
 
     .dashboard {
@@ -2157,9 +2210,43 @@ textarea.form-control {
         grid-template-columns: 1fr;
     }
 
-    .modal {
-        width: 95%;
-        max-height: 90vh;
+    .modal,
+    .modal-detail {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-overlay {
+        padding: 0;
+        align-items: stretch;
+    }
+
+    .modal-header {
+        border-radius: 0;
+    }
+
+    .modal-body {
+        padding: 16px;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .detail-tabs {
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .detail-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .detail-info {
+        gap: 12px;
     }
 }
 
@@ -2895,4 +2982,44 @@ textarea.form-control {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   RESPONSIVE OVERRIDES (deben ir al final del archivo
+   porque .task-row / .task-header-row se redefinen más arriba
+   y las reglas posteriores ganan por orden de aparición).
+   ========================================== */
+@media (max-width: 768px) {
+    .task-row,
+    .task-header-row {
+        grid-template-columns: 16px 24px minmax(0, 1fr) 50px 76px;
+        gap: 6px;
+        padding: 8px 10px;
+    }
+
+    .task-row > .task-date,
+    .task-row > .task-time,
+    .task-header-row > :nth-child(5),
+    .task-header-row > :nth-child(6) {
+        display: none;
+    }
+
+    .task-row > .task-actions {
+        grid-column: 5;
+        justify-self: end;
+    }
+
+    .task-row > .task-name,
+    .task-header-row > :nth-child(3) {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .task-actions .task-subtask-btn,
+    .task-actions .task-edit-btn,
+    .task-actions .task-delete-btn {
+        opacity: 1;
+    }
 }

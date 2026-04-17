@@ -317,6 +317,11 @@ function migrarProyectos(lista) {
         if (!p.tpv) p.tpv = '';
         if (!p.motivoPausa) p.motivoPausa = '';
         if (!p.planAccion) p.planAccion = '';
+        // Normalizar campos Asana (snake_case desde Supabase → camelCase usado en UI)
+        if (p.asana_project_id && !p.asanaProjectId) p.asanaProjectId = p.asana_project_id;
+        if (p.asana_project_url && !p.asanaProjectUrl) p.asanaProjectUrl = p.asana_project_url;
+        if (!p.asanaProjectId) p.asanaProjectId = '';
+        if (!p.asanaProjectUrl) p.asanaProjectUrl = p.asanaProjectId ? `https://app.asana.com/0/${p.asanaProjectId}/list` : '';
     });
     return lista;
 }

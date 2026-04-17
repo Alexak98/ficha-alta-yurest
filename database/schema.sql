@@ -199,6 +199,7 @@ CREATE TABLE proyectos (
 
     -- Integración Asana
     asana_project_id TEXT,
+    asana_project_url TEXT,
 
     -- Notas libres
     anotaciones TEXT,
