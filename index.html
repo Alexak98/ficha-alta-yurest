@@ -2037,6 +2037,13 @@
                 data.id = _editId;
             }
 
+            // Al guardar desde el panel del comercial (modo edición o completar
+            // tras rellenado del cliente) la ficha pasa a 'rellenado' en BD,
+            // que en el negocio significa "ficha completada por comercial".
+            // El estado 'completada' queda reservado para "rellenada por cliente"
+            // (workflow 11-auxiliares al recibir respuesta de solicitud.html).
+            data['Estado'] = 'rellenado';
+
             const res = await YurestConfig.apiFetch(WEBHOOK_GUARDAR, {
                 method: 'POST',
                 body: JSON.stringify(data)

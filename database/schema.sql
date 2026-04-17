@@ -365,13 +365,16 @@ CREATE TRIGGER trg_solicitudes_updated BEFORE UPDATE ON solicitudes  FOR EACH RO
 -- TRIGGERS: timestamps por estado (analítica de Ventas)
 -- Definidos en migrations/2026-04-17_02_fichas_estado_timestamps.sql.
 -- =============================================
+-- Mapeo estado BD ↔ semántica de negocio:
+--   estado='completada' → cliente rellenó su parte (workflow 11-auxiliares)
+--   estado='rellenado'/'Rellenado' → comercial completó la ficha (index.html)
 CREATE OR REPLACE FUNCTION fichas_set_estado_timestamps()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.estado IN ('rellenado', 'Rellenado') AND NEW.fecha_rellenado IS NULL THEN
+    IF NEW.estado = 'completada' AND NEW.fecha_rellenado IS NULL THEN
         NEW.fecha_rellenado := NOW();
     END IF;
-    IF NEW.estado = 'completada' AND NEW.fecha_completado IS NULL THEN
+    IF NEW.estado IN ('rellenado', 'Rellenado') AND NEW.fecha_completado IS NULL THEN
         NEW.fecha_completado := NOW();
     END IF;
     RETURN NEW;

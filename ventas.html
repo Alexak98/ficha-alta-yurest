@@ -429,13 +429,20 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         return s ? parseDate(s.created_at || s['Fecha Solicitud']) : null;
     }
 
-    function esRellenada(f) {
-        const e = String(f.estado || f.Estado || '').toLowerCase();
-        return e === 'rellenado' || e === 'completada' || e === 'en_proceso';
-    }
-    function esCompletada(f) {
+    // Semántica BD vs negocio:
+    //   estado='completada' = el cliente rellenó su parte de la ficha
+    //   estado='rellenado'/'Rellenado' = el comercial completó/cerró la ficha
+    function esRellenadaPorCliente(f) {
         const e = String(f.estado || f.Estado || '').toLowerCase();
         return e === 'completada';
+    }
+    function esCompletadaPorComercial(f) {
+        const e = String(f.estado || f.Estado || '').toLowerCase();
+        return e === 'rellenado';
+    }
+    // Cualquier ficha que ya pasó al menos por la fase de cliente o comercial.
+    function esRellenadaOComp(f) {
+        return esRellenadaPorCliente(f) || esCompletadaPorComercial(f);
     }
 
     function renderKPIs() {
@@ -444,8 +451,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             const e = String(s.estado || s.Estado || 'pendiente').toLowerCase();
             return e === 'pendiente';
         }).length;
-        const rellenadas = fichasAll.filter(esRellenada).length;
-        const completadas = fichasAll.filter(esCompletada).length;
+        const rellenadas = fichasAll.filter(esRellenadaOComp).length;
+        const completadas = fichasAll.filter(esCompletadaPorComercial).length;
 
         document.getElementById('kpi-total-sol').textContent = totalSol;
         document.getElementById('kpi-sub-sol').innerHTML = `<span class="muted">${pendientes} pendientes</span>`;
@@ -461,7 +468,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         // Si faltan (fichas previas a la migración), caemos al match por email.
         const totales = [];
         const solByEmail = buildSolByEmail();
-        fichasAll.filter(esCompletada).forEach(f => {
+        fichasAll.filter(esCompletadaPorComercial).forEach(f => {
             const dSol  = parseDate(f.fecha_solicitud) || fechaSolicitudDeFicha(f, solByEmail);
             const dComp = parseDate(f.fecha_completado) || parseDate(f.updated_at);
             if (dSol && dComp) {
@@ -532,7 +539,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         // Preferencia: columnas dedicadas (fecha_solicitud, fecha_rellenado).
         // Fallback: solicitud emparejada por email.
         const solARell = [];
-        fichasAll.filter(esRellenada).forEach(f => {
+        fichasAll.filter(esRellenadaOComp).forEach(f => {
             const dSol  = parseDate(f.fecha_solicitud) || fechaSolicitudDeFicha(f, solByEmail);
             const dRell = parseDate(f.fecha_rellenado) || parseDate(f.created_at || f['Fecha']);
             if (dSol && dRell) {
@@ -544,7 +551,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         // Tiempo Rellenado → Completado.
         // Preferencia: fecha_completado - fecha_rellenado. Fallback: updated_at - created_at.
         const rellAComp = [];
-        fichasAll.filter(esCompletada).forEach(f => {
+        fichasAll.filter(esCompletadaPorComercial).forEach(f => {
             const dRell = parseDate(f.fecha_rellenado) || parseDate(f.created_at);
             const dComp = parseDate(f.fecha_completado) || parseDate(f.updated_at);
             if (dRell && dComp) {
