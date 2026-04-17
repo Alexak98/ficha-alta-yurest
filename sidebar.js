@@ -145,9 +145,12 @@
 
         nav.innerHTML = html;
 
-        // Disparar actualización del badge "Sin asignar" si existe en la página
+        // Disparar actualización de los badges informativos del sidebar.
         if (window.YurestConfig && window.YurestConfig.actualizarBadgeSinAsignar) {
             window.YurestConfig.actualizarBadgeSinAsignar();
+        }
+        if (window.YurestConfig && window.YurestConfig.actualizarBadgeA3) {
+            window.YurestConfig.actualizarBadgeA3();
         }
     }
 

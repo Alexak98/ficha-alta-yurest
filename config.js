@@ -268,6 +268,35 @@
     }
 
     // ──────────────────────────────────────────────────────────
+    //  BADGE "GRABAR EN A3" — pendientes de Contabilidad
+    // ──────────────────────────────────────────────────────────
+    // Cuenta fichas con mandato SEPA firmado pendientes de grabar en A3.
+    // Se llama desde sidebar.js tras renderizar el menú.
+    async function actualizarBadgeA3() {
+        try {
+            const badge = document.getElementById('badge-a3');
+            if (!badge) return;
+            const res = await apiFetch(ENDPOINTS.altas, { method: 'GET' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const lista = Array.isArray(data) ? data
+                : Array.isArray(data.clientes) ? data.clientes
+                : Array.isArray(data.data) ? data.data : [];
+            const count = lista.filter(f => {
+                if (f.grabado_a3) return false;
+                const sepaRaw = f.sepa_mandato || f.SEPA;
+                if (!sepaRaw) return false;
+                let sepa = sepaRaw;
+                if (typeof sepa === 'string') {
+                    try { sepa = JSON.parse(sepa); } catch (_) { return false; }
+                }
+                return !!(sepa && sepa.firma_base64);
+            }).length;
+            badge.textContent = count > 0 ? count : '';
+        } catch (_) { /* silencioso */ }
+    }
+
+    // ──────────────────────────────────────────────────────────
     //  BADGE "SIN ASIGNAR" — se usa en varias páginas
     // ──────────────────────────────────────────────────────────
     // Actualiza el <span id="badge-sinasignar"> con el número de fichas
@@ -317,6 +346,7 @@
         escJsInAttr,
         generarId,
         actualizarBadgeSinAsignar,
+        actualizarBadgeA3,
         a11yAbrirModal,
         a11yCerrarModal
     };
