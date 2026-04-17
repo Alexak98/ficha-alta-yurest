@@ -258,35 +258,6 @@
         .btn-del  { border: 1.5px solid #fecaca; background: #fff5f5; color: #dc2626; }
         .btn-del:hover  { border-color: #dc2626; background: #fee2e2; }
 
-        /* ── Dropdown Ver ── */
-        .btn-ver-wrap { position: relative; display: inline-block; }
-        .btn-ver-toggle::after { content: ' ▾'; font-size: 0.65rem; }
-        .btn-ver-menu {
-            display: none;
-            position: fixed;
-            z-index: 9999;
-            background: #fff;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 9px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-            min-width: 150px;
-            padding: 4px 0;
-        }
-        .btn-ver-menu.open { display: block; }
-        .btn-ver-menu a {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 9px 14px;
-            font-size: 0.82rem;
-            font-weight: 500;
-            color: #1e293b;
-            text-decoration: none;
-            transition: background 0.12s;
-        }
-        .btn-ver-menu a:hover { background: #f8fafc; color: #fc5858; }
-        .btn-ver-menu a .vm-icon { font-size: 0.9rem; }
-
         /* ── Modal confirmación eliminar ── */
         .confirm-modal-overlay {
             position: fixed;
@@ -1571,14 +1542,7 @@
                 <td class="td-center">${estadoBadge(f)}</td>
                 <td class="td-center" onclick="event.stopPropagation()">${docsToggleHtml(f, idx)}</td>
                 <td class="td-actions">
-                    <div class="btn-ver-wrap">
-                        <button class="btn-ver btn-ver-toggle" onclick="event.stopPropagation();toggleVerMenu(this, ${idx})">Ver</button>
-                        <div class="btn-ver-menu">
-                            <a href="#" onclick="event.stopPropagation();abrirDrive(${idx});return false;"><span class="vm-icon">📁</span> Ver Drive</a>
-                            <a href="#" onclick="event.stopPropagation();cerrarVerMenus();verFicha(${idx});return false;"><span class="vm-icon">📋</span> Ver ficha</a>
-                            <a href="#" onclick="event.stopPropagation();return false;" style="pointer-events:none;opacity:0.4;cursor:default;"><span class="vm-icon">📌</span> Ver proyecto</a>
-                        </div>
-                    </div>
+                    <button class="btn-ver" onclick="event.stopPropagation();abrirDrive(${idx})" title="Abrir carpeta de Drive">📁 Drive</button>
                     <button class="btn-edit" onclick="event.stopPropagation();editarFicha(${idx})">Editar</button>
                     <button class="btn-del"  onclick="event.stopPropagation();eliminarFicha(${idx})">Eliminar</button>
                 </td>
@@ -1591,37 +1555,16 @@
         return (f['Comercial'] || f['comercial'] || '').trim();
     }
 
-    // ── Ver Drive: consulta webhook para obtener el ID de carpeta ────────────
+    // ── Ver Drive: abre la carpeta de la ficha en Google Drive ────────────────
     function abrirDrive(idx) {
-        cerrarVerMenus();
-        const ficha     = fichasFiltradas[idx];
-        const carpeta   = (ficha['Carpeta Drive'] || ficha['carpeta_drive'] || '').toString().trim();
+        const ficha   = fichasFiltradas[idx];
+        const carpeta = (ficha['Carpeta Drive'] || ficha['carpeta_drive'] || '').toString().trim();
         if (!carpeta) { alert('Esta ficha no tiene carpeta de Drive asignada.'); return; }
-        // Si ya es una URL completa la abrimos directamente, si no construimos la URL de Drive
         const driveUrl = carpeta.startsWith('http')
             ? carpeta
             : 'https://drive.google.com/drive/u/1/folders/' + carpeta;
         window.open(driveUrl, '_blank');
     }
-
-    // ── Dropdown Ver ──────────────────────────────────────────────────────────
-    function toggleVerMenu(btn, idx) {
-        const menu = btn.nextElementSibling;
-        const isOpen = menu.classList.contains('open');
-        cerrarVerMenus();
-        if (!isOpen) {
-            const rect = btn.getBoundingClientRect();
-            menu.style.top  = (rect.bottom + 4) + 'px';
-            menu.style.left = rect.left + 'px';
-            menu.classList.add('open');
-        }
-    }
-
-    function cerrarVerMenus() {
-        document.querySelectorAll('.btn-ver-menu.open').forEach(m => m.classList.remove('open'));
-    }
-
-    document.addEventListener('click', cerrarVerMenus);
 
     // ── Aplicar todos los filtros activos ─────────────────────────────────────
     function aplicarFiltros() {
@@ -1816,7 +1759,7 @@
         // ── Header ────────────────────────────────────────────────────────────
         document.getElementById('panel-title').innerHTML = esc(f['Nombre Sociedad'] || '—') + tipoPill;
         document.getElementById('panel-subtitle').textContent =
-            [f['Nombre Comercial'], f['CIF/NIF'], f['Comercial'] ? '👤 ' + f['Comercial'] : ''].filter(Boolean).join(' · ');
+            [f['Nombre Comercial'], f['Comercial'] ? '👤 ' + f['Comercial'] : ''].filter(Boolean).join(' · ');
         document.getElementById('panel-fecha').textContent = 'Alta: ' + formatFechaLarga(f['Fecha']);
 
         // ── Badges ────────────────────────────────────────────────────────────
@@ -2469,7 +2412,7 @@
         const btn   = document.getElementById('btn-solicitar');
         const open  = panel.classList.toggle('open');
         btn.classList.toggle('open', open);
-        if (open) setTimeout(() => document.getElementById('sol-nombre').focus(), 50);
+        if (open) setTimeout(() => document.getElementById('sol-sociedad').focus(), 50);
         document.getElementById('sol-panel-msg').style.display = 'none';
     }
 
