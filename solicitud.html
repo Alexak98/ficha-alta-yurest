@@ -914,6 +914,27 @@
     }
     window.onIbanBlockKey = onIbanBlockKey;
 
+    // Pegar el IBAN completo en cualquier bloque: interceptamos antes de que
+    // el maxlength="4" trunque el contenido.
+    document.addEventListener('paste', function(ev) {
+        const t = ev.target;
+        if (!t || !t.classList || !t.classList.contains('sepa-iban-block')) return;
+        const txt = (ev.clipboardData || window.clipboardData).getData('text');
+        if (!txt) return;
+        const limpio = txt.replace(/\s+/g, '').toUpperCase();
+        // Solo asumimos "pegar IBAN completo" si trae más de 4 caracteres útiles.
+        if (limpio.length <= 4) return;
+        ev.preventDefault();
+        // Si el bloque actual no es el 1, conservamos lo ya escrito antes.
+        const idx = Number(t.id.replace('sepa_iban_', '')) || 1;
+        const prefijo = idx === 1 ? '' : getIbanCompleto().slice(0, (idx - 1) * 4);
+        setIbanFromString(prefijo + limpio);
+        // Foco al último bloque con contenido para continuar escribiendo si falta.
+        const v = getIbanCompleto();
+        const lastFull = Math.min(6, Math.max(1, Math.ceil(v.length / 4)));
+        _focusIbanBlock(lastFull);
+    });
+
     // ── Validación IBAN con mensaje detallado por tipo de error ──────────────
     function validarIbanDetallado(raw) {
         const v = String(raw || '').replace(/\s+/g, '').toUpperCase();
