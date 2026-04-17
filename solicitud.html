@@ -340,8 +340,12 @@
             <div class="card-header">
                 <span class="section-num">05</span>
                 <h3>Integración TPV</h3>
+                <label class="toggle-tpv-no-int" title="Marcar si el TPV no está integrado">
+                    <input type="checkbox" id="tpv_no_integrado_check" onchange="toggleTpvNoIntegrado(this.checked)">
+                    <span>TPV no integrado</span>
+                </label>
             </div>
-            <div class="form-grid">
+            <div class="form-grid" id="tpv-integrado-fields">
                 <div class="form-group col-4">
                     <label for="tpv">Sistema TPV</label>
                     <select id="tpv">
@@ -370,6 +374,20 @@
                 <div class="form-group col-4">
                     <label for="tpv_email">Email</label>
                     <input type="email" id="tpv_email" placeholder="contacto@tpv.com">
+                </div>
+            </div>
+            <div class="form-grid hidden" id="tpv-no-integrado-fields">
+                <div class="form-group col-4">
+                    <label for="tpv_ni_nombre">Nombre del TPV</label>
+                    <input type="text" id="tpv_ni_nombre" placeholder="Nombre del TPV no integrado">
+                </div>
+                <div class="form-group col-4">
+                    <label for="tpv_ni_contacto">Persona de referencia</label>
+                    <input type="text" id="tpv_ni_contacto" placeholder="Nombre completo">
+                </div>
+                <div class="form-group col-4">
+                    <label for="tpv_ni_email">Email de referencia</label>
+                    <input type="email" id="tpv_ni_email" placeholder="contacto@ejemplo.com">
                 </div>
             </div>
         </div>
@@ -514,6 +532,22 @@
 
     // Marca el momento en que se mostró el formulario (para anti-bot)
     let _formShownAt = 0;
+
+    // Toggle TPV no integrado: igual que en index.html del comercial.
+    function toggleTpvNoIntegrado(noIntegrado) {
+        document.getElementById('tpv-integrado-fields').classList.toggle('hidden', noIntegrado);
+        document.getElementById('tpv-no-integrado-fields').classList.toggle('hidden', !noIntegrado);
+        if (noIntegrado) {
+            document.getElementById('tpv').value = '';
+            document.getElementById('tpv_contacto').value = '';
+            document.getElementById('tpv_email').value = '';
+        } else {
+            document.getElementById('tpv_ni_nombre').value = '';
+            document.getElementById('tpv_ni_contacto').value = '';
+            document.getElementById('tpv_ni_email').value = '';
+        }
+    }
+    window.toggleTpvNoIntegrado = toggleTpvNoIntegrado;
 
     function showStatus(msg, type) {
         const el = document.getElementById('status-msg');
@@ -1027,6 +1061,7 @@
             ['jp_mail',       esEmail,     'Email del JP inválido.'],
             ['firm_mail',     esEmail,     'Email del firmante inválido.'],
             ['tpv_email',     esEmail,     'Email del TPV inválido.'],
+            ['tpv_ni_email',  esEmail,     'Email del TPV no integrado inválido.'],
             ['jp_telefono',   esTelefono,  'Teléfono del JP inválido.']
         ];
         for (const [id, fn, msg] of validaciones) {
@@ -1105,6 +1140,10 @@
             'TPV':              document.getElementById('tpv').value,
             'TPV Contacto':     getVal('tpv_contacto'),
             'TPV Email':        getVal('tpv_email'),
+            'TPV No Integrado': document.getElementById('tpv_no_integrado_check').checked ? 'Sí' : '',
+            'TPV NI Nombre':    getVal('tpv_ni_nombre'),
+            'TPV NI Contacto':  getVal('tpv_ni_contacto'),
+            'TPV NI Email':     getVal('tpv_ni_email'),
             'SEPA': {
                 referencia:       'YUREST-' + solicitudId,
                 acreedor:         { ...SEPA_ACREEDOR },
