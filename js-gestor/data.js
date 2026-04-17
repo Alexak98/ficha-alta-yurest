@@ -67,6 +67,63 @@ const SESIONES_PLANTILLA = [
     'Sesiones Extra'
 ];
 
+// Sesiones base que se incluyen siempre (no dependen de módulos contratados)
+const SESIONES_BASE = new Set([
+    'Planificacion',
+    'Sesión de Bienvenida',
+    'Sesiones Extra'
+]);
+
+// Mapa: nombre de sesión → nombre del módulo (tal como se guarda en `Módulos`
+// desde el formulario de la ficha). Las sesiones de `SESIONES_BASE` no figuran
+// aquí porque siempre se incluyen.
+const SESION_A_MODULO = {
+    'Modulo Compras':              'Compras',
+    'Modulo Cocina':               'Cocina',
+    'Modulo Stock':                'Stock',
+    'Modulo Financiero':           'Finanzas',
+    'Modulo Checklist':            'Checklists',
+    'Modulo APPCC':                'APPCC',
+    'Modulo Auditorias':           'Auditorías',
+    'Modulo Comunicación':         'Comunicación y averías',
+    'Modulo RRHH':                 'RRHH',
+    'Modulo Cocina Produccion':    'Cocina de Producción',
+    'Modulo Almacén Central':      'Almacén Central',
+    'Modulo Gestor documental':    'Gestor Documental',
+    'Módulo Analítica de ventas':  'Analítica de Ventas',
+    'Módulo Dashboard dinamicos':  'Paneles BI (Dashboards Dinámicos)',
+    'Módulo Firmas Digitales':     'Firma Digital'
+};
+
+// Normaliza un string de módulo para comparación tolerante (sin acentos,
+// minúsculas, sin espacios extremos).
+function _normalizarModulo(s) {
+    return String(s || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+// Devuelve el subconjunto de SESIONES_PLANTILLA que corresponde a los módulos
+// realmente contratados. Siempre incluye las sesiones base (Planificación,
+// Bienvenida, Sesiones Extra). Si `modulos` es null/undefined, devuelve la
+// plantilla completa (comportamiento legacy para datos de ejemplo).
+function filtrarSesionesPorModulos(modulos) {
+    if (modulos == null) return SESIONES_PLANTILLA.slice();
+    const arr = Array.isArray(modulos) ? modulos
+              : typeof modulos === 'string'
+                ? modulos.split(/[,;|]/)
+                : [];
+    const contratados = new Set(arr.map(_normalizarModulo).filter(Boolean));
+    return SESIONES_PLANTILLA.filter(nombre => {
+        if (SESIONES_BASE.has(nombre)) return true;
+        const mod = SESION_A_MODULO[nombre];
+        if (!mod) return false;
+        return contratados.has(_normalizarModulo(mod));
+    });
+}
+
 // Tareas plantilla para "Puesta en Marcha / Finalización"
 const TAREAS_PUESTA_EN_MARCHA = [
     'Llamada de contacto',
@@ -102,12 +159,18 @@ function generarId() {
     return Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 11);
 }
 
-// Crea la estructura de secciones con tareas para un nuevo proyecto
-function crearEstructuraProyecto() {
+// Crea la estructura de secciones con tareas para un nuevo proyecto.
+// `modulosContratados` (opcional): array de nombres de módulos tal como se
+// guardan en la ficha (`Módulos`). Cuando se proporciona, la sección
+// "Planificación de sesiones" sólo incluirá las sesiones correspondientes a
+// los módulos contratados (más las sesiones base: Planificación, Bienvenida,
+// Sesiones Extra). Si se omite, se incluyen todas las sesiones (legacy).
+function crearEstructuraProyecto(modulosContratados) {
+    const sesionesActivas = filtrarSesionesPorModulos(modulosContratados);
     return SECCIONES.map(seccion => {
         let tareas = [];
         if (seccion === 'Planificación de sesiones') {
-            tareas = SESIONES_PLANTILLA.map(nombre => ({
+            tareas = sesionesActivas.map(nombre => ({
                 id: generarId(),
                 nombre,
                 completada: false,
@@ -461,14 +524,20 @@ function normalizarAlta(f) {
     const estado = get(['Estado', 'estado']);
     const tpv = get(['TPV', 'tpv']);
 
+    // Módulos contratados (si vienen) — se preservan para que al crear el
+    // proyecto sólo se generen las sesiones de los módulos realmente
+    // contratados.
+    const rawMods = f['Módulos'] || f['modulos'] || f.modulos || '';
+    const modulos = Array.isArray(rawMods)
+        ? rawMods.map(m => String(m).trim()).filter(Boolean)
+        : String(rawMods).split(/[,;|]/).map(m => m.trim()).filter(Boolean);
+
     let tipoNorm = 'Corporate sin cocina';
     const tipoLower = tipo.toLowerCase();
     if (tipoLower.includes('lite') || tipoLower.includes('planes') || tipoLower === 'planes') {
         tipoNorm = 'Planes';
     } else if (tipoLower.includes('corporate') || tipoLower.includes('corp')) {
-        const rawMods = f['Módulos'] || f['modulos'] || f.modulos || '';
-        const modulos = Array.isArray(rawMods) ? rawMods.join(',') : String(rawMods);
-        if (modulos.toLowerCase().includes('cocina')) tipoNorm = 'Corporate con cocina';
+        if (modulos.join(',').toLowerCase().includes('cocina')) tipoNorm = 'Corporate con cocina';
     }
 
     return {
@@ -480,7 +549,8 @@ function normalizarAlta(f) {
         implementador: IMPLEMENTADORES.includes(implementador) ? implementador : '',
         fecha,
         estado,
-        tpv
+        tpv,
+        modulos
     };
 }
 

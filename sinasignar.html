@@ -456,7 +456,7 @@
                 estado: 'activo',
                 fechaInicio: f.fecha ? formatearFechaISO(f.fecha) : new Date().toISOString().split('T')[0],
                 ultimaActividad: new Date().toISOString().split('T')[0],
-                secciones: crearEstructuraProyecto(),
+                secciones: crearEstructuraProyecto(f.modulos),
                 anotaciones: '',
                 asanaProjectId: '',
                 tpv: f.tpv || ''
