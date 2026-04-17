@@ -763,6 +763,8 @@
         actualizarCorpModuleLocales();
         const _tipoActual = (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value;
         if (_tipoActual === 'corporate') recalcularCarrito('corporate');
+        // La recurrencia de Planes se cobra por local: re-render al añadir/quitar.
+        if (_tipoActual === 'planes') sincronizarPlanesRecurrencia();
     }
 
     function toggleFinanciero() {
@@ -1310,17 +1312,28 @@
         const totalLabel = document.getElementById('planes-recur-total-label');
         if (totalLabel) totalLabel.textContent = isAnual ? 'Total anual' : 'Total mensual';
 
+        const numLocales = document.querySelectorAll('.local-card').length;
         const checkedIds = getPlanesCheckedIds();
+
+        if (numLocales === 0) {
+            itemsEl.innerHTML = '<div class="tipo-cart-empty tipo-cart-empty--sm">Añade al menos un local para calcular la recurrencia (se cobra por local).</div>';
+            recalcularPlanesRecurrencia();
+            return;
+        }
+
         const rows = [];
         PAQUETES.planes.forEach(p => {
             if (!checkedIds.has(p.id)) return;
             const cost = PLAN_MONTHLY_COSTS[p.nombre];
             if (!cost) return;
-            const display = (cost * multiplier).toLocaleString('es-ES', { minimumFractionDigits: 2 });
+            const porLocal = cost * multiplier;
+            const totalPlan = porLocal * numLocales;
+            const displayUnit = porLocal.toLocaleString('es-ES', { minimumFractionDigits: 2 });
+            const displayTotal = totalPlan.toLocaleString('es-ES', { minimumFractionDigits: 2 });
             rows.push(`<div class="corp-recur-item">
-                <span class="corp-recur-item-nombre">${p.nombre}</span>
+                <span class="corp-recur-item-nombre">${p.nombre} <span style="color:#94a3b8;font-weight:500;font-size:0.78rem">${displayUnit} ${suffix} × ${numLocales} ${numLocales === 1 ? 'local' : 'locales'}</span></span>
                 <div class="cart-item-precio-wrap">
-                    <span class="corp-recur-item-precio">${display}</span>
+                    <span class="corp-recur-item-precio">${displayTotal}</span>
                     <span class="cart-item-euro">${suffix}</span>
                 </div>
             </div>`);
@@ -1336,16 +1349,21 @@
         const multiplier = isAnual ? 10 : 1;
         const suffix     = isAnual ? '€/año' : '€/mes';
         const checkedIds = getPlanesCheckedIds();
+        const numLocales = document.querySelectorAll('.local-card').length;
         let total = 0;
         PAQUETES.planes.forEach(p => {
             if (!checkedIds.has(p.id)) return;
             const cost = PLAN_MONTHLY_COSTS[p.nombre];
-            if (cost && cost > 0) total += cost * multiplier;
+            if (cost && cost > 0) total += cost * multiplier * numLocales;
         });
         const recurDesc = parseFloat(document.getElementById('planes_recur_descuento')?.value) || 0;
         const neto = Math.max(0, total * (1 - recurDesc / 100));
         const totalEl = document.getElementById('planes-recurrencia-total');
-        if (totalEl) totalEl.textContent = neto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' ' + suffix;
+        if (totalEl) {
+            totalEl.textContent = numLocales === 0
+                ? '— (sin locales)'
+                : neto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' ' + suffix;
+        }
         actualizarResumenFlotante();
     }
 
