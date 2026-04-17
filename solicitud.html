@@ -522,6 +522,47 @@
         el.classList.toggle('hidden', !msg);
     }
 
+    // Toast flotante (esquina superior derecha) que desaparece solo a los 2s.
+    // Se usa para errores de validación inline para no obligar al usuario a
+    // hacer scroll arriba del todo.
+    function mostrarFlash(msg, tipo = 'error', ms = 2000) {
+        let host = document.getElementById('flash-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'flash-host';
+            host.style.cssText = 'position:fixed;top:18px;right:18px;left:18px;z-index:9999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none';
+            document.body.appendChild(host);
+        }
+        const colors = {
+            success: { bg:'#dcfce7', border:'#86efac', color:'#15803d', icon:'✓' },
+            warning: { bg:'#fef3c7', border:'#fcd34d', color:'#b45309', icon:'⚠' },
+            error:   { bg:'#fee2e2', border:'#fca5a5', color:'#b91c1c', icon:'✕' }
+        };
+        const c = colors[tipo] || colors.error;
+        const t = document.createElement('div');
+        t.style.cssText = `background:${c.bg};color:${c.color};border:1.5px solid ${c.border};padding:10px 16px;border-radius:12px;font-size:.88rem;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.12);max-width:480px;display:flex;gap:10px;align-items:center;pointer-events:auto;animation:flashIn .2s ease`;
+        t.innerHTML = `<span style="font-weight:800;font-size:1rem">${c.icon}</span><span>${msg}</span>`;
+        host.appendChild(t);
+        setTimeout(() => { t.style.transition='opacity .25s,transform .25s'; t.style.opacity='0'; t.style.transform='translateY(-6px)'; setTimeout(()=>t.remove(),250); }, ms);
+    }
+    if (!document.getElementById('flash-anim-style')) {
+        const s = document.createElement('style');
+        s.id = 'flash-anim-style';
+        s.textContent = '@keyframes flashIn { from { transform: translateY(-8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }';
+        document.head.appendChild(s);
+    }
+
+    // Helper para errores de validación: muestra toast + hace scroll al campo
+    // y le da foco. Reemplaza showStatus + foco que dejaba el mensaje fuera de
+    // pantalla cuando el form ya estaba scrolleado abajo.
+    function errorValidacion(msg, elFoco) {
+        mostrarFlash(msg, 'error');
+        if (elFoco) {
+            try { elFoco.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+            try { elFoco.focus({ preventScroll: true }); } catch (_) { try { elFoco.focus(); } catch (__) {} }
+        }
+    }
+
     // ── Validaciones ──────────────────────────────────────────────────────────
     // El ID de solicitud que genera el back son números enteros. Rechazamos
     // cualquier cosa que no encaje para no aceptar inyecciones por URL.
@@ -873,6 +914,19 @@
     }
     window.onIbanBlockKey = onIbanBlockKey;
 
+    // ── Validación IBAN con mensaje detallado por tipo de error ──────────────
+    function validarIbanDetallado(raw) {
+        const v = String(raw || '').replace(/\s+/g, '').toUpperCase();
+        if (v.length === 0) return 'Falta el IBAN del deudor.';
+        if (!/^[A-Z]{2}/.test(v)) return 'El IBAN debe empezar por dos letras (en España, "ES").';
+        if (!v.startsWith('ES')) return 'Este formulario solo admite IBAN español (debe empezar por "ES").';
+        if (v.length < 24) return `Faltan dígitos: el IBAN tiene ${v.length} caracteres y debe tener 24.`;
+        if (v.length > 24) return `Sobran caracteres: el IBAN tiene ${v.length} y debe tener 24.`;
+        if (!/^ES[0-9]{22}$/.test(v)) return 'Tras "ES" deben venir 22 dígitos. Revisa que no haya letras.';
+        if (!esIBAN_ES(v)) return 'El IBAN no es válido (los dígitos de control no cuadran). Revisa los números.';
+        return null;
+    }
+
     // ── Validación IBAN España (sin espacios, 24 caracteres, MOD-97 = 1) ─────
     function esIBAN_ES(raw) {
         const v = String(raw || '').replace(/\s+/g, '').toUpperCase();
@@ -908,8 +962,7 @@
 
         // Requeridos
         if (!denominacion) {
-            showStatus('La Denominación Social es obligatoria.', 'error');
-            document.getElementById('denominacion').focus();
+            errorValidacion('La Denominación Social es obligatoria.', document.getElementById('denominacion'));
             return;
         }
 
@@ -928,8 +981,7 @@
         ];
         for (const [id, fn, msg] of validaciones) {
             if (!fn(getVal(id))) {
-                showStatus(msg, 'error');
-                document.getElementById(id).focus();
+                errorValidacion(msg, document.getElementById(id));
                 return;
             }
         }
@@ -946,31 +998,27 @@
         ];
         for (const [id, msg] of sepaCampos) {
             if (!getVal(id)) {
-                showStatus(msg, 'error');
-                document.getElementById(id).focus();
+                errorValidacion(msg, document.getElementById(id));
                 return;
             }
         }
         if (!esCP(getVal('sepa_deudor_cp'))) {
-            showStatus('CP del deudor inválido (5 dígitos).', 'error');
-            document.getElementById('sepa_deudor_cp').focus();
+            errorValidacion('CP del deudor inválido (5 dígitos).', document.getElementById('sepa_deudor_cp'));
             return;
         }
         const ibanRaw = getIbanCompleto();
-        if (!esIBAN_ES(ibanRaw)) {
-            showStatus('IBAN inválido. Revisa los 24 caracteres (ES + 22 dígitos).', 'error');
-            _focusIbanBlock(1);
+        const ibanError = validarIbanDetallado(ibanRaw);
+        if (ibanError) {
+            errorValidacion(ibanError, document.getElementById('sepa_iban_1'));
             return;
         }
         if (!esBIC_OPC(getVal('sepa_swift'))) {
-            showStatus('SWIFT BIC inválido (8 u 11 caracteres alfanuméricos).', 'error');
-            document.getElementById('sepa_swift').focus();
+            errorValidacion('SWIFT BIC inválido (8 u 11 caracteres alfanuméricos).', document.getElementById('sepa_swift'));
             return;
         }
         const firmaB64 = obtenerFirmaSEPABase64();
         if (!firmaB64) {
-            showStatus('Falta la firma del mandato SEPA. Firma dentro del recuadro.', 'error');
-            document.getElementById('sepa-firma-canvas').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            errorValidacion('Falta la firma del mandato SEPA. Firma dentro del recuadro.', document.getElementById('sepa-firma-canvas'));
             return;
         }
 
