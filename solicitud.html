@@ -704,16 +704,44 @@
     // Reusamos `completarFicha` (workflow 12) que admite ?t=<token> o
     // ?id=<uuid|numero>. Devuelve los campos en el formato esperado por el
     // formulario y rellenamos solo los huecos.
+    function _mostrarEnlaceInvalido(motivo) {
+        document.getElementById('form-state').classList.add('hidden');
+        const inv = document.getElementById('invalid-state');
+        inv.classList.remove('hidden');
+        if (motivo) {
+            const p = inv.querySelector('p');
+            if (p) p.textContent = motivo;
+        }
+    }
+
     async function cargarDatosSolicitud({ token, id }) {
         try {
             const qs  = token ? ('?t=' + encodeURIComponent(token)) : ('?id=' + encodeURIComponent(id));
             const url = YurestConfig.ENDPOINTS.completarFicha + qs;
             const res = await fetch(url, { method: 'GET' });
-            if (!res.ok) return;
+            if (!res.ok) {
+                _mostrarEnlaceInvalido('No pudimos verificar el enlace. Inténtalo de nuevo en unos minutos o contacta con tu comercial de Yurest.');
+                return;
+            }
             let data = null;
-            try { data = await res.json(); } catch (_) { return; }
+            try { data = await res.json(); } catch (_) {
+                _mostrarEnlaceInvalido();
+                return;
+            }
             const f = Array.isArray(data) ? data[0] : data;
-            if (!f) return;
+            // El backend nuevo devuelve { found:false } cuando no existe.
+            // Antes del reimport del workflow caemos a una heurística: si no
+            // viene ningún campo identificativo de cliente, no hay solicitud.
+            const tieneAlgo = !!(f && (
+                f['Email'] || f['email'] ||
+                f['Nombre Sociedad'] || f['nombre_sociedad'] ||
+                f['Nombre'] || f['nombre'] ||
+                f['Comercial'] || f['comercial']
+            ));
+            if (!f || f.found === false || !tieneAlgo) {
+                _mostrarEnlaceInvalido('Esta solicitud no existe o ha sido eliminada. Contacta con tu comercial de Yurest si crees que es un error.');
+                return;
+            }
 
             // Si el backend nos devolvió el ID-Solicitud, lo mostramos en el badge.
             if (f['ID Solicitud']) {
@@ -734,6 +762,7 @@
             fill('jp_nombre',    'Nombre', 'JP Nombre', 'jp_nombre');
         } catch (err) {
             console.warn('[solicitud] no se pudieron precargar los datos:', err);
+            _mostrarEnlaceInvalido('No pudimos verificar el enlace. Comprueba tu conexión.');
         }
     }
 
