@@ -626,23 +626,74 @@
     }
 
     // ── Leer parámetros de la URL ─────────────────────────────────────────────
-    const params      = new URLSearchParams(window.location.search);
-    const solicitudId = params.get('id');
-    const preEmail    = params.get('email')    || '';
-    const preSociedad = params.get('sociedad') || '';
+    // Modo nuevo: ?t=<access_token> aleatorio (no enumerable).
+    // Modo legacy: ?id=<numero> (enlaces antiguos ya enviados).
+    // Compat extra: ?email=&sociedad=&nombre= (enlaces muy antiguos).
+    const params         = new URLSearchParams(window.location.search);
+    const accessToken    = (params.get('t') || params.get('token') || '').trim();
+    const solicitudIdRaw = params.get('id');
+    let solicitudId      = solicitudIdRaw;
+    const preEmail       = params.get('email')    || '';
+    const preSociedad    = params.get('sociedad') || '';
+    const preNombre      = params.get('nombre')   || '';
 
-    if (!esIdSolicitudValido(solicitudId)) {
+    // Validez: o bien hay un token (mínimo 16 caracteres alfanuméricos), o
+    // un ID-Solicitud numérico válido.
+    const tokenOk = /^[A-Za-z0-9_-]{16,128}$/.test(accessToken);
+    const idOk    = esIdSolicitudValido(solicitudIdRaw);
+
+    if (!tokenOk && !idOk) {
         document.getElementById('invalid-state').classList.remove('hidden');
     } else {
         document.getElementById('form-state').classList.remove('hidden');
-        document.getElementById('sol-id-text').textContent = solicitudId;
+        document.getElementById('sol-id-text').textContent = tokenOk ? '—' : solicitudId;
         _formShownAt = Date.now();
 
-        // Pre-rellenar con los datos que vienen en la URL (siempre validados)
+        // Compat URL antigua.
         if (preSociedad) document.getElementById('denominacion').value = preSociedad;
         if (preEmail && esEmail(preEmail)) document.getElementById('email').value = preEmail;
 
+        // Pedir datos al backend (token tiene preferencia).
+        cargarDatosSolicitud({ token: tokenOk ? accessToken : '', id: idOk ? solicitudIdRaw : '' });
+
         inicializarSEPA();
+    }
+
+    // ── Cargar datos previos de la solicitud desde el backend ────────────────
+    // Reusamos `completarFicha` (workflow 12) que admite ?t=<token> o
+    // ?id=<uuid|numero>. Devuelve los campos en el formato esperado por el
+    // formulario y rellenamos solo los huecos.
+    async function cargarDatosSolicitud({ token, id }) {
+        try {
+            const qs  = token ? ('?t=' + encodeURIComponent(token)) : ('?id=' + encodeURIComponent(id));
+            const url = YurestConfig.ENDPOINTS.completarFicha + qs;
+            const res = await fetch(url, { method: 'GET' });
+            if (!res.ok) return;
+            let data = null;
+            try { data = await res.json(); } catch (_) { return; }
+            const f = Array.isArray(data) ? data[0] : data;
+            if (!f) return;
+
+            // Si el backend nos devolvió el ID-Solicitud, lo mostramos en el badge.
+            if (f['ID Solicitud']) {
+                solicitudId = f['ID Solicitud'];
+                document.getElementById('sol-id-text').textContent = solicitudId;
+            }
+
+            const fill = (id, ...keys) => {
+                const el = document.getElementById(id);
+                if (!el || el.value) return;
+                for (const k of keys) {
+                    const v = f[k];
+                    if (v != null && v !== '') { el.value = v; return; }
+                }
+            };
+            fill('denominacion', 'Nombre Sociedad', 'nombre_sociedad');
+            fill('email',        'Email', 'email');
+            fill('jp_nombre',    'Nombre', 'JP Nombre', 'jp_nombre');
+        } catch (err) {
+            console.warn('[solicitud] no se pudieron precargar los datos:', err);
+        }
     }
 
     // ── SEPA: pintar acreedor + canvas firma + helpers ────────────────────────
@@ -930,6 +981,7 @@
 
         const data = {
             'ID Solicitud':     solicitudId,
+            'access_token':     tokenOk ? accessToken : '',
             'Estado':           'Rellenado cliente',
             'Nombre Sociedad':  denominacion,
             'Nombre Comercial': getVal('nombreComercial'),

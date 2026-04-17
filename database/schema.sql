@@ -266,6 +266,10 @@ CREATE TABLE solicitudes (
     estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'en_progreso', 'completado', 'Rellenado', 'Pendiente')),
     asignado_a TEXT,
 
+    -- Token aleatorio que viaja en la URL del enlace al cliente
+    -- (en lugar del ID-Solicitud numérico, que es enumerable).
+    access_token TEXT,
+
     fecha_vencimiento DATE,
     documentos JSONB DEFAULT '[]',
     notas TEXT,
@@ -275,6 +279,8 @@ CREATE TABLE solicitudes (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_solicitudes_access_token
+    ON solicitudes(access_token) WHERE access_token IS NOT NULL;
 
 -- =============================================
 -- 7. DISTRIBUCIÓN (asignaciones implementador → ficha)

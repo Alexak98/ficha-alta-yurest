@@ -2232,7 +2232,7 @@
                 <td class="td-center">${tipoBadgeHtml}</td>
                 <td class="td-center"><span class="${badgeCls}">${esc(estado)}</span></td>
                 <td class="td-actions">
-                    <button class="btn-ver" onclick="event.stopPropagation();reenviarSolicitud('${escJs(solId)}','${escJs(nombre)}','${escJs(email)}','${escJs(comercial)}','${escJs(sociedad)}')" title="Reenviar email">✉</button>
+                    <button class="btn-ver" onclick="event.stopPropagation();reenviarSolicitud('${escJs(solId)}','${escJs(nombre)}','${escJs(email)}','${escJs(comercial)}','${escJs(sociedad)}','${escJs(s.access_token || '')}')" title="Reenviar email">✉</button>
                     <button class="btn-del" onclick="event.stopPropagation();eliminarSolicitud(${i})">Eliminar</button>
                 </td>
             </tr>`;
@@ -2480,11 +2480,17 @@
         btn.textContent = 'Creando solicitud…';
 
         const solicitudId = await getNextSolicitudId();
+        const accessToken = (window.crypto?.randomUUID
+            ? window.crypto.randomUUID()
+            : 'tk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12)
+        ).replace(/-/g, '');
         const fecha       = new Date().toISOString().slice(0, 10);
 
-        // Construir URL y cuerpo del email ANTES del POST para incluirlos en el body
+        // URL pública: lleva un token aleatorio (no el ID-Solicitud
+        // numérico, que era enumerable). El backend resuelve el token
+        // contra solicitudes.access_token y devuelve los datos.
         const baseUrl = window.location.href.split('?')[0].replace(/lista\.html$/, 'solicitud.html');
-        const formUrl = `${baseUrl}?id=${encodeURIComponent(solicitudId)}&nombre=${encodeURIComponent(nombre)}&email=${encodeURIComponent(email)}&sociedad=${encodeURIComponent(sociedad)}`;
+        const formUrl = `${baseUrl}?t=${encodeURIComponent(accessToken)}`;
         const emailAsunto = 'Solicitud de creación de ficha de alta';
         const emailCuerpo =
             `Hola ${nombre},\n\n` +
@@ -2500,6 +2506,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     'ID Solicitud':  solicitudId,
+                    'access_token':  accessToken,
                     'Nombre Sociedad': sociedad,
                     'Nombre':        nombre,
                     'Email':         email,
@@ -2546,9 +2553,9 @@
     // ── Reenviar solicitud por email ──────────────────────────────────────────
     let _reenvioData = {};
 
-    function reenviarSolicitud(solId, nombre, email, comercial, sociedad = '') {
+    function reenviarSolicitud(solId, nombre, email, comercial, sociedad = '', accessToken = '') {
         if (!email) { alert('Esta solicitud no tiene email registrado.'); return; }
-        _reenvioData = { solId, nombre, email, comercial, sociedad };
+        _reenvioData = { solId, nombre, email, comercial, sociedad, accessToken };
 
         document.getElementById('reenvio-email-label').textContent = email;
         document.querySelector('input[name="reenvio_dest"][value="mismo"]').checked = true;
@@ -2569,7 +2576,7 @@
     }
 
     async function confirmarReenvio() {
-        const { solId, nombre, email, comercial, sociedad } = _reenvioData;
+        const { solId, nombre, email, comercial, sociedad, accessToken } = _reenvioData;
         const usarOtro = document.querySelector('input[name="reenvio_dest"]:checked').value === 'otro';
         const emailDestino = usarOtro
             ? document.getElementById('reenvio-email-alt').value.trim()
@@ -2580,7 +2587,11 @@
         cerrarModalReenvio();
 
         const baseUrl     = window.location.href.split('?')[0].replace(/lista\.html$/, 'solicitud.html');
-        const formUrl     = `${baseUrl}?id=${encodeURIComponent(solId)}&nombre=${encodeURIComponent(nombre)}&email=${encodeURIComponent(emailDestino)}&sociedad=${encodeURIComponent(sociedad)}`;
+        // Si la solicitud ya tiene access_token (creada con el nuevo flujo) lo
+        // usamos. Si no (legacy) caemos al ID-Solicitud numérico.
+        const formUrl     = accessToken
+            ? `${baseUrl}?t=${encodeURIComponent(accessToken)}`
+            : `${baseUrl}?id=${encodeURIComponent(solId)}`;
         const emailAsunto = 'Solicitud de creación de ficha de alta';
         const emailCuerpo =
             `Hola ${nombre},\n\n` +
