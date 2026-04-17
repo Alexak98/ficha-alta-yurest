@@ -453,6 +453,15 @@ async function actualizarProyectoAPI(proyecto) {
 
 async function eliminarProyectoAPI(id) {
     const result = await apiRequest(WEBHOOK_PROYECTOS, 'DELETE', { id });
+    // El workflow ahora verifica afectados y devuelve {success, count, errores}.
+    // Si success === false, lanzamos para que la UI muestre el error real en
+    // lugar de un toast de éxito engañoso.
+    if (result && result.success === false) {
+        const detalle = Array.isArray(result.errores) && result.errores.length
+            ? ': ' + result.errores.join('; ')
+            : ' (no se afectó ninguna fila)';
+        throw new Error('El backend no eliminó el proyecto' + detalle);
+    }
     return result;
 }
 

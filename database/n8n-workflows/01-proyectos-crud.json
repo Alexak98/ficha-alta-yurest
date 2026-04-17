@@ -352,12 +352,28 @@
           "name": "Supabase Yurest"
         }
       },
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verifica que el soft-delete realmente afectó alguna fila. El nodo\n// Supabase v1 devuelve la fila actualizada (con `id`) en éxito o un\n// objeto { error: { message } } cuando falla (gracias a continueOnFail).\nconst { id } = $('Preparar DELETE').first().json;\n\nlet count = 0;\nconst errores = [];\nfor (const it of ($('DELETE Proyecto').all() || [])) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) {\n    const msg = j.error.message || j.error.code || JSON.stringify(j.error);\n    errores.push(String(msg));\n    continue;\n  }\n  if (j.id) { count++; continue; }\n  if (Array.isArray(j.data)) count += j.data.length;\n}\n\nreturn [{ json: {\n  success: count > 0,\n  id,\n  count,\n  errores\n} }];"
+      },
+      "id": "verify-delete",
+      "name": "Verificar DELETE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        860
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true }) }}",
+        "responseBody": "={{ JSON.stringify($json) }}",
         "options": {
           "responseHeaders": {
             "entries": [
@@ -386,7 +402,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        920,
+        1140,
         860
       ]
     }
@@ -514,6 +530,17 @@
       ]
     },
     "DELETE Proyecto": {
+      "main": [
+        [
+          {
+            "node": "Verificar DELETE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar DELETE": {
       "main": [
         [
           {
