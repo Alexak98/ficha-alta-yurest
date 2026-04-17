@@ -105,11 +105,18 @@
     function renderGroup(group, activeId, isOpen) {
         const domId = 'sidebar-group-' + group.id;
         const openCls = isOpen ? ' open' : '';
+        // Badge agregado al grupo: aparece SOLO cuando el grupo está cerrado
+        // (CSS regla más abajo) y muestra la suma de los hijos con badge.
+        const childBadgeIds = group.items.map(it => it.badgeId).filter(Boolean);
+        const groupBadge = childBadgeIds.length > 0
+            ? `<span class="sidebar-group-badge" id="sidebar-group-badge-${group.id}" data-children="${childBadgeIds.join(',')}"></span>`
+            : '';
         return `
             <div class="sidebar-group${openCls}" id="${domId}">
                 <div class="sidebar-group-header" onclick="document.getElementById('${domId}').classList.toggle('open')">
                     ${ICON[group.icon] || ''}
                     ${group.label}
+                    ${groupBadge}
                     ${ICON.chevronRight}
                 </div>
                 <div class="sidebar-group-children">
@@ -117,6 +124,22 @@
                 </div>
             </div>`;
     }
+
+    // Recorre los grupos y suma los badges hijos para mostrarlos en el padre
+    // cuando el grupo está cerrado. Se llama tras cada actualizarBadgeX.
+    function actualizarBadgesGrupos() {
+        document.querySelectorAll('.sidebar-group-badge').forEach(badge => {
+            const ids = (badge.dataset.children || '').split(',').filter(Boolean);
+            let total = 0;
+            ids.forEach(id => {
+                const v = parseInt((document.getElementById(id)?.textContent || '').trim(), 10);
+                if (!isNaN(v)) total += v;
+            });
+            badge.textContent = total > 0 ? total : '';
+        });
+    }
+    // Exponer para llamar desde fuera tras actualizar badges hijos.
+    if (typeof window !== 'undefined') window._actualizarSidebarBadgesGrupos = actualizarBadgesGrupos;
 
     // Renderiza el sidebar completo en el <nav id="sidebar"> de la página actual.
     // `activeId` es el id del item que debe aparecer resaltado (p.ej. 'lista').

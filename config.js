@@ -293,6 +293,7 @@
                 return !!(sepa && sepa.firma_base64);
             }).length;
             badge.textContent = count > 0 ? count : '';
+            if (typeof window._actualizarSidebarBadgesGrupos === 'function') window._actualizarSidebarBadgesGrupos();
         } catch (_) { /* silencioso */ }
     }
 
@@ -322,6 +323,7 @@
                 return nombre && !existentes.has(nombre.toLowerCase());
             }).length;
             badge.textContent = count > 0 ? count : '';
+            if (typeof window._actualizarSidebarBadgesGrupos === 'function') window._actualizarSidebarBadgesGrupos();
         } catch (_) { /* silencioso: badge informativo */ }
     }
 
