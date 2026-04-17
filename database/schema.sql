@@ -124,6 +124,13 @@ CREATE TABLE fichas_alta (
     -- Estado del alta
     estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'completada', 'en_proceso', 'rellenado', 'Rellenado')),
 
+    -- Timestamps por estado (poblados por triggers, ver más abajo).
+    -- fecha_solicitud: copiada desde solicitudes.created_at cuando se enlaza la ficha.
+    -- fecha_rellenado / fecha_completado: seteados al pasar a esos estados, no se sobreescriben.
+    fecha_solicitud  TIMESTAMPTZ,
+    fecha_rellenado  TIMESTAMPTZ,
+    fecha_completado TIMESTAMPTZ,
+
     -- Soft-delete
     deleted_at TIMESTAMPTZ,
 
@@ -353,6 +360,46 @@ CREATE TRIGGER trg_proyectos_updated   BEFORE UPDATE ON proyectos    FOR EACH RO
 CREATE TRIGGER trg_plantillas_updated  BEFORE UPDATE ON plantillas   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_bajas_updated       BEFORE UPDATE ON bajas        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_solicitudes_updated BEFORE UPDATE ON solicitudes  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- =============================================
+-- TRIGGERS: timestamps por estado (analítica de Ventas)
+-- Definidos en migrations/2026-04-17_02_fichas_estado_timestamps.sql.
+-- =============================================
+CREATE OR REPLACE FUNCTION fichas_set_estado_timestamps()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.estado IN ('rellenado', 'Rellenado') AND NEW.fecha_rellenado IS NULL THEN
+        NEW.fecha_rellenado := NOW();
+    END IF;
+    IF NEW.estado = 'completada' AND NEW.fecha_completado IS NULL THEN
+        NEW.fecha_completado := NOW();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_fichas_estado_ts
+    BEFORE INSERT OR UPDATE OF estado ON fichas_alta
+    FOR EACH ROW EXECUTE FUNCTION fichas_set_estado_timestamps();
+
+CREATE OR REPLACE FUNCTION solicitud_propagar_fecha_a_ficha()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.ficha_id IS NOT NULL
+       AND (TG_OP = 'INSERT' OR OLD.ficha_id IS DISTINCT FROM NEW.ficha_id)
+    THEN
+        UPDATE fichas_alta
+           SET fecha_solicitud = NEW.created_at
+         WHERE id = NEW.ficha_id
+           AND fecha_solicitud IS NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_solicitud_propagar_fecha
+    AFTER INSERT OR UPDATE OF ficha_id ON solicitudes
+    FOR EACH ROW EXECUTE FUNCTION solicitud_propagar_fecha_a_ficha();
 
 -- =============================================
 -- ROW LEVEL SECURITY (RLS)

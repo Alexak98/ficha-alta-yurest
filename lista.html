@@ -958,100 +958,6 @@
             .fichas-table thead th:nth-child(5),
             .fichas-table tbody td:nth-child(5) { display: none; }
         }
-        /* ══════════════════════════════════════
-           WIDGET COMPARATIVO POR TIPO
-        ══════════════════════════════════════ */
-        .cmp-widget {
-            background: #fff; border: 1.5px solid #e2e8f0;
-            border-radius: 14px; margin-bottom: 14px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-            display: none;
-        }
-        .cmp-hd {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 18px; cursor: pointer; user-select: none;
-            transition: background 0.12s;
-        }
-        .cmp-hd:hover { background: #f8fafc; }
-        .cmp-hd-left  { display: flex; align-items: center; gap: 9px; }
-        .cmp-hd-title { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
-        .cmp-hd-sub   { font-size: 0.73rem; color: #94a3b8; margin-left: 4px; }
-        .cmp-arrow {
-            width: 18px; height: 18px; color: #94a3b8;
-            transition: transform 0.22s; flex-shrink: 0;
-        }
-        .cmp-arrow.open { transform: rotate(180deg); }
-        .cmp-body {
-            border-top: 1.5px solid #f1f5f9;
-            max-height: 0; overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        .cmp-body.open { max-height: 500px; }
-        .cmp-inner { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
-
-        /* Barra proporcional global */
-        .cmp-stack-wrap { display: flex; flex-direction: column; gap: 5px; }
-        .cmp-stack-label { font-size: 0.68rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.07em; text-transform: uppercase; }
-        .cmp-stack {
-            display: flex; height: 10px; border-radius: 6px;
-            overflow: hidden; background: #f1f5f9;
-        }
-        .cmp-stack-seg { height: 100%; transition: width 0.5s ease; }
-        .cmp-stack-seg-lite      { background: #fc5858; }
-        .cmp-stack-seg-planes    { background: #3b82f6; }
-        .cmp-stack-seg-corporate { background: #8b5cf6; }
-        .cmp-stack-seg-otro      { background: #e2e8f0; }
-
-        /* Cards por tipo */
-        .cmp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        @media (max-width: 560px) { .cmp-cards { grid-template-columns: 1fr; } }
-        .cmp-card {
-            border: 1.5px solid #f1f5f9; border-radius: 10px;
-            padding: 12px 14px; background: #fafafa;
-            display: flex; flex-direction: column; gap: 8px;
-        }
-        .cmp-card-hd { display: flex; align-items: center; justify-content: space-between; }
-        .cmp-card-badge {
-            font-size: 0.7rem; font-weight: 700; padding: 3px 9px;
-            border-radius: 20px; letter-spacing: 0.02em;
-        }
-        .cmp-badge-lite      { background: #fee2e2; color: #dc2626; }
-        .cmp-badge-planes    { background: #dbeafe; color: #2563eb; }
-        .cmp-badge-corporate { background: #ede9fe; color: #7c3aed; }
-        .cmp-card-pct {
-            font-size: 1.25rem; font-weight: 800; line-height: 1;
-        }
-        .cmp-pct-lite      { color: #fc5858; }
-        .cmp-pct-planes    { color: #3b82f6; }
-        .cmp-pct-corporate { color: #8b5cf6; }
-        .cmp-card-count { font-size: 0.8rem; color: #64748b; }
-        .cmp-card-count strong { color: #1e293b; }
-        .cmp-bar-track {
-            height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden;
-        }
-        .cmp-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
-        .cmp-fill-lite      { background: #fc5858; }
-        .cmp-fill-planes    { background: #3b82f6; }
-        .cmp-fill-corporate { background: #8b5cf6; }
-
-        /* Fila de docs */
-        .cmp-docs-row {
-            display: flex; gap: 8px; flex-wrap: wrap;
-        }
-        .cmp-docs-pill {
-            display: flex; align-items: center; gap: 5px;
-            font-size: 0.74rem; padding: 4px 10px;
-            border-radius: 20px; background: #f1f5f9; color: #475569;
-        }
-        .cmp-docs-pill .dot {
-            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-        }
-        .dot-lite      { background: #fc5858; }
-        .dot-planes    { background: #3b82f6; }
-        .dot-corporate { background: #8b5cf6; }
-        .cmp-docs-ok  { color: #16a34a; font-weight: 700; }
-        .cmp-docs-pct { color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -1166,36 +1072,6 @@
         <div id="stats-bar" class="stats-bar hidden">
         <div class="stat-chip"><strong id="stat-total">0</strong>&nbsp;fichas</div>
         <div class="stat-chip"><strong id="stat-mes">0</strong>&nbsp;este mes</div>
-    </div>
-
-    <!-- Widget comparativo por tipo -->
-    <div class="cmp-widget" id="cmp-widget">
-        <div class="cmp-hd" onclick="toggleCmp()">
-            <div class="cmp-hd-left">
-                <span style="font-size:1rem;">📈</span>
-                <span class="cmp-hd-title">Comparativo por tipo</span>
-                <span class="cmp-hd-sub" id="cmp-hd-sub"></span>
-            </div>
-            <svg class="cmp-arrow" id="cmp-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-            </svg>
-        </div>
-        <div class="cmp-body" id="cmp-body">
-            <div class="cmp-inner">
-                <!-- Barra proporcional -->
-                <div class="cmp-stack-wrap">
-                    <span class="cmp-stack-label">Distribución total</span>
-                    <div class="cmp-stack" id="cmp-stack"></div>
-                </div>
-                <!-- Cards por tipo -->
-                <div class="cmp-cards" id="cmp-cards"></div>
-                <!-- Documentos subidos por tipo -->
-                <div>
-                    <div class="cmp-stack-label" style="margin-bottom:6px;">Documentos completos</div>
-                    <div class="cmp-docs-row" id="cmp-docs-row"></div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Filtros -->
@@ -1604,101 +1480,6 @@
     }
 
     // ── Stats ─────────────────────────────────────────────────────────────────
-    // ══════════════════════════════════════════════════════════════
-    //  WIDGET COMPARATIVO POR TIPO
-    // ══════════════════════════════════════════════════════════════
-    let _cmpOpen = false;
-
-    function toggleCmp() {
-        _cmpOpen = !_cmpOpen;
-        document.getElementById('cmp-body').classList.toggle('open', _cmpOpen);
-        document.getElementById('cmp-arrow').classList.toggle('open', _cmpOpen);
-    }
-
-    function renderComparativo(fichasRellenadas) {
-        const widget = document.getElementById('cmp-widget');
-        if (!fichasRellenadas.length) { widget.style.display = 'none'; return; }
-        widget.style.display = 'block';
-
-        const total = fichasRellenadas.length;
-        const tipos = [
-            { key: 'lite',      label: 'Lite',       badgeCls: 'cmp-badge-lite',      pctCls: 'cmp-pct-lite',      fillCls: 'cmp-fill-lite',      segCls: 'cmp-stack-seg-lite',      dotCls: 'dot-lite' },
-            { key: 'planes',    label: 'Planes',     badgeCls: 'cmp-badge-planes',    pctCls: 'cmp-pct-planes',    fillCls: 'cmp-fill-planes',    segCls: 'cmp-stack-seg-planes',    dotCls: 'dot-planes' },
-            { key: 'corporate', label: 'Enterprise', badgeCls: 'cmp-badge-corporate', pctCls: 'cmp-pct-corporate', fillCls: 'cmp-fill-corporate', segCls: 'cmp-stack-seg-corporate', dotCls: 'dot-corporate' },
-        ];
-
-        const counts = {};
-        const docsOk = {};
-        tipos.forEach(t => { counts[t.key] = 0; docsOk[t.key] = 0; });
-        let sinTipo = 0;
-
-        fichasRellenadas.forEach(f => {
-            const t = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
-            const docs = (f['Documentos subidos'] === true || f['Documentos subidos'] === 'true' || f['Documentos subidos'] === 'TRUE');
-            if (counts[t] !== undefined) {
-                counts[t]++;
-                if (docs) docsOk[t]++;
-            } else {
-                sinTipo++;
-            }
-        });
-
-        // Header sub
-        const partes = tipos.filter(t => counts[t.key] > 0)
-            .map(t => `${counts[t.key]} ${t.label}`);
-        document.getElementById('cmp-hd-sub').textContent = partes.join(' · ');
-
-        // Barra proporcional
-        const stackSegs = tipos.map(t => {
-            const pct = total > 0 ? (counts[t.key] / total * 100).toFixed(1) : 0;
-            return pct > 0 ? `<div class="cmp-stack-seg ${t.segCls}" style="width:${pct}%" title="${t.label}: ${pct}%"></div>` : '';
-        });
-        if (sinTipo > 0) {
-            const pct = (sinTipo / total * 100).toFixed(1);
-            stackSegs.push(`<div class="cmp-stack-seg cmp-stack-seg-otro" style="width:${pct}%" title="Sin tipo: ${pct}%"></div>`);
-        }
-        document.getElementById('cmp-stack').innerHTML = stackSegs.join('');
-
-        // Cards
-        document.getElementById('cmp-cards').innerHTML = tipos.map(t => {
-            const n   = counts[t.key];
-            const pct = total > 0 ? Math.round(n / total * 100) : 0;
-            const barW = pct;
-
-            // Este mes
-            const ahora = new Date();
-            const nMes  = fichasRellenadas.filter(f => {
-                const tipo = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
-                const d = new Date(f['Fecha']);
-                return tipo === t.key && !isNaN(d) && d.getMonth() === ahora.getMonth() && d.getFullYear() === ahora.getFullYear();
-            }).length;
-
-            return `
-            <div class="cmp-card">
-                <div class="cmp-card-hd">
-                    <span class="cmp-card-badge ${t.badgeCls}">${t.label}</span>
-                    <span class="cmp-card-pct ${t.pctCls}">${pct}%</span>
-                </div>
-                <div class="cmp-bar-track"><div class="cmp-bar-fill ${t.fillCls}" style="width:${barW}%"></div></div>
-                <div class="cmp-card-count"><strong>${n}</strong> clientes${nMes > 0 ? ` · <span style="color:#16a34a;font-weight:700;">+${nMes} este mes</span>` : ''}</div>
-            </div>`;
-        }).join('');
-
-        // Docs por tipo
-        document.getElementById('cmp-docs-row').innerHTML = tipos.map(t => {
-            const n = counts[t.key];
-            if (n === 0) return '';
-            const ok  = docsOk[t.key];
-            const pct = Math.round(ok / n * 100);
-            return `<div class="cmp-docs-pill">
-                <span class="dot ${t.dotCls}"></span>
-                ${t.label}:
-                <span class="cmp-docs-ok">${ok}/${n}</span>
-                <span class="cmp-docs-pct">(${pct}%)</span>
-            </div>`;
-        }).filter(Boolean).join('');
-    }
-
     function actualizarStats(fichas) {
         // Solo contar fichas rellenadas (excluir Pendientes)
         const fichasRellenadas = fichas.filter(f => {
@@ -1729,8 +1510,6 @@
         document.getElementById('count-lite').textContent      = contarTipo('lite');
         document.getElementById('count-planes').textContent    = contarTipo('planes');
         document.getElementById('count-corporate').textContent = contarTipo('corporate');
-
-        renderComparativo(fichasRellenadas);
     }
 
     // ── Estado de filtros ─────────────────────────────────────────────────────
