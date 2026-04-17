@@ -137,6 +137,16 @@
             <div class="sidebar-label">Secciones</div>
             ${GROUPS.map(g => renderGroup(g, activeId, g.id === activeGroup)).join('')}
             <div class="sidebar-ft">
+                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+                    <button onclick="closeSidebar(); window.open('docs/yurest-flow.html','_blank');" title="Esquema visual del funcionamiento" style="background:#fff;border:1.5px solid #e2e8f0;color:#334155;padding:8px 12px;border-radius:10px;font-size:.8rem;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;text-align:left;transition:all .15s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        Esquema de la web
+                    </button>
+                    <button onclick="closeSidebar(); window.open('docs/yurest-api.html','_blank');" title="Documentación de la API" style="background:#fff;border:1.5px solid #e2e8f0;color:#334155;padding:8px 12px;border-radius:10px;font-size:.8rem;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;text-align:left;transition:all .15s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        Documentación API
+                    </button>
+                </div>
                 <button onclick="closeSidebar(); (window.cerrarSesion||YurestConfig.cerrarSesion)();">
                     ${ICON.close}
                     Cerrar sesión
