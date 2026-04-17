@@ -132,6 +132,11 @@
         .form-control:focus { outline:none;border-color:#4F46E5 }
         .form-row { display:flex;gap:12px }
         .form-row .form-group { flex:1 }
+
+        /* Pills de módulos contratados en el modal de asignar */
+        .modulos-pills { display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;min-height:40px;align-items:center }
+        .modulos-pill { font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;white-space:nowrap }
+        .modulos-empty { font-size:12px;color:#94a3b8;font-style:italic }
         .btn { display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all 0.15s }
         .btn-primary { background:#4F46E5;color:#fff }
         .btn-primary:hover { background:#4338CA }
@@ -245,13 +250,25 @@
                         <input type="text" id="asignar-tipo" class="form-control" readonly>
                     </div>
                     <div class="form-group">
-                        <label>Fecha alta</label>
-                        <input type="text" id="asignar-fecha" class="form-control" readonly>
+                        <label>Locales</label>
+                        <input type="text" id="asignar-locales" class="form-control" readonly>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Implementador</label>
-                    <select id="asignar-implementador" class="form-control"></select>
+                    <label>Módulos contratados</label>
+                    <div id="asignar-modulos" class="modulos-pills" aria-live="polite">
+                        <span class="modulos-empty">Sin módulos</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha alta</label>
+                        <input type="text" id="asignar-fecha" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Implementador</label>
+                        <select id="asignar-implementador" class="form-control"></select>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -425,6 +442,23 @@
         document.getElementById('asignar-cliente').value = f.nombre || '—';
         document.getElementById('asignar-tipo').value = f.tipoOriginal || f.tipo;
         document.getElementById('asignar-fecha').value = formatearFechaAmigable(f.fecha);
+
+        // Locales contratados
+        const nLoc = Number(f.localesCount) || 0;
+        document.getElementById('asignar-locales').value = nLoc === 0
+            ? '—'
+            : (nLoc + (nLoc === 1 ? ' local' : ' locales'));
+
+        // Pills de módulos contratados
+        const modCont = document.getElementById('asignar-modulos');
+        const mods = Array.isArray(f.modulos) ? f.modulos.filter(Boolean) : [];
+        if (mods.length === 0) {
+            modCont.innerHTML = '<span class="modulos-empty">Sin módulos</span>';
+        } else {
+            modCont.innerHTML = mods
+                .map(m => `<span class="modulos-pill">${escapeHtml(m)}</span>`)
+                .join('');
+        }
 
         const selImpl = document.getElementById('asignar-implementador');
         selImpl.innerHTML = '<option value="">— Selecciona un implementador —</option>' +

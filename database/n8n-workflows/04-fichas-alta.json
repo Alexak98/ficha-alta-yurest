@@ -50,7 +50,32 @@
     },
     {
       "parameters": {
-        "jsCode": "const fichas = $input.all().map(i => i.json).filter(f => f && f.id && !f.deleted_at);\nreturn [{ json: { clientes: fichas } }];"
+        "operation": "getAll",
+        "tableId": "locales",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-get-locales",
+      "name": "GET Locales",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        480,
+        360
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fichas activas (sin soft-delete)\nconst fichas = $('GET Fichas').all().map(i => i.json).filter(f => f && f.id && !f.deleted_at);\n\n// Cuenta locales por ficha (tolerante a errores: si la tabla locales\n// fallara, simplemente quedan a 0).\nconst locales = ($('GET Locales').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(l => l && l.ficha_id);\n\nconst conteo = {};\nfor (const l of locales) {\n  conteo[l.ficha_id] = (conteo[l.ficha_id] || 0) + 1;\n}\n\nfor (const f of fichas) {\n  f.locales_count = conteo[f.id] || 0;\n}\n\nreturn [{ json: { clientes: fichas } }];"
       },
       "id": "format-get-altas",
       "name": "Formatear GET",
@@ -60,7 +85,8 @@
         700,
         200
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "executeOnce": true
     },
     {
       "parameters": {
@@ -333,6 +359,17 @@
       ]
     },
     "GET Fichas": {
+      "main": [
+        [
+          {
+            "node": "GET Locales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Locales": {
       "main": [
         [
           {

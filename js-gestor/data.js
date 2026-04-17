@@ -597,6 +597,10 @@ function normalizarAlta(f) {
         if (modulos.join(',').toLowerCase().includes('cocina')) tipoNorm = 'Corporate con cocina';
     }
 
+    // Conteo de locales: el GET de fichas anexa `locales_count` agregado
+    // desde la tabla locales. Si no viene (workflow antiguo) lo dejamos en 0.
+    const localesCount = Number(f.locales_count ?? f.localesCount ?? f['Locales Count'] ?? 0) || 0;
+
     return {
         altaId: id,
         nombre: nombre || comercial,
@@ -607,7 +611,8 @@ function normalizarAlta(f) {
         fecha,
         estado,
         tpv,
-        modulos
+        modulos,
+        localesCount
     };
 }
 
