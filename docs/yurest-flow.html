@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yurest — Esquema de funcionamiento</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+    @page { size: A3 portrait; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:32px 24px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#1e293b; background:#f8fafc; line-height:1.5; }
+    .wrap { max-width:1280px; margin:0 auto; }
+    header { text-align:center; margin-bottom:36px; }
+    header h1 { font-size:1.8rem; margin:0 0 8px; color:#0f172a; }
+    header p { margin:0; color:#64748b; font-size:.95rem; }
+    header .badge { display:inline-block; background:#fc5858; color:#fff; padding:4px 12px; border-radius:999px; font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:10px; }
+
+    section { background:#fff; border:1.5px solid #e2e8f0; border-radius:14px; padding:24px 28px; margin-bottom:24px; box-shadow:0 1px 3px rgba(0,0,0,.04); page-break-inside:avoid; }
+    section h2 { margin:0 0 6px; font-size:1.15rem; color:#0f172a; display:flex; align-items:center; gap:10px; }
+    section h2::before { content:''; width:6px; height:22px; background:#fc5858; border-radius:3px; }
+    section .desc { margin:0 0 18px; color:#64748b; font-size:.9rem; }
+
+    .legend { display:flex; flex-wrap:wrap; gap:14px; margin:-6px 0 18px; font-size:.8rem; color:#475569; }
+    .legend span { display:inline-flex; align-items:center; gap:6px; }
+    .legend .dot { width:11px; height:11px; border-radius:3px; }
+    .dot-cli { background:#fde68a; border:1.5px solid #f59e0b; }
+    .dot-com { background:#dbeafe; border:1.5px solid #3b82f6; }
+    .dot-yur { background:#fecaca; border:1.5px solid #fc5858; }
+    .dot-cont{ background:#dcfce7; border:1.5px solid #16a34a; }
+    .dot-int { background:#ede9fe; border:1.5px solid #8b5cf6; }
+    .dot-bd  { background:#cbd5e1; border:1.5px solid #64748b; }
+
+    .mermaid { background:#fff; }
+
+    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:.86rem; }
+    table th, table td { padding:10px 12px; text-align:left; border-bottom:1px solid #f1f5f9; vertical-align:top; }
+    table th { background:#f8fafc; font-weight:600; color:#475569; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+    table tr:last-child td { border-bottom:none; }
+    code { background:#f1f5f9; padding:1px 6px; border-radius:4px; font-size:.86em; color:#1e293b; }
+
+    footer { text-align:center; color:#94a3b8; font-size:.78rem; margin-top:30px; padding-top:18px; border-top:1px solid #e2e8f0; }
+    .toolbar { position:sticky; top:0; background:rgba(248,250,252,.95); backdrop-filter:blur(6px); z-index:10; padding:10px 0 14px; margin:-32px -24px 24px; border-bottom:1px solid #e2e8f0; text-align:center; }
+    .toolbar button { background:#fc5858; color:#fff; border:none; padding:8px 18px; border-radius:8px; font-size:.86rem; font-weight:600; cursor:pointer; font-family:inherit; }
+    .toolbar button:hover { background:#e64545; }
+    @media print {
+        .toolbar { display:none; }
+        body { padding:0; background:#fff; }
+        section { box-shadow:none; border:1px solid #cbd5e1; page-break-inside:avoid; }
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div class="toolbar"><button onclick="window.print()">📄 Descargar como PDF</button></div>
+
+    <header>
+        <span class="badge">Yurest · Portal de gestión</span>
+        <h1>Esquema de funcionamiento de la web</h1>
+        <p>Cómo se relacionan las pantallas, los actores, la base de datos y los workflows automáticos.</p>
+    </header>
+
+    <section>
+        <h2>Actores y pantallas</h2>
+        <p class="desc">Las cinco audiencias que tocan la plataforma y la pantalla principal de cada una.</p>
+        <div class="legend">
+            <span><span class="dot dot-com"></span>Comercial</span>
+            <span><span class="dot dot-cli"></span>Cliente</span>
+            <span><span class="dot dot-yur"></span>Equipo Yurest (interno)</span>
+            <span><span class="dot dot-cont"></span>Contabilidad</span>
+            <span><span class="dot dot-int"></span>Integraciones</span>
+            <span><span class="dot dot-bd"></span>Backend (n8n + Supabase)</span>
+        </div>
+        <div class="mermaid">
+flowchart LR
+    classDef cliente   fill:#fde68a,stroke:#f59e0b,color:#78350f
+    classDef comercial fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+    classDef yurest    fill:#fecaca,stroke:#fc5858,color:#7f1d1d
+    classDef contab    fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef integ     fill:#ede9fe,stroke:#8b5cf6,color:#4c1d95
+    classDef backend   fill:#cbd5e1,stroke:#64748b,color:#0f172a
+
+    Comercial[👔 Comercial<br/>lista.html · proyectos.html<br/>distribucion.html]:::comercial
+    Cliente[👤 Cliente<br/>solicitud.html<br/>vía email con token]:::cliente
+    Yurest[🧑‍💼 Equipo Yurest<br/>index.html · sinasignar.html<br/>bajas.html · ventas.html]:::yurest
+    Contab[💼 Contabilidad<br/>contabilidad.html<br/>Grabar en A3]:::contab
+    Integ[🔌 Integraciones<br/>integraciones.html<br/>Asana TPV NI]:::integ
+    BD[(🗄️ Supabase<br/>+ workflows n8n)]:::backend
+
+    Comercial -.crea solicitud.-> Cliente
+    Cliente -.envía datos firmados.-> BD
+    Yurest -.completa fichas.-> BD
+    Comercial -.consulta KPIs.-> BD
+    Contab -.toggle A3.-> BD
+    Integ -.tareas Asana.-> BD
+        </div>
+    </section>
+
+    <section>
+        <h2>Flujo principal: Solicitud → Ficha → Completada → A3</h2>
+        <p class="desc">El recorrido completo desde que el comercial pide los datos hasta que contabilidad da de alta el cliente en A3.</p>
+        <div class="mermaid">
+flowchart TD
+    classDef cliente   fill:#fde68a,stroke:#f59e0b,color:#78350f
+    classDef comercial fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+    classDef yurest    fill:#fecaca,stroke:#fc5858,color:#7f1d1d
+    classDef contab    fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef backend   fill:#cbd5e1,stroke:#64748b,color:#0f172a
+
+    A1[1️⃣ Comercial · lista.html<br/>📨 Solicitar ficha]:::comercial
+    A2[(solicitudes<br/>estado=pendiente<br/>access_token=uuid)]:::backend
+    A3[📧 Email al cliente<br/>solicitud.html?t=ABC]:::backend
+
+    B1[2️⃣ Cliente · solicitud.html<br/>Rellena datos de empresa,<br/>JP, firmante, TPV, SEPA]:::cliente
+    B2[✍️ Firma SEPA en canvas<br/>+ valida IBAN MOD-97]:::cliente
+    B3[📤 Envía formulario]:::cliente
+
+    C1[(fichas_alta<br/>estado=completada<br/>fecha_rellenado set<br/>sepa_mandato JSONB)]:::backend
+    C2[📁 Crea carpeta Drive]:::backend
+    C3[📧 Email al cliente<br/>con enlace a Drive]:::backend
+    C4[📧 Email al comercial<br/>aviso ficha rellenada]:::backend
+    C5{TPV<br/>no integrado?}:::backend
+    C6[📋 Tarea Asana<br/>+ email a soporte]:::backend
+
+    D1[3️⃣ Pestaña 'Rellenado cliente'<br/>Comercial pulsa 'Completar ficha']:::comercial
+    D2[Comercial · index.html<br/>Completa todos los detalles<br/>módulos, locales, financiero]:::comercial
+    D3[(fichas_alta<br/>estado=rellenado<br/>fecha_completado set)]:::backend
+
+    E1[4️⃣ Pestaña 'Fichas'<br/>Listado con SEPA disponible]:::yurest
+    E2[5️⃣ Contabilidad · contabilidad.html<br/>Pendientes A3]:::contab
+    E3[📄 Ver mandato SEPA<br/>+ Descargar PDF]:::contab
+    E4[Toggle 'Grabado en A3']:::contab
+    E5[(grabado_a3=true<br/>grabado_a3_at set)]:::backend
+
+    A1 --> A2 --> A3 --> B1
+    B1 --> B2 --> B3
+    B3 --> C1
+    C1 --> C2 --> C3
+    C1 --> C4
+    C1 --> C5
+    C5 -- Sí --> C6
+    C5 -- No --> D1
+    C6 --> D1
+    C1 --> D1
+    D1 --> D2 --> D3
+    D3 --> E1
+    D3 --> E2
+    E2 --> E3
+    E2 --> E4 --> E5
+        </div>
+    </section>
+
+    <section>
+        <h2>Mapa de pantallas y navegación</h2>
+        <p class="desc">Sidebar agrupado por dominios. Cada pantalla es accesible desde cualquier otra vía el menú lateral.</p>
+        <div class="mermaid">
+flowchart LR
+    classDef informes fill:#fff7ed,stroke:#f59e0b,color:#9a3412
+    classDef comercial fill:#eff6ff,stroke:#3b82f6,color:#1e40af
+    classDef impl fill:#fef2f2,stroke:#fc5858,color:#7f1d1d
+    classDef contab fill:#f0fdf4,stroke:#16a34a,color:#14532d
+    classDef sop fill:#faf5ff,stroke:#8b5cf6,color:#5b21b6
+
+    SB[📐 Sidebar lateral]
+
+    SB --> I[📊 Informes]
+    I --> Ven[Ventas<br/>KPIs · tiempos por estado]:::informes
+    I --> Imp[Implementadores<br/>distribución de carga]:::informes
+
+    SB --> Co[💼 Comercial]
+    Co --> Fic[Fichas de cliente<br/>tabs Fichas / Rellenado / Solicitudes]:::comercial
+    Co --> Baj[Bajas]:::comercial
+
+    SB --> Im[🔧 Implementación]
+    Im --> Sin[Sin asignar 🟠]:::impl
+    Im --> Pro[Proyectos<br/>+ kanban tareas]:::impl
+
+    SB --> Cont[📒 Contabilidad]
+    Cont --> A3[Grabar en A3 🟠<br/>SEPA + toggle]:::contab
+
+    SB --> Sup[🎧 Soporte]
+    Sup --> Int[Integraciones<br/>panel Asana]:::sop
+        </div>
+    </section>
+
+    <section>
+        <h2>Workflows n8n implicados</h2>
+        <p class="desc">Cada acción dispara uno o varios workflows en n8n que orquestan Supabase, Asana, Google Drive y SMTP.</p>
+        <table>
+            <thead><tr><th>Workflow</th><th>Trigger</th><th>Qué hace</th></tr></thead>
+            <tbody>
+                <tr><td><code>04-fichas-alta</code></td><td>POST guardarFicha · GET altas</td><td>Listado y CRUD de fichas. UPDATE solo campos enviados (no destructivo).</td></tr>
+                <tr><td><code>08-solicitudes</code></td><td>POST crearSolicitud · GET listaSolicitudes</td><td>Crea solicitud con <code>access_token</code> aleatorio. Devuelve la lista filtrada por estado.</td></tr>
+                <tr><td><code>10-eliminar</code></td><td>POST eliminarFicha/Solicitud</td><td>Soft-delete (UPDATE deleted_at). Devuelve <code>{success, ficha_count, sol_count}</code> con diagnóstico.</td></tr>
+                <tr><td><code>11-auxiliares</code></td><td>POST responderSolicitud</td><td>Cliente envía → INSERT ficha + crea Drive + UPDATE solicitud.ficha_id + emails (cliente, comercial, integraciones si TPV NI).</td></tr>
+                <tr><td><code>12-completar-ficha</code></td><td>GET ?t= o ?id=</td><td>Resuelve token o id a datos de la ficha/solicitud para prellenar el formulario.</td></tr>
+                <tr><td><code>13-grabado-a3</code></td><td>POST grabadoA3</td><td>Toggle del flag con diagnóstico de filas afectadas.</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Modelo de datos esencial</h2>
+        <p class="desc">Tablas y relaciones que sostienen todo el flujo. Soft-delete vía <code>deleted_at</code> en todas.</p>
+        <div class="mermaid">
+erDiagram
+    SOLICITUDES ||--o{ FICHAS_ALTA : genera
+    FICHAS_ALTA ||--o{ LOCALES : tiene
+    FICHAS_ALTA ||--o{ ADJUNTOS_JSONB : "tiene"
+    FICHAS_ALTA ||--|| SEPA_MANDATO_JSONB : "firma"
+    FICHAS_ALTA ||--o{ PROYECTOS : "se convierte en"
+    PROYECTOS ||--o{ TAREAS : tiene
+
+    SOLICITUDES {
+        uuid id PK
+        text access_token UK
+        uuid ficha_id FK
+        text estado
+        jsonb datos
+        timestamptz created_at
+    }
+    FICHAS_ALTA {
+        uuid id PK
+        text estado "rellenado|completada"
+        text denominacion
+        text cif
+        text email
+        bool grabado_a3
+        jsonb sepa_mandato
+        jsonb adjuntos
+        timestamptz fecha_solicitud
+        timestamptz fecha_rellenado
+        timestamptz fecha_completado
+        timestamptz grabado_a3_at
+    }
+    LOCALES {
+        uuid id PK
+        uuid ficha_id FK
+    }
+    PROYECTOS {
+        uuid id PK
+        text cliente
+        text estado
+        text asana_project_url
+    }
+        </div>
+        <p class="desc" style="margin-top:14px">
+            <strong>Nota semántica:</strong> en <code>fichas_alta</code> el estado <code>completada</code> significa
+            "rellenada por el cliente" y <code>rellenado</code> significa "completada por el comercial". Triggers SQL
+            actualizan automáticamente <code>fecha_rellenado</code>, <code>fecha_completado</code> y <code>grabado_a3_at</code>
+            al cambiar el campo correspondiente.
+        </p>
+    </section>
+
+    <section>
+        <h2>Cómo se usa cada acción clave</h2>
+        <table>
+            <thead><tr><th>Acción</th><th>Quién</th><th>Dónde</th><th>Qué pasa</th></tr></thead>
+            <tbody>
+                <tr><td>Solicitar ficha</td><td>Comercial</td><td>lista.html · botón "Solicitar ficha"</td><td>Crea solicitud + envía email al cliente con URL <code>?t=&lt;token&gt;</code>.</td></tr>
+                <tr><td>Rellenar solicitud</td><td>Cliente</td><td>solicitud.html (link del email)</td><td>Datos empresa + JP + firmante + TPV (integrado/no) + IBAN + firma SEPA.</td></tr>
+                <tr><td>Completar ficha</td><td>Comercial</td><td>Pestaña "Rellenado cliente" → botón</td><td>Abre index.html con los datos prellenados; al guardar pasa a estado <code>rellenado</code>.</td></tr>
+                <tr><td>Editar ficha</td><td>Comercial / Yurest</td><td>Pestaña "Fichas" · botón Editar</td><td>UPDATE solo de campos enviados — no destructivo.</td></tr>
+                <tr><td>Eliminar ficha/solicitud</td><td>Comercial / Yurest</td><td>Pestañas correspondientes · botón Eliminar</td><td>Soft-delete con confirmación + toast de diagnóstico.</td></tr>
+                <tr><td>Grabar en A3</td><td>Contabilidad</td><td>contabilidad.html · toggle por fila</td><td>UPDATE flag <code>grabado_a3</code>; trigger setea <code>grabado_a3_at</code>.</td></tr>
+                <tr><td>Ver mandato SEPA</td><td>Contabilidad</td><td>contabilidad.html · botón "📄 Ver mandato"</td><td>Modal con datos legales completos + firma + descarga PDF (popup, una sola hoja A4).</td></tr>
+                <tr><td>TPV no integrado</td><td>Cliente</td><td>solicitud.html · checkbox cabecera TPV</td><td>Al enviar: tarea automática en Asana (proyecto Integraciones) + email a soporte/Yurest/Roocket.</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Estados de ficha y solicitud</h2>
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> SolicitudPendiente: Comercial crea solicitud
+    SolicitudPendiente --> SolicitudCompletada: Cliente rellena<br/>(workflow 11)
+    SolicitudCompletada --> FichaCompletada: INSERT en fichas_alta<br/>estado=completada
+    FichaCompletada --> FichaRellenada: Comercial Guarda<br/>estado=rellenado
+    FichaRellenada --> GrabadoA3: Contabilidad activa toggle
+    GrabadoA3 --> [*]
+        </div>
+        <p class="desc" style="margin-top:14px">
+            "Completada" = rellenada por cliente · "Rellenado" = cerrada por comercial. La nomenclatura es legacy pero los
+            triggers SQL ya alinean fechas con esta semántica.
+        </p>
+    </section>
+
+    <footer>
+        © Yurest · Esquema generado para documentación interna · Pulsa "Descargar como PDF" para guardarlo.
+    </footer>
+</div>
+
+<script>
+    if (window.mermaid) {
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+                primaryColor: '#fff',
+                primaryTextColor: '#0f172a',
+                primaryBorderColor: '#94a3b8',
+                lineColor: '#475569'
+            },
+            flowchart: { curve: 'basis', padding: 20 },
+            er: { useMaxWidth: true },
+            stateDiagram: { useMaxWidth: true }
+        });
+    }
+</script>
+</body>
+</html>
