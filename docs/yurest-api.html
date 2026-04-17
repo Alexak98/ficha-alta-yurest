@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yurest — Documentación de la API</title>
+<style>
+    @page { size: A4 portrait; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#1e293b; background:#f8fafc; line-height:1.55; }
+    .layout { display:grid; grid-template-columns: 240px 1fr; max-width:1280px; margin:0 auto; }
+    nav.toc { position:sticky; top:0; height:100vh; overflow-y:auto; padding:24px 18px; background:#fff; border-right:1px solid #e2e8f0; }
+    nav.toc h3 { margin:0 0 12px; font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:#fc5858; font-weight:800; }
+    nav.toc ul { list-style:none; padding:0; margin:0 0 16px; }
+    nav.toc a { display:block; padding:6px 8px; font-size:.82rem; color:#475569; text-decoration:none; border-radius:6px; }
+    nav.toc a:hover { background:#fff1f1; color:#fc5858; }
+    nav.toc .group { font-size:.66rem; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; padding:10px 8px 4px; font-weight:700; }
+
+    main { padding:32px 36px 80px; max-width:920px; }
+    header.hd { padding:28px 32px; background:linear-gradient(135deg,#111111,#1c0808,#2d0c0c); border-radius:14px; color:#fff; margin-bottom:30px; }
+    header.hd .badge { display:inline-block; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); color:#fca5a5; padding:4px 12px; border-radius:999px; font-size:.7rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:10px; }
+    header.hd h1 { margin:0 0 6px; font-size:1.7rem; }
+    header.hd p { margin:0; color:#cbd5e1; font-size:.95rem; }
+
+    h2 { font-size:1.3rem; margin:36px 0 14px; padding-top:20px; border-top:2px solid #e2e8f0; color:#0f172a; }
+    h2:first-of-type { border-top:none; padding-top:0; margin-top:0; }
+    h3 { font-size:1rem; margin:22px 0 8px; color:#1e293b; }
+    p { margin:8px 0; }
+
+    .endpoint { background:#fff; border:1.5px solid #e2e8f0; border-radius:12px; padding:18px 22px; margin:14px 0 22px; box-shadow:0 1px 3px rgba(0,0,0,.04); page-break-inside:avoid; }
+    .endpoint .head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+    .endpoint .method { padding:4px 10px; border-radius:6px; font-size:.72rem; font-weight:800; letter-spacing:.06em; }
+    .method-get    { background:#dbeafe; color:#1e40af; }
+    .method-post   { background:#dcfce7; color:#15803d; }
+    .method-put    { background:#fef3c7; color:#b45309; }
+    .method-delete { background:#fee2e2; color:#b91c1c; }
+    .endpoint .path { font-family:monospace; font-size:.86rem; color:#0f172a; font-weight:600; }
+    .endpoint .auth { background:#fff1f1; color:#fc5858; padding:3px 9px; border-radius:6px; font-size:.7rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .endpoint .public { background:#dcfce7; color:#15803d; padding:3px 9px; border-radius:6px; font-size:.7rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .endpoint .desc { color:#475569; font-size:.9rem; margin:6px 0 10px; }
+    .endpoint h4 { font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; margin:14px 0 6px; }
+
+    code { background:#f1f5f9; padding:1px 6px; border-radius:4px; font-size:.86em; color:#1e293b; font-family:'SFMono-Regular',Consolas,monospace; }
+    pre { background:#0f172a; color:#e2e8f0; padding:14px 16px; border-radius:8px; overflow-x:auto; font-size:.78rem; line-height:1.55; margin:0; }
+    pre code { background:transparent; color:inherit; padding:0; font-size:1em; }
+    .code-tabs { display:flex; gap:0; margin-bottom:0; border-bottom:none; }
+    .code-label { display:block; font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin:14px 0 6px; }
+
+    table { width:100%; border-collapse:collapse; margin:8px 0; font-size:.84rem; }
+    th, td { padding:8px 10px; text-align:left; border-bottom:1px solid #f1f5f9; vertical-align:top; }
+    th { background:#f8fafc; font-weight:600; color:#475569; font-size:.74rem; text-transform:uppercase; letter-spacing:.04em; }
+    td code { font-size:.82em; }
+    .field-req { color:#dc2626; font-weight:700; }
+    .field-opt { color:#94a3b8; font-weight:500; }
+
+    .info { background:#eff6ff; border-left:4px solid #3b82f6; padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0; font-size:.86rem; color:#1e3a8a; }
+    .warn { background:#fffbeb; border-left:4px solid #f59e0b; padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0; font-size:.86rem; color:#92400e; }
+    .danger { background:#fef2f2; border-left:4px solid #fc5858; padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0; font-size:.86rem; color:#7f1d1d; }
+
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    @media (max-width:900px) { .grid-2 { grid-template-columns:1fr; } .layout { grid-template-columns:1fr; } nav.toc { position:static; height:auto; border-right:none; border-bottom:1px solid #e2e8f0; } }
+
+    .btn-print { position:fixed; bottom:24px; right:24px; background:#fc5858; color:#fff; border:none; padding:10px 18px; border-radius:999px; font-size:.86rem; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(252,88,88,.35); z-index:100; }
+    .btn-print:hover { background:#e64545; }
+
+    @media print {
+        .layout { display:block; }
+        nav.toc { display:none; }
+        main { max-width:none; padding:0; }
+        .btn-print { display:none; }
+        .endpoint { box-shadow:none; }
+    }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+    <h3>Documentación API</h3>
+    <ul><li><a href="#intro">Introducción</a></li></ul>
+
+    <div class="group">Generales</div>
+    <ul>
+        <li><a href="#auth">Autenticación</a></li>
+        <li><a href="#errores">Errores y diagnóstico</a></li>
+        <li><a href="#cors">CORS</a></li>
+    </ul>
+
+    <div class="group">Auth y listado</div>
+    <ul>
+        <li><a href="#ep-login">login / altas</a></li>
+    </ul>
+
+    <div class="group">Fichas</div>
+    <ul>
+        <li><a href="#ep-guardar-ficha">guardarFicha</a></li>
+        <li><a href="#ep-completar-ficha">completarFicha</a></li>
+        <li><a href="#ep-eliminar-ficha">eliminarFicha</a></li>
+    </ul>
+
+    <div class="group">Solicitudes</div>
+    <ul>
+        <li><a href="#ep-crear-solicitud">crearSolicitud</a></li>
+        <li><a href="#ep-lista-solicitudes">listaSolicitudes</a></li>
+        <li><a href="#ep-lista-rellenado">listaRellenado</a></li>
+        <li><a href="#ep-responder">responderSolicitud</a></li>
+    </ul>
+
+    <div class="group">Contabilidad</div>
+    <ul>
+        <li><a href="#ep-grabado-a3">grabadoA3</a></li>
+    </ul>
+
+    <div class="group">Proyectos</div>
+    <ul>
+        <li><a href="#ep-proyectos">proyectos (CRUD)</a></li>
+        <li><a href="#ep-proyectos-tarea">proyectos/tarea</a></li>
+        <li><a href="#ep-proyectos-tarea-mover">proyectos/tarea/mover</a></li>
+    </ul>
+
+    <div class="group">Bajas</div>
+    <ul>
+        <li><a href="#ep-bajas">bajas</a></li>
+    </ul>
+
+    <div class="group">Distribución</div>
+    <ul>
+        <li><a href="#ep-distribucion">guardarDist</a></li>
+    </ul>
+
+    <div class="group">Drive</div>
+    <ul>
+        <li><a href="#ep-drive">getDrive · docsSubidos</a></li>
+    </ul>
+
+    <div class="group">Externos</div>
+    <ul>
+        <li><a href="#ep-asana">asanaTasks · asanaStories</a></li>
+        <li><a href="#ep-calendar">calendar</a></li>
+    </ul>
+
+    <div class="group">Apéndices</div>
+    <ul>
+        <li><a href="#tipos">Tipos de datos</a></li>
+        <li><a href="#estados">Tabla de estados</a></li>
+    </ul>
+</nav>
+
+<main>
+
+<header class="hd">
+    <span class="badge">Yurest API · v1</span>
+    <h1>Documentación de la API</h1>
+    <p>Endpoints REST expuestos por n8n para el portal de gestión Yurest. Base URL: <code style="background:rgba(255,255,255,.08);color:#fca5a5">https://n8n-soporte.data.yurest.dev/webhook</code></p>
+</header>
+
+<h2 id="intro">Introducción</h2>
+<p>Esta API se expone vía workflows de <strong>n8n</strong> y persiste en <strong>Supabase (Postgres)</strong>. Todos los endpoints comparten el prefijo:</p>
+<pre><code>https://n8n-soporte.data.yurest.dev/webhook</code></pre>
+<p>El frontend usa <code>YurestConfig.apiFetch(url, opts)</code> que automáticamente añade headers de autenticación y maneja sesiones expiradas (401/403 → redirige a login).</p>
+
+<div class="info">
+    <strong>Convención de respuesta:</strong> casi todos los endpoints devuelven <code>200 OK</code> con un objeto JSON. Operaciones de escritura devuelven al menos <code>{ success: boolean }</code> y, donde aplica, datos de diagnóstico (filas afectadas, errores específicos).
+</div>
+
+<h2 id="auth">Autenticación</h2>
+<p>El portal usa <strong>Basic Auth</strong> almacenado en <code>sessionStorage</code> tras un login interno. El header se añade automáticamente vía <code>YurestConfig.apiFetch()</code>:</p>
+<pre><code>Authorization: Basic &lt;base64(usuario:contraseña)&gt;
+Content-Type: application/json</code></pre>
+<p>Si la sesión expira, cualquier endpoint responde <code>401</code> y el portal redirige al login.</p>
+
+<h3>Endpoints públicos (sin auth)</h3>
+<table>
+    <tr><th>Endpoint</th><th>Por qué es público</th></tr>
+    <tr><td><code>responderSolicitud</code></td><td>El cliente lo invoca desde el email sin tener cuenta.</td></tr>
+    <tr><td><code>completarFicha?t=&lt;token&gt;</code></td><td>Para precargar datos al rellenar la solicitud (validado por token aleatorio).</td></tr>
+</table>
+
+<h2 id="errores">Errores y diagnóstico</h2>
+<table>
+    <tr><th>Status</th><th>Significado</th><th>Cuándo</th></tr>
+    <tr><td><code>200</code></td><td>OK · revisa <code>body.success</code></td><td>Casi todas las respuestas (incluso fallos lógicos vienen 200).</td></tr>
+    <tr><td><code>401 / 403</code></td><td>Sesión expirada</td><td>Frontend redirige a <code>login.html</code>.</td></tr>
+    <tr><td><code>500</code></td><td>Error interno del workflow</td><td>Excepción no controlada en n8n.</td></tr>
+</table>
+<div class="warn">
+    <strong>Patrón de diagnóstico:</strong> los workflows de escritura críticos (<code>eliminarFicha</code>, <code>grabadoA3</code>) devuelven además <code>{ success, affected/ficha_count/sol_count, errores: [] }</code> para detectar UPDATEs sin efecto (RLS bloqueando, ID inexistente, etc.).
+</div>
+
+<h2 id="cors">CORS</h2>
+<p>Todos los endpoints aceptan peticiones desde cualquier origen y responden con los siguientes headers:</p>
+<pre><code>Access-Control-Allow-Origin:  *
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization</code></pre>
+
+
+<!-- ============================================================ -->
+<h2>📂 Auth y listado</h2>
+
+<div class="endpoint" id="ep-login">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="path">/webhook/018f3362-7969-4c49-9088-c78e4446c77f</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>04-fichas-alta</code>. Devuelve la lista completa de fichas. El portal lo usa también como verificador de sesión en el login.</p>
+
+    <h4>Aliases en config.js</h4>
+    <p><code>ENDPOINTS.login</code> · <code>ENDPOINTS.altas</code></p>
+
+    <h4>Respuesta 200</h4>
+    <pre><code>{
+  "clientes": [
+    {
+      "id": "uuid",
+      "denominacion": "Test SL",
+      "cif": "B40597437",
+      "email": "contacto@test.es",
+      "tipo_cliente": "planes",
+      "estado": "rellenado | completada",
+      "grabado_a3": false,
+      "grabado_a3_at": null,
+      "fecha_solicitud": "2026-04-17T...",
+      "fecha_rellenado": "2026-04-17T...",
+      "fecha_completado": "2026-04-17T...",
+      "sepa_mandato": { ... },
+      "adjuntos": [ ... ],
+      "paquetes_carrito": { ... },
+      "deleted_at": null
+      // ... resto de columnas
+    }
+  ]
+}</code></pre>
+    <span class="code-label">Filtrado backend</span>
+    <p>El workflow excluye filas con <code>deleted_at != NULL</code>.</p>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>📋 Fichas</h2>
+
+<div class="endpoint" id="ep-guardar-ficha">
+    <div class="head">
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/57e04029-bae4-4124-8c43-c535e831a147</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>04-fichas-alta</code>. Crea una ficha nueva (sin <code>id</code>) o actualiza una existente (con <code>id</code>). En modo edición <strong>solo actualiza los campos enviados</strong> — no destruye los demás.</p>
+
+    <h4>Body (todos opcionales en edición)</h4>
+    <table>
+        <tr><th>Campo</th><th>Tipo</th><th>Notas</th></tr>
+        <tr><td><code>id</code></td><td>uuid</td><td>Si presente → UPDATE; ausente → INSERT</td></tr>
+        <tr><td><code>Nombre Sociedad</code></td><td>string</td><td>Mapea a <code>denominacion</code></td></tr>
+        <tr><td><code>CIF/NIF</code></td><td>string</td><td>Mapea a <code>cif</code></td></tr>
+        <tr><td><code>Email</code> · <code>Email Factura</code> · <code>Email CC</code></td><td>string</td><td></td></tr>
+        <tr><td><code>Tipo Cliente</code></td><td>string</td><td>lite · planes · corporate</td></tr>
+        <tr><td><code>Estado</code></td><td>string</td><td>"rellenado" cuando comercial completa</td></tr>
+        <tr><td><code>JP *</code> · <code>Firmante *</code> · <code>TPV *</code></td><td>strings</td><td>Bloques de datos</td></tr>
+        <tr><td><code>Lite</code> · <code>Distribuidor</code></td><td>"Sí" / ""</td><td>Booleanos como string</td></tr>
+        <tr><td><code>Adjuntos</code></td><td>array</td><td>PDF/JPG/PNG en base64</td></tr>
+        <tr><td><code>SEPA</code></td><td>object</td><td>Mandato firmado (datos + firma_base64)</td></tr>
+        <tr><td><code>paquetes_carrito</code></td><td>object</td><td>Snapshot del carrito (módulos, precios, periodos)</td></tr>
+        <tr><td><code>locales</code></td><td>array</td><td>Locales de la ficha (insertados aparte)</td></tr>
+    </table>
+
+    <h4>Respuesta 200 (éxito)</h4>
+    <pre><code>{ "id": "uuid-de-la-ficha", "success": true }</code></pre>
+    <h4>Respuesta 200 (error en INSERT Locales)</h4>
+    <pre><code>{ "error": "..." }</code></pre>
+    <p style="font-size:.78rem;color:#94a3b8">El nodo INSERT Locales tiene <code>continueOnFail: true</code>, así que un fallo en locales no rompe el INSERT/UPDATE de la ficha principal pero sí aparece en el body.</p>
+</div>
+
+
+<div class="endpoint" id="ep-completar-ficha">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="path">/webhook/5a304fcd-ae1d-49e6-92d1-c5a5e007bbfd?t=&lt;token&gt;|?id=&lt;id&gt;</span>
+        <span class="public">Público</span>
+    </div>
+    <p class="desc">Workflow <code>12-completar-ficha</code>. Devuelve los datos de una ficha o solicitud para precargar el formulario. Acepta tres formas de identificación.</p>
+
+    <h4>Query params</h4>
+    <table>
+        <tr><th>Param</th><th>Tipo</th><th>Uso</th></tr>
+        <tr><td><code>t</code></td><td>string (16-128 chars)</td><td>Token aleatorio público (preferente)</td></tr>
+        <tr><td><code>id</code></td><td>uuid o número</td><td>UUID de ficha o ID-Solicitud numérico (uso interno)</td></tr>
+    </table>
+
+    <h4>Respuesta 200 (encontrado)</h4>
+    <pre><code>{
+  "found": true,
+  "id": "uuid",
+  "ID Solicitud": 5,
+  "Nombre Sociedad": "Test SL",
+  "Email": "contacto@test.es",
+  "Tipo Cliente": "planes",
+  "SEPA": { "iban": "ES...", "deudor": {...}, "firma_base64": "..." },
+  // ... resto de campos
+}</code></pre>
+    <h4>Respuesta 200 (no encontrado)</h4>
+    <pre><code>{ "found": false, "error": "Solicitud no encontrada" }</code></pre>
+</div>
+
+
+<div class="endpoint" id="ep-eliminar-ficha">
+    <div class="head">
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/a2b1b1d6-a1dc-4366-b60e-b5e4506faa3d</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>10-eliminar</code>. Soft-delete (UPDATE deleted_at = NOW()) en <strong>fichas_alta y solicitudes</strong>. Como los UUIDs son únicos entre tablas, sólo afecta a la que contiene el ID.</p>
+
+    <h4>Body</h4>
+    <pre><code>{
+  "action": "delete",
+  "entity": "ficha" | "solicitud",
+  "id": "uuid",
+  "row_number": "uuid"   // alias por compat
+}</code></pre>
+
+    <h4>Respuesta 200</h4>
+    <pre><code>{
+  "success": true,
+  "entity": "ficha",
+  "id": "uuid",
+  "ficha_count": 1,
+  "sol_count": 0,
+  "errores": []
+}</code></pre>
+    <div class="info"><strong>success: false:</strong> revisa <code>errores</code> (problemas Supabase) o si <code>ficha_count + sol_count == 0</code> → el id ya no existía.</div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>📨 Solicitudes</h2>
+
+<div class="endpoint" id="ep-crear-solicitud">
+    <div class="head">
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/b0629324-e611-47d4-835f-3ac9bcd4dc9b</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>08-solicitudes</code>. Inserta solicitud en estado <code>pendiente</code> y envía email al cliente con la URL del formulario.</p>
+
+    <h4>Body</h4>
+    <pre><code>{
+  "ID Solicitud": 5,
+  "access_token": "32-chars-uuid-sin-guiones",
+  "Nombre Sociedad": "Empresa SL",
+  "Nombre": "Ana García",
+  "Email": "ana@empresa.com",
+  "Comercial": "Pedro Martin",
+  "Tipo Cliente": "planes",
+  "Fecha": "2026-04-17",
+  "Estado": "Pendiente",
+  "email_to": "ana@empresa.com",
+  "email_subject": "Solicitud de creación de ficha de alta",
+  "email_body": "Hola Ana, te mando este formulario...",
+  "form_url": "https://.../solicitud.html?t=..."
+}</code></pre>
+    <p style="font-size:.78rem;color:#94a3b8">Si <code>access_token</code> no viene, el workflow lo genera con <code>crypto.randomUUID()</code>.</p>
+
+    <h4>Respuesta 200</h4>
+    <pre><code>{ "id": "uuid", "success": true }</code></pre>
+</div>
+
+
+<div class="endpoint" id="ep-lista-solicitudes">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="path">/webhook/1757fdcc-7fa7-4cb9-93b9-eb8118adaa1e</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>08-solicitudes</code>. Lista solicitudes que no estén en estado <code>completado</code> (las completadas se mueven a la pestaña "Rellenado cliente").</p>
+
+    <h4>Respuesta 200</h4>
+    <pre><code>{
+  "solicitudes": [
+    {
+      "id": "uuid",
+      "access_token": "...",
+      "ID Solicitud": 5,
+      "Nombre Sociedad": "...",
+      "Email": "...",
+      "Estado": "pendiente",
+      "Fecha": "2026-04-17T..."
+    }
+  ]
+}</code></pre>
+</div>
+
+
+<div class="endpoint" id="ep-lista-rellenado">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="path">/webhook/fa16b994-5af1-4368-ba6b-592e633937c3</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>09-rellenado-cliente</code>. Lista solicitudes con <code>estado=eq.completada</code> (= clientes que ya rellenaron su parte y esperan que el comercial las complete).</p>
+
+    <h4>Respuesta 200</h4>
+    <pre><code>{
+  "items": [{ "id": "uuid", "Nombre Sociedad": "...", "Email": "...", "Comercial": "..." }]
+}</code></pre>
+</div>
+
+
+<div class="endpoint" id="ep-responder">
+    <div class="head">
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/6da4274f-5a6d-4981-a92a-f9d7eb734144</span>
+        <span class="public">Público</span>
+    </div>
+    <p class="desc">Workflow <code>11-auxiliares</code>. El <strong>cliente</strong> envía sus datos desde solicitud.html. Crea la ficha, carpeta Drive, marca solicitud completada y dispara emails + tarea Asana si TPV no integrado.</p>
+
+    <h4>Body (todos los datos del formulario)</h4>
+    <pre><code>{
+  "ID Solicitud": 5,
+  "access_token": "...",
+  "Estado": "Rellenado cliente",
+  "Nombre Sociedad": "...", "CIF/NIF": "...",
+  "JP Nombre": "...", "Firmante DNI": "...",
+  "TPV": "Revo",
+  "TPV No Integrado": "Sí",  // si checkbox marcado
+  "TPV NI Nombre": "...", "TPV NI Contacto": "...", "TPV NI Email": "...",
+  "SEPA": {
+    "iban": "ES91...",
+    "swift": "CAIXESBB",
+    "deudor": { "nombre": "...", "direccion": "...", ... },
+    "tipo_pago": "recurrente",
+    "firma_base64": "data:image/png;base64,...",
+    "firmado_at": "2026-04-17T..."
+  }
+}</code></pre>
+
+    <h4>Efectos</h4>
+    <ul style="font-size:.86rem;color:#475569">
+        <li>INSERT en <code>fichas_alta</code> con <code>estado=completada</code> + SEPA persistido.</li>
+        <li>Crea carpeta en Google Drive y guarda <code>carpeta_drive</code> en la ficha.</li>
+        <li>Email al cliente con enlace al Drive.</li>
+        <li>Email al comercial avisando.</li>
+        <li>UPDATE solicitudes: <code>estado=completado</code> + <code>ficha_id</code> (dispara trigger que copia <code>fecha_solicitud</code>).</li>
+        <li>Si TPV no integrado: tarea en Asana (proyecto Integraciones <code>1207920061546505</code>) + email a soporte/a.jareno/luis.</li>
+    </ul>
+
+    <h4>Respuesta 200</h4>
+    <pre><code>{ "success": true }</code></pre>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>📒 Contabilidad</h2>
+
+<div class="endpoint" id="ep-grabado-a3">
+    <div class="head">
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/yurest-grabado-a3</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>13-grabado-a3</code>. Toggle del flag <code>grabado_a3</code> en una ficha. Trigger SQL setea <code>grabado_a3_at</code> al pasar de FALSE a TRUE.</p>
+
+    <h4>Body</h4>
+    <pre><code>{ "id": "uuid", "grabado_a3": true | false }</code></pre>
+
+    <h4>Respuesta 200</h4>
+    <pre><code>{
+  "success": true,
+  "id": "uuid",
+  "grabado_a3": true,
+  "affected": 1,
+  "errores": []
+}</code></pre>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>📁 Proyectos</h2>
+
+<div class="endpoint" id="ep-proyectos">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="method method-post">POST</span>
+        <span class="method method-put">PUT</span>
+        <span class="method method-delete">DELETE</span>
+        <span class="path">/webhook/proyectos</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>01-proyectos-crud</code>. CRUD de proyectos de implementación.</p>
+    <table>
+        <tr><th>Método</th><th>Body</th><th>Respuesta</th></tr>
+        <tr><td>GET</td><td>—</td><td><code>{ proyectos: [...] }</code></td></tr>
+        <tr><td>POST</td><td><code>{ proyecto: {...} }</code></td><td><code>{ data: {...}, success: true }</code></td></tr>
+        <tr><td>PUT</td><td><code>{ proyecto: { id, ...campos } }</code></td><td>id devuelto</td></tr>
+        <tr><td>DELETE</td><td><code>{ id: "uuid" }</code></td><td>Soft-delete</td></tr>
+    </table>
+    <p style="font-size:.78rem;color:#94a3b8">El POST/PUT acepta <code>asanaProjectId</code> y <code>asanaProjectUrl</code> para vincular un tablero Asana.</p>
+</div>
+
+
+<div class="endpoint" id="ep-proyectos-tarea">
+    <div class="head">
+        <span class="method method-put">PUT</span>
+        <span class="path">/webhook/proyectos/tarea</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>02-proyectos-tareas</code>. Actualiza una tarea/sección dentro de un proyecto (toggle completada, edición, etc.).</p>
+    <h4>Body</h4>
+    <pre><code>{
+  "proyectoId": "uuid",
+  "seccionNombre": "Puesta en Marcha / Finalización",
+  "tarea": { "id": "...", "completada": true, ... }
+}</code></pre>
+    <h4>Respuesta 200</h4>
+    <pre><code>{ "success": true }</code></pre>
+</div>
+
+
+<div class="endpoint" id="ep-proyectos-tarea-mover">
+    <div class="head">
+        <span class="method method-put">PUT</span>
+        <span class="path">/webhook/proyectos/tarea/mover</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Mueve una tarea entre secciones (drag & drop kanban).</p>
+    <h4>Body</h4>
+    <pre><code>{ "proyectoId": "uuid", "tareaId": "...", "seccionOrigen": "...", "seccionDestino": "..." }</code></pre>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>📉 Bajas</h2>
+
+<div class="endpoint" id="ep-bajas">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/84f094b2... · /webhook/73ce8d34... · /webhook/95d5ed5d...</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>05-bajas</code>. Gestión de bajas de clientes (registro, edición de campos individuales y borrado).</p>
+    <table>
+        <tr><th>Endpoint</th><th>Operación</th></tr>
+        <tr><td><code>bajas</code></td><td>GET listado</td></tr>
+        <tr><td><code>bajaCliente</code> · <code>bajaLocal</code> · <code>bajaModulos</code> · <code>bajaEditar</code></td><td>POST campos específicos (mismo webhook con <code>action</code>)</td></tr>
+        <tr><td><code>bajaBorrar</code></td><td>POST borra una baja</td></tr>
+    </table>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>📊 Distribución</h2>
+
+<div class="endpoint" id="ep-distribucion">
+    <div class="head">
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/6d3ed726-c86a-4b86-a2ae-7f07da9630a5</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>06-distribucion</code>. Asigna un implementador a una ficha.</p>
+    <h4>Body</h4>
+    <pre><code>{ "fichaId": "uuid", "implementador": "Carlos Aparicio" }</code></pre>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>📁 Drive</h2>
+
+<div class="endpoint" id="ep-drive">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="path">/webhook/2010bb2b-... · /webhook/bdef8517-...</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>11-auxiliares</code>. <code>getDrive</code> devuelve la URL de la carpeta Drive de una ficha; <code>docsSubidos</code> consulta si hay documentos subidos.</p>
+    <h4>Query</h4>
+    <pre><code>?id=&lt;ficha_uuid&gt;</code></pre>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>🔌 Integraciones externas (proxy)</h2>
+
+<div class="endpoint" id="ep-asana">
+    <div class="head">
+        <span class="method method-get">GET</span>
+        <span class="path">/webhook/asana/tasks?projectId=... · /webhook/asana/task/stories?taskId=...</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Workflow <code>07-calendar-asana</code>. Proxy a la API de Asana para evitar exponer credenciales en el frontend. Devuelve tareas de un proyecto o historias (comentarios) de una tarea.</p>
+</div>
+
+
+<div class="endpoint" id="ep-calendar">
+    <div class="head">
+        <span class="method method-post">POST</span>
+        <span class="path">/webhook/calendar/event</span>
+        <span class="auth">Basic Auth</span>
+    </div>
+    <p class="desc">Crea un evento en Google Calendar (sesiones de implementación).</p>
+    <h4>Body</h4>
+    <pre><code>{ "summary": "...", "start": "ISO", "end": "ISO", "attendees": [...] }</code></pre>
+</div>
+
+
+<!-- ============================================================ -->
+<h2 id="tipos">Apéndice A · Tipos de datos</h2>
+
+<h3>Objeto <code>SEPA</code></h3>
+<pre><code>{
+  "referencia": "YUREST-5",
+  "acreedor": {
+    "identificador": "ES##ZZZB40597437",
+    "nombre": "Yurest Solutions Sociedad Limitada",
+    "direccion": "Calle Transits, 6",
+    "cp": "46002", "poblacion": "Valencia", "provincia": "Valencia",
+    "pais": "España"
+  },
+  "deudor": {
+    "nombre": "...", "direccion": "...",
+    "cp": "...", "poblacion": "...", "provincia": "...", "pais": "..."
+  },
+  "swift": "CAIXESBB",
+  "iban": "ES9121000418450200051332",
+  "tipo_pago": "recurrente" | "unico",
+  "fecha_firma": "2026-04-17",
+  "localidad": "Valencia",
+  "firma_base64": "data:image/png;base64,...",
+  "firmado_at": "2026-04-17T14:33:33.152Z"
+}</code></pre>
+
+<h3>Objeto <code>Adjunto</code></h3>
+<pre><code>{
+  "id": "adj_xxx",
+  "nombre": "contrato.pdf",
+  "tipo": "application/pdf" | "image/png" | "image/jpeg",
+  "size": 12345,
+  "data": "data:application/pdf;base64,...",
+  "fecha": "2026-04-17T..."
+}</code></pre>
+
+<h3>Objeto <code>paquetes_carrito</code></h3>
+<pre><code>{
+  "items": [{ "id": "plan_pro", "precio": 1580 }],
+  "descuentos": { "cart": 0, "planes_setup": 0, "planes_recur": 0 },
+  "periodos": { "planes": "mensual" | "anual" },
+  "corp_module_locales": { "modulo_x": [0, 1] },
+  "locales_mensual": [25, 30]
+}</code></pre>
+
+
+<h2 id="estados">Apéndice B · Tabla de estados</h2>
+
+<h3>fichas_alta.estado</h3>
+<table>
+    <tr><th>Estado</th><th>Significado</th><th>Quién lo asigna</th></tr>
+    <tr><td><code>pendiente</code></td><td>Inicial (poco usado)</td><td>—</td></tr>
+    <tr><td><code>completada</code></td><td>Cliente rellenó su parte (workflow 11)</td><td>Cliente vía solicitud.html</td></tr>
+    <tr><td><code>rellenado</code></td><td>Comercial completó la ficha (workflow 04)</td><td>Comercial vía index.html</td></tr>
+</table>
+
+<h3>solicitudes.estado</h3>
+<table>
+    <tr><th>Estado</th><th>Significado</th></tr>
+    <tr><td><code>pendiente</code></td><td>Esperando que el cliente la rellene</td></tr>
+    <tr><td><code>completado</code></td><td>Cliente rellenó (genera ficha)</td></tr>
+</table>
+
+<div class="warn">
+    <strong>Nota semántica:</strong> los nombres son legacy. "completada" en <code>fichas_alta</code> ≠ "completado" en <code>solicitudes</code>. Los triggers SQL ya alinean fechas con esta semántica (<code>fecha_rellenado</code>, <code>fecha_completado</code>, <code>grabado_a3_at</code>) para que la analítica sea coherente.
+</div>
+
+
+</main>
+</div>
+
+<button class="btn-print" onclick="window.print()">📄 Descargar como PDF</button>
+</body>
+</html>
