@@ -214,6 +214,62 @@
     },
     {
       "parameters": {
+        "jsCode": "// Si el cliente marcó \"TPV no integrado\", emitimos un item con los datos\n// para crear una tarea en Asana + avisar por email a integraciones.\n// Si no, devolvemos [] para que la rama no continúe.\nconst body = $('Guardar Body').first().json;\nconst c = body.clienteData || body.body || body;\nconst noInt = c['TPV No Integrado'] === 'Sí' || c.tpv_no_integrado === true || c.tpv_no_integrado === 'true';\nif (!noInt) return [];\nconst tpvNombre   = (c['TPV NI Nombre']   || '').trim() || 'TPV sin nombre';\nconst tpvPersona  = (c['TPV NI Contacto'] || '').trim();\nconst tpvEmail    = (c['TPV NI Email']    || '').trim();\nconst nombreCom   = (c['Nombre Comercial']|| c['Nombre Sociedad'] || '').trim() || 'Cliente sin nombre';\nconst comercial   = (c['Comercial']       || '').trim() || '—';\nconst sociedad    = (c['Nombre Sociedad'] || '').trim();\nreturn [{ json: { tpvNombre, tpvPersona, tpvEmail, nombreCom, comercial, sociedad } }];"
+      },
+      "id": "detect-tpv-ni",
+      "name": "Detectar TPV no integrado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 740],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.asana.com/api/1.0/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": {\n    \"name\": {{ JSON.stringify($json.tpvNombre + ' - ' + $json.nombreCom) }},\n    \"notes\": {{ JSON.stringify('Persona de referencia: ' + ($json.tpvPersona || '—') + '\\nEmail de referencia: ' + ($json.tpvEmail || '—') + '\\nCliente: ' + $json.nombreCom + '\\nComercial: ' + $json.comercial) }},\n    \"projects\": [\"1207920061546505\"]\n  }\n}",
+        "options": {}
+      },
+      "id": "asana-task-tpv",
+      "name": "Crear tarea Asana TPV NI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1260, 740],
+      "credentials": {
+        "asanaApi": {
+          "id": "ASANA_CREDENTIAL_ID",
+          "name": "Asana Yurest"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "soporte@yurest.com",
+        "toEmail": "soporte@yurest.com,a.jareno@yurest.com,luis@roocket.io",
+        "subject": "=Nueva integracion TPV - {{ $('Detectar TPV no integrado').first().json.tpvNombre }}",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<body style=\"margin:0;padding:0;background:#f1f1f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f1f1f1;padding:32px 16px;\">\n  <tr><td align=\"center\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:560px;\">\n      <tr><td style=\"background:linear-gradient(135deg,#111111,#2d0c0c);border-radius:14px 14px 0 0;padding:28px 32px;\">\n        <p style=\"margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fca5a5;\">Yurest · Integraciones</p>\n        <p style=\"margin:8px 0 0;font-size:20px;font-weight:700;color:#ffffff;\">Nueva integración TPV pendiente</p>\n      </td></tr>\n      <tr><td style=\"background:#ffffff;padding:28px 32px;\">\n        <p style=\"margin:0 0 16px;font-size:14px;color:#334155;line-height:1.6;\">\n          Se ha añadido un cliente con una integración TPV <strong>no realizada</strong>. Se ha creado la tarea correspondiente en el proyecto <strong>Integraciones</strong> de Asana.\n        </p>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border:1.5px solid #f1f5f9;border-radius:10px;margin:0 0 18px;\">\n          <tr><td style=\"background:#f8fafc;padding:10px 16px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fc5858;\">Datos de referencia</td></tr>\n          <tr><td style=\"padding:14px 16px;font-size:13px;color:#1e293b;line-height:1.7;\">\n            <strong>TPV:</strong> {{ $('Detectar TPV no integrado').first().json.tpvNombre }}<br>\n            <strong>Cliente (nombre comercial):</strong> {{ $('Detectar TPV no integrado').first().json.nombreCom }}<br>\n            <strong>Comercial responsable:</strong> {{ $('Detectar TPV no integrado').first().json.comercial }}<br>\n            <strong>Persona de referencia del TPV:</strong> {{ $('Detectar TPV no integrado').first().json.tpvPersona || '—' }}<br>\n            <strong>Email de referencia del TPV:</strong> {{ $('Detectar TPV no integrado').first().json.tpvEmail || '—' }}\n          </td></tr>\n        </table>\n        <p style=\"margin:0;font-size:13px;color:#64748b;line-height:1.6;\">Equipo Yurest</p>\n      </td></tr>\n      <tr><td style=\"background:#f8fafc;border-radius:0 0 14px 14px;border-top:1.5px solid #e2e8f0;padding:14px 32px;font-size:11px;color:#94a3b8;\">© Yurest · Aviso automático</td></tr>\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "email-tpv-ni",
+      "name": "Email integraciones TPV NI",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1480, 740],
+      "credentials": {
+        "smtp": {
+          "id": "2V6BD1M7DfSWvpIf",
+          "name": "Soporte"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "jsCode": "// Marca la solicitud como completada y la enlaza a la ficha recién\n// insertada (ficha_id). El UPDATE de ficha_id activa el trigger\n// solicitud_propagar_fecha_a_ficha que copia solicitudes.created_at →\n// fichas_alta.fecha_solicitud (clave para la analítica de Ventas).\nconst { solicitudUUID } = $('Merge Solicitud + Cliente').first().json;\nif (!solicitudUUID) {\n  return [{ json: { skip: true } }];\n}\nconst fichaResult = $('INSERT Ficha Alta').first().json;\nconst fichaId = fichaResult && fichaResult.id ? fichaResult.id : null;\nconst row = { id: solicitudUUID, estado: 'completado' };\nif (fichaId) row.ficha_id = fichaId;\nreturn [{ json: row }];"
       },
       "id": "prepare-update-sol",
@@ -517,6 +573,33 @@
           },
           {
             "node": "Map Comercial Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Detectar TPV no integrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detectar TPV no integrado": {
+      "main": [
+        [
+          {
+            "node": "Crear tarea Asana TPV NI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear tarea Asana TPV NI": {
+      "main": [
+        [
+          {
+            "node": "Email integraciones TPV NI",
             "type": "main",
             "index": 0
           }
