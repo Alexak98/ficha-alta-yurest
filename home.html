@@ -658,10 +658,13 @@
     (function init() {
         // Info de usuario
         const session = YurestConfig.getSession();
-        const user = (session && session.user) || 'Usuario';
-        document.getElementById('user-name').textContent = user;
-        document.getElementById('user-avatar').textContent = getIniciales(user);
-        document.getElementById('hero-user').textContent = user;
+        // Preferimos el nombre completo guardado en la sesión; si no hay,
+        // caemos al username y finalmente a 'Usuario'.
+        const nombreCompleto = (session && (session.nombre || session.user)) || 'Usuario';
+        const username       = (session && session.user)                    || nombreCompleto;
+        document.getElementById('user-name').textContent = nombreCompleto;
+        document.getElementById('user-avatar').textContent = getIniciales(nombreCompleto);
+        document.getElementById('hero-user').textContent = nombreCompleto;
 
         renderGrid();
 
