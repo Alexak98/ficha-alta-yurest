@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <rect width="100" height="100" rx="22" fill="#fc5858"/>
-    <path d="M 28 28 L 50 56 L 72 28 M 50 56 L 50 78"
-          stroke="white" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- "yu" en Bw Modelica Regular, convertido a paths (no depende de cargar la fuente) -->
+    <g transform="translate(11 60) scale(0.07 -0.07)" fill="#fff">
+        <path d="M130 -230C209 -230 242 -180 275 -103L558 529H479L289 86L93 529H14L251 7L204 -93C183 -138 164 -168 119 -168C102 -168 86 -165 74 -159L66 -218C83 -226 107 -230 130 -230Z"/>
+        <path transform="translate(568 0)" d="M469 529V209C469 115 405 52 308 52C211 52 147 115 147 209V529H75V195C75 73 159 -10 285 -10C374 -10 436 26 470 88L472 0H541V529Z"/>
+    </g>
 </svg>
