@@ -285,9 +285,23 @@
                 let loginData = {};
                 try { loginData = await loginRes.json(); } catch (_) {}
 
-                if (!loginRes.ok || !loginData || loginData.success === false) {
-                    errorMsg.textContent = (loginData && loginData.error)
-                        || 'Usuario o contraseña incorrectos.';
+                // Validación estricta: la respuesta tiene que cumplir success:true + user.rol
+                // + user.username. Si falta algo, tratamos como fallo (no como "login OK
+                // con permisos vacíos") — así el usuario ve un error claro en vez de
+                // entrar al portal con sesión inútil.
+                const loginOk = loginRes.ok
+                    && loginData
+                    && loginData.success === true
+                    && loginData.user
+                    && loginData.user.username
+                    && loginData.user.rol;
+
+                if (!loginOk) {
+                    const hint = loginData && loginData.error ? loginData.error
+                        : loginRes.ok
+                          ? 'El servidor respondió pero sin datos de usuario válidos. Revisa que el workflow de auth esté activo en n8n.'
+                          : 'Usuario o contraseña incorrectos.';
+                    errorMsg.textContent = hint;
                     errorEl.classList.add('visible');
                     btn.classList.remove('loading');
                     btn.disabled = false;
