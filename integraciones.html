@@ -187,7 +187,16 @@
             font-family:inherit;font-size:0.85rem;color:#1e293b;
             background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;
             transition:border-color 0.15s, background 0.15s;
+            -webkit-appearance:none;appearance:none;
         }
+        /* Ocultar la X nativa del input[type=search] (Chrome/Safari/Edge/IE)
+           para no duplicar el botón de limpiar personalizado. */
+        .int-search-input::-webkit-search-cancel-button,
+        .int-search-input::-webkit-search-decoration,
+        .int-search-input::-webkit-search-results-button,
+        .int-search-input::-webkit-search-results-decoration { -webkit-appearance:none;display:none }
+        .int-search-input::-ms-clear,
+        .int-search-input::-ms-reveal { display:none;width:0;height:0 }
         .int-search-input:focus {
             outline:none;border-color:#fc5858;background:#fff;
         }
