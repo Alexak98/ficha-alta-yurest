@@ -471,9 +471,12 @@
         }
         .notif-btn-primary { background:#fc5858;color:#fff;border-color:#fc5858 }
         .notif-btn-primary:hover { background:#e84848;border-color:#e84848 }
-        .notif-btn-primary:disabled { opacity:.5;cursor:not-allowed }
+        .notif-btn-primary:disabled { opacity:.65;cursor:wait }
+        .notif-btn-primary svg { vertical-align:-2px }
         .notif-btn-secondary { background:#fff;color:#475569;border-color:#e2e8f0 }
         .notif-btn-secondary:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .notif-icon-btn:disabled { opacity:.5;cursor:wait }
+        @keyframes notif-spin { from { transform:rotate(0) } to { transform:rotate(360deg) } }
 
         /* Historial */
         .notif-hist-week {
@@ -1125,10 +1128,21 @@
         });
     }
 
-    // Handler del buscador (debajo del filtro de TPV)
+    // Handler del buscador (debajo del filtro de TPV). Debounce de 180 ms
+    // para evitar re-renderizar content.innerHTML en cada keystroke — a
+    // partir de ~50 tareas el re-render causa flicker y pierde el foco
+    // aunque lo intentemos restaurar.
+    let _intSearchTimer = null;
     function onIntSearchInput(val) {
         busquedaTexto = String(val || '');
-        aplicarFiltrosYRender();
+        if (_intSearchTimer) clearTimeout(_intSearchTimer);
+        // Si el usuario borra todo de golpe, render inmediato para quitar el
+        // "0 resultados" rápido. Para tecleo normal, 180 ms.
+        const delay = busquedaTexto === '' ? 0 : 180;
+        _intSearchTimer = setTimeout(() => {
+            _intSearchTimer = null;
+            aplicarFiltrosYRender();
+        }, delay);
     }
 
     // Carga los comentarios para todas las tareas visibles de una sección
@@ -1388,7 +1402,7 @@
                 <span style="font-size:11px;color:#94a3b8">
                     ${notifConfig.updated_at ? 'Última actualización: ' + formatFecha(notifConfig.updated_at) : ''}
                 </span>
-                <button class="notif-btn-primary" onclick="guardarNotifConfig()">
+                <button class="notif-btn-primary" onclick="guardarNotifConfig(this)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg>
                     Guardar configuración
                 </button>
@@ -1396,12 +1410,26 @@
         `;
     }
 
-    async function guardarNotifConfig() {
+    // Bloquea un botón durante una operación asíncrona para evitar
+    // doble-click. Muestra un spinner ASCII y restaura el texto original
+    // al soltar. Uso: const release = _notifLockButton(btn, 'Guardando…');
+    //                try { ... } finally { release(); }
+    function _notifLockButton(btn, textoOcupado) {
+        if (!btn) return () => {};
+        const html = btn.innerHTML;
+        const disabled = btn.disabled;
+        btn.disabled = true;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:notif-spin 0.8s linear infinite"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M22 12a10 10 0 00-10-10"/></svg> ${textoOcupado || 'Guardando…'}`;
+        return () => { btn.innerHTML = html; btn.disabled = disabled; };
+    }
+
+    async function guardarNotifConfig(btn) {
         const activo = document.getElementById('notif-activo').checked;
         const umbral = parseInt(document.getElementById('notif-umbral').value, 10) || 7;
         const secciones = [...document.querySelectorAll('#notif-secciones-list input:checked')]
             .map(cb => cb.value);
         const usuario = (YurestConfig.getSession()?.user) || 'desconocido';
+        const release = _notifLockButton(btn, 'Guardando…');
         try {
             const r = await _notifApiFetch(NOTIF_ENDPOINTS.config, {
                 method: 'PUT',
@@ -1412,6 +1440,14 @@
                     updated_by: usuario
                 })
             });
+            // Mismo patrón que guardarNotifGrupo: si el backend reporta
+            // success:false devolvemos error real al usuario en vez de
+            // fingir éxito.
+            if (r && r.success === false) {
+                const detalle = Array.isArray(r.errores) && r.errores.length
+                    ? ': ' + r.errores.join('; ') : '';
+                throw new Error('El backend rechazó la configuración' + detalle);
+            }
             Object.assign(notifConfig, {
                 activo, umbral_dias: umbral,
                 secciones_seguimiento: secciones,
@@ -1421,6 +1457,8 @@
             mostrarNotifToast('Configuración guardada', 'success');
         } catch (err) {
             mostrarNotifToast('Error al guardar: ' + err.message, 'error');
+        } finally {
+            release();
         }
     }
 
@@ -1451,7 +1489,7 @@
                             <button class="notif-icon-btn" title="Editar" onclick="editarNotifGrupo('${esc(g.id)}')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                             </button>
-                            <button class="notif-icon-btn danger" title="Eliminar" onclick="borrarNotifGrupo('${esc(g.id)}','${escJs(g.nombre)}')">
+                            <button class="notif-icon-btn danger" title="Eliminar" onclick="borrarNotifGrupo('${esc(g.id)}','${escJs(g.nombre)}', this)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
                             </button>
                         </div>
@@ -1552,7 +1590,7 @@
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
                     <button class="notif-btn-secondary" onclick="cancelarNotifGrupo()">Cancelar</button>
-                    <button class="notif-btn-primary" onclick="guardarNotifGrupo('${id || ''}')">
+                    <button class="notif-btn-primary" onclick="guardarNotifGrupo('${id || ''}', this)">
                         ${id ? 'Guardar cambios' : 'Crear grupo'}
                     </button>
                 </div>
@@ -1565,7 +1603,7 @@
         document.getElementById('notif-grupo-editor').innerHTML = '';
     }
 
-    async function guardarNotifGrupo(id) {
+    async function guardarNotifGrupo(id, btn) {
         const nombre = document.getElementById('ng-nombre').value.trim();
         const destinatarios = document.getElementById('ng-destinatarios').value.trim();
         const activo = document.getElementById('ng-activo').checked;
@@ -1578,6 +1616,7 @@
         const grupo = { nombre, destinatarios, filtro_tpv, filtro_secciones, activo };
         if (id) grupo.id = id;
 
+        const release = _notifLockButton(btn, id ? 'Guardando…' : 'Creando…');
         try {
             const r = await _notifApiFetch(NOTIF_ENDPOINTS.grupos, {
                 method: 'POST',
@@ -1598,11 +1637,15 @@
             mostrarNotifToast(id ? 'Grupo actualizado' : 'Grupo creado', 'success');
         } catch (err) {
             mostrarNotifToast('Error: ' + err.message, 'error');
+            release();  // restauramos el botón si hubo error y el editor sigue abierto
         }
+        // Si hubo éxito, renderNotifGrupos() ya reemplazó el DOM — el botón
+        // bloqueado desaparece con él.
     }
 
-    async function borrarNotifGrupo(id, nombre) {
+    async function borrarNotifGrupo(id, nombre, btn) {
         if (!confirm(`¿Eliminar el grupo "${nombre}"?\n\nDejarán de recibir recordatorios. El historial previo se mantiene.`)) return;
+        const release = _notifLockButton(btn, '');
         try {
             const r = await _notifApiFetch(NOTIF_ENDPOINTS.grupos, {
                 method: 'POST',
@@ -1620,6 +1663,7 @@
             mostrarNotifToast('Grupo eliminado', 'success');
         } catch (err) {
             mostrarNotifToast('Error al eliminar: ' + err.message, 'error');
+            release();  // en error: restaurar el botón para reintentar
         }
     }
 
