@@ -398,15 +398,15 @@
     },
     "¿Login OK?": {
       "main": [
-        [{ "node": "Actualizar last_login", "type": "main", "index": 0 }],
+        [{ "node": "Limpiar respuesta OK", "type": "main", "index": 0 }],
         [{ "node": "Respond Login", "type": "main", "index": 0 }]
       ]
     },
-    "Actualizar last_login": {
-      "main": [[{ "node": "Limpiar respuesta OK", "type": "main", "index": 0 }]]
-    },
     "Limpiar respuesta OK": {
       "main": [[{ "node": "Respond Login", "type": "main", "index": 0 }]]
+    },
+    "Actualizar last_login": {
+      "main": [[]]
     },
 
     "Webhook GET Usuarios": {
