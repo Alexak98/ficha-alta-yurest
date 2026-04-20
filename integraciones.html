@@ -1583,6 +1583,14 @@
                 method: 'POST',
                 body: JSON.stringify({ action: id ? 'update' : 'create', grupo })
             });
+            // El workflow devuelve {success, affected, errores}. Validamos que
+            // realmente haya tocado una fila — si no, el toast fingía éxito
+            // cuando en realidad la BD no cambiaba.
+            if (r && r.success === false) {
+                const detalle = Array.isArray(r.errores) && r.errores.length
+                    ? ': ' + r.errores.join('; ') : '';
+                throw new Error('El backend no afectó a ninguna fila' + detalle);
+            }
             // Recargar grupos
             const cfgResp = await _notifApiFetch(NOTIF_ENDPOINTS.config);
             notifGrupos = Array.isArray(cfgResp.grupos) ? cfgResp.grupos : [];
@@ -1596,11 +1604,18 @@
     async function borrarNotifGrupo(id, nombre) {
         if (!confirm(`¿Eliminar el grupo "${nombre}"?\n\nDejarán de recibir recordatorios. El historial previo se mantiene.`)) return;
         try {
-            await _notifApiFetch(NOTIF_ENDPOINTS.grupos, {
+            const r = await _notifApiFetch(NOTIF_ENDPOINTS.grupos, {
                 method: 'POST',
                 body: JSON.stringify({ action: 'delete', grupo: { id } })
             });
-            notifGrupos = notifGrupos.filter(g => g.id !== id);
+            if (r && r.success === false) {
+                const detalle = Array.isArray(r.errores) && r.errores.length
+                    ? ': ' + r.errores.join('; ') : '';
+                throw new Error('El backend no borró el grupo' + detalle);
+            }
+            // Releemos desde backend en vez de confiar en la vista local
+            const cfgResp = await _notifApiFetch(NOTIF_ENDPOINTS.config);
+            notifGrupos = Array.isArray(cfgResp.grupos) ? cfgResp.grupos : [];
             renderNotifGrupos();
             mostrarNotifToast('Grupo eliminado', 'success');
         } catch (err) {

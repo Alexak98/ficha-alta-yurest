@@ -196,21 +196,28 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "typeValidation": "strict" },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "create",
-              "operator": { "type": "string", "operation": "equals" }
-            }
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [ { "leftValue": "={{ $json.action }}", "rightValue": "create",
+                                  "operator": { "type": "string", "operation": "equals" } } ] },
+              "renameOutput": true, "outputKey": "create" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [ { "leftValue": "={{ $json.action }}", "rightValue": "update",
+                                  "operator": { "type": "string", "operation": "equals" } } ] },
+              "renameOutput": true, "outputKey": "update" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [ { "leftValue": "={{ $json.action }}", "rightValue": "delete",
+                                  "operator": { "type": "string", "operation": "equals" } } ] },
+              "renameOutput": true, "outputKey": "delete" }
           ]
-        }
+        },
+        "options": {}
       },
-      "id": "if-create",
-      "name": "¿Es create?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "id": "switch-action",
+      "name": "Router acción Grupo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
       "position": [680, 600]
     },
     {
@@ -252,17 +259,28 @@
         "matchType": "allFilters",
         "filters": {
           "conditions": [
-            { "keyName": "id", "condition": "eq", "keyValue": "={{ $json.id }}" }
+            { "keyName": "id", "condition": "eq",
+              "keyValue": "={{ $('Preparar acción Grupo').first().json.payload.id }}" }
           ]
         },
-        "dataToSend": "autoMapInputData",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "nombre",           "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.nombre }}" },
+            { "fieldId": "destinatarios",    "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.destinatarios }}" },
+            { "fieldId": "activo",           "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.activo ?? true }}" },
+            { "fieldId": "orden",            "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.orden ?? 0 }}" },
+            { "fieldId": "filtro_tpv",       "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.filtro_tpv ?? '[]' }}" },
+            { "fieldId": "filtro_secciones", "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.filtro_secciones ?? '[]' }}" }
+          ]
+        },
         "options": {}
       },
       "id": "supa-update-grupo",
       "name": "UPDATE Grupo",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1020, 700],
+      "position": [900, 600],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -274,19 +292,54 @@
     },
     {
       "parameters": {
-        "jsCode": "// Para los casos UPDATE y DELETE, autoMapInputData se confunde con la\n// estructura {action, payload}. Aplanamos: el item que llega a Supabase\n// tiene que ser DIRECTAMENTE el payload (id + columnas a actualizar).\nreturn [{ json: $input.first().json.payload }];"
+        "operation": "update",
+        "tableId": "notif_integraciones_grupos",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            { "keyName": "id", "condition": "eq",
+              "keyValue": "={{ $('Preparar acción Grupo').first().json.payload.id }}" }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "deleted_at", "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        },
+        "options": {}
       },
-      "id": "flatten-payload",
-      "name": "Aplanar payload",
+      "id": "supa-delete-grupo",
+      "name": "DELETE Grupo",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 700],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verifica que la operación afectó alguna fila. Sin esto, un filtro\n// mal construido devolvería success:true sin tocar la BD (bug detectado\n// al borrar grupos: volvían a aparecer tras refrescar la UI).\nconst { action } = $('Preparar acción Grupo').first().json;\nconst input = $input.all();\nlet count = 0;\nconst errores = [];\nfor (const it of (input || [])) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) {\n    errores.push(String(j.error.message || j.error.code || j.error));\n    continue;\n  }\n  if (j.id) { count++; continue; }\n  if (Array.isArray(j.data)) count += j.data.length;\n}\nreturn [{ json: {\n  success: count > 0,\n  action,\n  affected: count,\n  errores,\n  grupo: (input[0] && input[0].json) || null\n}}];"
+      },
+      "id": "verify-grupo",
+      "name": "Verificar resultado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [800, 700],
-      "alwaysOutputData": true
+      "position": [1120, 600],
+      "alwaysOutputData": true,
+      "executeOnce": true
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, grupo: $json }) }}",
+        "responseBody": "={{ JSON.stringify($json) }}",
         "options": {
           "responseHeaders": {
             "entries": [
@@ -302,7 +355,7 @@
       "name": "Respond Grupo",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1120, 600]
+      "position": [1340, 600]
     },
 
     {
@@ -405,21 +458,25 @@
       "main": [[{ "node": "Preparar acción Grupo", "type": "main", "index": 0 }]]
     },
     "Preparar acción Grupo": {
-      "main": [[{ "node": "¿Es create?", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Router acción Grupo", "type": "main", "index": 0 }]]
     },
-    "¿Es create?": {
+    "Router acción Grupo": {
       "main": [
         [{ "node": "INSERT Grupo", "type": "main", "index": 0 }],
-        [{ "node": "Aplanar payload", "type": "main", "index": 0 }]
+        [{ "node": "UPDATE Grupo", "type": "main", "index": 0 }],
+        [{ "node": "DELETE Grupo", "type": "main", "index": 0 }]
       ]
     },
-    "Aplanar payload": {
-      "main": [[{ "node": "UPDATE Grupo", "type": "main", "index": 0 }]]
-    },
     "INSERT Grupo": {
-      "main": [[{ "node": "Respond Grupo", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Verificar resultado", "type": "main", "index": 0 }]]
     },
     "UPDATE Grupo": {
+      "main": [[{ "node": "Verificar resultado", "type": "main", "index": 0 }]]
+    },
+    "DELETE Grupo": {
+      "main": [[{ "node": "Verificar resultado", "type": "main", "index": 0 }]]
+    },
+    "Verificar resultado": {
       "main": [[{ "node": "Respond Grupo", "type": "main", "index": 0 }]]
     },
 
