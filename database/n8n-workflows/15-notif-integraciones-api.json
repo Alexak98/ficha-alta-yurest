@@ -252,20 +252,17 @@
         "matchType": "allFilters",
         "filters": {
           "conditions": [
-            { "keyName": "id", "condition": "eq", "keyValue": "={{ $json.payload.id }}" }
+            { "keyName": "id", "condition": "eq", "keyValue": "={{ $json.id }}" }
           ]
         },
         "dataToSend": "autoMapInputData",
-        "fieldsToSend": {
-          "values": [{ "name": "payload" }]
-        },
         "options": {}
       },
       "id": "supa-update-grupo",
       "name": "UPDATE Grupo",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [900, 700],
+      "position": [1020, 700],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
