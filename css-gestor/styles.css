@@ -2,6 +2,9 @@
    GESTOR DE PROYECTOS - Styles
    ========================================== */
 
+/* Tipografía corporativa Bw Modelica (carga @font-face + variable --font-sans) */
+@import url('../fonts.css');
+
 /* ==========================================
    SIDEBAR (shared with altas system)
    ========================================== */
@@ -156,7 +159,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: var(--font-sans, 'Bw Modelica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
     background: var(--bg-primary);
     color: var(--text-primary);
     line-height: 1.5;

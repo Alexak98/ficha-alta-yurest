@@ -1,3 +1,6 @@
+/* Tipografía corporativa Bw Modelica (carga @font-face + variable --font-sans) */
+@import url('fonts.css');
+
 :root {
     --primary: #fc5858;
     --primary-dark: #e03030;
@@ -14,7 +17,7 @@
 
 body {
     background: var(--bg);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
     color: var(--text);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
