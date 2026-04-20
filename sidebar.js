@@ -157,7 +157,12 @@
                 </div>
                 <button class="sidebar-close" onclick="closeSidebar()" aria-label="Cerrar menú">✕</button>
             </div>
-            <div class="sidebar-label">Secciones</div>
+            <div class="sidebar-label">Navegación</div>
+            <a href="home.html" class="sidebar-item" style="margin-bottom:8px">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Inicio
+            </a>
+            <div class="sidebar-label" style="margin-top:4px">Secciones</div>
             ${GROUPS.map(g => renderGroup(g, activeId, g.id === activeGroup)).join('')}
             <div class="sidebar-ft">
                 <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">

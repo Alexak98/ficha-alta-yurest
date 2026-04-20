@@ -259,7 +259,7 @@
     <script>
         // Si ya hay sesión activa (no expirada), redirigir directamente
         if (YurestConfig.getSession()) {
-            window.location.replace('lista.html');
+            window.location.replace('home.html');
         }
 
         async function handleLogin(e) {
@@ -297,7 +297,7 @@
                                  : Array.isArray(data.data) ? data.data : [];
                     sessionStorage.setItem('yurest_fichas', JSON.stringify(fichas));
 
-                    window.location.replace('lista.html');
+                    window.location.replace('home.html');
                 } else {
                     const body = await res.text();
                     errorMsg.textContent = body || 'Usuario o contraseña incorrectos.';

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yurest — Portal</title>
+    <link rel="stylesheet" href="fonts.css">
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth();</script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        :root {
+            --primary:#fc5858;
+            --primary-dark:#e84848;
+            --text:#0f172a;
+            --text-muted:#64748b;
+            --border:#e2e8f0;
+            --bg:#f8fafc;
+            --card:#ffffff;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text);
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 0% 0%, rgba(252,88,88,.08) 0%, transparent 55%),
+                radial-gradient(circle at 100% 100%, rgba(79,70,229,.06) 0%, transparent 55%),
+                var(--bg);
+            display:flex; flex-direction:column;
+        }
+
+        /* ── Top bar ──────────────────────────────────────────────────── */
+        .home-top {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:18px 32px;
+        }
+        .home-brand {
+            display:flex; align-items:center; gap:12px;
+        }
+        .home-brand img { height:28px; width:auto; }
+        .home-user {
+            display:flex; align-items:center; gap:12px;
+            font-size:13px; color:var(--text-muted);
+        }
+        .home-user-chip {
+            display:inline-flex; align-items:center; gap:8px;
+            padding:6px 12px; background:#fff;
+            border:1.5px solid var(--border); border-radius:999px;
+            font-weight:600; color:var(--text);
+        }
+        .home-user-avatar {
+            width:24px; height:24px; border-radius:50%;
+            background:var(--primary); color:#fff;
+            display:inline-flex; align-items:center; justify-content:center;
+            font-size:11px; font-weight:700;
+        }
+        .home-btn-logout {
+            padding:7px 14px; background:#fff;
+            border:1.5px solid var(--border); border-radius:999px;
+            font-family:inherit; font-size:13px; font-weight:600;
+            color:var(--text-muted); cursor:pointer;
+            display:inline-flex; align-items:center; gap:6px;
+            transition: all .15s;
+        }
+        .home-btn-logout:hover {
+            color:var(--primary); border-color:#fecaca;
+            background:#fff5f5;
+        }
+
+        /* ── Main ─────────────────────────────────────────────────────── */
+        .home-main {
+            flex:1; display:flex; flex-direction:column;
+            padding:24px 32px 48px;
+            max-width:1200px; width:100%;
+            margin:0 auto;
+        }
+        .home-hero {
+            margin: 24px 0 32px;
+        }
+        .home-hero h1 {
+            font-size: clamp(28px, 4vw, 42px);
+            font-weight:800; letter-spacing:-0.02em;
+            color:var(--text);
+        }
+        .home-hero h1 .accent { color:var(--primary); }
+        .home-hero p {
+            margin-top:8px; font-size:15px; color:var(--text-muted);
+        }
+
+        /* ── Department grid ──────────────────────────────────────────── */
+        .dept-grid {
+            display:grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+        }
+        .dept-card {
+            position:relative;
+            background:var(--card);
+            border:1.5px solid var(--border);
+            border-radius:20px;
+            padding:24px 22px;
+            cursor:pointer;
+            text-align:left;
+            transition: transform .18s ease-out, box-shadow .18s ease-out, border-color .18s;
+            display:flex; flex-direction:column; gap:10px;
+            min-height:170px;
+        }
+        .dept-card::before {
+            content:'';
+            position:absolute; inset:0;
+            border-radius:inherit;
+            background: linear-gradient(135deg, var(--dept-a, #fc5858) 0%, var(--dept-b, #e84848) 100%);
+            opacity:0; transition: opacity .18s;
+            z-index:-1;
+        }
+        .dept-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(15,23,42,.08);
+            border-color: var(--dept-a, var(--primary));
+        }
+        .dept-card-top {
+            display:flex; align-items:flex-start; justify-content:space-between;
+        }
+        .dept-icon {
+            width:52px; height:52px; border-radius:14px;
+            display:inline-flex; align-items:center; justify-content:center;
+            background: linear-gradient(135deg, var(--dept-a, #fc5858) 0%, var(--dept-b, #e84848) 100%);
+            color:#fff;
+        }
+        .dept-icon svg { width:26px; height:26px; }
+        .dept-badge {
+            display:inline-flex; align-items:center; gap:4px;
+            font-size:11px; font-weight:700;
+            padding:3px 10px; border-radius:999px;
+            background:#fef3c7; color:#92400e;
+        }
+        .dept-badge.ok { background:#dcfce7; color:#166534; }
+        .dept-badge.none { display:none; }
+        .dept-name {
+            font-size:20px; font-weight:700; color:var(--text);
+            margin-top:4px;
+        }
+        .dept-sub {
+            font-size:13px; color:var(--text-muted);
+            line-height:1.4;
+        }
+        .dept-footer {
+            margin-top:auto; display:flex; align-items:center; justify-content:space-between;
+            padding-top:10px;
+        }
+        .dept-count {
+            font-size:12px; font-weight:600; color:var(--text-muted);
+        }
+        .dept-arrow {
+            color:var(--text-muted); transition: transform .15s, color .15s;
+        }
+        .dept-card:hover .dept-arrow {
+            transform: translateX(3px);
+            color: var(--dept-a, var(--primary));
+        }
+
+        /* ── Expanded department view ─────────────────────────────────── */
+        .dept-detail {
+            display:none;
+        }
+        .dept-detail.active { display:block; }
+
+        .dept-detail-header {
+            display:flex; align-items:flex-start; gap:18px;
+            margin-bottom:28px;
+        }
+        .dept-back {
+            display:inline-flex; align-items:center; gap:6px;
+            padding:8px 14px;
+            background:#fff; border:1.5px solid var(--border); border-radius:999px;
+            font-family:inherit; font-size:13px; font-weight:600;
+            color:var(--text); cursor:pointer;
+            transition: all .15s;
+        }
+        .dept-back:hover {
+            background:#f1f5f9; border-color:#cbd5e1;
+        }
+        .dept-detail-title {
+            flex:1;
+        }
+        .dept-detail-title h2 {
+            font-size:26px; font-weight:800; letter-spacing:-0.01em;
+        }
+        .dept-detail-title p {
+            font-size:14px; color:var(--text-muted); margin-top:4px;
+        }
+        .dept-detail-icon {
+            width:60px; height:60px; border-radius:16px;
+            display:inline-flex; align-items:center; justify-content:center;
+            background: linear-gradient(135deg, var(--dept-a) 0%, var(--dept-b) 100%);
+            color:#fff; flex-shrink:0;
+        }
+        .dept-detail-icon svg { width:30px; height:30px; }
+
+        .page-grid {
+            display:grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+        }
+        .page-card {
+            background:var(--card);
+            border:1.5px solid var(--border);
+            border-radius:14px;
+            padding:16px 18px;
+            text-decoration:none; color:inherit;
+            cursor:pointer;
+            display:flex; align-items:center; gap:14px;
+            transition: all .15s;
+        }
+        .page-card:hover {
+            border-color: var(--dept-a, var(--primary));
+            box-shadow: 0 6px 18px rgba(15,23,42,.06);
+            transform: translateY(-2px);
+        }
+        .page-card-icon {
+            width:40px; height:40px; border-radius:10px;
+            display:inline-flex; align-items:center; justify-content:center;
+            background: rgba(252,88,88,.09);
+            color: var(--dept-a, var(--primary));
+            flex-shrink:0;
+        }
+        .page-card-icon svg { width:20px; height:20px; }
+        .page-card-body { flex:1; min-width:0; }
+        .page-card-name {
+            font-size:15px; font-weight:700; color:var(--text);
+            display:flex; align-items:center; gap:8px;
+        }
+        .page-card-name .page-badge {
+            display:inline-flex; align-items:center;
+            font-size:10px; font-weight:700;
+            padding:2px 8px; border-radius:999px;
+            background:#fef3c7; color:#92400e;
+        }
+        .page-card-sub {
+            font-size:12px; color:var(--text-muted);
+            margin-top:2px;
+        }
+        .page-card-arrow {
+            color:var(--text-muted); transition: transform .15s;
+        }
+        .page-card:hover .page-card-arrow {
+            transform: translateX(3px);
+        }
+
+        /* ── Footer docs ──────────────────────────────────────────────── */
+        .home-footer {
+            margin-top:auto; padding:18px 32px;
+            display:flex; align-items:center; justify-content:center; gap:10px;
+            flex-wrap:wrap;
+        }
+        .home-docs-btn {
+            display:inline-flex; align-items:center; gap:6px;
+            padding:6px 12px; background:transparent;
+            border:1.5px solid var(--border); border-radius:999px;
+            font-family:inherit; font-size:12px; font-weight:600;
+            color:var(--text-muted); cursor:pointer;
+            text-decoration:none;
+            transition: all .15s;
+        }
+        .home-docs-btn:hover {
+            color:var(--text); border-color:#94a3b8; background:#fff;
+        }
+
+        /* ── Responsive ───────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .home-top { padding:14px 16px; }
+            .home-main { padding:16px 16px 32px; }
+            .home-hero { margin: 16px 0 24px; }
+            .dept-card { padding:20px 18px; min-height:150px; }
+            .home-user-chip { padding:5px 10px; font-size:12px; }
+            .home-btn-logout span { display:none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="home-top">
+    <div class="home-brand">
+        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+    </div>
+    <div class="home-user">
+        <div class="home-user-chip" id="user-chip" title="Sesión activa">
+            <span class="home-user-avatar" id="user-avatar">?</span>
+            <span id="user-name">—</span>
+        </div>
+        <button class="home-btn-logout" onclick="cerrarSesion()" title="Cerrar sesión">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Salir</span>
+        </button>
+    </div>
+</div>
+
+<!-- Main -->
+<div class="home-main">
+
+    <!-- Vista 1: Grid de departamentos ─────────────────────────────────── -->
+    <section id="view-grid">
+        <div class="home-hero">
+            <h1>Bienvenid<span class="accent">@</span> al portal</h1>
+            <p>Selecciona un departamento para acceder a sus secciones.</p>
+        </div>
+        <div class="dept-grid" id="dept-grid"><!-- rendered by JS --></div>
+    </section>
+
+    <!-- Vista 2: Detalle de un departamento ────────────────────────────── -->
+    <section id="view-detail" class="dept-detail">
+        <div class="dept-detail-header">
+            <button class="dept-back" onclick="volverAHome()" aria-label="Volver al inicio">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Volver
+            </button>
+            <div class="dept-detail-icon" id="detail-icon"></div>
+            <div class="dept-detail-title">
+                <h2 id="detail-name">—</h2>
+                <p id="detail-sub">—</p>
+            </div>
+        </div>
+        <div class="page-grid" id="detail-pages"><!-- rendered by JS --></div>
+    </section>
+
+</div>
+
+<!-- Footer docs -->
+<div class="home-footer">
+    <a class="home-docs-btn" href="docs/yurest-flow.html" target="_blank">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Esquema de la web
+    </a>
+    <a class="home-docs-btn" href="docs/yurest-api.html" target="_blank">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Documentación API
+    </a>
+</div>
+
+<script>
+    // ─────────────────────────────────────────────────────────────────────
+    //  Iconos (SVG inline) — alineados con los del sidebar
+    // ─────────────────────────────────────────────────────────────────────
+    const ICON = {
+        informes:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-5"/></svg>',
+        comercial:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2h14a2 2 0 002-2z"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>',
+        implementacion:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+        contabilidad:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>',
+        soporte:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-7h3v5z"/><path d="M3 19a2 2 0 0 0 2 2h1v-7H3v5z"/></svg>',
+
+        ventas:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+        implementadores:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+        fichas:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+        bajas:          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+        sinasignar:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>',
+        proyectos:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>',
+        a3:             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        integraciones:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
+        arrowRight:     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Datos de los departamentos (fuente de verdad)
+    //  Cada departamento tiene un par de colores a/b para el degradado.
+    // ─────────────────────────────────────────────────────────────────────
+    const DEPARTAMENTOS = [
+        {
+            id: 'informes',
+            nombre: 'Informes',
+            descripcion: 'Analítica de ventas y rendimiento de implementadores.',
+            icon: 'informes',
+            colorA: '#6366f1', colorB: '#4338ca',
+            paginas: [
+                { id: 'ventas',       href: 'ventas.html',       label: 'Ventas',           sub: 'Analítica de ventas y clientes', icon: 'ventas' },
+                { id: 'distribucion', href: 'distribucion.html', label: 'Implementadores',  sub: 'Distribución de carga de trabajo', icon: 'implementadores' }
+            ]
+        },
+        {
+            id: 'comercial',
+            nombre: 'Comercial',
+            descripcion: 'Gestión de fichas de alta y bajas de clientes.',
+            icon: 'comercial',
+            colorA: '#fc5858', colorB: '#e84848',
+            paginas: [
+                { id: 'lista', href: 'lista.html', label: 'Fichas de cliente', sub: 'Altas, solicitudes y rellenado', icon: 'fichas' },
+                { id: 'bajas', href: 'bajas.html', label: 'Bajas',             sub: 'Gestión de desactivaciones',     icon: 'bajas' }
+            ]
+        },
+        {
+            id: 'implementacion',
+            nombre: 'Implementación',
+            descripcion: 'Proyectos activos, kanban y asignación.',
+            icon: 'implementacion',
+            colorA: '#10b981', colorB: '#059669',
+            paginas: [
+                { id: 'sinasignar', href: 'sinasignar.html', label: 'Sin asignar', sub: 'Fichas pendientes de asignar', icon: 'sinasignar', badgeId: 'badge-sinasignar' },
+                { id: 'proyectos',  href: 'proyectos.html',  label: 'Proyectos',   sub: 'Gestor de proyectos de implementación', icon: 'proyectos' }
+            ]
+        },
+        {
+            id: 'contabilidad',
+            nombre: 'Contabilidad',
+            descripcion: 'Seguimiento del alta de clientes en A3.',
+            icon: 'contabilidad',
+            colorA: '#f59e0b', colorB: '#d97706',
+            paginas: [
+                { id: 'contabilidad', href: 'contabilidad.html', label: 'Grabar en A3', sub: 'Contabilización de mandatos SEPA', icon: 'a3', badgeId: 'badge-a3' }
+            ]
+        },
+        {
+            id: 'soporte',
+            nombre: 'Soporte',
+            descripcion: 'Integraciones con TPV y herramientas externas.',
+            icon: 'soporte',
+            colorA: '#0ea5e9', colorB: '#0369a1',
+            paginas: [
+                { id: 'integraciones', href: 'integraciones.html', label: 'Integraciones', sub: 'Tareas Asana + avisos semanales', icon: 'integraciones' }
+            ]
+        }
+    ];
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Utilidades
+    // ─────────────────────────────────────────────────────────────────────
+    function escHtml(s) { return YurestConfig.escHtml(s); }
+    function cerrarSesion() { YurestConfig.cerrarSesion(); }
+
+    function getIniciales(user) {
+        return String(user || '?').trim().slice(0, 2).toUpperCase();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Render Vista 1: Grid de departamentos
+    // ─────────────────────────────────────────────────────────────────────
+    function renderGrid() {
+        const grid = document.getElementById('dept-grid');
+        grid.innerHTML = DEPARTAMENTOS.map(d => {
+            const nPages = d.paginas.length;
+            const badgeChildren = d.paginas.map(p => p.badgeId).filter(Boolean).join(',');
+            return `
+                <div class="dept-card"
+                     style="--dept-a:${d.colorA};--dept-b:${d.colorB}"
+                     onclick="abrirDepartamento('${d.id}')"
+                     role="button" tabindex="0"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDepartamento('${d.id}')}">
+                    <div class="dept-card-top">
+                        <div class="dept-icon">${ICON[d.icon] || ''}</div>
+                        <span class="dept-badge none"
+                              id="home-badge-${d.id}"
+                              data-children="${badgeChildren}"></span>
+                    </div>
+                    <div class="dept-name">${escHtml(d.nombre)}</div>
+                    <div class="dept-sub">${escHtml(d.descripcion)}</div>
+                    <div class="dept-footer">
+                        <span class="dept-count">${nPages} secci${nPages === 1 ? 'ón' : 'ones'}</span>
+                        <span class="dept-arrow">${ICON.arrowRight}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Render Vista 2: Detalle de un departamento
+    // ─────────────────────────────────────────────────────────────────────
+    function renderDetalle(deptId) {
+        const d = DEPARTAMENTOS.find(x => x.id === deptId);
+        if (!d) return false;
+
+        document.getElementById('detail-name').textContent = d.nombre;
+        document.getElementById('detail-sub').textContent = d.descripcion;
+        const ic = document.getElementById('detail-icon');
+        ic.innerHTML = ICON[d.icon] || '';
+        ic.style.setProperty('--dept-a', d.colorA);
+        ic.style.setProperty('--dept-b', d.colorB);
+        ic.style.background = `linear-gradient(135deg, ${d.colorA} 0%, ${d.colorB} 100%)`;
+
+        const pages = document.getElementById('detail-pages');
+        pages.style.setProperty('--dept-a', d.colorA);
+        pages.style.setProperty('--dept-b', d.colorB);
+        pages.innerHTML = d.paginas.map(p => `
+            <a class="page-card" href="${escHtml(p.href)}"
+               style="--dept-a:${d.colorA};--dept-b:${d.colorB}">
+                <div class="page-card-icon" style="color:${d.colorA};background:${d.colorA}15">
+                    ${ICON[p.icon] || ''}
+                </div>
+                <div class="page-card-body">
+                    <div class="page-card-name">
+                        ${escHtml(p.label)}
+                        ${p.badgeId ? `<span class="page-badge" id="page-${p.badgeId}"></span>` : ''}
+                    </div>
+                    <div class="page-card-sub">${escHtml(p.sub || '')}</div>
+                </div>
+                <div class="page-card-arrow">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+            </a>`).join('');
+
+        return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Navegación entre vistas (usa URL ?d= para preservar back/forward)
+    // ─────────────────────────────────────────────────────────────────────
+    function mostrarVista(deptId) {
+        const grid   = document.getElementById('view-grid');
+        const detail = document.getElementById('view-detail');
+        if (deptId && renderDetalle(deptId)) {
+            grid.style.display = 'none';
+            detail.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        } else {
+            detail.classList.remove('active');
+            grid.style.display = '';
+        }
+    }
+
+    function abrirDepartamento(deptId) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('d', deptId);
+        history.pushState({ d: deptId }, '', url);
+        mostrarVista(deptId);
+    }
+
+    function volverAHome() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('d');
+        history.pushState({ d: null }, '', url);
+        mostrarVista(null);
+    }
+
+    window.addEventListener('popstate', (e) => {
+        const deptId = new URLSearchParams(window.location.search).get('d');
+        mostrarVista(deptId);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('view-detail').classList.contains('active')) {
+            volverAHome();
+        }
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Badges informativos (sin asignar, A3)
+    //  Reutilizamos los helpers del config.js pero escribimos en los
+    //  elementos de esta página (hay dos: el del card y el del page item).
+    // ─────────────────────────────────────────────────────────────────────
+    async function cargarBadges() {
+        // Creamos un "puente": los helpers de config.js buscan ids fijos
+        // (badge-sinasignar, badge-a3). Creamos esos elementos ocultos aquí
+        // y después copiamos el valor a los elementos visibles del home.
+        if (!document.getElementById('badge-sinasignar')) {
+            const s = document.createElement('span');
+            s.id = 'badge-sinasignar';
+            s.style.display = 'none';
+            document.body.appendChild(s);
+        }
+        if (!document.getElementById('badge-a3')) {
+            const s = document.createElement('span');
+            s.id = 'badge-a3';
+            s.style.display = 'none';
+            document.body.appendChild(s);
+        }
+
+        if (YurestConfig.actualizarBadgeSinAsignar) await YurestConfig.actualizarBadgeSinAsignar();
+        if (YurestConfig.actualizarBadgeA3)         await YurestConfig.actualizarBadgeA3();
+
+        sincronizarBadgesHome();
+    }
+
+    function sincronizarBadgesHome() {
+        // Copia el contenido de los badges ocultos (los que actualiza config.js)
+        // a los visibles en cards y page items.
+        const sinAsignar = parseInt(document.getElementById('badge-sinasignar')?.textContent || '', 10);
+        const a3         = parseInt(document.getElementById('badge-a3')?.textContent || '', 10);
+
+        // Page items
+        document.querySelectorAll('#page-badge-sinasignar').forEach(el => {
+            el.textContent = !isNaN(sinAsignar) && sinAsignar > 0 ? sinAsignar + ' pendientes' : '';
+            el.style.display = (!isNaN(sinAsignar) && sinAsignar > 0) ? '' : 'none';
+        });
+        document.querySelectorAll('#page-badge-a3').forEach(el => {
+            el.textContent = !isNaN(a3) && a3 > 0 ? a3 + ' pendientes' : '';
+            el.style.display = (!isNaN(a3) && a3 > 0) ? '' : 'none';
+        });
+
+        // Dept cards (suma de sus hijos)
+        document.querySelectorAll('.dept-badge[id^="home-badge-"]').forEach(badge => {
+            const ids = (badge.dataset.children || '').split(',').filter(Boolean);
+            let total = 0;
+            ids.forEach(id => {
+                const v = parseInt((document.getElementById(id)?.textContent || '').trim(), 10);
+                if (!isNaN(v)) total += v;
+            });
+            if (total > 0) {
+                badge.classList.remove('none');
+                badge.textContent = total + ' pendiente' + (total === 1 ? '' : 's');
+            } else {
+                badge.classList.add('none');
+                badge.textContent = '';
+            }
+        });
+    }
+
+    // Expose para que si config.js llama a _actualizarSidebarBadgesGrupos
+    // también refresquemos los nuestros.
+    window._actualizarSidebarBadgesGrupos = sincronizarBadgesHome;
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Bootstrap
+    // ─────────────────────────────────────────────────────────────────────
+    (function init() {
+        // Info de usuario
+        const session = YurestConfig.getSession();
+        const user = (session && session.user) || 'Usuario';
+        document.getElementById('user-name').textContent = user;
+        document.getElementById('user-avatar').textContent = getIniciales(user);
+
+        renderGrid();
+
+        // Vista inicial según query ?d=
+        const deptId = new URLSearchParams(window.location.search).get('d');
+        mostrarVista(deptId);
+
+        cargarBadges();
+    })();
+</script>
+
+</body>
+</html>
