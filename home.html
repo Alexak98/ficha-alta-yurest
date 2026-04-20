@@ -45,18 +45,6 @@
             display:flex; align-items:center; gap:12px;
             font-size:13px; color:var(--text-muted);
         }
-        .home-user-chip {
-            display:inline-flex; align-items:center; gap:8px;
-            padding:6px 12px; background:#fff;
-            border:1.5px solid var(--border); border-radius:999px;
-            font-weight:600; color:var(--text);
-        }
-        .home-user-avatar {
-            width:24px; height:24px; border-radius:50%;
-            background:var(--primary); color:#fff;
-            display:inline-flex; align-items:center; justify-content:center;
-            font-size:11px; font-weight:700;
-        }
         .home-btn-logout {
             padding:7px 14px; background:#fff;
             border:1.5px solid var(--border); border-radius:999px;
@@ -275,7 +263,6 @@
             .home-main { padding:16px 16px 32px; }
             .home-hero { margin: 16px 0 24px; }
             .dept-card { padding:20px 18px; min-height:150px; }
-            .home-user-chip { padding:5px 10px; font-size:12px; }
             .home-btn-logout span { display:none; }
         }
     </style>
@@ -288,10 +275,6 @@
         <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
     </div>
     <div class="home-user">
-        <div class="home-user-chip" id="user-chip" title="Sesión activa">
-            <span class="home-user-avatar" id="user-avatar">?</span>
-            <span id="user-name">—</span>
-        </div>
         <button class="home-btn-logout" onclick="cerrarSesion()" title="Cerrar sesión">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             <span>Salir</span>
@@ -456,10 +439,6 @@
     // ─────────────────────────────────────────────────────────────────────
     function escHtml(s) { return YurestConfig.escHtml(s); }
     function cerrarSesion() { YurestConfig.cerrarSesion(); }
-
-    function getIniciales(user) {
-        return String(user || '?').trim().slice(0, 2).toUpperCase();
-    }
 
     // ─────────────────────────────────────────────────────────────────────
     //  Render Vista 1: Grid de departamentos
@@ -658,12 +637,9 @@
     (function init() {
         // Info de usuario
         const session = YurestConfig.getSession();
-        // Preferimos el nombre completo guardado en la sesión; si no hay,
-        // caemos al username y finalmente a 'Usuario'.
+        // Nombre completo para el saludo del hero. Fallback al username y
+        // finalmente a 'Usuario'.
         const nombreCompleto = (session && (session.nombre || session.user)) || 'Usuario';
-        const username       = (session && session.user)                    || nombreCompleto;
-        document.getElementById('user-name').textContent = nombreCompleto;
-        document.getElementById('user-avatar').textContent = getIniciales(nombreCompleto);
         document.getElementById('hero-user').textContent = nombreCompleto;
 
         renderGrid();
