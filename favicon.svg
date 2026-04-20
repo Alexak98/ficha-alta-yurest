@@ -1,8 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <rect width="100" height="100" rx="22" fill="#fc5858"/>
-    <!-- "yu" en Bw Modelica Regular, convertido a paths (no depende de cargar la fuente) -->
-    <g transform="translate(11 60) scale(0.07 -0.07)" fill="#fff">
-        <path d="M130 -230C209 -230 242 -180 275 -103L558 529H479L289 86L93 529H14L251 7L204 -93C183 -138 164 -168 119 -168C102 -168 86 -165 74 -159L66 -218C83 -226 107 -230 130 -230Z"/>
-        <path transform="translate(568 0)" d="M469 529V209C469 115 405 52 308 52C211 52 147 115 147 209V529H75V195C75 73 159 -10 285 -10C374 -10 436 26 470 88L472 0H541V529Z"/>
+    <!-- "yu" en Bw Modelica Bold, sin fondo. Glifos extraídos de
+         fonts/BwModelica-Bold.woff y convertidos a paths (no depende de
+         cargar la fuente desde el navegador). -->
+    <g transform="translate(9 61) scale(0.07 -0.07)" fill="#fc5858">
+        <path d="M151 -230C255 -230 301 -166 344 -62L598 539H450L308 159L156 539H7L238 12L211 -45C190 -86 172 -113 128 -113C111 -113 97 -110 85 -104L71 -215C91 -224 120 -230 151 -230Z"/>
+        <path transform="translate(603 0)" d="M430 539V222C430 153 384 107 315 107C245 107 198 153 198 222V539H62V201C62 74 145 -10 267 -10C335 -10 394 16 433 66L435 0H566V539Z"/>
     </g>
 </svg>
