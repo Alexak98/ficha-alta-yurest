@@ -65,8 +65,27 @@
         // Notificaciones automáticas Integraciones
         notifIntConfig:       `${WEBHOOK_BASE}/notif-integraciones/config`,
         notifIntGrupos:       `${WEBHOOK_BASE}/notif-integraciones/grupos`,
-        notifIntHistorial:    `${WEBHOOK_BASE}/notif-integraciones/historial`
+        notifIntHistorial:    `${WEBHOOK_BASE}/notif-integraciones/historial`,
+
+        // Auth y gestión de usuarios
+        authLogin:            `${WEBHOOK_BASE}/auth/login`,
+        authUsuarios:         `${WEBHOOK_BASE}/auth/usuarios`
     };
+
+    // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
+    // tabla usuarios en la migración 2026-04-21_01_usuarios.sql.
+    const PERMISOS_DISPONIBLES = [
+        { id: 'ventas',        label: 'Ventas',               grupo: 'Informes'       },
+        { id: 'distribucion',  label: 'Implementadores',      grupo: 'Informes'       },
+        { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'      },
+        { id: 'bajas',         label: 'Bajas',                grupo: 'Comercial'      },
+        { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación' },
+        { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación' },
+        { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'   },
+        { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'        },
+        { id: 'admin',         label: 'Administración',       grupo: 'Admin'          },
+        { id: 'docs',          label: 'Documentación',        grupo: 'Otros'          }
+    ];
 
     // ──────────────────────────────────────────────────────────
     //  CONSTANTES
@@ -113,12 +132,62 @@
         sessionStorage.removeItem('yurest_fichas');
     }
 
-    function requireAuth() {
-        if (!getSession()) {
+    // Verifica que haya sesión activa. Si se pasa `permisoRequerido` (el ID
+    // de la página actual), además comprueba que el usuario tiene acceso —
+    // si no lo tiene, lo redirige a home en vez de a login.
+    function requireAuth(permisoRequerido) {
+        const s = getSession();
+        if (!s) {
             window.location.replace('login.html');
             return false;
         }
+        if (permisoRequerido && !tienePermiso(permisoRequerido)) {
+            // Sesión válida pero sin permiso: redirigir al home y mostrar
+            // aviso. No damos 401 porque sí está autenticado.
+            try { sessionStorage.setItem('yurest_permiso_denegado', permisoRequerido); } catch (_) {}
+            window.location.replace('home.html');
+            return false;
+        }
         return true;
+    }
+
+    // Devuelve los permisos del usuario actual. Admin tiene acceso implícito
+    // a todo, devolvemos el listado completo para simplificar checks.
+    function getPermisos() {
+        const s = getSession();
+        if (!s) return [];
+        if (s.rol === 'admin') return PERMISOS_DISPONIBLES.map(p => p.id);
+        return Array.isArray(s.permisos) ? s.permisos : [];
+    }
+
+    // Check rápido: ¿el usuario tiene permiso para esta página?
+    function tienePermiso(pageId) {
+        if (!pageId) return false;
+        const s = getSession();
+        if (!s) return false;
+        if (s.rol === 'admin') return true;            // admin ve todo
+        const permisos = Array.isArray(s.permisos) ? s.permisos : [];
+        return permisos.includes(pageId);
+    }
+
+    // ¿Es admin?
+    function esAdmin() {
+        const s = getSession();
+        return !!(s && s.rol === 'admin');
+    }
+
+    // Devuelve info del usuario actual (o null si no hay sesión).
+    function getUsuario() {
+        const s = getSession();
+        if (!s) return null;
+        return {
+            id:       s.id || null,
+            username: s.user || s.username || '',
+            nombre:   s.nombre || s.user || '',
+            email:    s.email || '',
+            rol:      s.rol || 'user',
+            permisos: Array.isArray(s.permisos) ? s.permisos : []
+        };
     }
 
     function getAuthHeaders(extra) {
@@ -341,10 +410,15 @@
         SESSION_KEY,
         SESSION_TTL_MS,
         IMPLEMENTADORES,
+        PERMISOS_DISPONIBLES,
         getSession,
         setSession,
         clearSession,
         requireAuth,
+        getPermisos,
+        tienePermiso,
+        esAdmin,
+        getUsuario,
         getAuthHeaders,
         apiFetch,
         cerrarSesion,

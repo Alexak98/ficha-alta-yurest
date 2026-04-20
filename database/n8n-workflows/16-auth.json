@@ -1,0 +1,453 @@
+{
+  "name": "Yurest - Auth y Gestión de Usuarios",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth/login",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "wh-login",
+      "name": "Webhook POST Login",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "auth-login"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae username y password del body. No se logguea el password\n// por seguridad.\nconst body = ($input.first().json.body) || {};\nconst username = String(body.username || '').trim().toLowerCase();\nconst password = String(body.password || '');\nif (!username || !password) {\n  throw new Error('username y password son obligatorios');\n}\nreturn [{ json: { username, password } }];"
+      },
+      "id": "prep-login",
+      "name": "Preparar Login",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 200],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "usuarios",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "=username=eq.{{ $json.username }}&deleted_at=is.null&activo=eq.true",
+        "options": {}
+      },
+      "id": "supa-get-user",
+      "name": "GET usuario por username",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [640, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verifica la contraseña contra el hash PBKDF2 guardado y construye la\n// respuesta. En caso de credenciales inválidas devuelve 401-like con\n// success:false. Nunca revela si el usuario existe o no (mismo mensaje\n// para ambos casos) — práctica estándar de seguridad.\nconst crypto = require('crypto');\nconst { username, password } = $('Preparar Login').first().json;\n\nfunction verifyPbkdf2(pw, stored) {\n  // Formato esperado: pbkdf2$<iterations>$<salt_b64>$<hash_b64>\n  if (!stored || typeof stored !== 'string') return false;\n  const parts = stored.split('$');\n  if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;\n  const iterations = parseInt(parts[1], 10);\n  const salt = Buffer.from(parts[2], 'base64');\n  const expected = Buffer.from(parts[3], 'base64');\n  if (!iterations || salt.length === 0 || expected.length === 0) return false;\n  const got = crypto.pbkdf2Sync(pw, salt, iterations, expected.length, 'sha256');\n  // Comparación a tiempo constante\n  return got.length === expected.length && crypto.timingSafeEqual(got, expected);\n}\n\nconst rows = ($input.all() || []).map(i => i.json).filter(u => u && u.id);\nconst user = rows[0] || null;\n\nlet ok = false;\nif (user && user.password_hash) {\n  try { ok = verifyPbkdf2(password, user.password_hash); } catch (_) { ok = false; }\n}\n\nif (!ok) {\n  return [{ json: { success: false, error: 'Credenciales incorrectas' } }];\n}\n\n// Parseo defensivo de permisos (viene como JSONB)\nlet permisos = [];\ntry {\n  permisos = Array.isArray(user.permisos) ? user.permisos\n           : typeof user.permisos === 'string' ? JSON.parse(user.permisos) : [];\n} catch (_) { permisos = []; }\n\n// Token simple de sesión: UUID opaco. El cliente lo guarda y lo devuelve\n// en el header x-session-token cuando llame a endpoints protegidos.\nconst token = crypto.randomUUID();\n\nreturn [{\n  json: {\n    success: true,\n    token,\n    user: {\n      id:       user.id,\n      username: user.username,\n      nombre:   user.nombre || user.username,\n      email:    user.email || '',\n      rol:      user.rol || 'user',\n      permisos: permisos\n    },\n    // Este objeto NO se devuelve al cliente; se usa sólo en el siguiente\n    // nodo para actualizar last_login_at.\n    _internal: { userId: user.id }\n  }\n}];"
+      },
+      "id": "verify-password",
+      "name": "Verificar password",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 200],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "if-login-ok",
+      "name": "¿Login OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1040, 200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/usuarios?id=eq.{{ $json._internal.userId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ last_login_at: new Date().toISOString() }) }}",
+        "options": { "response": { "response": { "fullResponse": false } } }
+      },
+      "id": "update-last-login",
+      "name": "Actualizar last_login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 120],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Limpia _internal antes de devolver al cliente\nconst j = $('Verificar password').first().json;\nreturn [{ json: { success: j.success, token: j.token, user: j.user } }];"
+      },
+      "id": "clean-ok",
+      "name": "Limpiar respuesta OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 120],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-login",
+      "name": "Respond Login",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1640, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "auth/usuarios",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "wh-list-users",
+      "name": "Webhook GET Usuarios",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 460],
+      "webhookId": "auth-usuarios-list",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "usuarios",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "deleted_at=is.null&order=created_at.desc",
+        "options": {}
+      },
+      "id": "supa-list-users",
+      "name": "GET Usuarios Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 460],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Saneo y sin exponer password_hash jamás.\nfunction parseJsonField(v, fb) {\n  if (v == null) return fb;\n  if (Array.isArray(v) || typeof v === 'object') return v;\n  if (typeof v === 'string') { try { return JSON.parse(v); } catch (_) { return fb; } }\n  return fb;\n}\nconst rows = $input.all().map(i => i.json).filter(u => u && u.id);\nconst usuarios = rows.map(u => ({\n  id: u.id,\n  username: u.username,\n  nombre: u.nombre || '',\n  email: u.email || '',\n  rol: u.rol,\n  permisos: parseJsonField(u.permisos, []),\n  activo: !!u.activo,\n  last_login_at: u.last_login_at,\n  created_at: u.created_at,\n  updated_at: u.updated_at\n}));\nreturn [{ json: { usuarios } }];"
+      },
+      "id": "format-users",
+      "name": "Formatear Usuarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 460],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-list-users",
+      "name": "Respond Usuarios",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 460]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth/usuarios",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "wh-user-action",
+      "name": "Webhook POST Usuarios",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 700],
+      "webhookId": "auth-usuarios-action",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Router CRUD para usuarios. El frontend envía:\n//   { action: 'create' | 'update' | 'delete' | 'password', usuario: {...} }\n// Hashea contraseñas con PBKDF2 antes de persistirlas.\nconst crypto = require('crypto');\n\nfunction hashPassword(pw) {\n  const salt = crypto.randomBytes(16);\n  const iterations = 100000;\n  const hash = crypto.pbkdf2Sync(pw, salt, iterations, 32, 'sha256');\n  return `pbkdf2$${iterations}$${salt.toString('base64')}$${hash.toString('base64')}`;\n}\n\nconst body = ($input.first().json.body) || {};\nconst action = String(body.action || '').toLowerCase();\nconst u = body.usuario || {};\n\nif (!['create','update','delete','password'].includes(action)) {\n  throw new Error('action requerida: create | update | delete | password');\n}\n\nconst PERMISOS_VALIDOS = new Set(['ventas','distribucion','lista','bajas','sinasignar','proyectos','contabilidad','integraciones','admin','docs']);\nfunction validarPermisos(arr) {\n  const a = Array.isArray(arr) ? arr : [];\n  return a.filter(p => PERMISOS_VALIDOS.has(String(p)));\n}\n\nlet payload = null;\n\nif (action === 'create') {\n  if (!u.username || !u.password) throw new Error('username y password son obligatorios');\n  payload = {\n    username: String(u.username).trim().toLowerCase(),\n    password_hash: hashPassword(String(u.password)),\n    nombre: u.nombre ? String(u.nombre).trim() : null,\n    email: u.email ? String(u.email).trim().toLowerCase() : null,\n    rol: u.rol === 'admin' ? 'admin' : 'user',\n    permisos: JSON.stringify(validarPermisos(u.permisos)),\n    activo: u.activo !== false\n  };\n} else if (action === 'update') {\n  if (!u.id) throw new Error('Falta id para update');\n  payload = { id: u.id };\n  if (u.nombre !== undefined)   payload.nombre   = u.nombre ? String(u.nombre).trim() : null;\n  if (u.email  !== undefined)   payload.email    = u.email  ? String(u.email).trim().toLowerCase() : null;\n  if (u.rol    !== undefined)   payload.rol      = u.rol === 'admin' ? 'admin' : 'user';\n  if (u.permisos !== undefined) payload.permisos = JSON.stringify(validarPermisos(u.permisos));\n  if (u.activo !== undefined)   payload.activo   = !!u.activo;\n} else if (action === 'password') {\n  if (!u.id || !u.password) throw new Error('Falta id o password para cambio de password');\n  payload = { id: u.id, password_hash: hashPassword(String(u.password)) };\n} else if (action === 'delete') {\n  if (!u.id) throw new Error('Falta id para delete');\n  payload = { id: u.id, deleted_at: new Date().toISOString(), activo: false };\n}\n\nreturn [{ json: { action, payload } }];"
+      },
+      "id": "prep-user-action",
+      "name": "Preparar acción Usuario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 700],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "create",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "if-user-create",
+      "name": "¿Es create usuario?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 700]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "usuarios",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "username",      "fieldValue": "={{ $('Preparar acción Usuario').first().json.payload.username }}" },
+            { "fieldId": "password_hash", "fieldValue": "={{ $('Preparar acción Usuario').first().json.payload.password_hash }}" },
+            { "fieldId": "nombre",        "fieldValue": "={{ $('Preparar acción Usuario').first().json.payload.nombre }}" },
+            { "fieldId": "email",         "fieldValue": "={{ $('Preparar acción Usuario').first().json.payload.email }}" },
+            { "fieldId": "rol",           "fieldValue": "={{ $('Preparar acción Usuario').first().json.payload.rol }}" },
+            { "fieldId": "permisos",      "fieldValue": "={{ $('Preparar acción Usuario').first().json.payload.permisos }}" },
+            { "fieldId": "activo",        "fieldValue": "={{ $('Preparar acción Usuario').first().json.payload.activo ?? true }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supa-insert-user",
+      "name": "INSERT Usuario",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [860, 600],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aplana: el item que llega a la HTTP Request debe ser DIRECTAMENTE el\n// payload (id + columnas a actualizar), no {action, payload}.\nreturn [{ json: $input.first().json.payload }];"
+      },
+      "id": "flatten-user-payload",
+      "name": "Aplanar payload usuario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 800],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/usuarios?id=eq.{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify((() => { const p = {...$json}; delete p.id; return p; })()) }}",
+        "options": { "response": { "response": { "fullResponse": false } } }
+      },
+      "id": "http-update-user",
+      "name": "UPDATE Usuario",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 800],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye respuesta consistente {success, action, affected, errores, usuario}\n// sin exponer nunca password_hash.\nconst { action } = $('Preparar acción Usuario').first().json;\nconst input = $input.all();\nlet count = 0;\nconst errores = [];\nlet usuario = null;\n\nfor (const it of (input || [])) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) {\n    errores.push(String(j.error.message || j.error.code || j.error));\n    continue;\n  }\n  if (j.code && j.message && !j.id) {\n    errores.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (Array.isArray(j)) {\n    count += j.length;\n    if (!usuario && j.length > 0) usuario = j[0];\n    continue;\n  }\n  if (j.id) { count++; if (!usuario) usuario = j; continue; }\n}\nif (usuario) delete usuario.password_hash;\nreturn [{ json: { success: count > 0, action, affected: count, errores, usuario } }];"
+      },
+      "id": "verify-user-action",
+      "name": "Verificar resultado usuario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 700],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-user-action",
+      "name": "Respond Usuario",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1500, 700]
+    }
+  ],
+  "connections": {
+    "Webhook POST Login": {
+      "main": [[{ "node": "Preparar Login", "type": "main", "index": 0 }]]
+    },
+    "Preparar Login": {
+      "main": [[{ "node": "GET usuario por username", "type": "main", "index": 0 }]]
+    },
+    "GET usuario por username": {
+      "main": [[{ "node": "Verificar password", "type": "main", "index": 0 }]]
+    },
+    "Verificar password": {
+      "main": [[{ "node": "¿Login OK?", "type": "main", "index": 0 }]]
+    },
+    "¿Login OK?": {
+      "main": [
+        [{ "node": "Actualizar last_login", "type": "main", "index": 0 }],
+        [{ "node": "Respond Login", "type": "main", "index": 0 }]
+      ]
+    },
+    "Actualizar last_login": {
+      "main": [[{ "node": "Limpiar respuesta OK", "type": "main", "index": 0 }]]
+    },
+    "Limpiar respuesta OK": {
+      "main": [[{ "node": "Respond Login", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook GET Usuarios": {
+      "main": [[{ "node": "GET Usuarios Supabase", "type": "main", "index": 0 }]]
+    },
+    "GET Usuarios Supabase": {
+      "main": [[{ "node": "Formatear Usuarios", "type": "main", "index": 0 }]]
+    },
+    "Formatear Usuarios": {
+      "main": [[{ "node": "Respond Usuarios", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook POST Usuarios": {
+      "main": [[{ "node": "Preparar acción Usuario", "type": "main", "index": 0 }]]
+    },
+    "Preparar acción Usuario": {
+      "main": [[{ "node": "¿Es create usuario?", "type": "main", "index": 0 }]]
+    },
+    "¿Es create usuario?": {
+      "main": [
+        [{ "node": "INSERT Usuario", "type": "main", "index": 0 }],
+        [{ "node": "Aplanar payload usuario", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aplanar payload usuario": {
+      "main": [[{ "node": "UPDATE Usuario", "type": "main", "index": 0 }]]
+    },
+    "INSERT Usuario": {
+      "main": [[{ "node": "Verificar resultado usuario", "type": "main", "index": 0 }]]
+    },
+    "UPDATE Usuario": {
+      "main": [[{ "node": "Verificar resultado usuario", "type": "main", "index": 0 }]]
+    },
+    "Verificar resultado usuario": {
+      "main": [[{ "node": "Respond Usuario", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [
+    { "name": "yurest" },
+    { "name": "auth" },
+    { "name": "usuarios" }
+  ]
+}

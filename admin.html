@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración - Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('admin');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Sidebar (shared) */
+        .sidebar-overlay { position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:500;opacity:0;pointer-events:none;transition:opacity 0.25s }
+        .sidebar-overlay.open { opacity:1;pointer-events:all }
+        .sidebar { position:fixed;top:0;left:0;width:248px;height:100vh;background:#fff;z-index:600;transform:translateX(-100%);transition:transform 0.26s cubic-bezier(0.4,0,0.2,1);box-shadow:4px 0 24px rgba(0,0,0,0.13);display:flex;flex-direction:column }
+        .sidebar.open { transform:translateX(0) }
+        .sidebar-hd { display:flex;align-items:center;justify-content:space-between;padding:20px 18px 16px;border-bottom:1.5px solid #f1f5f9 }
+        .sidebar-brand { display:flex;align-items:center;gap:8px;font-size:0.78rem;font-weight:800;letter-spacing:0.13em;text-transform:uppercase;color:#fc5858 }
+        .sidebar-brand-dot { width:8px;height:8px;background:#fc5858;border-radius:50%;box-shadow:0 0 0 3px rgba(252,88,88,0.25) }
+        .sidebar-close { width:28px;height:28px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s }
+        .sidebar-close:hover { background:#fee2e2;border-color:#fecaca;color:#dc2626 }
+        .sidebar-label { padding:16px 18px 6px;font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8 }
+        .sidebar-item { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:0.88rem;font-weight:500;color:#334155;text-decoration:none;cursor:pointer;transition:background 0.14s }
+        .sidebar-item:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-item.active { background:#fff1f1;color:#fc5858;font-weight:700 }
+        .sidebar-item svg { flex-shrink:0;opacity:0.7 }
+        .sidebar-item.active svg { opacity:1 }
+        .sidebar-group { margin: 2px 0; }
+        .sidebar-group-header { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:0.88rem;font-weight:500;color:#334155;cursor:pointer;user-select:none;transition:background 0.14s,color 0.14s }
+        .sidebar-group-header:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-group-header svg { flex-shrink:0;opacity:0.7 }
+        .sidebar-group-chevron { margin-left:auto;transition:transform 0.18s }
+        .sidebar-group.open .sidebar-group-chevron { transform:rotate(90deg) }
+        .sidebar-group-children { max-height:0;overflow:hidden;transition:max-height 0.2s ease }
+        .sidebar-group.open .sidebar-group-children { max-height:500px }
+        .sidebar-group-children .sidebar-item { padding-left:44px;font-size:0.84rem;position:relative }
+        .sidebar-group-children .sidebar-item::before { content:'';position:absolute;left:30px;top:50%;width:8px;height:1.5px;background:#cbd5e1 }
+        .sidebar-badge { display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#fb923c,#f59e0b);border-radius:999px;margin-left:auto }
+        .sidebar-badge:empty { display:none }
+        .sidebar-group-badge { display:none; min-width:20px; height:20px; padding:0 7px; font-size:10px; font-weight:800; color:#fff; background:linear-gradient(135deg,#fb923c,#f59e0b); border-radius:999px; align-items:center; justify-content:center; margin-left:auto } .sidebar-group:not(.open) .sidebar-group-badge:not(:empty) { display:inline-flex; }
+        .sidebar-ft { margin-top:auto;padding:16px 18px;border-top:1.5px solid #f1f5f9 }
+        .sidebar-ft button { display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;color:#dc2626;font-size:0.85rem;font-weight:600;font-family:inherit;cursor:pointer }
+        .sidebar-ft button:hover { background:#fee2e2 }
+
+        .btn-menu { display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex-shrink:0;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;color:#64748b;transition:border-color 0.15s }
+        .btn-menu:hover { border-color:#fc5858;color:#fc5858;background:#fff1f1 }
+
+        /* Page */
+        .page-header { display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#fff;position:sticky;top:0;z-index:50 }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.1rem;font-weight:800;color:#1e293b }
+        .page-content { max-width:1100px;margin:0 auto;padding:24px }
+
+        /* Users table */
+        .users-toolbar {
+            display:flex;align-items:center;justify-content:space-between;gap:12px;
+            margin-bottom:18px; flex-wrap:wrap;
+        }
+        .users-toolbar h2 { font-size:1.3rem; font-weight:800 }
+        .users-toolbar p { font-size:13px; color:#64748b; margin-top:2px }
+        .btn-primary {
+            display:inline-flex;align-items:center;gap:6px;
+            padding:10px 18px;background:#fc5858;color:#fff;
+            border:none;border-radius:10px;font-family:inherit;
+            font-size:13px;font-weight:700;cursor:pointer;
+            transition: background .15s;
+        }
+        .btn-primary:hover { background:#e84848 }
+        .btn-primary:disabled { opacity:.6;cursor:not-allowed }
+        .btn-secondary {
+            display:inline-flex;align-items:center;gap:6px;
+            padding:8px 14px;background:#fff;color:#475569;
+            border:1.5px solid #e2e8f0;border-radius:8px;
+            font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+        }
+        .btn-secondary:hover { background:#f8fafc;border-color:#cbd5e1 }
+
+        .users-table {
+            width:100%;border-collapse:separate;border-spacing:0;
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            overflow:hidden;
+        }
+        .users-table th {
+            text-align:left;font-size:0.7rem;letter-spacing:.08em;
+            text-transform:uppercase;color:#94a3b8;font-weight:700;
+            padding:12px 14px;background:#f8fafc;border-bottom:1.5px solid #e2e8f0;
+        }
+        .users-table td {
+            padding:12px 14px;font-size:13px;color:#1e293b;
+            border-bottom:1px solid #f1f5f9;vertical-align:middle;
+        }
+        .users-table tr:last-child td { border-bottom:0 }
+        .users-table tr:hover td { background:#fafbff }
+
+        .u-nombre { font-weight:700 }
+        .u-username { font-size:11px;color:#94a3b8;font-family:monospace;margin-top:2px }
+        .u-rol-badge {
+            display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;
+            border-radius:999px;text-transform:uppercase;letter-spacing:.05em;
+        }
+        .u-rol-admin { background:#ede9fe;color:#6d28d9 }
+        .u-rol-user  { background:#e0e7ff;color:#3730a3 }
+        .u-estado {
+            display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;
+            border-radius:999px;text-transform:uppercase;letter-spacing:.05em;
+        }
+        .u-estado.on  { background:#dcfce7;color:#166534 }
+        .u-estado.off { background:#f1f5f9;color:#64748b }
+        .u-chips { display:flex;flex-wrap:wrap;gap:4px;margin-top:4px }
+        .u-chip {
+            font-size:10px;font-weight:600;color:#475569;
+            padding:2px 8px;border-radius:999px;background:#f1f5f9;
+            border:1px solid #e2e8f0;
+        }
+        .u-chip.admin { background:#ede9fe;color:#6d28d9;border-color:#ddd6fe }
+        .u-actions { display:flex;gap:6px;justify-content:flex-end }
+        .u-icon-btn {
+            width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
+            border:1.5px solid #e2e8f0;background:#fff;border-radius:8px;color:#64748b;cursor:pointer;
+        }
+        .u-icon-btn:hover { background:#f8fafc;color:#1e293b }
+        .u-icon-btn.danger:hover { background:#fef2f2;color:#dc2626;border-color:#fecaca }
+        .u-icon-btn.accent:hover { background:#fff1f1;color:#fc5858;border-color:#fecaca }
+
+        /* Modal */
+        .modal-overlay { position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:900;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .2s }
+        .modal-overlay.open { opacity:1;visibility:visible }
+        .modal {
+            background:#fff;border-radius:16px;width:96%;max-width:560px;max-height:92vh;overflow-y:auto;
+            box-shadow:0 24px 60px rgba(0,0,0,.2);
+        }
+        .modal-head {
+            padding:16px 22px;border-bottom:1.5px solid #e2e8f0;
+            display:flex;align-items:center;justify-content:space-between;
+        }
+        .modal-head h3 { font-size:15px;font-weight:800 }
+        .modal-close {
+            background:none;border:none;width:32px;height:32px;cursor:pointer;
+            color:#94a3b8;font-size:22px;border-radius:8px;
+        }
+        .modal-close:hover { background:#f1f5f9;color:#1e293b }
+        .modal-body { padding:20px 22px }
+        .modal-footer {
+            display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;
+            border-top:1.5px solid #e2e8f0;background:#f8fafc;
+        }
+        .form-group { margin-bottom:12px }
+        .form-group label {
+            display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;
+        }
+        .form-control {
+            width:100%;padding:9px 12px;font-family:inherit;font-size:13px;
+            color:#1e293b;background:#f8fafc;border:1.5px solid #e2e8f0;
+            border-radius:8px;box-sizing:border-box;
+        }
+        .form-control:focus { outline:none;border-color:#fc5858;background:#fff }
+        .form-row { display:flex;gap:10px }
+        .form-row .form-group { flex:1 }
+
+        .perm-grupo {
+            margin-bottom:8px;padding:10px 12px;background:#f8fafc;
+            border:1.5px solid #e2e8f0;border-radius:10px;
+        }
+        .perm-grupo-label {
+            font-size:11px;font-weight:700;color:#64748b;letter-spacing:.05em;
+            text-transform:uppercase;margin-bottom:6px;
+        }
+        .perm-grupo-items { display:flex;flex-wrap:wrap;gap:6px }
+        .perm-chip {
+            display:inline-flex;align-items:center;gap:5px;
+            padding:4px 10px;border-radius:999px;cursor:pointer;user-select:none;
+            font-size:12px;font-weight:600;color:#475569;
+            background:#fff;border:1.5px solid #e2e8f0;
+        }
+        .perm-chip input { accent-color:#fc5858;margin-right:2px }
+        .perm-chip.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
+
+        .empty {
+            text-align:center;padding:48px 20px;color:#94a3b8;
+            background:#fff;border:1.5px dashed #e2e8f0;border-radius:12px;
+        }
+
+        /* Spinner */
+        @keyframes a-spin { from { transform:rotate(0) } to { transform:rotate(360deg) } }
+        .spinner-inline {
+            display:inline-block;width:14px;height:14px;border:2px solid #e2e8f0;
+            border-top-color:#fc5858;border-radius:50%;animation:a-spin .7s linear infinite;
+            vertical-align:-2px;
+        }
+
+        @media (max-width: 720px) {
+            .users-table thead { display:none }
+            .users-table tr { display:block;border-bottom:1px solid #f1f5f9;padding:12px 0 }
+            .users-table td { display:block;padding:4px 14px;border:0 }
+            .u-actions { justify-content:flex-start;margin-top:8px }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar"></nav>
+
+<div class="page-header">
+    <button class="btn-menu" onclick="openSidebar()" title="Menú">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+    <h1>Administración — Usuarios</h1>
+</div>
+
+<div class="page-content">
+    <div class="users-toolbar">
+        <div>
+            <h2>Usuarios y permisos</h2>
+            <p>Gestiona el acceso de cada miembro del equipo a las secciones del portal.</p>
+        </div>
+        <button class="btn-primary" onclick="abrirEditor()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo usuario
+        </button>
+    </div>
+
+    <div id="loading" style="text-align:center;padding:40px 0;color:#94a3b8">
+        <span class="spinner-inline"></span> Cargando usuarios…
+    </div>
+
+    <div id="users-wrap" style="display:none">
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Permisos</th>
+                    <th>Estado</th>
+                    <th>Último acceso</th>
+                    <th style="text-align:right"></th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody"></tbody>
+        </table>
+    </div>
+
+    <div id="users-empty" class="empty" style="display:none">
+        <p style="font-weight:700;color:#475569;margin-bottom:4px">No hay usuarios creados aún</p>
+        <p>Pulsa "Nuevo usuario" para crear el primero.</p>
+    </div>
+</div>
+
+<!-- Modal editar/crear usuario -->
+<div class="modal-overlay" id="modal-editor" onclick="if(event.target===this)cerrarEditor()">
+    <div class="modal">
+        <div class="modal-head">
+            <h3 id="editor-title">Nuevo usuario</h3>
+            <button class="modal-close" onclick="cerrarEditor()" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre completo</label>
+                    <input type="text" id="f-nombre" class="form-control" placeholder="Alex García">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="f-email" class="form-control" placeholder="alex@yurest.com">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre de usuario <small style="color:#94a3b8">(alfanumérico)</small></label>
+                    <input type="text" id="f-username" class="form-control" placeholder="alex" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select id="f-rol" class="form-control">
+                        <option value="user">Usuario</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" id="f-password-row">
+                <label id="f-password-label">Contraseña</label>
+                <input type="password" id="f-password" class="form-control" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+                <small style="color:#94a3b8;font-size:11px" id="f-password-hint">Dejar en blanco para no cambiar la contraseña.</small>
+            </div>
+
+            <div class="form-group" id="f-permisos-row">
+                <label>Permisos de acceso</label>
+                <small style="color:#94a3b8;font-size:11px;display:block;margin-bottom:8px">
+                    Los administradores tienen acceso a todo por defecto — no hace falta marcar permisos.
+                </small>
+                <div id="f-permisos"></div>
+            </div>
+
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" id="f-activo" checked style="accent-color:#fc5858">
+                    <span>Usuario activo (puede iniciar sesión)</span>
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="cerrarEditor()">Cancelar</button>
+            <button class="btn-primary" id="btn-guardar" onclick="guardar(this)">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script src="sidebar.js"></script>
+<script>YurestSidebar.render('admin');</script>
+
+<script>
+    // ─────────────────────────────────────────────────────────────────────
+    //  Sidebar helpers + shared
+    // ─────────────────────────────────────────────────────────────────────
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+    const esc    = YurestConfig.escHtml;
+    const PERMS  = YurestConfig.PERMISOS_DISPONIBLES;
+
+    // Endpoint de la API de usuarios
+    const EP = YurestConfig.ENDPOINTS.authUsuarios;
+
+    let usuarios = [];
+    let editandoId = null;   // null = crear, id = editar
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Utilidades
+    // ─────────────────────────────────────────────────────────────────────
+    function toast(msg, tipo) {
+        let stack = document.getElementById('toast-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'toast-stack';
+            stack.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none';
+            document.body.appendChild(stack);
+        }
+        const t = document.createElement('div');
+        t.style.cssText = 'padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.15);pointer-events:auto;opacity:0;transform:translateY(6px);transition:all .2s;max-width:380px';
+        t.style.background = tipo === 'error' ? '#dc2626' : '#16a34a';
+        t.textContent = msg;
+        stack.appendChild(t);
+        requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 220); }, 3500);
+    }
+
+    function lockBtn(btn, texto) {
+        if (!btn) return () => {};
+        const html = btn.innerHTML;
+        const disabled = btn.disabled;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-inline" style="border-top-color:#fff"></span> ${texto || 'Guardando…'}`;
+        return () => { btn.innerHTML = html; btn.disabled = disabled; };
+    }
+
+    function formatFechaHora(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleString('es-ES', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  API calls
+    // ─────────────────────────────────────────────────────────────────────
+    async function cargarUsuarios() {
+        const res = await YurestConfig.apiFetch(EP, { method: 'GET' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        return Array.isArray(data.usuarios) ? data.usuarios : [];
+    }
+
+    async function apiAction(action, usuario) {
+        const res = await YurestConfig.apiFetch(EP, {
+            method: 'POST',
+            body: JSON.stringify({ action, usuario })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Render
+    // ─────────────────────────────────────────────────────────────────────
+    async function refrescar() {
+        document.getElementById('loading').style.display = '';
+        document.getElementById('users-wrap').style.display = 'none';
+        document.getElementById('users-empty').style.display = 'none';
+        try {
+            usuarios = await cargarUsuarios();
+        } catch (err) {
+            toast('Error al cargar usuarios: ' + err.message, 'error');
+            usuarios = [];
+        }
+        document.getElementById('loading').style.display = 'none';
+        if (usuarios.length === 0) {
+            document.getElementById('users-empty').style.display = '';
+        } else {
+            document.getElementById('users-wrap').style.display = '';
+            render();
+        }
+    }
+
+    function render() {
+        const permsMap = {};
+        PERMS.forEach(p => { permsMap[p.id] = p.label; });
+
+        document.getElementById('users-tbody').innerHTML = usuarios.map(u => {
+            const chips = u.rol === 'admin'
+                ? '<span class="u-chip admin">Todos (admin)</span>'
+                : (Array.isArray(u.permisos) && u.permisos.length
+                    ? u.permisos.map(id => `<span class="u-chip">${esc(permsMap[id] || id)}</span>`).join('')
+                    : '<span style="color:#94a3b8;font-size:11px;font-style:italic">Sin acceso</span>');
+
+            return `
+                <tr>
+                    <td>
+                        <div class="u-nombre">${esc(u.nombre || u.username)}</div>
+                        <div class="u-username">@${esc(u.username)}${u.email ? ' · ' + esc(u.email) : ''}</div>
+                    </td>
+                    <td>
+                        <span class="u-rol-badge ${u.rol === 'admin' ? 'u-rol-admin' : 'u-rol-user'}">
+                            ${u.rol === 'admin' ? 'Admin' : 'Usuario'}
+                        </span>
+                    </td>
+                    <td style="max-width:320px">
+                        <div class="u-chips">${chips}</div>
+                    </td>
+                    <td>
+                        <span class="u-estado ${u.activo ? 'on' : 'off'}">${u.activo ? 'Activo' : 'Inactivo'}</span>
+                    </td>
+                    <td style="color:#64748b;font-size:12px">${esc(formatFechaHora(u.last_login_at))}</td>
+                    <td>
+                        <div class="u-actions">
+                            <button class="u-icon-btn accent" title="Editar" onclick="abrirEditor('${esc(u.id)}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            </button>
+                            <button class="u-icon-btn danger" title="Eliminar" onclick="borrar('${esc(u.id)}','${esc(u.nombre || u.username)}', this)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Editor modal
+    // ─────────────────────────────────────────────────────────────────────
+    function renderPermisos(permisosActivos) {
+        const porGrupo = {};
+        PERMS.forEach(p => {
+            if (!porGrupo[p.grupo]) porGrupo[p.grupo] = [];
+            porGrupo[p.grupo].push(p);
+        });
+        return Object.entries(porGrupo).map(([grupo, items]) => `
+            <div class="perm-grupo">
+                <div class="perm-grupo-label">${esc(grupo)}</div>
+                <div class="perm-grupo-items">
+                    ${items.map(p => {
+                        const on = permisosActivos.has(p.id);
+                        return `
+                            <label class="perm-chip ${on ? 'active' : ''}">
+                                <input type="checkbox" value="${esc(p.id)}" ${on ? 'checked' : ''}
+                                       onchange="this.parentNode.classList.toggle('active', this.checked)">
+                                ${esc(p.label)}
+                            </label>`;
+                    }).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function abrirEditor(id) {
+        editandoId = id || null;
+        const u = id ? usuarios.find(x => x.id === id) : null;
+
+        document.getElementById('editor-title').textContent = u ? `Editar — ${u.username}` : 'Nuevo usuario';
+        document.getElementById('f-nombre').value   = u ? (u.nombre || '') : '';
+        document.getElementById('f-email').value    = u ? (u.email || '')  : '';
+        document.getElementById('f-username').value = u ? u.username       : '';
+        document.getElementById('f-username').disabled = !!u;  // no se edita el username
+        document.getElementById('f-rol').value      = u ? u.rol            : 'user';
+        document.getElementById('f-activo').checked = u ? !!u.activo       : true;
+
+        // Password: obligatoria al crear, opcional al editar
+        document.getElementById('f-password').value = '';
+        document.getElementById('f-password-hint').style.display = u ? '' : 'none';
+        document.getElementById('f-password-label').textContent = u
+            ? 'Nueva contraseña'
+            : 'Contraseña (mínimo 8 caracteres)';
+
+        // Permisos
+        const permisosActivos = new Set(u ? (u.permisos || []) : []);
+        document.getElementById('f-permisos').innerHTML = renderPermisos(permisosActivos);
+
+        document.getElementById('modal-editor').classList.add('open');
+        setTimeout(() => document.getElementById('f-nombre').focus(), 50);
+    }
+
+    function cerrarEditor() {
+        document.getElementById('modal-editor').classList.remove('open');
+        editandoId = null;
+    }
+
+    async function guardar(btn) {
+        const nombre   = document.getElementById('f-nombre').value.trim();
+        const email    = document.getElementById('f-email').value.trim();
+        const username = document.getElementById('f-username').value.trim().toLowerCase();
+        const rol      = document.getElementById('f-rol').value;
+        const password = document.getElementById('f-password').value;
+        const activo   = document.getElementById('f-activo').checked;
+        const permisos = [...document.querySelectorAll('#f-permisos input:checked')].map(cb => cb.value);
+
+        // Validación
+        if (!editandoId) {
+            if (!username || !/^[a-z0-9._-]{3,40}$/.test(username)) {
+                return toast('El nombre de usuario debe ser alfanumérico (3-40 chars)', 'error');
+            }
+            if (!password || password.length < 8) {
+                return toast('La contraseña debe tener al menos 8 caracteres', 'error');
+            }
+        } else if (password && password.length < 8) {
+            return toast('La nueva contraseña debe tener al menos 8 caracteres', 'error');
+        }
+
+        const release = lockBtn(btn, editandoId ? 'Guardando…' : 'Creando…');
+        try {
+            let usuario;
+            if (!editandoId) {
+                // Crear
+                usuario = { username, password, nombre, email, rol, permisos, activo };
+                const r = await apiAction('create', usuario);
+                if (r.success === false) throw new Error((r.errores || []).join('; ') || 'No se creó el usuario');
+            } else {
+                // Update campos
+                usuario = { id: editandoId, nombre, email, rol, permisos, activo };
+                const r1 = await apiAction('update', usuario);
+                if (r1.success === false) throw new Error((r1.errores || []).join('; ') || 'No se actualizó');
+
+                // Cambio opcional de password
+                if (password) {
+                    const r2 = await apiAction('password', { id: editandoId, password });
+                    if (r2.success === false) throw new Error((r2.errores || []).join('; ') || 'No se cambió la contraseña');
+                }
+            }
+
+            await refrescar();
+            cerrarEditor();
+            toast(editandoId ? 'Usuario actualizado' : 'Usuario creado', 'success');
+        } catch (err) {
+            toast('Error: ' + err.message, 'error');
+            release();
+        }
+    }
+
+    async function borrar(id, nombre, btn) {
+        if (!confirm(`¿Eliminar el usuario "${nombre}"?\n\nNo podrá iniciar sesión. La acción se puede revertir desde la BD si hace falta.`)) return;
+        // Protección: si es admin y eliminarse a sí mismo, impedir (el usuario actual no puede borrarse)
+        const yo = YurestConfig.getUsuario();
+        if (yo && yo.id === id) {
+            return toast('No puedes eliminar tu propio usuario', 'error');
+        }
+        const release = lockBtn(btn, '');
+        try {
+            const r = await apiAction('delete', { id });
+            if (r.success === false) throw new Error((r.errores || []).join('; ') || 'No se eliminó');
+            await refrescar();
+            toast('Usuario eliminado', 'success');
+        } catch (err) {
+            toast('Error al eliminar: ' + err.message, 'error');
+            release();
+        }
+    }
+
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('modal-editor').classList.contains('open')) {
+            cerrarEditor();
+        }
+    });
+
+    // Bootstrap
+    refrescar();
+</script>
+
+</body>
+</html>

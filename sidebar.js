@@ -25,7 +25,8 @@
         integraciones: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
         ventas:        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
         contabilidad:  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>',
-        a3:            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        a3:            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        admin:         '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
     };
 
     // Estructura del menú. Cada item tiene:
@@ -77,6 +78,14 @@
             items: [
                 { id: 'integraciones', href: 'integraciones.html', label: 'Integraciones', icon: 'integraciones' }
             ]
+        },
+        {
+            id: 'admin',
+            label: 'Administración',
+            icon: 'admin',
+            items: [
+                { id: 'admin', href: 'admin.html', label: 'Usuarios y permisos', icon: 'admin' }
+            ]
         }
     ];
 
@@ -86,6 +95,16 @@
             if (g.items.some(it => it.id === activeId)) return g.id;
         }
         return null;
+    }
+
+    // Devuelve una copia de GROUPS con sólo los items que el usuario actual
+    // tiene permiso para ver. Grupos sin items visibles se omiten.
+    function groupsVisibles() {
+        const YC = window.YurestConfig;
+        if (!YC || typeof YC.tienePermiso !== 'function') return GROUPS;
+        return GROUPS
+            .map(g => ({ ...g, items: g.items.filter(it => YC.tienePermiso(it.id)) }))
+            .filter(g => g.items.length > 0);
     }
 
     // Construye el HTML de un item (link dentro de grupo).
@@ -148,6 +167,8 @@
         if (!nav) return;
 
         const activeGroup = findGroupOf(activeId);
+        // Sólo mostramos los grupos/items para los que el usuario tiene permiso
+        const visibles = groupsVisibles();
 
         const html = `
             <div class="sidebar-hd">
@@ -163,7 +184,7 @@
                 Inicio
             </a>
             <div class="sidebar-label" style="margin-top:4px">Secciones</div>
-            ${GROUPS.map(g => renderGroup(g, activeId, g.id === activeGroup)).join('')}
+            ${visibles.map(g => renderGroup(g, activeId, g.id === activeGroup)).join('')}
             <div class="sidebar-ft">
                 <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
                     <button onclick="closeSidebar(); window.open('docs/yurest-flow.html','_blank');" title="Esquema visual del funcionamiento" style="background:#fff;border:1.5px solid #e2e8f0;color:#334155;padding:8px 12px;border-radius:10px;font-size:.8rem;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;text-align:left;transition:all .15s">

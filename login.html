@@ -276,35 +276,49 @@
             errorEl.classList.remove('visible');
 
             try {
-                const basicAuth = btoa(user + ':' + pass);
-                const res = await fetch(YurestConfig.ENDPOINTS.login, {
-                    method: 'GET',
-                    headers: { 'Authorization': 'Basic ' + basicAuth }
+                // 1) Validar contra la tabla de usuarios (Supabase)
+                const loginRes = await fetch(YurestConfig.ENDPOINTS.authLogin, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
                 });
+                let loginData = {};
+                try { loginData = await loginRes.json(); } catch (_) {}
 
-                if (res.ok) {
-                    let data = {};
-                    try { data = await res.json(); } catch (_) {}
-
-                    YurestConfig.setSession({
-                        user,
-                        token: data.token || data.access_token || 'authenticated',
-                        basicAuth: basicAuth
-                    });
-
-                    const fichas = Array.isArray(data) ? data
-                                 : Array.isArray(data.clientes) ? data.clientes
-                                 : Array.isArray(data.data) ? data.data : [];
-                    sessionStorage.setItem('yurest_fichas', JSON.stringify(fichas));
-
-                    window.location.replace('home.html');
-                } else {
-                    const body = await res.text();
-                    errorMsg.textContent = body || 'Usuario o contraseña incorrectos.';
+                if (!loginRes.ok || !loginData || loginData.success === false) {
+                    errorMsg.textContent = (loginData && loginData.error)
+                        || 'Usuario o contraseña incorrectos.';
                     errorEl.classList.add('visible');
                     btn.classList.remove('loading');
                     btn.disabled = false;
+                    return;
                 }
+
+                // 2) Los webhooks n8n existentes esperan un basicAuth
+                //    COMPARTIDO a nivel aplicación (admin/Yurest@46002). Los
+                //    usuarios se autentican contra la tabla `usuarios` vía
+                //    /auth/login, pero tras ello usamos ese par compartido
+                //    para seguir llamando al resto de endpoints sin tocar
+                //    las credenciales de n8n. Los permisos son UI-side.
+                //    (si el usuario introdujo el SHARED_USER/PASS por estar
+                //    también registrado, no pasa nada: ese par es la base.)
+                const SHARED_USER = 'admin';
+                const SHARED_PASS = 'Yurest@46002';
+                const basicAuth = btoa(SHARED_USER + ':' + SHARED_PASS);
+                const u = loginData.user || {};
+                YurestConfig.setSession({
+                    id:       u.id || null,
+                    user:     u.username || user,
+                    username: u.username || user,
+                    nombre:   u.nombre || u.username || user,
+                    email:    u.email || '',
+                    rol:      u.rol || 'user',
+                    permisos: Array.isArray(u.permisos) ? u.permisos : [],
+                    token:    loginData.token || 'authenticated',
+                    basicAuth
+                });
+
+                window.location.replace('home.html');
             } catch (err) {
                 errorMsg.textContent = 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
                 errorEl.classList.add('visible');

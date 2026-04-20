@@ -359,6 +359,7 @@
         proyectos:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>',
         a3:             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
         integraciones:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
+        admin:          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
         arrowRight:     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
     };
 
@@ -419,8 +420,35 @@
             paginas: [
                 { id: 'integraciones', href: 'integraciones.html', label: 'Integraciones', sub: 'Tareas Asana + avisos semanales', icon: 'integraciones' }
             ]
+        },
+        {
+            id: 'admin',
+            nombre: 'Administración',
+            descripcion: 'Usuarios y permisos del portal.',
+            icon: 'admin',
+            colorA: '#7c3aed', colorB: '#5b21b6',
+            requiereAdmin: true,
+            paginas: [
+                { id: 'admin', href: 'admin.html', label: 'Usuarios y permisos', sub: 'Gestionar accesos del equipo', icon: 'admin' }
+            ]
         }
     ];
+
+    // Filtra departamentos según permisos del usuario logueado. Un
+    // departamento se muestra si al menos una de sus páginas está en los
+    // permisos. Los de requiereAdmin sólo se ven si rol=admin.
+    function filtrarDepartamentos() {
+        const permisos = new Set(YurestConfig.getPermisos());
+        const esAdminUser = YurestConfig.esAdmin();
+        return DEPARTAMENTOS
+            .map(d => {
+                if (d.requiereAdmin && !esAdminUser) return null;
+                const visiblePaginas = d.paginas.filter(p => permisos.has(p.id));
+                if (visiblePaginas.length === 0) return null;
+                return { ...d, paginas: visiblePaginas };
+            })
+            .filter(Boolean);
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     //  Utilidades
@@ -437,7 +465,19 @@
     // ─────────────────────────────────────────────────────────────────────
     function renderGrid() {
         const grid = document.getElementById('dept-grid');
-        grid.innerHTML = DEPARTAMENTOS.map(d => {
+        const visibles = filtrarDepartamentos();
+
+        if (visibles.length === 0) {
+            grid.innerHTML = `
+                <div style="grid-column:1/-1;text-align:center;padding:40px 20px;background:#fff;border:1.5px dashed var(--border);border-radius:16px;color:var(--text-muted);font-size:14px">
+                    <div style="font-size:34px;margin-bottom:12px">🔒</div>
+                    <p style="font-weight:700;color:var(--text);margin-bottom:4px">No tienes acceso a ninguna sección</p>
+                    <p>Ponte en contacto con un administrador para que te asigne permisos.</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = visibles.map(d => {
             const nPages = d.paginas.length;
             const badgeChildren = d.paginas.map(p => p.badgeId).filter(Boolean).join(',');
             return `
@@ -466,7 +506,10 @@
     //  Render Vista 2: Detalle de un departamento
     // ─────────────────────────────────────────────────────────────────────
     function renderDetalle(deptId) {
-        const d = DEPARTAMENTOS.find(x => x.id === deptId);
+        // Usamos los filtrados para que un admin-only no sea accesible si
+        // el usuario no es admin, y para ocultar páginas sin permiso dentro
+        // de un departamento al que sí tiene acceso.
+        const d = filtrarDepartamentos().find(x => x.id === deptId);
         if (!d) return false;
 
         document.getElementById('detail-name').textContent = d.nombre;
@@ -626,7 +669,29 @@
         mostrarVista(deptId);
 
         cargarBadges();
+
+        // Si el usuario fue redirigido aquí por falta de permiso sobre otra
+        // página, mostramos un aviso claro y quitamos la marca.
+        try {
+            const denegado = sessionStorage.getItem('yurest_permiso_denegado');
+            if (denegado) {
+                sessionStorage.removeItem('yurest_permiso_denegado');
+                setTimeout(() => mostrarAviso(
+                    `No tienes permiso para acceder a "${denegado}". Pide acceso a un administrador.`,
+                    'warn'
+                ), 120);
+            }
+        } catch (_) {}
     })();
+
+    function mostrarAviso(msg, tipo) {
+        const t = document.createElement('div');
+        t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:2000;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.12);background:#fff;border:1.5px solid #fde68a;color:#92400e;max-width:90%;transition:opacity .2s';
+        if (tipo === 'error') { t.style.borderColor = '#fca5a5'; t.style.color = '#b91c1c'; }
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 220); }, 5000);
+    }
 </script>
 
 </body>
