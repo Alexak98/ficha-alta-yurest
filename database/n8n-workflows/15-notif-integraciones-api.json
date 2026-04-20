@@ -253,6 +253,17 @@
     },
     {
       "parameters": {
+        "jsCode": "// Prepara el row a actualizar: sólo los campos mutables + id.\n// Usar autoMapInputData en el nodo Supabase garantiza que no se\n// inyecten columnas no mencionadas (evita la violación NOT NULL en\n// nombre/destinatarios que pasaba con defineBelow).\nreturn [{ json: { ...$('Preparar acción Grupo').first().json.payload } }];"
+      },
+      "id": "prep-update-row",
+      "name": "Preparar row UPDATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 600],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
         "operation": "update",
         "tableId": "notif_integraciones_grupos",
         "filterType": "manual",
@@ -260,27 +271,17 @@
         "filters": {
           "conditions": [
             { "keyName": "id", "condition": "eq",
-              "keyValue": "={{ $('Preparar acción Grupo').first().json.payload.id }}" }
+              "keyValue": "={{ $json.id }}" }
           ]
         },
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
-            { "fieldId": "nombre",           "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.nombre }}" },
-            { "fieldId": "destinatarios",    "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.destinatarios }}" },
-            { "fieldId": "activo",           "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.activo ?? true }}" },
-            { "fieldId": "orden",            "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.orden ?? 0 }}" },
-            { "fieldId": "filtro_tpv",       "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.filtro_tpv ?? '[]' }}" },
-            { "fieldId": "filtro_secciones", "fieldValue": "={{ $('Preparar acción Grupo').first().json.payload.filtro_secciones ?? '[]' }}" }
-          ]
-        },
+        "dataToSend": "autoMapInputData",
         "options": {}
       },
       "id": "supa-update-grupo",
       "name": "UPDATE Grupo",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [900, 600],
+      "position": [1000, 600],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -292,6 +293,17 @@
     },
     {
       "parameters": {
+        "jsCode": "// Prepara el row para el soft-delete: únicamente id + deleted_at.\n// Con autoMapInputData, Supabase sólo toca esas dos columnas, sin\n// forzar NULL en el resto (que tenían constraint NOT NULL).\nconst payload = $('Preparar acción Grupo').first().json.payload;\nreturn [{ json: { id: payload.id, deleted_at: new Date().toISOString() } }];"
+      },
+      "id": "prep-delete-row",
+      "name": "Preparar row DELETE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 720],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
         "operation": "update",
         "tableId": "notif_integraciones_grupos",
         "filterType": "manual",
@@ -299,22 +311,17 @@
         "filters": {
           "conditions": [
             { "keyName": "id", "condition": "eq",
-              "keyValue": "={{ $('Preparar acción Grupo').first().json.payload.id }}" }
+              "keyValue": "={{ $json.id }}" }
           ]
         },
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
-            { "fieldId": "deleted_at", "fieldValue": "={{ $now.toISO() }}" }
-          ]
-        },
+        "dataToSend": "autoMapInputData",
         "options": {}
       },
       "id": "supa-delete-grupo",
       "name": "DELETE Grupo",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [900, 700],
+      "position": [1000, 720],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -463,9 +470,15 @@
     "Router acción Grupo": {
       "main": [
         [{ "node": "INSERT Grupo", "type": "main", "index": 0 }],
-        [{ "node": "UPDATE Grupo", "type": "main", "index": 0 }],
-        [{ "node": "DELETE Grupo", "type": "main", "index": 0 }]
+        [{ "node": "Preparar row UPDATE", "type": "main", "index": 0 }],
+        [{ "node": "Preparar row DELETE", "type": "main", "index": 0 }]
       ]
+    },
+    "Preparar row UPDATE": {
+      "main": [[{ "node": "UPDATE Grupo", "type": "main", "index": 0 }]]
+    },
+    "Preparar row DELETE": {
+      "main": [[{ "node": "DELETE Grupo", "type": "main", "index": 0 }]]
     },
     "INSERT Grupo": {
       "main": [[{ "node": "Verificar resultado", "type": "main", "index": 0 }]]
