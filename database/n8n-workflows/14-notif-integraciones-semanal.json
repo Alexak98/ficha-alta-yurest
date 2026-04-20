@@ -206,13 +206,24 @@
     },
     {
       "parameters": {
-        "jsCode": "// Toma el item original (con grupo + tareas + flags) y lo prepara para\n// el INSERT de historial, marcando si el envío fue exitoso o no.\n// NOTA: el branch \"skip_send=true\" llega aquí saltando el email.\nconst items = $input.all();\nconst out = [];\nfor (const it of items) {\n  const j = it.json || {};\n  const skip = !!j.skip_send;\n  // Si vino del envío con error, n8n añade `error` al item.\n  const huboError = !skip && j.error ? true : false;\n  const errorMsg  = !skip && j.error\n    ? (typeof j.error === 'string' ? j.error : (j.error.message || JSON.stringify(j.error)))\n    : null;\n\n  out.push({\n    json: {\n      grupo_id:      j.grupo_id || null,\n      grupo_nombre:  j.grupo_nombre || '—',\n      destinatarios: j.destinatarios || '',\n      total_tareas:  j.total || 0,\n      umbral_dias:   j.umbral_dias || 0,\n      tareas:        JSON.stringify(j.tareas || []),\n      email_enviado: skip ? false : !huboError,\n      error:         skip ? 'sin tareas que enviar' : errorMsg,\n      disparador:    j.disparador || 'cron'\n    }\n  });\n}\nreturn out;"
+        "jsCode": "// El nodo emailSend reemplaza el JSON del item con la respuesta SMTP\n// (accepted, messageId, etc.) perdiendo nuestros datos originales\n// (grupo_id, tareas, destinatarios…). Aquí los restauramos: tomamos los\n// items que pasaron el IF (skip_send=false) por su orden original en\n// `Construir emails por grupo` y los emparejamos por índice con las\n// respuestas de `Enviar email`.\nconst originales = $('Construir emails por grupo').all()\n    .map(i => i.json)\n    .filter(j => !j.skip_send);\nconst respuestas = $input.all();\n\nreturn originales.map((orig, i) => {\n  const r = (respuestas[i] && respuestas[i].json) || {};\n  // continueOnFail mete `error` en el json cuando falla el envío.\n  const hadError = r.error ? true : false;\n  const errorMsg = hadError\n    ? (typeof r.error === 'string' ? r.error : (r.error.message || JSON.stringify(r.error)))\n    : null;\n  return {\n    json: {\n      ...orig,\n      email_enviado: !hadError,\n      error: errorMsg\n    }\n  };\n});"
+      },
+      "id": "restore-data",
+      "name": "Restaurar datos tras envío",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2330, 200],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recibe items de DOS branches:\n//   - Skip path (IF false=skip_send=true): item con grupo_id, total=0, etc.\n//   - Send path (IF true → Enviar email → Restaurar datos): item con\n//     todos los datos originales + email_enviado + error.\n// Los normaliza al esquema de la tabla notif_integraciones_historial.\nconst items = $input.all();\nconst out = [];\nfor (const it of items) {\n  const j = it.json || {};\n  const skip = !!j.skip_send;\n  // Para items del send path la flag email_enviado viene fijada en\n  // \"Restaurar datos\". Para items del skip path no existe.\n  const enviado = skip ? false : (j.email_enviado !== false);\n  const errorMsg = skip ? 'sin tareas que enviar' : (j.error || null);\n  out.push({\n    json: {\n      grupo_id:      j.grupo_id || null,\n      grupo_nombre:  j.grupo_nombre || '—',\n      destinatarios: j.destinatarios || '',\n      total_tareas:  j.total || 0,\n      umbral_dias:   j.umbral_dias || 0,\n      tareas:        JSON.stringify(j.tareas || []),\n      email_enviado: enviado,\n      error:         errorMsg,\n      disparador:    j.disparador || 'cron'\n    }\n  });\n}\nreturn out;"
       },
       "id": "prepare-historial",
       "name": "Preparar historial",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2440, 300],
+      "position": [2550, 300],
       "alwaysOutputData": true
     },
     {
@@ -226,7 +237,7 @@
       "name": "INSERT Historial",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2660, 300],
+      "position": [2770, 300],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -272,6 +283,9 @@
       ]
     },
     "Enviar email": {
+      "main": [[{ "node": "Restaurar datos tras envío", "type": "main", "index": 0 }]]
+    },
+    "Restaurar datos tras envío": {
       "main": [[{ "node": "Preparar historial", "type": "main", "index": 0 }]]
     },
     "Preparar historial": {
