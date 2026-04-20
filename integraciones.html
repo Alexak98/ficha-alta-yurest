@@ -458,6 +458,27 @@
             .toLowerCase().trim();
     }
 
+    // Devuelve el nombre de la sección de la tarea DENTRO de nuestro proyecto.
+    // Antes usábamos `memberships[0]` ciegamente, lo que ocultaba tareas que
+    // están en varios proyectos a la vez (la membership[0] podía ser de otro
+    // proyecto cuya sección no figura en SECCIONES_PERMITIDAS, así que la
+    // tarea desaparecía aunque sí pertenezca a una sección válida nuestra).
+    function getSeccionNombre(t) {
+        const memberships = t && t.memberships;
+        if (Array.isArray(memberships) && memberships.length) {
+            // 1) Preferimos la membership de NUESTRO proyecto
+            const own = memberships.find(m => m && m.project && String(m.project.gid) === ASANA_PROJECT_ID);
+            if (own && own.section && own.section.name) return own.section.name;
+            // 2) Fallback: cualquier membership con sección
+            const anySec = memberships.find(m => m && m.section && m.section.name);
+            if (anySec) return anySec.section.name;
+        }
+        // 3) Fallbacks por si el proxy aplanó la respuesta
+        if (t && t.section && t.section.name) return t.section.name;
+        if (t && typeof t.section === 'string') return t.section;
+        return null;
+    }
+
     // Nombres de custom field a detectar como "TPV"
     const TPV_FIELD_NAMES = ['tpv', 'tipo tpv', 'tipo de tpv', 'sistema tpv'];
 
@@ -747,13 +768,13 @@
         // Filtrar por secciones permitidas
         const setPermitidas = new Set(SECCIONES_PERMITIDAS);
         const tareasEnSecciones = todasLasTareas.filter(t => {
-            const secNombre = (t.memberships || [])[0]?.section?.name;
+            const secNombre = getSeccionNombre(t);
             return secNombre && setPermitidas.has(secNombre);
         });
 
         // Los widgets solo muestran las tareas de "Solicitud de datos realizada"
         const tareasSolicitud = tareasEnSecciones.filter(t => {
-            const sec = (t.memberships || [])[0]?.section?.name;
+            const sec = getSeccionNombre(t);
             return sec === 'Solicitud de datos realizada';
         });
         renderWidgets(tareasSolicitud);
@@ -775,7 +796,7 @@
                 const nombre   = _normSearch(t.name);
                 const tpv      = _normSearch(getTPV(t));
                 const assignee = _normSearch(t.assignee?.name);
-                const seccion  = _normSearch((t.memberships || [])[0]?.section?.name);
+                const seccion  = _normSearch(getSeccionNombre(t));
                 return nombre.includes(q)
                     || tpv.includes(q)
                     || assignee.includes(q)
@@ -786,7 +807,7 @@
         // Agrupar por sección
         const porSeccion = {};
         tareasFiltradas.forEach(t => {
-            const secNombre = (t.memberships || [])[0]?.section?.name;
+            const secNombre = getSeccionNombre(t);
             if (!porSeccion[secNombre]) porSeccion[secNombre] = [];
             porSeccion[secNombre].push(t);
         });
