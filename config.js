@@ -92,6 +92,10 @@
     // ──────────────────────────────────────────────────────────
     const SESSION_KEY = 'yurest_auth';
     const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
+    // Bump cuando cambie el shape del payload de sesión. Sesiones con una
+    // versión distinta se descartan al recargar (evita que alguien con sesión
+    // vieja sin `rol`/`permisos` vea el portal con permisos vacíos).
+    const SESSION_VERSION = 2;
 
     const IMPLEMENTADORES = [
         'Carlos Aparicio',
@@ -109,6 +113,13 @@
             if (!raw) return null;
             const s = JSON.parse(raw);
             if (!s || !s.ts) return null;
+            // Sesión vieja de antes del sistema de permisos: no tiene
+            // `v` o `rol`/`permisos`. La invalidamos para forzar un
+            // nuevo login limpio contra la nueva auth.
+            if (s.v !== SESSION_VERSION) {
+                sessionStorage.removeItem(SESSION_KEY);
+                return null;
+            }
             if (Date.now() - s.ts > SESSION_TTL_MS) {
                 sessionStorage.removeItem(SESSION_KEY);
                 return null;
@@ -120,7 +131,7 @@
     }
 
     function setSession(data) {
-        const payload = { ...data, ts: Date.now() };
+        const payload = { ...data, ts: Date.now(), v: SESSION_VERSION };
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     }
 
