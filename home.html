@@ -304,7 +304,7 @@
     <!-- Vista 1: Grid de departamentos ─────────────────────────────────── -->
     <section id="view-grid">
         <div class="home-hero">
-            <h1>Bienvenid<span class="accent">@</span> al portal</h1>
+            <h1>Bienvenid<span class="accent">@</span> al portal, <span class="accent" id="hero-user">—</span></h1>
             <p>Selecciona un departamento para acceder a sus secciones.</p>
         </div>
         <div class="dept-grid" id="dept-grid"><!-- rendered by JS --></div>
@@ -617,6 +617,7 @@
         const user = (session && session.user) || 'Usuario';
         document.getElementById('user-name').textContent = user;
         document.getElementById('user-avatar').textContent = getIniciales(user);
+        document.getElementById('hero-user').textContent = user;
 
         renderGrid();
 
