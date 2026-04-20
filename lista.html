@@ -2059,8 +2059,19 @@
     function eliminarFicha(idx) {
         const f = fichasFiltradas[idx];
         if (!f) return;
-        fichaParaEliminar = { idx, ficha: f };
+        fichaParaEliminar = { idx, ficha: f, origen: 'fichas' };
         _abrirModalEliminar('⚠️ Eliminar ficha', 'la ficha', f['Nombre Sociedad'] || '—');
+    }
+
+    // Eliminar ficha desde la pestaña "Rellenado cliente". Es el mismo flujo
+    // que `eliminarFicha` pero leyendo de `rcFiltradas` y, tras éxito,
+    // refrescando esa pestaña en lugar de la de Fichas.
+    function eliminarFichaRC(idx) {
+        const f = rcFiltradas[idx];
+        if (!f) return;
+        const nombre = f['Nombre Sociedad'] || f['Nombre Comercial'] || f['Nombre'] || '—';
+        fichaParaEliminar = { idx, ficha: f, origen: 'rellenado' };
+        _abrirModalEliminar('⚠️ Eliminar ficha', 'la ficha de ' + nombre, nombre);
     }
 
     function eliminarSolicitud(idx) {
@@ -2121,17 +2132,28 @@
         btn.textContent = 'Eliminando…';
         try {
             if (fichaParaEliminar) {
-                const { ficha } = fichaParaEliminar;
+                const { ficha, origen } = fichaParaEliminar;
                 const id = ficha['id'] || ficha['ID'] || ficha['row_number'] || '';
                 if (!id) throw Object.assign(new Error('La ficha no tiene un id válido'), { code: 'tech' });
                 await _doDelete(WEBHOOK_ELIMINAR_FICHA, { action: 'delete', entity: 'ficha', id: id, row_number: id });
-                const fichaRef = fichaParaEliminar.ficha;
+                // Limpiar referencias locales de ambas listas (la ficha podría
+                // estar en cualquiera de las dos según la pestaña actual).
+                const fichaRef = ficha;
                 todasFichas     = todasFichas.filter(f => f !== fichaRef);
                 fichasFiltradas = fichasFiltradas.filter(f => f !== fichaRef);
-                renderTabla(fichasFiltradas);
-                cerrarPanel();
-                cerrarModalEliminar();
-                recargarFichas();
+                todasRC         = todasRC.filter(f => f !== fichaRef);
+                rcFiltradas     = rcFiltradas.filter(f => f !== fichaRef);
+                if (origen === 'rellenado') {
+                    cerrarModalEliminar();
+                    _renderRCRows(rcFiltradas);
+                    document.getElementById('tab-count-rellenado').textContent = todasRC.length;
+                    loadRellenadoCliente();
+                } else {
+                    renderTabla(fichasFiltradas);
+                    cerrarPanel();
+                    cerrarModalEliminar();
+                    recargarFichas();
+                }
                 mostrarToast('Ficha eliminada', 'success');
             } else if (solicitudParaEliminar) {
                 const { solicitud } = solicitudParaEliminar;
@@ -2150,6 +2172,7 @@
                 mostrarToast('No se borró: el registro ya no existía. Refrescando listado…', 'warning');
                 recargarFichas();
                 if (typeof loadSolicitudes === 'function') loadSolicitudes();
+                if (typeof loadRellenadoCliente === 'function') loadRellenadoCliente();
             } else if (err.code === 'http') {
                 mostrarToast('Sin conexión con el servidor. Inténtalo en unos segundos.', 'error');
             } else {
@@ -2195,6 +2218,7 @@
 
     // ── Estado de filtros: rellenado cliente ──────────────────────────────────
     let todasRC           = [];
+    let rcFiltradas       = [];   // resultado tras aplicar filtros (para acciones por índice)
     let filtroRCComercial = '';
 
     // ── Solicitudes: cargar ───────────────────────────────────────────────────
@@ -2392,10 +2416,14 @@
         wrap.classList.add('hidden');
         empty.classList.add('hidden');
 
+        // Guardamos el resultado filtrado para que las acciones por índice
+        // (eliminarFichaRC) trabajen sobre la misma lista que se ve.
+        rcFiltradas = items;
+
         if (!items.length) { empty.classList.remove('hidden'); return; }
 
         const tbody = document.getElementById('rc-tbody');
-        tbody.innerHTML = items.map(s => {
+        tbody.innerHTML = items.map((s, idx) => {
             const solId         = s['ID Solicitud'] || s['ID'] || s['id'] || s['row_number'] || '';
             const nombreComercial = s['Nombre Comercial'] || s['nombre_comercial'] || '';
             const sociedad      = s['Nombre Sociedad'] || s['nombre_sociedad'] || '';
@@ -2411,6 +2439,7 @@
                 <td class="td-center">${tipoBadgeHtml}</td>
                 <td class="td-actions">
                     <button class="btn-edit" onclick="editarSolicitud('${escJs(solId)}')">Completar ficha</button>
+                    <button class="btn-del"  onclick="event.stopPropagation();eliminarFichaRC(${idx})">Eliminar</button>
                 </td>
             </tr>`;
         }).join('');
