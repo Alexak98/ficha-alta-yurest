@@ -22,18 +22,62 @@
     },
     {
       "parameters": {
-        "jsCode": "// ─── CONFIGURACIÓN ──────────────────────────────────────────────────\n// Edita aquí los grupos de destinatarios, los umbrales y las secciones\n// que se vigilan. NO toca el código posterior — todo se lee de aquí.\n\nconst cfg = {\n  // Proyecto Asana de Integraciones\n  asana_project_id: '1207920061546505',\n\n  // Días sin avance que disparan la alerta (created_at o última actividad).\n  // 7 = una semana sin movimiento.\n  umbral_dias: 7,\n\n  // Secciones que SÍ vigilamos (las demás no generan recordatorio).\n  // Estas suelen ser las de \"esperando al cliente\".\n  secciones_seguimiento: [\n    'Solicitud de datos realizada',\n    'Datos incorrectos y notificados',\n    'Integraciones pendientes'\n  ],\n\n  // Grupos de notificación. Cada grupo recibe SU email con SUS tareas.\n  // - destinatarios: lista separada por comas (n8n SMTP lo acepta así).\n  // - filtro_tpv: si está vacío [], se incluyen todos los TPVs;\n  //   si tiene valores, sólo se envían esas integraciones a este grupo.\n  // - filtro_secciones: igual, vacío = todas las de seguimiento.\n  grupos: [\n    {\n      nombre: 'Equipo Integraciones',\n      destinatarios: 'soporte@yurest.com,a.jareno@yurest.com',\n      filtro_tpv: [],\n      filtro_secciones: []\n    }\n    // Ejemplo de grupo extra:\n    // {\n    //   nombre: 'Equipo Comercial - TPV Lastapp',\n    //   destinatarios: 'comercial@yurest.com',\n    //   filtro_tpv: ['Lastapp'],\n    //   filtro_secciones: []\n    // }\n  ]\n};\n\nreturn [{ json: cfg }];"
+        "operation": "getAll",
+        "tableId": "notif_integraciones_config",
+        "returnAll": true,
+        "options": {}
       },
-      "id": "config",
-      "name": "Configuración",
+      "id": "supa-get-config",
+      "name": "GET Config",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "notif_integraciones_grupos",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "deleted_at=is.null&activo=eq.true&order=orden.asc",
+        "options": {}
+      },
+      "id": "supa-get-grupos",
+      "name": "GET Grupos",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combina config + grupos (parsing JSONB) y termina si la notificación\n// está desactivada o no hay grupos.\nfunction parseJsonField(v, fb) {\n  if (v == null) return fb;\n  if (Array.isArray(v) || typeof v === 'object') return v;\n  if (typeof v === 'string') { try { return JSON.parse(v); } catch (_) { return fb; } }\n  return fb;\n}\n\nconst configs = $('GET Config').all().map(i => i.json).filter(c => c && c.id);\nconst grupos  = $('GET Grupos').all().map(i => i.json).filter(g => g && g.id);\nconst config  = configs[0];\n\nif (!config || config.activo === false) {\n  // Desactivado: devolvemos array vacío para que la cadena posterior\n  // no haga nada.\n  return [];\n}\nif (grupos.length === 0) return [];\n\nconfig.secciones_seguimiento = parseJsonField(config.secciones_seguimiento, []);\nfor (const g of grupos) {\n  g.filtro_tpv       = parseJsonField(g.filtro_tpv, []);\n  g.filtro_secciones = parseJsonField(g.filtro_secciones, []);\n}\n\nreturn [{ json: { config, grupos, disparador: 'cron' } }];"
+      },
+      "id": "merge-config",
+      "name": "Combinar Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300],
+      "position": [680, 300],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "url": "=https://app.asana.com/api/1.0/projects/{{ $json.asana_project_id }}/tasks",
+        "url": "=https://app.asana.com/api/1.0/projects/{{ $json.config.asana_project_id }}/tasks",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "asanaApi",
         "sendQuery": true,
@@ -43,21 +87,16 @@
               "name": "opt_fields",
               "value": "gid,name,completed,due_on,created_at,modified_at,permalink_url,assignee.name,memberships.section.name,memberships.project.gid,memberships.project.name,custom_fields.name,custom_fields.display_value,custom_fields.enum_value.name,custom_fields.text_value"
             },
-            {
-              "name": "limit",
-              "value": "100"
-            }
+            { "name": "limit", "value": "100" }
           ]
         },
-        "options": {
-          "response": { "response": { "fullResponse": false } }
-        }
+        "options": { "response": { "response": { "fullResponse": false } } }
       },
       "id": "get-tasks",
       "name": "GET Asana Tasks",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 300],
+      "position": [900, 300],
       "credentials": {
         "asanaApi": {
           "id": "ASANA_CREDENTIAL_ID",
@@ -67,13 +106,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Filtra tareas \"sin avance\": no completadas, en una sección de seguimiento\n// del proyecto Integraciones, y con created_at/modified_at más antiguo que\n// el umbral configurado. Devuelve UN ITEM POR TAREA para que el siguiente\n// HTTP Request (stories) se ejecute por cada una.\nconst cfg = $('Configuración').first().json;\nconst data = $input.first().json;\nconst tasks = Array.isArray(data) ? data : (data.data || data.tasks || []);\n\nconst seccionesSet = new Set(cfg.secciones_seguimiento);\nconst projectId    = String(cfg.asana_project_id);\nconst umbralMs     = (cfg.umbral_dias || 7) * 24 * 60 * 60 * 1000;\nconst ahora        = Date.now();\n\n// Devuelve el nombre de la sección que la tarea tiene DENTRO de nuestro\n// proyecto (las tareas pueden estar en varios proyectos a la vez).\nfunction seccionEnProyecto(t) {\n  const ms = Array.isArray(t.memberships) ? t.memberships : [];\n  const own = ms.find(m => m && m.project && String(m.project.gid) === projectId);\n  if (own && own.section && own.section.name) return own.section.name;\n  return null;\n}\n\nfunction getTPV(t) {\n  const cfs = Array.isArray(t.custom_fields) ? t.custom_fields : [];\n  const c = cfs.find(x => (x && x.name && x.name.toLowerCase().trim() === 'tpv'));\n  if (!c) return '';\n  return c.display_value\n      || (c.enum_value && c.enum_value.name)\n      || c.text_value\n      || '';\n}\n\nfunction diasDesde(iso) {\n  if (!iso) return null;\n  const t = new Date(iso).getTime();\n  if (isNaN(t)) return null;\n  return Math.floor((ahora - t) / (24*60*60*1000));\n}\n\nconst stale = [];\nfor (const t of tasks) {\n  if (!t || t.completed) continue;\n  const sec = seccionEnProyecto(t);\n  if (!sec || !seccionesSet.has(sec)) continue;\n\n  // El umbral compara contra `modified_at` si existe (más cercano a la\n  // realidad de \"avance\"), si no, contra `created_at`.\n  const refIso = t.modified_at || t.created_at;\n  const ref    = refIso ? new Date(refIso).getTime() : 0;\n  if (!ref || (ahora - ref) < umbralMs) continue;\n\n  stale.push({\n    json: {\n      gid: t.gid,\n      nombre: t.name || '(Sin nombre)',\n      seccion: sec,\n      tpv: getTPV(t) || 'Sin TPV',\n      asignado: (t.assignee && t.assignee.name) || '',\n      permalink: t.permalink_url || '',\n      created_at: t.created_at,\n      modified_at: t.modified_at,\n      dias_creada: diasDesde(t.created_at),\n      dias_inactiva: diasDesde(refIso)\n    }\n  });\n}\n\nreturn stale;"
+        "jsCode": "// Devuelve un item por tarea \"sin avance\" con los metadatos calculados.\nconst { config } = $('Combinar Config').first().json;\nconst data = $input.first().json;\nconst tasks = Array.isArray(data) ? data : (data.data || data.tasks || []);\n\nconst seccionesSet = new Set(config.secciones_seguimiento || []);\nconst projectId    = String(config.asana_project_id);\nconst umbralMs     = (config.umbral_dias || 7) * 24 * 60 * 60 * 1000;\nconst ahora        = Date.now();\n\nfunction seccionEnProyecto(t) {\n  const ms = Array.isArray(t.memberships) ? t.memberships : [];\n  const own = ms.find(m => m && m.project && String(m.project.gid) === projectId);\n  if (own && own.section && own.section.name) return own.section.name;\n  return null;\n}\nfunction getTPV(t) {\n  const cfs = Array.isArray(t.custom_fields) ? t.custom_fields : [];\n  const c = cfs.find(x => (x && x.name && x.name.toLowerCase().trim() === 'tpv'));\n  if (!c) return '';\n  return c.display_value || (c.enum_value && c.enum_value.name) || c.text_value || '';\n}\nfunction diasDesde(iso) {\n  if (!iso) return null;\n  const t = new Date(iso).getTime();\n  if (isNaN(t)) return null;\n  return Math.floor((ahora - t) / (24*60*60*1000));\n}\n\nconst stale = [];\nfor (const t of tasks) {\n  if (!t || t.completed) continue;\n  const sec = seccionEnProyecto(t);\n  if (!sec || !seccionesSet.has(sec)) continue;\n  const refIso = t.modified_at || t.created_at;\n  const ref = refIso ? new Date(refIso).getTime() : 0;\n  if (!ref || (ahora - ref) < umbralMs) continue;\n  stale.push({\n    json: {\n      gid: t.gid,\n      nombre: t.name || '(Sin nombre)',\n      seccion: sec,\n      tpv: getTPV(t) || 'Sin TPV',\n      asignado: (t.assignee && t.assignee.name) || '',\n      permalink: t.permalink_url || '',\n      created_at: t.created_at,\n      modified_at: t.modified_at,\n      dias_creada: diasDesde(t.created_at),\n      dias_inactiva: diasDesde(refIso)\n    }\n  });\n}\nreturn stale;"
       },
       "id": "filter-stale",
       "name": "Filtrar tareas sin avance",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 300],
+      "position": [1120, 300],
       "alwaysOutputData": true
     },
     {
@@ -84,25 +123,17 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "opt_fields",
-              "value": "created_at,created_by.name,text,resource_subtype,type"
-            },
-            {
-              "name": "limit",
-              "value": "100"
-            }
+            { "name": "opt_fields", "value": "created_at,created_by.name,text,resource_subtype,type" },
+            { "name": "limit", "value": "100" }
           ]
         },
-        "options": {
-          "response": { "response": { "fullResponse": false } }
-        }
+        "options": { "response": { "response": { "fullResponse": false } } }
       },
       "id": "get-stories",
       "name": "GET Stories por tarea",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 300],
+      "position": [1340, 300],
       "credentials": {
         "asanaApi": {
           "id": "ASANA_CREDENTIAL_ID",
@@ -113,25 +144,44 @@
     },
     {
       "parameters": {
-        "jsCode": "// Empareja por índice cada respuesta de stories con la tarea\n// correspondiente (n8n preserva el orden cuando un HTTP Request se\n// ejecuta por item). Adjunta a cada tarea su último comentario real\n// (resource_subtype='comment_added'), descartando eventos del sistema.\nconst tareas     = $('Filtrar tareas sin avance').all();\nconst respuestas = $input.all();\n\nfunction extraerUltimoComentario(resp) {\n  if (!resp || !resp.json) return null;\n  const data = resp.json.data || resp.json || [];\n  const comments = (Array.isArray(data) ? data : [])\n      .filter(s => s && s.resource_subtype === 'comment_added')\n      // Asana devuelve cronológicamente; nos quedamos con el último.\n      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));\n  const last = comments.length ? comments[comments.length - 1] : null;\n  if (!last) return null;\n  return {\n    autor: (last.created_by && last.created_by.name) || '—',\n    fecha: last.created_at || '',\n    texto: (last.text || '').trim()\n  };\n}\n\nconst out = tareas.map((t, i) => ({\n  json: {\n    ...t.json,\n    ultimoComentario: extraerUltimoComentario(respuestas[i])\n  }\n}));\n\nreturn out;"
+        "jsCode": "// Empareja por índice cada respuesta con la tarea y adjunta el último\n// comentario real (resource_subtype='comment_added').\nconst tareas     = $('Filtrar tareas sin avance').all();\nconst respuestas = $input.all();\n\nfunction extraerUltimoComentario(resp) {\n  if (!resp || !resp.json) return null;\n  const data = resp.json.data || resp.json || [];\n  const comments = (Array.isArray(data) ? data : [])\n      .filter(s => s && s.resource_subtype === 'comment_added')\n      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));\n  const last = comments.length ? comments[comments.length - 1] : null;\n  if (!last) return null;\n  return {\n    autor: (last.created_by && last.created_by.name) || '—',\n    fecha: last.created_at || '',\n    texto: (last.text || '').trim()\n  };\n}\n\nreturn tareas.map((t, i) => ({\n  json: { ...t.json, ultimoComentario: extraerUltimoComentario(respuestas[i]) }\n}));"
       },
       "id": "pick-last-comment",
       "name": "Extraer último comentario",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 300],
+      "position": [1560, 300],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "// Agrupa tareas por destinatarios (cfg.grupos) y compone UN ITEM POR\n// EMAIL a enviar. Si un grupo no tiene tareas que matcheen su filtro,\n// no se genera item (no se envía email vacío).\nconst cfg     = $('Configuración').first().json;\nconst tareas  = $input.all().map(i => i.json);\nconst result  = [];\n\nconst esc = s => String(s == null ? '' : s)\n  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');\n\nconst fmtFecha = iso => {\n  if (!iso) return '—';\n  const d = new Date(iso);\n  if (isNaN(d.getTime())) return String(iso);\n  return d.toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });\n};\n\nconst fechaEnvio = new Date().toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' });\n\nfor (const grupo of (cfg.grupos || [])) {\n  let lista = [...tareas];\n\n  if (grupo.filtro_tpv && grupo.filtro_tpv.length) {\n    const set = new Set(grupo.filtro_tpv);\n    lista = lista.filter(t => set.has(t.tpv));\n  }\n  if (grupo.filtro_secciones && grupo.filtro_secciones.length) {\n    const set = new Set(grupo.filtro_secciones);\n    lista = lista.filter(t => set.has(t.seccion));\n  }\n\n  if (lista.length === 0) continue;\n\n  // Más antiguas primero (más urgentes).\n  lista.sort((a, b) => (b.dias_inactiva || 0) - (a.dias_inactiva || 0));\n\n  const filas = lista.map(t => {\n    const c = t.ultimoComentario;\n    const cmtBlock = c\n      ? `<div style=\"margin-top:8px;padding:10px 12px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 8px 8px 0;font-size:12px;color:#475569;line-height:1.5\">\n            <div style=\"font-weight:700;color:#1e293b;margin-bottom:4px\">${esc(c.autor)} · <span style=\"color:#94a3b8;font-weight:500\">${esc(fmtFecha(c.fecha))}</span></div>\n            <div style=\"white-space:pre-wrap\">${esc(c.texto).replace(/\\n/g,'<br>')}</div>\n          </div>`\n      : `<div style=\"margin-top:8px;padding:10px 12px;background:#fef9c3;border-left:3px solid #facc15;border-radius:0 8px 8px 0;font-size:12px;color:#854d0e\">\n            Sin comentarios todavía en la tarea.\n          </div>`;\n\n    const tagDias = `<span style=\"display:inline-block;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;margin-left:6px\">${t.dias_inactiva || t.dias_creada} días</span>`;\n\n    return `\n      <tr><td style=\"padding:14px 18px;border-bottom:1px solid #f1f5f9\">\n        <div>\n          <a href=\"${esc(t.permalink)}\" target=\"_blank\" style=\"color:#fc5858;font-weight:700;text-decoration:none;font-size:14px\">${esc(t.nombre)}</a>\n          ${tagDias}\n        </div>\n        <div style=\"font-size:11px;color:#64748b;margin-top:3px\">\n          <strong>${esc(t.tpv)}</strong> · ${esc(t.seccion)}${t.asignado ? ' · ' + esc(t.asignado) : ''}\n        </div>\n        ${cmtBlock}\n      </td></tr>`;\n  }).join('');\n\n  const total = lista.length;\n  const subject = `Yurest · ${total} integració${total !== 1 ? 'n pendientes' : 'n pendiente'} sin avance · ${grupo.nombre}`;\n\n  const html = `<!DOCTYPE html>\n<html lang=\"es\">\n<body style=\"margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f1f5f9;padding:32px 16px\">\n  <tr><td align=\"center\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:680px\">\n      <tr><td style=\"background:linear-gradient(135deg,#0f172a,#3a0f0f);border-radius:14px 14px 0 0;padding:26px 32px\">\n        <p style=\"margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fca5a5\">Yurest · Integraciones</p>\n        <p style=\"margin:8px 0 0;font-size:20px;font-weight:700;color:#fff\">${total} cliente${total !== 1 ? 's' : ''} sin contestar</p>\n        <p style=\"margin:6px 0 0;font-size:12px;color:#cbd5e1\">${esc(grupo.nombre)} · resumen del ${esc(fechaEnvio)}</p>\n      </td></tr>\n      <tr><td style=\"background:#fff;padding:20px 28px;font-size:13px;color:#334155;line-height:1.55;border-bottom:1.5px solid #f1f5f9\">\n        Las siguientes tareas llevan más de <strong>${cfg.umbral_dias} días</strong> en una sección de seguimiento sin movimiento. A continuación se incluye el último comentario registrado en Asana, para que sirva de contexto al retomar el contacto con el cliente.\n      </td></tr>\n      <tr><td style=\"background:#fff\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">${filas}</table>\n      </td></tr>\n      <tr><td style=\"background:#f8fafc;border-radius:0 0 14px 14px;border-top:1.5px solid #e2e8f0;padding:14px 32px;font-size:11px;color:#94a3b8\">\n        © Yurest · Aviso semanal automático generado desde el panel de Integraciones\n      </td></tr>\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>`;\n\n  result.push({\n    json: {\n      destinatarios: grupo.destinatarios,\n      grupo: grupo.nombre,\n      subject,\n      html,\n      total\n    }\n  });\n}\n\nreturn result;"
+        "jsCode": "// Compone un item por email a enviar (un grupo = un email). Cada item\n// trae los metadatos para el envío + un snapshot de las tareas para\n// guardar en historial.\nconst { config, grupos, disparador } = $('Combinar Config').first().json;\nconst tareas = $input.all().map(i => i.json);\nconst result = [];\n\nconst esc = s => String(s == null ? '' : s)\n  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');\nconst fmtFecha = iso => {\n  if (!iso) return '—';\n  const d = new Date(iso);\n  if (isNaN(d.getTime())) return String(iso);\n  return d.toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });\n};\nconst fechaEnvio = new Date().toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' });\n\nfor (const grupo of grupos) {\n  let lista = [...tareas];\n  if (grupo.filtro_tpv && grupo.filtro_tpv.length) {\n    const set = new Set(grupo.filtro_tpv);\n    lista = lista.filter(t => set.has(t.tpv));\n  }\n  if (grupo.filtro_secciones && grupo.filtro_secciones.length) {\n    const set = new Set(grupo.filtro_secciones);\n    lista = lista.filter(t => set.has(t.seccion));\n  }\n  if (lista.length === 0) {\n    // Aun sin tareas registramos en historial que el grupo se evaluó y\n    // no había nada que enviar (línea 'sin envío' = total 0).\n    result.push({\n      json: {\n        grupo_id: grupo.id,\n        grupo_nombre: grupo.nombre,\n        destinatarios: grupo.destinatarios,\n        umbral_dias: config.umbral_dias,\n        total: 0,\n        tareas: [],\n        subject: null,\n        html: null,\n        skip_send: true,\n        disparador\n      }\n    });\n    continue;\n  }\n\n  lista.sort((a, b) => (b.dias_inactiva || 0) - (a.dias_inactiva || 0));\n\n  const filas = lista.map(t => {\n    const c = t.ultimoComentario;\n    const cmtBlock = c\n      ? `<div style=\"margin-top:8px;padding:10px 12px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 8px 8px 0;font-size:12px;color:#475569;line-height:1.5\">\n            <div style=\"font-weight:700;color:#1e293b;margin-bottom:4px\">${esc(c.autor)} · <span style=\"color:#94a3b8;font-weight:500\">${esc(fmtFecha(c.fecha))}</span></div>\n            <div style=\"white-space:pre-wrap\">${esc(c.texto).replace(/\\n/g,'<br>')}</div>\n          </div>`\n      : `<div style=\"margin-top:8px;padding:10px 12px;background:#fef9c3;border-left:3px solid #facc15;border-radius:0 8px 8px 0;font-size:12px;color:#854d0e\">Sin comentarios todavía en la tarea.</div>`;\n    const tagDias = `<span style=\"display:inline-block;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;margin-left:6px\">${t.dias_inactiva || t.dias_creada} días</span>`;\n    return `<tr><td style=\"padding:14px 18px;border-bottom:1px solid #f1f5f9\">\n        <div><a href=\"${esc(t.permalink)}\" target=\"_blank\" style=\"color:#fc5858;font-weight:700;text-decoration:none;font-size:14px\">${esc(t.nombre)}</a>${tagDias}</div>\n        <div style=\"font-size:11px;color:#64748b;margin-top:3px\"><strong>${esc(t.tpv)}</strong> · ${esc(t.seccion)}${t.asignado ? ' · ' + esc(t.asignado) : ''}</div>\n        ${cmtBlock}\n      </td></tr>`;\n  }).join('');\n\n  const total = lista.length;\n  const subject = `Yurest · ${total} integració${total !== 1 ? 'n pendientes' : 'n pendiente'} sin avance · ${grupo.nombre}`;\n  const html = `<!DOCTYPE html>\n<html lang=\"es\"><body style=\"margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f1f5f9;padding:32px 16px\">\n<tr><td align=\"center\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:680px\">\n<tr><td style=\"background:linear-gradient(135deg,#0f172a,#3a0f0f);border-radius:14px 14px 0 0;padding:26px 32px\">\n<p style=\"margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fca5a5\">Yurest · Integraciones</p>\n<p style=\"margin:8px 0 0;font-size:20px;font-weight:700;color:#fff\">${total} cliente${total !== 1 ? 's' : ''} sin contestar</p>\n<p style=\"margin:6px 0 0;font-size:12px;color:#cbd5e1\">${esc(grupo.nombre)} · resumen del ${esc(fechaEnvio)}</p>\n</td></tr>\n<tr><td style=\"background:#fff;padding:20px 28px;font-size:13px;color:#334155;line-height:1.55;border-bottom:1.5px solid #f1f5f9\">\nLas siguientes tareas llevan más de <strong>${config.umbral_dias} días</strong> en una sección de seguimiento sin movimiento. A continuación se incluye el último comentario registrado en Asana, para que sirva de contexto al retomar el contacto con el cliente.\n</td></tr>\n<tr><td style=\"background:#fff\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">${filas}</table></td></tr>\n<tr><td style=\"background:#f8fafc;border-radius:0 0 14px 14px;border-top:1.5px solid #e2e8f0;padding:14px 32px;font-size:11px;color:#94a3b8\">© Yurest · Aviso semanal automático generado desde el panel de Integraciones</td></tr>\n</table></td></tr></table></body></html>`;\n\n  result.push({\n    json: {\n      grupo_id: grupo.id,\n      grupo_nombre: grupo.nombre,\n      destinatarios: grupo.destinatarios,\n      umbral_dias: config.umbral_dias,\n      total,\n      tareas: lista.map(t => ({\n        gid: t.gid,\n        nombre: t.nombre,\n        seccion: t.seccion,\n        tpv: t.tpv,\n        asignado: t.asignado,\n        permalink: t.permalink,\n        dias_inactiva: t.dias_inactiva,\n        dias_creada: t.dias_creada,\n        ultimoComentario: t.ultimoComentario\n      })),\n      subject,\n      html,\n      skip_send: false,\n      disparador\n    }\n  });\n}\n\nreturn result;"
       },
       "id": "build-emails",
       "name": "Construir emails por grupo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 300],
+      "position": [1780, 300],
       "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip_send }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notEqual" }
+            }
+          ]
+        }
+      },
+      "id": "if-send",
+      "name": "¿Hay tareas que enviar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2000, 300]
     },
     {
       "parameters": {
@@ -145,7 +195,7 @@
       "name": "Enviar email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [1780, 300],
+      "position": [2220, 200],
       "credentials": {
         "smtp": {
           "id": "2V6BD1M7DfSWvpIf",
@@ -153,13 +203,51 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Toma el item original (con grupo + tareas + flags) y lo prepara para\n// el INSERT de historial, marcando si el envío fue exitoso o no.\n// NOTA: el branch \"skip_send=true\" llega aquí saltando el email.\nconst items = $input.all();\nconst out = [];\nfor (const it of items) {\n  const j = it.json || {};\n  const skip = !!j.skip_send;\n  // Si vino del envío con error, n8n añade `error` al item.\n  const huboError = !skip && j.error ? true : false;\n  const errorMsg  = !skip && j.error\n    ? (typeof j.error === 'string' ? j.error : (j.error.message || JSON.stringify(j.error)))\n    : null;\n\n  out.push({\n    json: {\n      grupo_id:      j.grupo_id || null,\n      grupo_nombre:  j.grupo_nombre || '—',\n      destinatarios: j.destinatarios || '',\n      total_tareas:  j.total || 0,\n      umbral_dias:   j.umbral_dias || 0,\n      tareas:        JSON.stringify(j.tareas || []),\n      email_enviado: skip ? false : !huboError,\n      error:         skip ? 'sin tareas que enviar' : errorMsg,\n      disparador:    j.disparador || 'cron'\n    }\n  });\n}\nreturn out;"
+      },
+      "id": "prepare-historial",
+      "name": "Preparar historial",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 300],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "notif_integraciones_historial",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "insert-historial",
+      "name": "INSERT Historial",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2660, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
     }
   ],
   "connections": {
     "Lunes 09:00": {
-      "main": [[{ "node": "Configuración", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "GET Config", "type": "main", "index": 0 }]]
     },
-    "Configuración": {
+    "GET Config": {
+      "main": [[{ "node": "GET Grupos", "type": "main", "index": 0 }]]
+    },
+    "GET Grupos": {
+      "main": [[{ "node": "Combinar Config", "type": "main", "index": 0 }]]
+    },
+    "Combinar Config": {
       "main": [[{ "node": "GET Asana Tasks", "type": "main", "index": 0 }]]
     },
     "GET Asana Tasks": {
@@ -175,7 +263,19 @@
       "main": [[{ "node": "Construir emails por grupo", "type": "main", "index": 0 }]]
     },
     "Construir emails por grupo": {
-      "main": [[{ "node": "Enviar email", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "¿Hay tareas que enviar?", "type": "main", "index": 0 }]]
+    },
+    "¿Hay tareas que enviar?": {
+      "main": [
+        [{ "node": "Enviar email", "type": "main", "index": 0 }],
+        [{ "node": "Preparar historial", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enviar email": {
+      "main": [[{ "node": "Preparar historial", "type": "main", "index": 0 }]]
+    },
+    "Preparar historial": {
+      "main": [[{ "node": "INSERT Historial", "type": "main", "index": 0 }]]
     }
   },
   "settings": { "executionOrder": "v1" },

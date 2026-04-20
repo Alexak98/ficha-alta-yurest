@@ -60,7 +60,12 @@
         responderSolicitud:   `${WEBHOOK_BASE}/6da4274f-5a6d-4981-a92a-f9d7eb734144`,
 
         // Contabilidad
-        grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`
+        grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`,
+
+        // Notificaciones automáticas Integraciones
+        notifIntConfig:       `${WEBHOOK_BASE}/notif-integraciones/config`,
+        notifIntGrupos:       `${WEBHOOK_BASE}/notif-integraciones/grupos`,
+        notifIntHistorial:    `${WEBHOOK_BASE}/notif-integraciones/historial`
     };
 
     // ──────────────────────────────────────────────────────────

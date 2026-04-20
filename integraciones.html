@@ -359,6 +359,179 @@
             font-size:0.8rem;font-weight:600;transition:opacity 0.15s;
         }
         .asana-link:hover { opacity:0.9 }
+
+        /* ── Panel de avisos automáticos (modal lateral) ───────────────── */
+        .notif-overlay {
+            position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:900;
+            opacity:0;visibility:hidden;transition:opacity .2s;
+        }
+        .notif-overlay.open { opacity:1;visibility:visible }
+        .notif-panel {
+            position:fixed;top:0;right:0;bottom:0;width:min(720px,100%);
+            background:#f8fafc;z-index:901;transform:translateX(100%);
+            transition:transform .28s cubic-bezier(.4,0,.2,1);
+            display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.08);
+        }
+        .notif-panel.open { transform:translateX(0) }
+        .notif-head {
+            padding:18px 24px;background:#fff;border-bottom:1.5px solid #e2e8f0;
+            display:flex;align-items:center;justify-content:space-between;
+        }
+        .notif-head h2 { margin:0;font-size:16px;font-weight:700;color:#1e293b }
+        .notif-head p { margin:3px 0 0;font-size:12px;color:#64748b }
+        .notif-close {
+            background:none;border:none;width:32px;height:32px;cursor:pointer;
+            color:#94a3b8;font-size:22px;border-radius:8px;
+        }
+        .notif-close:hover { background:#f1f5f9;color:#1e293b }
+        .notif-tabs {
+            display:flex;gap:4px;padding:0 24px;background:#fff;
+            border-bottom:1.5px solid #e2e8f0;
+        }
+        .notif-tab {
+            padding:10px 16px;background:none;border:none;cursor:pointer;
+            font-size:13px;font-weight:600;color:#64748b;border-bottom:2.5px solid transparent;
+            margin-bottom:-1.5px;font-family:inherit;
+        }
+        .notif-tab:hover { color:#fc5858 }
+        .notif-tab.active { color:#fc5858;border-bottom-color:#fc5858 }
+        .notif-body {
+            flex:1;overflow-y:auto;padding:20px 24px;
+        }
+        .notif-section-title {
+            font-size:11px;font-weight:700;letter-spacing:.12em;
+            text-transform:uppercase;color:#94a3b8;margin:0 0 10px;
+        }
+        .notif-card {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            padding:16px 18px;margin-bottom:14px;
+        }
+        .notif-field { margin-bottom:12px }
+        .notif-field:last-child { margin-bottom:0 }
+        .notif-field label {
+            display:block;font-size:12px;font-weight:600;color:#475569;
+            margin-bottom:4px;
+        }
+        .notif-input, .notif-textarea, .notif-select {
+            width:100%;padding:8px 12px;font-family:inherit;font-size:13px;
+            color:#1e293b;background:#f8fafc;border:1.5px solid #e2e8f0;
+            border-radius:8px;transition:border-color .15s;box-sizing:border-box;
+        }
+        .notif-input:focus, .notif-textarea:focus, .notif-select:focus {
+            outline:none;border-color:#fc5858;background:#fff;
+        }
+        .notif-textarea { min-height:68px;resize:vertical;line-height:1.5 }
+        .notif-field-help {
+            font-size:11px;color:#94a3b8;margin-top:4px;line-height:1.4;
+        }
+        .notif-switch {
+            display:inline-flex;align-items:center;gap:8px;font-size:13px;
+            font-weight:600;color:#334155;cursor:pointer;user-select:none;
+        }
+        .notif-switch input { accent-color:#fc5858;width:16px;height:16px }
+        .notif-grupo-header {
+            display:flex;align-items:center;gap:10px;margin-bottom:10px;
+        }
+        .notif-grupo-nombre {
+            font-size:14px;font-weight:700;color:#0f172a;flex:1;
+        }
+        .notif-grupo-badge {
+            font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;
+            text-transform:uppercase;letter-spacing:.05em;
+        }
+        .notif-badge-active { background:#dcfce7;color:#166534 }
+        .notif-badge-inactive { background:#f1f5f9;color:#64748b }
+        .notif-grupo-actions { display:flex;gap:6px }
+        .notif-icon-btn {
+            width:28px;height:28px;border:none;background:transparent;border-radius:6px;
+            color:#64748b;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+        }
+        .notif-icon-btn:hover { background:#f1f5f9;color:#1e293b }
+        .notif-icon-btn.danger:hover { background:#fef2f2;color:#dc2626 }
+        .notif-chip-list {
+            display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;
+        }
+        .notif-chip {
+            display:inline-flex;align-items:center;gap:4px;padding:3px 10px;
+            font-size:11px;font-weight:600;color:#475569;
+            background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;
+        }
+        .notif-empty {
+            text-align:center;padding:28px 16px;color:#94a3b8;font-size:13px;
+            background:#fff;border:1.5px dashed #e2e8f0;border-radius:12px;
+        }
+        .notif-footer {
+            padding:14px 24px;background:#fff;border-top:1.5px solid #e2e8f0;
+            display:flex;justify-content:space-between;align-items:center;gap:12px;
+        }
+        .notif-btn-primary, .notif-btn-secondary {
+            padding:8px 16px;font-family:inherit;font-size:13px;font-weight:600;
+            border-radius:8px;cursor:pointer;border:1.5px solid transparent;
+            display:inline-flex;align-items:center;gap:6px;
+        }
+        .notif-btn-primary { background:#fc5858;color:#fff;border-color:#fc5858 }
+        .notif-btn-primary:hover { background:#e84848;border-color:#e84848 }
+        .notif-btn-primary:disabled { opacity:.5;cursor:not-allowed }
+        .notif-btn-secondary { background:#fff;color:#475569;border-color:#e2e8f0 }
+        .notif-btn-secondary:hover { background:#f8fafc;border-color:#cbd5e1 }
+
+        /* Historial */
+        .notif-hist-week {
+            margin-bottom:18px;
+        }
+        .notif-hist-week-header {
+            font-size:12px;font-weight:700;color:#0f172a;margin:0 0 8px;
+            padding-bottom:4px;border-bottom:1.5px solid #e2e8f0;
+        }
+        .notif-hist-entry {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;
+            margin-bottom:8px;overflow:hidden;
+        }
+        .notif-hist-entry-head {
+            padding:10px 14px;display:flex;align-items:center;gap:10px;
+            cursor:pointer;font-size:13px;
+        }
+        .notif-hist-entry-head:hover { background:#f8fafc }
+        .notif-hist-chevron {
+            color:#94a3b8;transition:transform .2s;flex-shrink:0;
+        }
+        .notif-hist-entry.open .notif-hist-chevron { transform:rotate(90deg) }
+        .notif-hist-grupo { font-weight:700;color:#1e293b;flex:1 }
+        .notif-hist-total {
+            font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;
+        }
+        .notif-hist-total.has { background:#fef3c7;color:#92400e }
+        .notif-hist-total.zero { background:#f1f5f9;color:#94a3b8 }
+        .notif-hist-fecha { color:#94a3b8;font-size:11px;margin-left:6px }
+        .notif-hist-status {
+            font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;
+            text-transform:uppercase;letter-spacing:.05em;
+        }
+        .notif-hist-status.ok { background:#dcfce7;color:#166534 }
+        .notif-hist-status.skip { background:#f1f5f9;color:#64748b }
+        .notif-hist-status.err { background:#fee2e2;color:#b91c1c }
+        .notif-hist-body {
+            padding:0 14px 12px;display:none;font-size:12px;color:#475569;
+            border-top:1px solid #f1f5f9;
+        }
+        .notif-hist-entry.open .notif-hist-body { display:block }
+        .notif-hist-meta {
+            padding:8px 0;color:#64748b;font-size:11px;line-height:1.6;
+        }
+        .notif-hist-tarea {
+            padding:8px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px;
+        }
+        .notif-hist-tarea a {
+            color:#fc5858;font-weight:700;text-decoration:none;font-size:12px;
+        }
+        .notif-hist-tarea-meta {
+            font-size:10.5px;color:#94a3b8;margin-top:2px;
+        }
+        .notif-hist-cmt {
+            margin-top:6px;padding:6px 10px;background:#fff;border-left:2px solid #cbd5e1;
+            border-radius:0 6px 6px 0;font-size:11px;color:#475569;white-space:pre-wrap;
+            line-height:1.45;
+        }
     </style>
 </head>
 <body>
@@ -391,6 +564,10 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.7815 11.8906c-1.9219 0-3.4844 1.5547-3.4844 3.4844 0 1.9218 1.5625 3.4843 3.4844 3.4843S22.2578 17.3048 22.2578 15.375c0-1.9297-1.5547-3.4844-3.4763-3.4844zM5.2186 11.8906c-1.9219 0-3.4766 1.5547-3.4766 3.4844 0 1.9218 1.5547 3.4843 3.4766 3.4843 1.9218 0 3.4843-1.5625 3.4843-3.4843 0-1.9297-1.5625-3.4844-3.4843-3.4844zm6.7812-6.7812c-1.9219 0-3.4843 1.5625-3.4843 3.4844 0 1.9218 1.5625 3.4765 3.4843 3.4765s3.4844-1.5547 3.4844-3.4765c0-1.9219-1.5625-3.4844-3.4844-3.4844z"/></svg>
                 Abrir en Asana
             </a>
+            <button class="btn btn-secondary" onclick="abrirNotifPanel()" title="Configurar avisos automáticos por email">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                Avisos automáticos
+            </button>
             <button class="btn btn-secondary" onclick="cargarTareas()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                 Recargar
@@ -1048,6 +1225,513 @@
 
     // Cargar al iniciar
     document.addEventListener('DOMContentLoaded', cargarTareas);
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     Panel lateral: Avisos automáticos (configuración + grupos + historial)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="notif-overlay" id="notif-overlay" onclick="cerrarNotifPanel()"></div>
+<aside class="notif-panel" id="notif-panel" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="notif-head">
+        <div>
+            <h2>Avisos automáticos</h2>
+            <p>Configura los recordatorios semanales por email de integraciones sin avance</p>
+        </div>
+        <button class="notif-close" onclick="cerrarNotifPanel()" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="notif-tabs">
+        <button class="notif-tab active" data-tab="config"   onclick="cambiarNotifTab('config')">Configuración</button>
+        <button class="notif-tab"        data-tab="grupos"   onclick="cambiarNotifTab('grupos')">Grupos</button>
+        <button class="notif-tab"        data-tab="historial" onclick="cambiarNotifTab('historial')">Historial</button>
+    </div>
+    <div class="notif-body" id="notif-body">
+        <div id="notif-loading" style="text-align:center;padding:40px 0;color:#94a3b8">
+            <div class="spinner" style="margin:0 auto 12px"></div>
+            Cargando configuración…
+        </div>
+    </div>
+</aside>
+
+<script>
+    // ═══════════════════════════════════════════════════════════════════════
+    // AVISOS AUTOMÁTICOS — panel de configuración
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const NOTIF_ENDPOINTS = {
+        config:    YurestConfig.ENDPOINTS.notifIntConfig,
+        grupos:    YurestConfig.ENDPOINTS.notifIntGrupos,
+        historial: YurestConfig.ENDPOINTS.notifIntHistorial
+    };
+
+    // Secciones Asana disponibles — se rellena desde SECCIONES_PERMITIDAS
+    // del listado principal más las que vengan en historial para ser tolerantes.
+    const NOTIF_SECCIONES_BASE = SECCIONES_PERMITIDAS.slice();
+
+    let notifTab      = 'config';
+    let notifConfig   = null;       // objeto {umbral_dias, secciones_seguimiento, ...}
+    let notifGrupos   = [];         // array de {id, nombre, destinatarios, filtros, ...}
+    let notifHistorial = [];        // array de entradas
+    let notifCargado  = false;
+
+    async function _notifApiFetch(url, opts) {
+        const res = await YurestConfig.apiFetch(url, opts);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json().catch(() => ({}));
+    }
+
+    async function abrirNotifPanel() {
+        document.getElementById('notif-overlay').classList.add('open');
+        const panel = document.getElementById('notif-panel');
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+
+        if (!notifCargado) {
+            await _notifCargarDatos();
+            notifCargado = true;
+        }
+        renderNotifTab();
+    }
+
+    function cerrarNotifPanel() {
+        document.getElementById('notif-overlay').classList.remove('open');
+        const panel = document.getElementById('notif-panel');
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+    }
+
+    async function _notifCargarDatos() {
+        document.getElementById('notif-body').innerHTML = `
+            <div id="notif-loading" style="text-align:center;padding:40px 0;color:#94a3b8">
+                <div class="spinner" style="margin:0 auto 12px"></div>
+                Cargando configuración…
+            </div>`;
+        try {
+            const [cfgResp, histResp] = await Promise.all([
+                _notifApiFetch(NOTIF_ENDPOINTS.config),
+                _notifApiFetch(NOTIF_ENDPOINTS.historial).catch(() => ({ historial: [] }))
+            ]);
+            notifConfig    = cfgResp.config || null;
+            notifGrupos    = Array.isArray(cfgResp.grupos)        ? cfgResp.grupos        : [];
+            notifHistorial = Array.isArray(histResp.historial)    ? histResp.historial    : [];
+        } catch (err) {
+            console.warn('[notif] error cargando:', err);
+            document.getElementById('notif-body').innerHTML = `
+                <div class="notif-empty">
+                    No se pudo cargar la configuración.<br>
+                    <small>${esc(err.message)}</small>
+                </div>`;
+        }
+    }
+
+    function cambiarNotifTab(tab) {
+        notifTab = tab;
+        document.querySelectorAll('.notif-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tab);
+        });
+        renderNotifTab();
+    }
+
+    function renderNotifTab() {
+        if (notifTab === 'config')    return renderNotifConfig();
+        if (notifTab === 'grupos')    return renderNotifGrupos();
+        if (notifTab === 'historial') return renderNotifHistorial();
+    }
+
+    // ── TAB: Configuración ────────────────────────────────────────────────
+    function renderNotifConfig() {
+        if (!notifConfig) {
+            document.getElementById('notif-body').innerHTML =
+                '<div class="notif-empty">Configuración no disponible.</div>';
+            return;
+        }
+        const secActivas = new Set(notifConfig.secciones_seguimiento || []);
+        const seccionesAll = [...new Set([
+            ...NOTIF_SECCIONES_BASE,
+            ...(notifConfig.secciones_seguimiento || [])
+        ])];
+
+        document.getElementById('notif-body').innerHTML = `
+            <p class="notif-section-title">Parámetros globales</p>
+            <div class="notif-card">
+                <div class="notif-field">
+                    <label class="notif-switch">
+                        <input type="checkbox" id="notif-activo" ${notifConfig.activo ? 'checked' : ''}>
+                        Envío automático activo
+                    </label>
+                    <div class="notif-field-help">
+                        Si se desactiva, el cron del lunes no enviará ningún email hasta que se vuelva a activar.
+                    </div>
+                </div>
+                <div class="notif-field">
+                    <label>Umbral de días sin avance</label>
+                    <input type="number" id="notif-umbral" class="notif-input" min="1" max="365" value="${notifConfig.umbral_dias || 7}">
+                    <div class="notif-field-help">
+                        Una tarea entra en el aviso si lleva más de N días sin movimiento (usando el <code>modified_at</code> de Asana, con fallback al <code>created_at</code>).
+                    </div>
+                </div>
+                <div class="notif-field">
+                    <label>Secciones vigiladas</label>
+                    <div class="notif-chip-list" id="notif-secciones-list">
+                        ${seccionesAll.map(s => `
+                            <label class="notif-chip" style="cursor:pointer;${secActivas.has(s) ? 'background:#fff1f1;border-color:#fc5858;color:#fc5858' : ''}">
+                                <input type="checkbox" value="${esc(s)}" ${secActivas.has(s) ? 'checked' : ''} style="accent-color:#fc5858;margin-right:4px">
+                                ${esc(s)}
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div class="notif-field-help">
+                        Sólo las tareas que estén en alguna de estas secciones generan aviso.
+                    </div>
+                </div>
+            </div>
+            <div class="notif-footer" style="margin:0 -24px -20px;position:sticky;bottom:-20px">
+                <span style="font-size:11px;color:#94a3b8">
+                    ${notifConfig.updated_at ? 'Última actualización: ' + formatFecha(notifConfig.updated_at) : ''}
+                </span>
+                <button class="notif-btn-primary" onclick="guardarNotifConfig()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg>
+                    Guardar configuración
+                </button>
+            </div>
+        `;
+    }
+
+    async function guardarNotifConfig() {
+        const activo = document.getElementById('notif-activo').checked;
+        const umbral = parseInt(document.getElementById('notif-umbral').value, 10) || 7;
+        const secciones = [...document.querySelectorAll('#notif-secciones-list input:checked')]
+            .map(cb => cb.value);
+        const usuario = (YurestConfig.getSession()?.user) || 'desconocido';
+        try {
+            const r = await _notifApiFetch(NOTIF_ENDPOINTS.config, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    activo,
+                    umbral_dias: umbral,
+                    secciones_seguimiento: secciones,
+                    updated_by: usuario
+                })
+            });
+            Object.assign(notifConfig, {
+                activo, umbral_dias: umbral,
+                secciones_seguimiento: secciones,
+                updated_at: new Date().toISOString(),
+                updated_by: usuario
+            });
+            mostrarNotifToast('Configuración guardada', 'success');
+        } catch (err) {
+            mostrarNotifToast('Error al guardar: ' + err.message, 'error');
+        }
+    }
+
+    // ── TAB: Grupos ───────────────────────────────────────────────────────
+    function renderNotifGrupos() {
+        const body = document.getElementById('notif-body');
+        const seccionesAll = [...new Set([
+            ...NOTIF_SECCIONES_BASE,
+            ...(notifConfig?.secciones_seguimiento || [])
+        ])];
+        const tpvsAll = [...new Set(
+            (todasLasTareas || [])
+                .map(t => getTPV(t))
+                .filter(Boolean)
+        )].sort();
+
+        const cards = notifGrupos.map(g => {
+            const tpvs = (g.filtro_tpv || []);
+            const secs = (g.filtro_secciones || []);
+            return `
+                <div class="notif-card">
+                    <div class="notif-grupo-header">
+                        <div class="notif-grupo-nombre">${esc(g.nombre)}</div>
+                        <span class="notif-grupo-badge ${g.activo ? 'notif-badge-active' : 'notif-badge-inactive'}">
+                            ${g.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                        <div class="notif-grupo-actions">
+                            <button class="notif-icon-btn" title="Editar" onclick="editarNotifGrupo('${esc(g.id)}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            </button>
+                            <button class="notif-icon-btn danger" title="Eliminar" onclick="borrarNotifGrupo('${esc(g.id)}','${escJs(g.nombre)}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="font-size:12px;color:#64748b;margin-bottom:6px">
+                        <strong>Destinatarios:</strong> ${esc(g.destinatarios)}
+                    </div>
+                    <div class="notif-chip-list">
+                        ${tpvs.length === 0 && secs.length === 0
+                            ? '<span class="notif-chip" style="background:#fff;color:#94a3b8;font-style:italic">Sin filtros · recibe todo</span>'
+                            : tpvs.map(t => `<span class="notif-chip">TPV: ${esc(t)}</span>`).join('')
+                              + secs.map(s => `<span class="notif-chip" style="background:#eef2ff;color:#4338ca">Sección: ${esc(s)}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        body.innerHTML = `
+            <p class="notif-section-title">Grupos de destinatarios (${notifGrupos.length})</p>
+            ${cards || '<div class="notif-empty">Aún no hay grupos configurados.<br>Crea el primero con el botón de abajo.</div>'}
+            <div style="margin-top:14px">
+                <button class="notif-btn-secondary" onclick="nuevoNotifGrupo()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Añadir grupo
+                </button>
+            </div>
+            <div id="notif-grupo-editor"></div>
+        `;
+        // Guardar lista de TPVs disponibles en variable global del panel
+        window._notifTpvsDisponibles = tpvsAll;
+        window._notifSeccionesDisponibles = seccionesAll;
+    }
+
+    function nuevoNotifGrupo() {
+        editarNotifGrupo(null);
+    }
+
+    function editarNotifGrupo(id) {
+        const g = id ? notifGrupos.find(x => x.id === id) : {
+            id: null,
+            nombre: '',
+            destinatarios: '',
+            filtro_tpv: [],
+            filtro_secciones: [],
+            activo: true
+        };
+        if (!g) return;
+
+        const tpvs = window._notifTpvsDisponibles || [];
+        const secs = window._notifSeccionesDisponibles || [];
+        const set_tpv = new Set(g.filtro_tpv || []);
+        const set_sec = new Set(g.filtro_secciones || []);
+
+        const editor = document.getElementById('notif-grupo-editor');
+        editor.innerHTML = `
+            <div class="notif-card" style="border-color:#fc5858;margin-top:16px">
+                <p class="notif-section-title" style="margin-bottom:12px">
+                    ${id ? 'Editar grupo' : 'Nuevo grupo'}
+                </p>
+                <div class="notif-field">
+                    <label>Nombre</label>
+                    <input type="text" id="ng-nombre" class="notif-input"
+                           placeholder="Equipo Integraciones · TPV Lastapp"
+                           value="${esc(g.nombre)}">
+                </div>
+                <div class="notif-field">
+                    <label>Destinatarios (emails separados por coma)</label>
+                    <textarea id="ng-destinatarios" class="notif-textarea"
+                              placeholder="soporte@yurest.com, a.jareno@yurest.com">${esc(g.destinatarios)}</textarea>
+                </div>
+                <div class="notif-field">
+                    <label>Filtro por TPV (opcional — vacío = todos)</label>
+                    <div class="notif-chip-list" id="ng-tpvs">
+                        ${tpvs.length === 0
+                            ? '<span style="font-size:11px;color:#94a3b8">No se detectan TPVs (recarga primero las tareas)</span>'
+                            : tpvs.map(t => `
+                                <label class="notif-chip" style="cursor:pointer;${set_tpv.has(t) ? 'background:#fff1f1;border-color:#fc5858;color:#fc5858' : ''}">
+                                    <input type="checkbox" value="${esc(t)}" ${set_tpv.has(t) ? 'checked' : ''} style="accent-color:#fc5858;margin-right:4px">
+                                    ${esc(t)}
+                                </label>`).join('')}
+                    </div>
+                </div>
+                <div class="notif-field">
+                    <label>Filtro por sección (opcional — vacío = todas las vigiladas)</label>
+                    <div class="notif-chip-list" id="ng-secciones">
+                        ${secs.map(s => `
+                            <label class="notif-chip" style="cursor:pointer;${set_sec.has(s) ? 'background:#eef2ff;border-color:#4338ca;color:#4338ca' : ''}">
+                                <input type="checkbox" value="${esc(s)}" ${set_sec.has(s) ? 'checked' : ''} style="accent-color:#4338ca;margin-right:4px">
+                                ${esc(s)}
+                            </label>`).join('')}
+                    </div>
+                </div>
+                <div class="notif-field">
+                    <label class="notif-switch">
+                        <input type="checkbox" id="ng-activo" ${g.activo !== false ? 'checked' : ''}>
+                        Grupo activo
+                    </label>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                    <button class="notif-btn-secondary" onclick="cancelarNotifGrupo()">Cancelar</button>
+                    <button class="notif-btn-primary" onclick="guardarNotifGrupo('${id || ''}')">
+                        ${id ? 'Guardar cambios' : 'Crear grupo'}
+                    </button>
+                </div>
+            </div>
+        `;
+        editor.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+
+    function cancelarNotifGrupo() {
+        document.getElementById('notif-grupo-editor').innerHTML = '';
+    }
+
+    async function guardarNotifGrupo(id) {
+        const nombre = document.getElementById('ng-nombre').value.trim();
+        const destinatarios = document.getElementById('ng-destinatarios').value.trim();
+        const activo = document.getElementById('ng-activo').checked;
+        const filtro_tpv = [...document.querySelectorAll('#ng-tpvs input:checked')].map(cb => cb.value);
+        const filtro_secciones = [...document.querySelectorAll('#ng-secciones input:checked')].map(cb => cb.value);
+
+        if (!nombre) { mostrarNotifToast('El nombre es obligatorio', 'error'); return; }
+        if (!destinatarios) { mostrarNotifToast('Indica al menos un email', 'error'); return; }
+
+        const grupo = { nombre, destinatarios, filtro_tpv, filtro_secciones, activo };
+        if (id) grupo.id = id;
+
+        try {
+            const r = await _notifApiFetch(NOTIF_ENDPOINTS.grupos, {
+                method: 'POST',
+                body: JSON.stringify({ action: id ? 'update' : 'create', grupo })
+            });
+            // Recargar grupos
+            const cfgResp = await _notifApiFetch(NOTIF_ENDPOINTS.config);
+            notifGrupos = Array.isArray(cfgResp.grupos) ? cfgResp.grupos : [];
+            renderNotifGrupos();
+            mostrarNotifToast(id ? 'Grupo actualizado' : 'Grupo creado', 'success');
+        } catch (err) {
+            mostrarNotifToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function borrarNotifGrupo(id, nombre) {
+        if (!confirm(`¿Eliminar el grupo "${nombre}"?\n\nDejarán de recibir recordatorios. El historial previo se mantiene.`)) return;
+        try {
+            await _notifApiFetch(NOTIF_ENDPOINTS.grupos, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'delete', grupo: { id } })
+            });
+            notifGrupos = notifGrupos.filter(g => g.id !== id);
+            renderNotifGrupos();
+            mostrarNotifToast('Grupo eliminado', 'success');
+        } catch (err) {
+            mostrarNotifToast('Error al eliminar: ' + err.message, 'error');
+        }
+    }
+
+    // ── TAB: Historial ────────────────────────────────────────────────────
+    function renderNotifHistorial() {
+        const body = document.getElementById('notif-body');
+        if (!notifHistorial.length) {
+            body.innerHTML = '<div class="notif-empty">Todavía no hay ejecuciones registradas.<br>El primer envío aparecerá aquí tras el próximo lunes 9:00 (o tras un "Execute Workflow" manual).</div>';
+            return;
+        }
+
+        // Agrupar por semana ISO
+        const porSemana = {};
+        notifHistorial.forEach(h => {
+            const d = new Date(h.ejecutado_at);
+            const { semana, label } = _semanaISO(d);
+            const key = semana;
+            if (!porSemana[key]) porSemana[key] = { label, items: [] };
+            porSemana[key].items.push(h);
+        });
+
+        const html = Object.keys(porSemana)
+            .sort().reverse()
+            .map(k => {
+                const sem = porSemana[k];
+                return `
+                    <div class="notif-hist-week">
+                        <p class="notif-hist-week-header">${esc(sem.label)}</p>
+                        ${sem.items.map(h => _renderHistEntry(h)).join('')}
+                    </div>
+                `;
+            }).join('');
+
+        body.innerHTML = html;
+    }
+
+    function _semanaISO(d) {
+        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = (date.getUTCDay() + 6) % 7;
+        date.setUTCDate(date.getUTCDate() - dayNum + 3);
+        const firstThursday = date.valueOf();
+        date.setUTCMonth(0, 1);
+        if (date.getUTCDay() !== 4) {
+            date.setUTCMonth(0, 1 + ((4 - date.getUTCDay()) + 7) % 7);
+        }
+        const semanaNum = 1 + Math.ceil((firstThursday - date) / (7 * 24 * 60 * 60 * 1000));
+        const year = new Date(d).getFullYear();
+        const semana = `${year}-W${String(semanaNum).padStart(2, '0')}`;
+
+        // Calcular lunes y domingo de esa semana para el label
+        const lunes = new Date(d);
+        const dow = (lunes.getDay() + 6) % 7;
+        lunes.setDate(lunes.getDate() - dow);
+        const domingo = new Date(lunes);
+        domingo.setDate(domingo.getDate() + 6);
+        const fmt = x => x.toLocaleDateString('es-ES', { day:'2-digit', month:'short' });
+        return { semana, label: `Semana ${semanaNum} · ${fmt(lunes)} – ${fmt(domingo)}` };
+    }
+
+    function _renderHistEntry(h) {
+        const fecha = new Date(h.ejecutado_at).toLocaleString('es-ES', {
+            weekday:'short', day:'2-digit', month:'short',
+            hour:'2-digit', minute:'2-digit'
+        });
+        let statusCls = 'ok', statusTxt = 'Enviado';
+        if (!h.email_enviado && h.total_tareas === 0) { statusCls = 'skip'; statusTxt = 'Sin tareas'; }
+        else if (!h.email_enviado) { statusCls = 'err'; statusTxt = 'Error'; }
+
+        const totalCls = h.total_tareas > 0 ? 'has' : 'zero';
+        const tareas = Array.isArray(h.tareas) ? h.tareas : [];
+
+        return `
+            <div class="notif-hist-entry" data-id="${esc(h.id)}">
+                <div class="notif-hist-entry-head" onclick="this.parentNode.classList.toggle('open')">
+                    <svg class="notif-hist-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    <span class="notif-hist-grupo">${esc(h.grupo_nombre)}</span>
+                    <span class="notif-hist-total ${totalCls}">${h.total_tareas} tareas</span>
+                    <span class="notif-hist-status ${statusCls}">${statusTxt}</span>
+                    <span class="notif-hist-fecha">${esc(fecha)}</span>
+                </div>
+                <div class="notif-hist-body">
+                    <div class="notif-hist-meta">
+                        <strong>Destinatarios:</strong> ${esc(h.destinatarios || '—')}<br>
+                        <strong>Umbral aplicado:</strong> ${h.umbral_dias} días · <strong>Disparador:</strong> ${esc(h.disparador || 'cron')}
+                        ${h.error ? `<br><strong style="color:#dc2626">Error:</strong> ${esc(h.error)}` : ''}
+                    </div>
+                    ${tareas.length === 0
+                        ? '<div style="padding:10px 0;color:#94a3b8;font-style:italic">No había tareas que reportar en esta ejecución.</div>'
+                        : tareas.map(t => {
+                            const c = t.ultimoComentario;
+                            return `
+                                <div class="notif-hist-tarea">
+                                    <a href="${esc(t.permalink || '#')}" target="_blank">${esc(t.nombre)}</a>
+                                    <div class="notif-hist-tarea-meta">
+                                        ${esc(t.tpv)} · ${esc(t.seccion)} · ${t.dias_inactiva || t.dias_creada} días${t.asignado ? ' · ' + esc(t.asignado) : ''}
+                                    </div>
+                                    ${c ? `<div class="notif-hist-cmt"><strong>${esc(c.autor)}</strong> (${esc(formatFecha(c.fecha))}):\n${esc(c.texto)}</div>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // ── Toast interno del panel ───────────────────────────────────────────
+    function mostrarNotifToast(msg, tipo) {
+        let c = document.getElementById('notif-toast');
+        if (!c) {
+            c = document.createElement('div');
+            c.id = 'notif-toast';
+            c.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:1000;padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.15);transition:opacity .2s';
+            document.body.appendChild(c);
+        }
+        c.style.background = tipo === 'error' ? '#dc2626' : '#16a34a';
+        c.textContent = msg;
+        c.style.opacity = '1';
+        clearTimeout(c._timer);
+        c._timer = setTimeout(() => c.style.opacity = '0', 3500);
+    }
+
+    // Cerrar con Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('notif-panel').classList.contains('open')) {
+            cerrarNotifPanel();
+        }
+    });
 </script>
 
 </body>

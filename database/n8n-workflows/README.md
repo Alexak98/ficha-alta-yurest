@@ -41,6 +41,7 @@ El webhook `GET Altas` en `04-fichas-alta.json` es el que valida el login — ah
 | 12-completar-ficha.json     | Carga de datos para completar ficha          |
 | 13-grabado-a3.json          | Toggle "grabado en A3" en proyectos          |
 | 14-notif-integraciones-semanal.json | Recordatorio semanal por email de integraciones sin avance, con último comentario Asana |
+| 15-notif-integraciones-api.json     | API de configuración y consulta de historial (usada por el panel de Integraciones) |
 
 ## Recordatorio semanal de Integraciones (workflow 14)
 
@@ -62,8 +63,23 @@ Flujo:
 6. Envía vía credencial SMTP "Soporte". Si un grupo no tiene tareas
    que matcheen su filtro, no se envía email.
 
-Para ajustar destinatarios, umbral o añadir más grupos: editar el nodo
-`Configuración` (es Code, no necesita reimport — guardar en n8n basta).
+La configuración ahora vive en Supabase (`notif_integraciones_config` y
+`notif_integraciones_grupos`) y se edita desde el propio portal en
+**Integraciones → Avisos automáticos**. Ya no hace falta tocar el
+workflow para cambiar destinatarios, umbrales o grupos.
 
-Para probar manualmente sin esperar al lunes: pulsar **Execute Workflow**
-en el editor de n8n.
+Cada ejecución escribe una fila por grupo en `notif_integraciones_historial`
+con un snapshot de las tareas reportadas (incluyendo el último
+comentario de Asana) para dejar trazabilidad semanal.
+
+## API de notificaciones (workflow 15)
+
+Tres webhooks usados exclusivamente por la UI:
+
+- `GET  /webhook/notif-integraciones/config`   → devuelve `{config, grupos}`
+- `PUT  /webhook/notif-integraciones/config`   → actualiza umbral, secciones, activo
+- `POST /webhook/notif-integraciones/grupos`   → `{action: 'create'|'update'|'delete', grupo: {...}}`
+- `GET  /webhook/notif-integraciones/historial` → últimos 200 registros
+
+Para probar manualmente el envío sin esperar al lunes: abrir el workflow
+14 en n8n y pulsar **Execute Workflow**.
