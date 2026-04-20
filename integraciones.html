@@ -266,8 +266,20 @@
 
         /* ── Widgets informativos ── */
         .widgets-row {
+            display:block;margin-bottom:20px;
+        }
+        .widgets-row-inner {
             display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-            gap:16px;margin-bottom:20px;
+            gap:16px;
+        }
+        .widget-filter-bar {
+            display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+            padding:10px 14px;margin-bottom:12px;
+            background:#fff;border:1.5px solid #f1f5f9;border-radius:12px;
+        }
+        .widget-filter-label {
+            font-size:0.7rem;font-weight:700;letter-spacing:0.08em;
+            text-transform:uppercase;color:#94a3b8;margin-right:4px;
         }
         .widget-card {
             background:#fff;border:1.5px solid #f1f5f9;border-radius:14px;
@@ -631,6 +643,21 @@
     let filtrosTPV     = new Set();
     let busquedaTexto  = '';        // texto del buscador (debajo del filtro TPV)
 
+    // Secciones que alimentan los widgets (distribución + antigüedad). Se
+    // persiste en localStorage para recordar la última selección del usuario.
+    // Vacío = todas las permitidas (default).
+    const WIDGET_SECCIONES_KEY = 'int_widget_secciones_v1';
+    let widgetSecciones = (() => {
+        try {
+            const raw = localStorage.getItem(WIDGET_SECCIONES_KEY);
+            if (raw) {
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr)) return new Set(arr);
+            }
+        } catch (_) {}
+        return new Set();  // vacío = todas
+    })();
+
     // Normaliza para búsqueda: minúsculas, sin acentos, trim.
     function _normSearch(s) {
         return String(s == null ? '' : s)
@@ -718,17 +745,24 @@
 
     const getAuthHeaders = () => YurestConfig.getAuthHeaders();
 
-    // Fetch del último comentario de una tarea (con cache)
-    async function fetchLastComment(taskId) {
+    // AbortController por sección: si el usuario colapsa la sección
+    // mientras se están cargando los comentarios, abortamos las
+    // peticiones en vuelo para no gastar red ni CPU renderizando en
+    // slots que ya no se ven.
+    const _commentControllers = {};
+
+    // Fetch del último comentario de una tarea (con cache + signal opcional)
+    async function fetchLastComment(taskId, signal) {
         if (commentsCache[taskId] !== undefined) return commentsCache[taskId];
         try {
             const url = `${WEBHOOK_ASANA_STORIES}?taskId=${encodeURIComponent(taskId)}`;
-            const res = await fetch(url, { method: 'GET', headers: getAuthHeaders() });
+            const res = await fetch(url, { method: 'GET', headers: getAuthHeaders(), signal });
             if (!res.ok) throw new Error('Error ' + res.status);
             const data = await res.json();
             commentsCache[taskId] = data.lastComment || null;
             return commentsCache[taskId];
-        } catch (_) {
+        } catch (err) {
+            if (err && err.name === 'AbortError') throw err;  // no cachear abortos
             commentsCache[taskId] = null;
             return null;
         }
@@ -736,10 +770,26 @@
 
     // Carga el comentario de cada tarea visible y lo inyecta en su tarjeta
     async function cargarComentariosEnSeccion(seccionNombre, tareas) {
+        // Cancelar cualquier carga anterior de ESTA sección (p.ej. el
+        // usuario colapsó y volvió a abrir rápido).
+        if (_commentControllers[seccionNombre]) {
+            try { _commentControllers[seccionNombre].abort(); } catch (_) {}
+        }
+        const controller = new AbortController();
+        _commentControllers[seccionNombre] = controller;
+        const signal = controller.signal;
+
         // Fetch en paralelo
         const promises = tareas.map(async t => {
-            if (!t.gid) return;
-            const comment = await fetchLastComment(t.gid);
+            if (!t.gid || signal.aborted) return;
+            let comment;
+            try {
+                comment = await fetchLastComment(t.gid, signal);
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;  // Silencioso
+                comment = null;
+            }
+            if (signal.aborted) return;
             const slot = document.querySelector(`.task-comment-slot[data-task-id="${t.gid}"]`);
             if (!slot) return;
             if (comment && comment.text) {
@@ -762,10 +812,22 @@
     }
 
     // ── Cargar tareas desde webhook ───────────────────────────────────────
+    // AbortController de la petición en curso: si el usuario pulsa
+    // "Recargar" mientras hay otra en vuelo (o cambia rápido de página),
+    // cancelamos la anterior para evitar que su respuesta stale pise la
+    // nueva.
+    let _cargarTareasController = null;
     async function cargarTareas() {
         const loading = document.getElementById('loading');
         const content = document.getElementById('content');
         const empty = document.getElementById('empty');
+
+        // Cancelar cualquier carga anterior que siga en vuelo
+        if (_cargarTareasController) {
+            try { _cargarTareasController.abort(); } catch (_) {}
+        }
+        _cargarTareasController = new AbortController();
+        const signal = _cargarTareasController.signal;
 
         loading.style.display = '';
         content.style.display = 'none';
@@ -773,10 +835,12 @@
 
         try {
             const url = `${WEBHOOK_ASANA}?projectId=${encodeURIComponent(ASANA_PROJECT_ID)}`;
-            const res = await fetch(url, { method: 'GET', headers: getAuthHeaders() });
+            const res = await fetch(url, { method: 'GET', headers: getAuthHeaders(), signal });
             if (!res.ok) throw new Error('Error ' + res.status);
             let data = {};
             try { data = await res.json(); } catch(_) {}
+            // Si una carga más reciente nos ha reemplazado, no pintes nada
+            if (signal.aborted) return;
             const tasks = Array.isArray(data) ? data
                 : Array.isArray(data.tasks) ? data.tasks
                 : Array.isArray(data.data) ? data.data : [];
@@ -790,6 +854,7 @@
             }
             renderTareas(tasks);
         } catch (err) {
+            if (err.name === 'AbortError') return;  // Abort silencioso: otra carga nueva tomó el relevo
             console.warn('[integraciones] error:', err);
             loading.style.display = 'none';
             empty.style.display = '';
@@ -814,37 +879,76 @@
         const container = document.getElementById('widgets');
         container.style.display = '';
 
+        // Filtro de secciones activas: si widgetSecciones está vacío,
+        // consideramos "todas las permitidas". Si no, sólo las marcadas.
+        const filtradas = widgetSecciones.size === 0
+            ? tareasEnSecciones
+            : tareasEnSecciones.filter(t => widgetSecciones.has(getSeccionNombre(t)));
+
+        // Chip bar para elegir qué secciones alimentan los widgets
+        const chipBar = `
+            <div class="widget-filter-bar">
+                <span class="widget-filter-label">Resumen de</span>
+                <button class="chip-filter chip-all ${widgetSecciones.size === 0 ? 'active' : ''}"
+                        onclick="toggleWidgetSeccion('__all__')">
+                    Todas <span class="chip-count">${tareasEnSecciones.length}</span>
+                </button>
+                ${SECCIONES_PERMITIDAS.map(sec => {
+                    const count = tareasEnSecciones.filter(t => getSeccionNombre(t) === sec).length;
+                    if (count === 0) return '';
+                    return `
+                        <button class="chip-filter ${widgetSecciones.has(sec) ? 'active' : ''}"
+                                onclick="toggleWidgetSeccion('${escJs(sec)}')">
+                            ${esc(sec)} <span class="chip-count">${count}</span>
+                        </button>`;
+                }).join('')}
+            </div>
+        `;
+
         // 1) Por TPV
         const porTPV = {};
-        tareasEnSecciones.forEach(t => {
+        filtradas.forEach(t => {
             const tpv = getTPV(t) || 'Sin TPV';
             porTPV[tpv] = (porTPV[tpv] || 0) + 1;
         });
         const tpvEntries = Object.entries(porTPV).sort((a, b) => b[1] - a[1]);
+        const widgetTPV = renderWidgetDistribucion('Distribución por TPV', tpvEntries, filtradas.length);
 
-        const widgetTPV = renderWidgetDistribucion(
-            'Solicitud de datos · por TPV',
-            tpvEntries,
-            tareasEnSecciones.length
-        );
+        // 2) Por Sección (reemplaza el placeholder antiguo)
+        const porSeccionCount = {};
+        filtradas.forEach(t => {
+            const sec = getSeccionNombre(t) || 'Sin sección';
+            porSeccionCount[sec] = (porSeccionCount[sec] || 0) + 1;
+        });
+        const secEntries = Object.entries(porSeccionCount).sort((a, b) => b[1] - a[1]);
+        const widgetPorSeccion = renderWidgetDistribucion('Distribución por sección', secEntries, filtradas.length);
 
-        // 2) Por Tipo de Cliente (placeholder hasta que el usuario indique)
-        const widgetTipoCliente = `
-            <div class="widget-card">
-                <div class="widget-head">
-                    <span class="widget-title">Solicitud de datos · por Tipo de Cliente</span>
-                </div>
-                <div class="widget-placeholder">
-                    Pendiente de configurar origen de datos
-                </div>
-            </div>
-        `;
-
-        // 3) Antigüedad: solo tareas de "Solicitud de datos realizada" no completadas
-        const pendientes = tareasEnSecciones.filter(t => !t.completed);
+        // 3) Antigüedad (tareas no completadas)
+        const pendientes = filtradas.filter(t => !t.completed);
         const widgetAntiguedad = renderWidgetAntiguedad(pendientes);
 
-        container.innerHTML = widgetTPV + widgetTipoCliente + widgetAntiguedad;
+        container.innerHTML = chipBar + `<div class="widgets-row-inner">${widgetTPV + widgetPorSeccion + widgetAntiguedad}</div>`;
+    }
+
+    function toggleWidgetSeccion(sec) {
+        if (sec === '__all__') {
+            widgetSecciones.clear();
+        } else {
+            if (widgetSecciones.has(sec)) widgetSecciones.delete(sec);
+            else widgetSecciones.add(sec);
+        }
+        try { localStorage.setItem(WIDGET_SECCIONES_KEY, JSON.stringify([...widgetSecciones])); } catch (_) {}
+        // Re-render sólo los widgets — no hace falta tocar el listado
+        const tareasFiltradas = aplicarFiltroSeccionesPermitidas(todasLasTareas);
+        renderWidgets(tareasFiltradas);
+    }
+
+    function aplicarFiltroSeccionesPermitidas(todas) {
+        const setPermitidas = new Set(SECCIONES_PERMITIDAS);
+        return todas.filter(t => {
+            const sec = getSeccionNombre(t);
+            return sec && setPermitidas.has(sec);
+        });
     }
 
     function renderWidgetAntiguedad(tareas) {
@@ -952,12 +1056,9 @@
             return secNombre && setPermitidas.has(secNombre);
         });
 
-        // Los widgets solo muestran las tareas de "Solicitud de datos realizada"
-        const tareasSolicitud = tareasEnSecciones.filter(t => {
-            const sec = getSeccionNombre(t);
-            return sec === 'Solicitud de datos realizada';
-        });
-        renderWidgets(tareasSolicitud);
+        // Widgets: por defecto todas las secciones permitidas; el usuario
+        // puede acotar con los chips que renderiza el propio renderWidgets.
+        renderWidgets(tareasEnSecciones);
 
         let tareasFiltradas = [...tareasEnSecciones];
 
@@ -1166,12 +1267,24 @@
         aplicarFiltrosYRender();
     }
 
+    function _abortarComentarios(seccionNombre) {
+        if (seccionNombre && _commentControllers[seccionNombre]) {
+            try { _commentControllers[seccionNombre].abort(); } catch (_) {}
+            delete _commentControllers[seccionNombre];
+        }
+    }
+
     function toggleSeccion(head) {
         const card = head.closest('.section-card');
         const wasOpen = card.classList.contains('open');
         card.classList.toggle('open');
-        // Si se acaba de abrir, cargar los comentarios (lazy)
-        if (!wasOpen) cargarComentariosSeccion(card);
+        if (!wasOpen) {
+            cargarComentariosSeccion(card);
+        } else {
+            // Al colapsar, abortamos la carga de comentarios de esta sección
+            _abortarComentarios(card.dataset.sectionName);
+            card.dataset.loaded = '0';  // permite que al reabrir intente de nuevo
+        }
     }
 
     function expandirTodas() {
@@ -1182,7 +1295,10 @@
     }
 
     function contraerTodas() {
-        document.querySelectorAll('.section-card').forEach(c => c.classList.remove('open'));
+        document.querySelectorAll('.section-card').forEach(c => {
+            c.classList.remove('open');
+            _abortarComentarios(c.dataset.sectionName);
+        });
     }
 
     function renderTaskCard(t, showComment) {
@@ -1284,8 +1400,11 @@
     let notifTab      = 'config';
     let notifConfig   = null;       // objeto {umbral_dias, secciones_seguimiento, ...}
     let notifGrupos   = [];         // array de {id, nombre, destinatarios, filtros, ...}
-    let notifHistorial = [];        // array de entradas
+    let notifHistorial = [];        // array de entradas (acumulativo al paginar)
+    let notifHistHasMore = false;   // si hay más páginas por cargar
+    let notifHistCargando = false;  // lock anti-doble-click en "Cargar más"
     let notifCargado  = false;
+    const NOTIF_HIST_PAGE = 50;     // tamaño de página del historial
 
     async function _notifApiFetch(url, opts) {
         const res = await YurestConfig.apiFetch(url, opts);
@@ -1320,13 +1439,15 @@
                 Cargando configuración…
             </div>`;
         try {
+            const histUrl = `${NOTIF_ENDPOINTS.historial}?limit=${NOTIF_HIST_PAGE}&offset=0`;
             const [cfgResp, histResp] = await Promise.all([
                 _notifApiFetch(NOTIF_ENDPOINTS.config),
-                _notifApiFetch(NOTIF_ENDPOINTS.historial).catch(() => ({ historial: [] }))
+                _notifApiFetch(histUrl).catch(() => ({ historial: [], paging: { has_more: false } }))
             ]);
             notifConfig    = cfgResp.config || null;
             notifGrupos    = Array.isArray(cfgResp.grupos)        ? cfgResp.grupos        : [];
             notifHistorial = Array.isArray(histResp.historial)    ? histResp.historial    : [];
+            notifHistHasMore = !!(histResp.paging && histResp.paging.has_more);
         } catch (err) {
             console.warn('[notif] error cargando:', err);
             document.getElementById('notif-body').innerHTML = `
@@ -1334,6 +1455,27 @@
                     No se pudo cargar la configuración.<br>
                     <small>${esc(err.message)}</small>
                 </div>`;
+        }
+    }
+
+    // Carga la siguiente página del historial y la añade al array global
+    async function notifCargarMasHistorial(btn) {
+        if (notifHistCargando || !notifHistHasMore) return;
+        notifHistCargando = true;
+        const release = _notifLockButton(btn, 'Cargando…');
+        try {
+            const offset = notifHistorial.length;
+            const url = `${NOTIF_ENDPOINTS.historial}?limit=${NOTIF_HIST_PAGE}&offset=${offset}`;
+            const resp = await _notifApiFetch(url);
+            const nuevos = Array.isArray(resp.historial) ? resp.historial : [];
+            notifHistorial = notifHistorial.concat(nuevos);
+            notifHistHasMore = !!(resp.paging && resp.paging.has_more);
+            renderNotifHistorial();
+        } catch (err) {
+            mostrarNotifToast('Error al cargar más: ' + err.message, 'error');
+            release();
+        } finally {
+            notifHistCargando = false;
         }
     }
 
@@ -1697,7 +1839,23 @@
                 `;
             }).join('');
 
-        body.innerHTML = html;
+        const pagingBar = notifHistHasMore
+            ? `<div style="text-align:center;margin-top:8px">
+                   <button class="notif-btn-secondary" onclick="notifCargarMasHistorial(this)">
+                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                       Cargar más
+                   </button>
+                   <div style="font-size:11px;color:#94a3b8;margin-top:6px">
+                       ${notifHistorial.length} entradas cargadas
+                   </div>
+               </div>`
+            : (notifHistorial.length > NOTIF_HIST_PAGE
+                ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:#94a3b8">
+                       ${notifHistorial.length} entradas · no hay más
+                   </div>`
+                : '');
+
+        body.innerHTML = html + pagingBar;
     }
 
     function _semanaISO(d) {
