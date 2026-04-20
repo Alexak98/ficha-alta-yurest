@@ -305,7 +305,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Prepara el row para el soft-delete: únicamente id + deleted_at.\n// Con autoMapInputData, Supabase sólo toca esas dos columnas, sin\n// forzar NULL en el resto (que tenían constraint NOT NULL).\nconst payload = $('Preparar acción Grupo').first().json.payload;\nreturn [{ json: { id: payload.id, deleted_at: new Date().toISOString() } }];"
+        "jsCode": "// Prepara el item para el DELETE físico: sólo necesitamos el id para\n// el filtro. El historial conserva grupo_nombre como texto, así que no\n// hace falta soft-delete.\nconst payload = $('Preparar acción Grupo').first().json.payload;\nreturn [{ json: { id: payload.id } }];"
       },
       "id": "prep-delete-row",
       "name": "Preparar row DELETE",
@@ -316,7 +316,7 @@
     },
     {
       "parameters": {
-        "operation": "update",
+        "operation": "delete",
         "tableId": "notif_integraciones_grupos",
         "filterType": "manual",
         "matchType": "allFilters",
@@ -326,7 +326,6 @@
               "keyValue": "={{ $json.id }}" }
           ]
         },
-        "dataToSend": "autoMapInputData",
         "options": {}
       },
       "id": "supa-delete-grupo",
@@ -345,7 +344,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Verifica que la operación afectó alguna fila. Sin esto, un filtro\n// mal construido devolvería success:true sin tocar la BD (bug detectado\n// al borrar grupos: volvían a aparecer tras refrescar la UI).\nconst { action } = $('Preparar acción Grupo').first().json;\nconst input = $input.all();\nlet count = 0;\nconst errores = [];\nfor (const it of (input || [])) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) {\n    errores.push(String(j.error.message || j.error.code || j.error));\n    continue;\n  }\n  if (j.id) { count++; continue; }\n  if (Array.isArray(j.data)) count += j.data.length;\n}\nreturn [{ json: {\n  success: count > 0,\n  action,\n  affected: count,\n  errores,\n  grupo: (input[0] && input[0].json) || null\n}}];"
+        "jsCode": "// Verifica que la operación afectó alguna fila. Sin esto, un filtro\n// mal construido devolvería success:true sin tocar la BD (bug detectado\n// al borrar grupos: volvían a aparecer tras refrescar la UI).\nconst { action } = $('Preparar acción Grupo').first().json;\nconst input = $input.all();\nlet count = 0;\nconst errores = [];\nfor (const it of (input || [])) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) {\n    errores.push(String(j.error.message || j.error.code || j.error));\n    continue;\n  }\n  if (j.id) { count++; continue; }\n  if (Array.isArray(j.data)) count += j.data.length;\n}\n// Para delete, algunas versiones del nodo Supabase devuelven un item\n// vacío tras un borrado correcto (204 No Content). Si no hay error ni\n// filas reportadas pero llegó aquí, asumimos éxito.\nif (action === 'delete' && count === 0 && errores.length === 0 && input.length > 0) {\n  count = 1;\n}\nreturn [{ json: {\n  success: count > 0,\n  action,\n  affected: count,\n  errores,\n  grupo: (input[0] && input[0].json) || null\n}}];"
       },
       "id": "verify-grupo",
       "name": "Verificar resultado",
