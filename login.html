@@ -297,11 +297,12 @@
                     && loginData.user.rol;
 
                 if (!loginOk) {
-                    const hint = loginData && loginData.error ? loginData.error
-                        : loginRes.ok
-                          ? 'El servidor respondió pero sin datos de usuario válidos. Revisa que el workflow de auth esté activo en n8n.'
-                          : 'Usuario o contraseña incorrectos.';
-                    errorMsg.textContent = hint;
+                    // Mensaje único y neutro: no distinguimos entre "no existe
+                    // el usuario", "password incorrecta", "cuenta desactivada"
+                    // ni "cuenta antigua que ya no vale". Evita filtrar info a
+                    // atacantes y dirige a cualquier usuario legítimo bloqueado
+                    // al administrador.
+                    errorMsg.textContent = 'Cuenta no válida. Ponte en contacto con tu administrador para obtener acceso.';
                     errorEl.classList.add('visible');
                     btn.classList.remove('loading');
                     btn.disabled = false;
