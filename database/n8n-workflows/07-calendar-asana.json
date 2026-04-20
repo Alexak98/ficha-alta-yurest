@@ -116,7 +116,7 @@
           "parameters": [
             {
               "name": "opt_fields",
-              "value": "gid,name,completed,due_on,created_at,permalink_url,assignee.name,notes,memberships.section.name,custom_fields.name,custom_fields.display_value,custom_fields.enum_value.name,custom_fields.text_value"
+              "value": "gid,name,completed,due_on,created_at,permalink_url,assignee.name,notes,memberships.section.name,memberships.project.gid,memberships.project.name,custom_fields.name,custom_fields.display_value,custom_fields.enum_value.name,custom_fields.text_value"
             }
           ]
         }
