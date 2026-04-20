@@ -865,6 +865,17 @@
 
     function renderTareas(tasks) {
         todasLasTareas = tasks;
+        // Purgar filtros TPV "fantasma": si un TPV al que estábamos
+        // filtrando ya no existe en las tareas recargadas (p.ej. se cerró
+        // esa integración), lo quitamos del Set para evitar que la chip
+        // siga activa apuntando a algo inexistente.
+        if (filtrosTPV.size > 0) {
+            const tpvsActuales = new Set();
+            tasks.forEach(t => tpvsActuales.add(getTPV(t) || 'Sin TPV'));
+            [...filtrosTPV].forEach(tpv => {
+                if (!tpvsActuales.has(tpv)) filtrosTPV.delete(tpv);
+            });
+        }
         aplicarFiltrosYRender();
     }
 
@@ -1039,6 +1050,11 @@
     function aplicarFiltrosYRender() {
         const content = document.getElementById('content');
         content.style.display = '';
+
+        // Guarda defensiva: si aún no se han cargado tareas (p.ej. el
+        // usuario cambió un widget antes de que llegue la respuesta del
+        // webhook), evitamos el TypeError.
+        if (!Array.isArray(todasLasTareas)) return;
 
         // Capturamos qué secciones tenía abiertas el usuario antes del re-render
         // para restaurarlas después. Sin esto, cualquier filtro las cerraba todas
@@ -1369,10 +1385,10 @@
         </div>
         <button class="notif-close" onclick="cerrarNotifPanel()" aria-label="Cerrar">&times;</button>
     </div>
-    <div class="notif-tabs">
-        <button class="notif-tab active" data-tab="config"   onclick="cambiarNotifTab('config')">Configuración</button>
-        <button class="notif-tab"        data-tab="grupos"   onclick="cambiarNotifTab('grupos')">Grupos</button>
-        <button class="notif-tab"        data-tab="historial" onclick="cambiarNotifTab('historial')">Historial</button>
+    <div class="notif-tabs" role="tablist">
+        <button class="notif-tab active" role="tab" aria-selected="true"  data-tab="config"    onclick="cambiarNotifTab('config')">Configuración</button>
+        <button class="notif-tab"        role="tab" aria-selected="false" data-tab="grupos"    onclick="cambiarNotifTab('grupos')">Grupos</button>
+        <button class="notif-tab"        role="tab" aria-selected="false" data-tab="historial" onclick="cambiarNotifTab('historial')">Historial</button>
     </div>
     <div class="notif-body" id="notif-body">
         <div id="notif-loading" style="text-align:center;padding:40px 0;color:#94a3b8">
@@ -1452,9 +1468,30 @@
             console.warn('[notif] error cargando:', err);
             document.getElementById('notif-body').innerHTML = `
                 <div class="notif-empty">
-                    No se pudo cargar la configuración.<br>
-                    <small>${esc(err.message)}</small>
+                    <p>No se pudo cargar la configuración.</p>
+                    <small style="display:block;margin-top:4px;color:#94a3b8">${esc(err.message)}</small>
+                    <div style="margin-top:14px;display:flex;gap:8px;justify-content:center">
+                        <button class="notif-btn-secondary" onclick="cerrarNotifPanel()">Cerrar</button>
+                        <button class="notif-btn-primary" onclick="_notifReintentar(this)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                            Reintentar
+                        </button>
+                    </div>
                 </div>`;
+        }
+    }
+
+    async function _notifReintentar(btn) {
+        const release = _notifLockButton(btn, 'Cargando…');
+        try {
+            await _notifCargarDatos();
+            // Si _notifCargarDatos volvió a poner el error, no tocamos nada
+            if (notifConfig) {
+                notifCargado = true;
+                renderNotifTab();
+            }
+        } finally {
+            release();
         }
     }
 
@@ -1482,7 +1519,9 @@
     function cambiarNotifTab(tab) {
         notifTab = tab;
         document.querySelectorAll('.notif-tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.tab === tab);
+            const activo = t.dataset.tab === tab;
+            t.classList.toggle('active', activo);
+            t.setAttribute('aria-selected', activo ? 'true' : 'false');
         });
         renderNotifTab();
     }
@@ -1817,27 +1856,26 @@
             return;
         }
 
-        // Agrupar por semana ISO
+        // Agrupar por semana ISO y guardar la fecha "ancla" de la semana
+        // (lunes) para ordenar cronológicamente en vez de lexicográficamente
+        // — la ordenación alfabética de "2026-W52" vs "2027-W01" funcionaba
+        // por casualidad sólo si el año ISO coincidía con el calendario.
         const porSemana = {};
         notifHistorial.forEach(h => {
             const d = new Date(h.ejecutado_at);
-            const { semana, label } = _semanaISO(d);
-            const key = semana;
-            if (!porSemana[key]) porSemana[key] = { label, items: [] };
-            porSemana[key].items.push(h);
+            const { semana, label, lunes } = _semanaISO(d);
+            if (!porSemana[semana]) porSemana[semana] = { label, lunes, items: [] };
+            porSemana[semana].items.push(h);
         });
 
-        const html = Object.keys(porSemana)
-            .sort().reverse()
-            .map(k => {
-                const sem = porSemana[k];
-                return `
-                    <div class="notif-hist-week">
-                        <p class="notif-hist-week-header">${esc(sem.label)}</p>
-                        ${sem.items.map(h => _renderHistEntry(h)).join('')}
-                    </div>
-                `;
-            }).join('');
+        const html = Object.entries(porSemana)
+            .sort((a, b) => b[1].lunes - a[1].lunes)  // más reciente arriba
+            .map(([k, sem]) => `
+                <div class="notif-hist-week">
+                    <p class="notif-hist-week-header">${esc(sem.label)}</p>
+                    ${sem.items.map(h => _renderHistEntry(h)).join('')}
+                </div>
+            `).join('');
 
         const pagingBar = notifHistHasMore
             ? `<div style="text-align:center;margin-top:8px">
@@ -1878,7 +1916,11 @@
         const domingo = new Date(lunes);
         domingo.setDate(domingo.getDate() + 6);
         const fmt = x => x.toLocaleDateString('es-ES', { day:'2-digit', month:'short' });
-        return { semana, label: `Semana ${semanaNum} · ${fmt(lunes)} – ${fmt(domingo)}` };
+        return {
+            semana,
+            label: `Semana ${semanaNum} · ${fmt(lunes)} – ${fmt(domingo)}`,
+            lunes: lunes.getTime()   // timestamp para ordenar cronológicamente
+        };
     }
 
     function _renderHistEntry(h) {
@@ -1927,20 +1969,31 @@
         `;
     }
 
-    // ── Toast interno del panel ───────────────────────────────────────────
+    // ── Toasts apilables ──────────────────────────────────────────────────
+    // Antes reusábamos un único #notif-toast y el segundo pisaba al primero.
+    // Ahora cada toast es un elemento propio dentro de un contenedor
+    // stacker, se animan entrando y salen tras 3500 ms.
     function mostrarNotifToast(msg, tipo) {
-        let c = document.getElementById('notif-toast');
-        if (!c) {
-            c = document.createElement('div');
-            c.id = 'notif-toast';
-            c.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:1000;padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.15);transition:opacity .2s';
-            document.body.appendChild(c);
+        let stack = document.getElementById('notif-toast-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'notif-toast-stack';
+            stack.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none';
+            document.body.appendChild(stack);
         }
-        c.style.background = tipo === 'error' ? '#dc2626' : '#16a34a';
-        c.textContent = msg;
-        c.style.opacity = '1';
-        clearTimeout(c._timer);
-        c._timer = setTimeout(() => c.style.opacity = '0', 3500);
+        const t = document.createElement('div');
+        t.style.cssText = 'padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.15);pointer-events:auto;opacity:0;transform:translateY(6px);transition:opacity .2s, transform .2s;max-width:380px';
+        t.style.background = tipo === 'error' ? '#dc2626' : '#16a34a';
+        t.textContent = msg;
+        stack.appendChild(t);
+        // Animación de entrada
+        requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+        // Salida programada
+        setTimeout(() => {
+            t.style.opacity = '0';
+            t.style.transform = 'translateY(-6px)';
+            setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 220);
+        }, 3500);
     }
 
     // Cerrar con Escape
