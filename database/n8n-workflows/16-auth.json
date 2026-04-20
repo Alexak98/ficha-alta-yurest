@@ -388,13 +388,24 @@
     },
     {
       "parameters": {
-        "jsCode": "// Aplana: el item que llega a la HTTP Request debe ser DIRECTAMENTE el\n// payload (id + columnas a actualizar), no {action, payload}.\nreturn [{ json: $input.first().json.payload }];"
+        "jsCode": "// Aplana: el item que llega a HTTP Request tiene que ser DIRECTAMENTE\n// el payload (id + columnas a actualizar). Además validamos que no se\n// cuele username ni password_hash — esos NUNCA deben cambiar desde el\n// path de 'update'. Si estuvieran, los filtramos en vez de dejar que\n// lleguen a la PATCH y arrastren NULL a una columna NOT NULL.\nconst payload = $input.first().json.payload || {};\nconst { username, password_hash, ...safePayload } = payload;\nif (!safePayload.id) throw new Error('Falta id en payload de UPDATE');\nreturn [{ json: safePayload }];"
       },
       "id": "flatten-user-payload",
       "name": "Aplanar payload usuario",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [860, 800],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye el body de la PATCH de forma explícita. Antes usábamos una\n// expresión en jsonBody con IIFE y spread, que en versiones concretas de\n// n8n (self-hosted) puede fallar o evaluar a algo distinto de lo\n// esperado — causó un 'null value in column username' pese a no incluir\n// username en el payload. Aquí el cuerpo se construye en JS sin\n// dependencia de expresiones complejas y se guarda en $json.__body para\n// que la HTTP Request lo consuma tal cual.\nconst j = $input.first().json || {};\nconst body = { ...j };\ndelete body.id;\n// Eliminar claves que nunca deben ir en PATCH (defensivo)\ndelete body.username;\ndelete body.password_hash;\nreturn [{ json: { id: j.id, __body: JSON.stringify(body) } }];"
+      },
+      "id": "build-patch-body",
+      "name": "Construir body PATCH",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 800],
       "alwaysOutputData": true
     },
     {
@@ -413,14 +424,14 @@
         "sendBody": true,
         "bodyContentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify((() => { const p = {...$json}; delete p.id; return p; })()) }}",
+        "jsonBody": "={{ $json.__body }}",
         "options": { "response": { "response": { "fullResponse": false } } }
       },
       "id": "http-update-user",
       "name": "UPDATE Usuario",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1060, 800],
+      "position": [1140, 800],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -526,6 +537,9 @@
       ]
     },
     "Aplanar payload usuario": {
+      "main": [[{ "node": "Construir body PATCH", "type": "main", "index": 0 }]]
+    },
+    "Construir body PATCH": {
       "main": [[{ "node": "UPDATE Usuario", "type": "main", "index": 0 }]]
     },
     "INSERT Usuario": {
