@@ -39,3 +39,31 @@ El webhook `GET Altas` en `04-fichas-alta.json` es el que valida el login — ah
 | 10-eliminar.json            | Soft-delete de ficha o solicitud             |
 | 11-auxiliares.json          | Endpoints auxiliares varios                  |
 | 12-completar-ficha.json     | Carga de datos para completar ficha          |
+| 13-grabado-a3.json          | Toggle "grabado en A3" en proyectos          |
+| 14-notif-integraciones-semanal.json | Recordatorio semanal por email de integraciones sin avance, con último comentario Asana |
+
+## Recordatorio semanal de Integraciones (workflow 14)
+
+Trigger: cron interno de n8n, **lunes 09:00**. No tiene webhook (no hay endpoint público).
+
+Flujo:
+1. Lee la configuración hardcoded en el primer nodo `Configuración`
+   (proyecto Asana, umbral en días, secciones a vigilar y lista de
+   grupos con sus destinatarios + filtros opcionales por TPV/sección).
+2. Llama al endpoint REST de Asana `/projects/{id}/tasks` con todos los
+   `opt_fields` necesarios.
+3. Filtra a las tareas que: están en una sección de seguimiento DENTRO
+   de nuestro proyecto, no están completadas, y llevan más del umbral
+   sin actividad (`modified_at`, con fallback a `created_at`).
+4. Por cada tarea filtrada, llama a `/tasks/{gid}/stories` y se queda
+   con el último comentario real (`resource_subtype='comment_added'`).
+5. Compone un email HTML por grupo con tabla de tareas, días de
+   inactividad, asignado, sección y el último comentario embebido.
+6. Envía vía credencial SMTP "Soporte". Si un grupo no tiene tareas
+   que matcheen su filtro, no se envía email.
+
+Para ajustar destinatarios, umbral o añadir más grupos: editar el nodo
+`Configuración` (es Code, no necesita reimport — guardar en n8n basta).
+
+Para probar manualmente sin esperar al lunes: pulsar **Execute Workflow**
+en el editor de n8n.
