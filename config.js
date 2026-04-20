@@ -69,7 +69,8 @@
 
         // Auth y gestión de usuarios
         authLogin:            `${WEBHOOK_BASE}/auth/login`,
-        authUsuarios:         `${WEBHOOK_BASE}/auth/usuarios`
+        authUsuarios:         `${WEBHOOK_BASE}/auth/usuarios`,
+        authVerify:           `${WEBHOOK_BASE}/auth/verify`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
@@ -189,6 +190,11 @@
     // Verifica que haya sesión activa. Si se pasa `permisoRequerido` (el ID
     // de la página actual), además comprueba que el usuario tiene acceso —
     // si no lo tiene, lo redirige a home en vez de a login.
+    //
+    // Además (asíncrono, sin bloquear): valida contra el backend que la
+    // sesión no haya sido revocada por un admin. Si `sessions_revoked_at`
+    // es más reciente que el snapshot de la sesión, o el usuario está
+    // desactivado/borrado, forzamos logout.
     function requireAuth(permisoRequerido) {
         const s = getSession();
         if (!s) {
@@ -196,13 +202,60 @@
             return false;
         }
         if (permisoRequerido && !tienePermiso(permisoRequerido)) {
-            // Sesión válida pero sin permiso: redirigir al home y mostrar
-            // aviso. No damos 401 porque sí está autenticado.
             try { sessionStorage.setItem('yurest_permiso_denegado', permisoRequerido); } catch (_) {}
             window.location.replace('home.html');
             return false;
         }
+        // Validación diferida (no bloqueante): corre en background
+        _validateSessionFresh();
         return true;
+    }
+
+    // Llama al endpoint /auth/verify para ver si la sesión fue revocada por
+    // un admin (cambio de permisos, rol, desactivación o borrado). Si sí,
+    // forzamos logout con un aviso. Silencioso si el endpoint falla (red
+    // caída, etc.) — no queremos que un fallo transitorio cierre sesiones.
+    async function _validateSessionFresh() {
+        const s = getSession();
+        if (!s || !s.id) return;
+        try {
+            const url = `${ENDPOINTS.authVerify}?userId=${encodeURIComponent(s.id)}`;
+            const res = await fetch(url, { method: 'GET', headers: getAuthHeaders() });
+            if (!res.ok) return;  // fallo transitorio: no invalidamos
+            const data = await res.json().catch(() => null);
+            if (!data) return;
+
+            // Si el backend dice que el usuario no es válido (borrado,
+            // desactivado) → forzar logout.
+            if (data.ok === false) {
+                clearSession();
+                try { sessionStorage.setItem('yurest_sesion_revocada', '1'); } catch (_) {}
+                window.location.replace('login.html');
+                return;
+            }
+
+            // Comparar sessions_revoked_at: si el servidor tiene uno más
+            // reciente que el snapshot de la sesión, el admin cambió algo.
+            const srvTs = data.sessions_revoked_at ? new Date(data.sessions_revoked_at).getTime() : 0;
+            const locTs = s.sessions_revoked_at ? new Date(s.sessions_revoked_at).getTime() : 0;
+            if (srvTs > locTs) {
+                clearSession();
+                try { sessionStorage.setItem('yurest_sesion_revocada', '1'); } catch (_) {}
+                window.location.replace('login.html');
+                return;
+            }
+
+            // Si no hubo revocación pero los permisos o el rol cambiaron,
+            // actualizamos el snapshot en la sesión en silencio para que la
+            // UI refleje los cambios en la próxima carga.
+            const permisosNuevos = Array.isArray(data.permisos) ? data.permisos : [];
+            const permisosIguales = JSON.stringify([...s.permisos || []].sort()) === JSON.stringify([...permisosNuevos].sort());
+            if (data.rol !== s.rol || !permisosIguales) {
+                setSession({ ...s, rol: data.rol, permisos: permisosNuevos });
+            }
+        } catch (_) {
+            // Red caída u otro fallo: no hacemos nada
+        }
     }
 
     // Devuelve los permisos del usuario actual. Admin tiene acceso implícito

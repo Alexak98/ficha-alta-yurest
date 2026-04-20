@@ -295,6 +295,18 @@
                     setTimeout(() => userEl?.focus(), 40);
                 }
             } catch (_) {}
+
+            // Si la sesión fue revocada (admin cambió permisos/rol/activo,
+            // o borró el usuario), mostramos un aviso claro al re-login.
+            try {
+                if (sessionStorage.getItem('yurest_sesion_revocada')) {
+                    sessionStorage.removeItem('yurest_sesion_revocada');
+                    const errorEl = document.getElementById('login-error');
+                    const errorMsg = document.getElementById('login-error-msg');
+                    errorMsg.textContent = 'Tu sesión ha sido actualizada por un administrador. Por favor, vuelve a iniciar sesión.';
+                    errorEl.classList.add('visible');
+                }
+            } catch (_) {}
         })();
 
         async function handleLogin(e) {
@@ -358,14 +370,15 @@
                 const basicAuth = btoa(SHARED_USER + ':' + SHARED_PASS);
                 const u = loginData.user || {};
                 YurestConfig.setSession({
-                    id:         u.id || null,
-                    user:       u.username || user,
-                    username:   u.username || user,
-                    nombre:     u.nombre || u.username || user,
-                    email:      u.email || '',
-                    rol:        u.rol || 'user',
-                    permisos:   Array.isArray(u.permisos) ? u.permisos : [],
-                    token:      loginData.token || 'authenticated',
+                    id:                  u.id || null,
+                    user:                u.username || user,
+                    username:            u.username || user,
+                    nombre:              u.nombre || u.username || user,
+                    email:               u.email || '',
+                    rol:                 u.rol || 'user',
+                    permisos:            Array.isArray(u.permisos) ? u.permisos : [],
+                    sessions_revoked_at: u.sessions_revoked_at || null,
+                    token:               loginData.token || 'authenticated',
                     basicAuth,
                     persistent: remember   // true → localStorage 30 días, false → sessionStorage 8 h
                 });

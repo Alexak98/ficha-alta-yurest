@@ -525,6 +525,19 @@
             return toast('La nueva contraseña debe tener al menos 8 caracteres', 'error');
         }
 
+        // Protección auto lock-out: si el usuario se está editando a sí
+        // mismo Y es admin, no puede quitarse el rol admin ni desactivarse
+        // — quedaría bloqueado sin poder entrar a Administración.
+        const yo = YurestConfig.getUsuario();
+        if (editandoId && yo && yo.id === editandoId && yo.rol === 'admin') {
+            if (rol !== 'admin') {
+                return toast('No puedes quitarte a ti mismo el rol de admin. Pide a otro admin que lo haga.', 'error');
+            }
+            if (!activo) {
+                return toast('No puedes desactivar tu propio usuario.', 'error');
+            }
+        }
+
         const release = lockBtn(btn, editandoId ? 'Guardando…' : 'Creando…');
         try {
             let usuario;
@@ -548,7 +561,16 @@
 
             await refrescar();
             cerrarEditor();
-            toast(editandoId ? 'Usuario actualizado' : 'Usuario creado', 'success');
+            // Si editamos un usuario existente y cambiaron rol/permisos/activo/
+            // password, el backend ya marcó sessions_revoked_at. Avisamos al
+            // admin de que el usuario tendrá que volver a iniciar sesión para
+            // ver los cambios (o lo hará de forma forzada la próxima vez que
+            // su navegador contacte con /auth/verify).
+            if (editandoId) {
+                toast('Usuario actualizado — sus cambios se aplican al próximo login', 'success');
+            } else {
+                toast('Usuario creado', 'success');
+            }
         } catch (err) {
             toast('Error: ' + err.message, 'error');
             release();
