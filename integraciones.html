@@ -166,8 +166,43 @@
         /* Filtros TPV */
         .tpv-filter-bar {
             display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-            padding:12px 16px;margin-bottom:14px;
+            padding:12px 16px;margin-bottom:10px;
             background:#fff;border:1.5px solid #f1f5f9;border-radius:12px;
+        }
+
+        /* Buscador de tareas (debajo del filtro de TPV) */
+        .int-search-bar {
+            display:flex;align-items:center;gap:10px;
+            padding:10px 14px;margin-bottom:14px;
+            background:#fff;border:1.5px solid #f1f5f9;border-radius:12px;
+        }
+        .int-search-wrap {
+            position:relative;flex:1;display:flex;align-items:center;
+        }
+        .int-search-icon {
+            position:absolute;left:12px;color:#94a3b8;pointer-events:none;
+        }
+        .int-search-input {
+            width:100%;padding:8px 38px 8px 36px;
+            font-family:inherit;font-size:0.85rem;color:#1e293b;
+            background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;
+            transition:border-color 0.15s, background 0.15s;
+        }
+        .int-search-input:focus {
+            outline:none;border-color:#fc5858;background:#fff;
+        }
+        .int-search-clear {
+            position:absolute;right:8px;
+            display:none;align-items:center;justify-content:center;
+            width:24px;height:24px;border-radius:50%;
+            background:transparent;border:none;color:#94a3b8;
+            cursor:pointer;padding:0;
+        }
+        .int-search-clear:hover { background:#f1f5f9;color:#1e293b }
+        .int-search-input:not(:placeholder-shown) ~ .int-search-clear { display:flex }
+        .int-search-count {
+            font-size:0.72rem;font-weight:700;letter-spacing:0.04em;
+            color:#64748b;white-space:nowrap;
         }
         .tpv-filter-label {
             font-size:0.72rem;font-weight:700;letter-spacing:0.08em;
@@ -404,7 +439,15 @@
 
     // Estado global
     let todasLasTareas = [];
-    let filtrosTPV = new Set();
+    let filtrosTPV     = new Set();
+    let busquedaTexto  = '';        // texto del buscador (debajo del filtro TPV)
+
+    // Normaliza para búsqueda: minúsculas, sin acentos, trim.
+    function _normSearch(s) {
+        return String(s == null ? '' : s)
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase().trim();
+    }
 
     // Nombres de custom field a detectar como "TPV"
     const TPV_FIELD_NAMES = ['tpv', 'tipo tpv', 'tipo de tpv', 'sistema tpv'];
@@ -716,6 +759,21 @@
             });
         }
 
+        // Filtrar por texto del buscador (matchea nombre, TPV, asignado y sección)
+        const q = _normSearch(busquedaTexto);
+        if (q) {
+            tareasFiltradas = tareasFiltradas.filter(t => {
+                const nombre   = _normSearch(t.name);
+                const tpv      = _normSearch(getTPV(t));
+                const assignee = _normSearch(t.assignee?.name);
+                const seccion  = _normSearch((t.memberships || [])[0]?.section?.name);
+                return nombre.includes(q)
+                    || tpv.includes(q)
+                    || assignee.includes(q)
+                    || seccion.includes(q);
+            });
+        }
+
         // Agrupar por sección
         const porSeccion = {};
         tareasFiltradas.forEach(t => {
@@ -738,7 +796,8 @@
         const completadas = tareasFiltradas.filter(t => t.completed).length;
         document.getElementById('stats').textContent =
             `${total} tarea${total !== 1 ? 's' : ''} · ${completadas} completada${completadas !== 1 ? 's' : ''}` +
-            (filtrosTPV.size > 0 ? ` · Filtro TPV: ${[...filtrosTPV].join(', ')}` : '');
+            (filtrosTPV.size > 0 ? ` · Filtro TPV: ${[...filtrosTPV].join(', ')}` : '') +
+            (q ? ` · Búsqueda: "${busquedaTexto.trim()}"` : '');
 
         // Lista ordenada según SECCIONES_PERMITIDAS, incluyendo vacías
         const secciones = [...SECCIONES_PERMITIDAS];
@@ -779,6 +838,30 @@
             </div>
         `;
 
+        // Buscador de tareas (debajo del filtro de TPV)
+        const matchInfo = q
+            ? `<span class="int-search-count">${tareasFiltradas.length} resultado${tareasFiltradas.length !== 1 ? 's' : ''}</span>`
+            : '';
+        const searchBar = `
+            <div class="int-search-bar">
+                <div class="int-search-wrap">
+                    <svg class="int-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input id="int-search-input" type="search" class="int-search-input"
+                           placeholder="Buscar por cliente, TPV, asignado o sección…"
+                           value="${esc(busquedaTexto)}"
+                           oninput="onIntSearchInput(this.value)"
+                           autocomplete="off">
+                    <button class="int-search-clear" type="button" title="Limpiar búsqueda"
+                            onclick="onIntSearchInput('')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                ${matchInfo}
+            </div>
+        `;
+
         // Render secciones apiladas (colapsables) - el comentario siempre con slot
         const list = secciones.map((secNombre, idx) => {
             const items = porSeccion[secNombre] || [];
@@ -811,13 +894,34 @@
         // Guardar referencia a las tareas por sección para lazy loading
         window._porSeccion = porSeccion;
 
-        content.innerHTML = filterBar + actions + `<div class="sections-list">${list}</div>`;
+        // Capturar foco/caret del buscador antes de re-renderizar para
+        // restaurarlos después (si el usuario estaba escribiendo).
+        const prevSearch = document.getElementById('int-search-input');
+        const wasFocused = prevSearch && document.activeElement === prevSearch;
+        const caretPos   = wasFocused ? (prevSearch.selectionStart ?? prevSearch.value.length) : null;
+
+        content.innerHTML = filterBar + searchBar + actions + `<div class="sections-list">${list}</div>`;
+
+        // Restaurar foco del buscador si lo tenía
+        if (wasFocused) {
+            const inp = document.getElementById('int-search-input');
+            if (inp) {
+                inp.focus();
+                try { inp.setSelectionRange(caretPos, caretPos); } catch (_) {}
+            }
+        }
 
         // Cargar comentarios de cualquier sección que esté abierta (la inicial
         // o las que el usuario tenía expandidas antes de cambiar el filtro).
         document.querySelectorAll('.section-card.open').forEach(card => {
             cargarComentariosSeccion(card);
         });
+    }
+
+    // Handler del buscador (debajo del filtro de TPV)
+    function onIntSearchInput(val) {
+        busquedaTexto = String(val || '');
+        aplicarFiltrosYRender();
     }
 
     // Carga los comentarios para todas las tareas visibles de una sección
