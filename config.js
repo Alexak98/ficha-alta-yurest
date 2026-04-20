@@ -91,7 +91,11 @@
     //  CONSTANTES
     // ──────────────────────────────────────────────────────────
     const SESSION_KEY = 'yurest_auth';
-    const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
+    // Si el usuario marca "Recordar sesión": 30 días en localStorage.
+    // Si no: 8 horas en sessionStorage (el comportamiento previo).
+    const SESSION_TTL_MS      = 8  * 60 * 60 * 1000;       // 8 horas
+    const SESSION_TTL_LONG_MS = 30 * 24 * 60 * 60 * 1000;  // 30 días
+    const LAST_USER_KEY = 'yurest_last_user';
     // Bump cuando cambie el shape del payload de sesión. Sesiones con una
     // versión distinta se descartan al recargar (evita que alguien con sesión
     // vieja sin `rol`/`permisos` vea el portal con permisos vacíos).
@@ -107,21 +111,34 @@
     // ──────────────────────────────────────────────────────────
     //  SESIÓN — helpers de autenticación
     // ──────────────────────────────────────────────────────────
+    // Devuelve la sesión activa. Busca primero en sessionStorage (sesión
+    // efímera, ventana actual) y si no hay, en localStorage (persistente,
+    // 30 días, si el usuario marcó "Recordar sesión").
     function getSession() {
         try {
-            const raw = sessionStorage.getItem(SESSION_KEY);
-            if (!raw) return null;
-            const s = JSON.parse(raw);
-            if (!s || !s.ts) return null;
-            // Sesión vieja de antes del sistema de permisos: no tiene
-            // `v` o `rol`/`permisos`. La invalidamos para forzar un
-            // nuevo login limpio contra la nueva auth.
+            // Intentar ambas ubicaciones. Si hay sesión en las dos, gana la
+            // más reciente.
+            const rawS = sessionStorage.getItem(SESSION_KEY);
+            const rawL = localStorage.getItem(SESSION_KEY);
+            let sessionS = null, sessionL = null;
+            try { sessionS = rawS ? JSON.parse(rawS) : null; } catch (_) {}
+            try { sessionL = rawL ? JSON.parse(rawL) : null; } catch (_) {}
+
+            const candidates = [sessionS, sessionL].filter(x => x && x.ts);
+            if (candidates.length === 0) return null;
+            const s = candidates.sort((a, b) => b.ts - a.ts)[0];
+
             if (s.v !== SESSION_VERSION) {
+                // Sesión con shape antiguo → descartamos en AMBOS stores
                 sessionStorage.removeItem(SESSION_KEY);
+                localStorage.removeItem(SESSION_KEY);
                 return null;
             }
-            if (Date.now() - s.ts > SESSION_TTL_MS) {
+
+            const ttl = s.persistent ? SESSION_TTL_LONG_MS : SESSION_TTL_MS;
+            if (Date.now() - s.ts > ttl) {
                 sessionStorage.removeItem(SESSION_KEY);
+                localStorage.removeItem(SESSION_KEY);
                 return null;
             }
             return s;
@@ -130,17 +147,43 @@
         }
     }
 
+    // Guarda la sesión. Si `data.persistent === true`, se almacena en
+    // localStorage (dura 30 días, sobrevive a cerrar el navegador). En
+    // caso contrario, sessionStorage (dura hasta cerrar la pestaña + 8 h).
     function setSession(data) {
         const payload = { ...data, ts: Date.now(), v: SESSION_VERSION };
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+        const raw = JSON.stringify(payload);
+        if (data && data.persistent) {
+            localStorage.setItem(SESSION_KEY, raw);
+            sessionStorage.removeItem(SESSION_KEY);  // no dejar sesión duplicada
+        } else {
+            sessionStorage.setItem(SESSION_KEY, raw);
+            localStorage.removeItem(SESSION_KEY);    // limpiar cualquier persistente vieja
+        }
+        // Recordar el último username para pre-rellenar el login la próxima
+        // vez, aunque NO se marque "Recordar sesión". Sólo guardamos el
+        // nombre, nunca la contraseña.
+        if (data && (data.username || data.user)) {
+            try { localStorage.setItem(LAST_USER_KEY, String(data.username || data.user)); } catch (_) {}
+        }
     }
 
     function clearSession() {
-        // Solo borramos las claves del dominio auth. Otras claves
-        // transitorias (yurest_edit_ficha, yurest_completar_id, etc.)
-        // se gestionan desde el código que las creó.
+        // Borramos la sesión en ambas ubicaciones. Mantenemos el
+        // LAST_USER_KEY intencionalmente para que al volver a entrar el
+        // username aparezca pre-rellenado — si el usuario quiere olvidarlo,
+        // puede limpiarlo a mano desde el formulario de login.
         sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
         sessionStorage.removeItem('yurest_fichas');
+    }
+
+    // Devuelve el último username usado para login (o '' si no hay).
+    function getLastUser() {
+        try { return localStorage.getItem(LAST_USER_KEY) || ''; } catch (_) { return ''; }
+    }
+    function forgetLastUser() {
+        try { localStorage.removeItem(LAST_USER_KEY); } catch (_) {}
     }
 
     // Verifica que haya sesión activa. Si se pasa `permisoRequerido` (el ID
@@ -420,11 +463,14 @@
         ENDPOINTS,
         SESSION_KEY,
         SESSION_TTL_MS,
+        SESSION_TTL_LONG_MS,
         IMPLEMENTADORES,
         PERMISOS_DISPONIBLES,
         getSession,
         setSession,
         clearSession,
+        getLastUser,
+        forgetLastUser,
         requireAuth,
         getPermisos,
         tienePermiso,

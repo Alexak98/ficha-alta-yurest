@@ -130,6 +130,17 @@
         }
         .login-error.visible { display:flex }
 
+        .login-remember {
+            display:flex;align-items:center;gap:8px;
+            margin:6px 0 4px;
+            font-size:0.82rem;color:var(--text-muted);cursor:pointer;user-select:none;
+        }
+        .login-remember input {
+            width:16px;height:16px;accent-color:var(--primary);cursor:pointer;
+        }
+        .login-remember .hint {
+            margin-left:auto;font-size:0.72rem;color:#94a3b8;
+        }
         .login-btn {
             width:100%;padding:13px;
             background:var(--primary);color:#fff;
@@ -243,6 +254,12 @@
                            placeholder="••••••••" autocomplete="current-password" required>
                 </div>
 
+                <label class="login-remember" for="login-remember">
+                    <input type="checkbox" id="login-remember">
+                    <span>Recordar sesión en este dispositivo</span>
+                    <span class="hint">30 días</span>
+                </label>
+
                 <button type="submit" class="login-btn" id="login-btn">
                     <div class="spinner"></div>
                     <span class="btn-text">Entrar</span>
@@ -263,6 +280,23 @@
             window.location.replace('home.html');
         }
 
+        // Pre-rellenar el último username para ahorrar tecleo. El password
+        // manager del navegador (Chrome/Edge/Safari/Firefox) completará la
+        // contraseña automáticamente si la tiene guardada.
+        (function prefillLogin() {
+            try {
+                const last = YurestConfig.getLastUser();
+                const userEl = document.getElementById('login-user');
+                if (last && userEl) {
+                    userEl.value = last;
+                    // Foco en password si ya sabemos el usuario
+                    setTimeout(() => document.getElementById('login-pass')?.focus(), 40);
+                } else {
+                    setTimeout(() => userEl?.focus(), 40);
+                }
+            } catch (_) {}
+        })();
+
         async function handleLogin(e) {
             e.preventDefault();
 
@@ -271,6 +305,7 @@
             const errorMsg = document.getElementById('login-error-msg');
             const user     = document.getElementById('login-user').value.trim();
             const pass     = document.getElementById('login-pass').value;
+            const remember = document.getElementById('login-remember').checked;
 
             btn.classList.add('loading');
             btn.disabled = true;
@@ -323,15 +358,16 @@
                 const basicAuth = btoa(SHARED_USER + ':' + SHARED_PASS);
                 const u = loginData.user || {};
                 YurestConfig.setSession({
-                    id:       u.id || null,
-                    user:     u.username || user,
-                    username: u.username || user,
-                    nombre:   u.nombre || u.username || user,
-                    email:    u.email || '',
-                    rol:      u.rol || 'user',
-                    permisos: Array.isArray(u.permisos) ? u.permisos : [],
-                    token:    loginData.token || 'authenticated',
-                    basicAuth
+                    id:         u.id || null,
+                    user:       u.username || user,
+                    username:   u.username || user,
+                    nombre:     u.nombre || u.username || user,
+                    email:      u.email || '',
+                    rol:        u.rol || 'user',
+                    permisos:   Array.isArray(u.permisos) ? u.permisos : [],
+                    token:      loginData.token || 'authenticated',
+                    basicAuth,
+                    persistent: remember   // true → localStorage 30 días, false → sessionStorage 8 h
                 });
 
                 window.location.replace('home.html');
