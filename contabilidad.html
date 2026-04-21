@@ -135,6 +135,8 @@
 
         /* Documento mandato SEPA — formato bancario */
         #sepa-doc { padding:24px 30px; font-family:'Helvetica',Arial,sans-serif; color:#0f172a; }
+        #sepa-doc .doc-logo { text-align:center; margin:0 0 10px; }
+        #sepa-doc .doc-logo img { height:38px; width:auto; }
         #sepa-doc h2 { font-size:1.1rem; text-align:center; margin:0 0 4px; }
         #sepa-doc .doc-sub { text-align:center; font-style:italic; color:#475569; font-size:.78rem; margin:0 0 14px; }
         .doc-block { border:1.5px solid #1e3a8a; border-radius:6px; padding:0; margin:10px 0; }
@@ -160,7 +162,14 @@
         .doc-firma-box { border:1px solid #94a3b8; border-radius:6px; padding:8px; background:#fff; min-height:100px; display:flex; align-items:center; justify-content:center; }
         .doc-firma-box img { max-width:100%; max-height:120px; }
         .doc-fechafirma { font-size:.72rem; color:#94a3b8; margin-top:5px; text-align:right; }
-        .doc-foot { font-size:.68rem; color:#475569; text-align:center; margin-top:14px; }
+        .doc-foot { font-size:.68rem; color:#475565; text-align:center; margin-top:14px; }
+        .doc-foot-b2b {
+            font-size:.68rem; color:#0f172a; text-align:center;
+            font-weight:700; letter-spacing:.02em;
+            margin-top:14px; padding:8px 12px;
+            border:1px solid #1e3a8a; border-radius:6px;
+            background:#eff6ff; line-height:1.5;
+        }
 
         /* La impresión a PDF usa una ventana popup independiente
            (ver imprimirSepa() en JS), no @media print. */
@@ -453,6 +462,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             ? { rec: '', uni: '✓' }
             : { rec: '✓', uni: '' };
         document.getElementById('sepa-doc').innerHTML = `
+            <div class="doc-logo"><img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest"></div>
             <h2>Orden de domiciliación de adeudo directo SEPA</h2>
             <p class="doc-sub">SEPA Direct Debit Mandate</p>
 
@@ -504,6 +514,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                 <div class="doc-fechafirma">${s.firmado_at ? 'Firmado el ' + new Date(s.firmado_at).toLocaleString('es-ES') : ''}</div>
             </div>
 
+            <p class="doc-foot-b2b">
+                LA ENTIDAD DE DEUDOR REQUIERE AUTORIZACIÓN DE ÉSTE PREVIA AL CARGO EN CUENTA DE LOS ADEUDOS DIRECTOS B2B.<br>
+                EL DEUDOR PODRÁ GESTIONAR DICHA AUTORIZACIÓN CON LOS MEDIOS QUE SU ENTIDAD PONGA A SU DISPOSICIÓN.
+            </p>
             <p class="doc-foot">Todos los campos han sido cumplimentados. Este documento debe ser custodiado por el acreedor.</p>
         `;
         document.getElementById('sepa-modal').classList.add('open');
@@ -530,6 +544,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             @page { size: A4 portrait; margin: 12mm; }
             * { box-sizing: border-box; }
             body { margin:0; padding:0; font-family:'Helvetica',Arial,sans-serif; color:#0f172a; font-size:10.5pt; line-height:1.4; }
+            .doc-logo { text-align:center; margin:0 0 6pt; }
+            .doc-logo img { height:34pt; width:auto; }
             h2 { font-size: 14pt; text-align: center; margin: 0 0 2pt; }
             .doc-sub { text-align:center; font-style:italic; color:#475569; font-size: 9pt; margin: 0 0 8pt; }
             .doc-block { border:1.5px solid #1e3a8a; border-radius:6px; margin:5pt 0; page-break-inside:avoid; }
@@ -551,8 +567,18 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             .doc-firma-box img { max-width:100%; max-height:80pt; }
             .doc-fechafirma { font-size:8pt; color:#94a3b8; margin-top:4pt; text-align:right; }
             .doc-foot { font-size:7.5pt; color:#475569; text-align:center; margin-top:8pt; }
+            .doc-foot-b2b {
+                font-size:7.5pt; color:#0f172a; text-align:center;
+                font-weight:700; letter-spacing:.02em;
+                margin-top:10pt; padding:5pt 8pt;
+                border:1px solid #1e3a8a; border-radius:4pt;
+                background:#eff6ff; line-height:1.5;
+                page-break-inside:avoid;
+            }
         `;
-        const autoprintScript = '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print();},150);};window.onafterprint=function(){window.close();};</scr' + 'ipt>';
+        // Espera a que el logo (y cualquier otra imagen) se cargue antes de
+        // imprimir; si no, el PDF sale sin logo cuando la red es lenta.
+        const autoprintScript = '<scr' + 'ipt>window.onload=function(){var imgs=document.images;var left=imgs.length;var fire=function(){if(--left<=0)setTimeout(function(){window.print();},80);};if(!left){setTimeout(function(){window.print();},80);return;}for(var i=0;i<imgs.length;i++){if(imgs[i].complete)fire();else{imgs[i].addEventListener("load",fire);imgs[i].addEventListener("error",fire);}}};window.onafterprint=function(){window.close();};</scr' + 'ipt>';
         const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title><style>${css}</style></head><body>${docHtml}${autoprintScript}</body></html>`;
         const w = window.open('', '_blank', 'width=900,height=1100');
         if (!w) {
