@@ -2241,6 +2241,15 @@
                 return false;
             }
         }
+        // Al menos un local con nombre es obligatorio — sin locales la ficha
+        // no tiene dónde operar el cliente.
+        if (!Array.isArray(data.locales) || data.locales.length === 0) {
+            showStatus('La ficha debe tener al menos un local asociado. Pulsa "+ Añadir Local" para crear uno.', 'error');
+            // Scroll al botón de añadir local si existe
+            const btn = document.getElementById('add-local-float') || document.getElementById('locales-container');
+            if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
         for (let i = 0; i < data.locales.length; i++) {
             if (!data.locales[i].nombre) {
                 showStatus(`El Local #${i + 1} requiere un nombre.`, 'error');
@@ -2444,7 +2453,23 @@
             });
 
             if (res.ok) {
-                const msg = _editId ? '✅ Ficha actualizada correctamente. Redirigiendo al listado…'
+                // Antes de asumir éxito, verificamos el body — si el workflow
+                // devuelve success:false (p.ej. fallo silencioso del UPDATE),
+                // lo tratamos como error para que el usuario no crea que
+                // guardó cuando en realidad el estado sigue sin avanzar.
+                let body = null;
+                try { body = await res.clone().json(); } catch (_) {}
+                if (body && body.success === false) {
+                    const detalle = Array.isArray(body.errores) && body.errores.length
+                        ? ': ' + body.errores.join('; ')
+                        : '';
+                    showStatus('El servidor no confirmó el guardado' + detalle, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Guardar';
+                    return;
+                }
+
+                const msg = _editId ? '✅ Ficha actualizada — pasa a la pestaña “Fichas”. Redirigiendo…'
                                     : '✅ Ficha guardada correctamente. Redirigiendo al listado…';
                 showStatus(msg, 'success');
 
