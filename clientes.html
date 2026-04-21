@@ -350,11 +350,14 @@
     function actualizarKPIs() {
         document.getElementById('kpi-total').textContent = todos.length;
 
-        const ahora = new Date();
-        const mes = ahora.getMonth(), yr = ahora.getFullYear();
+        // Comparación por prefijo ISO YYYY-MM en lugar de .getMonth() local —
+        // si c.fecha llega como ISO UTC (p.ej. "2026-04-21T23:30:00Z"), usar
+        // el mes local podía meterlo en el mes siguiente para clientes en
+        // UTC-1/UTC-2. Comparar strings ISO es inmune al timezone.
+        const yyyymm = new Date().toISOString().slice(0, 7); // "2026-04"
         const esteMes = todos.filter(c => {
-            const d = new Date(c.fecha);
-            return !isNaN(d) && d.getMonth() === mes && d.getFullYear() === yr;
+            const s = String(c.fecha || '');
+            return s.slice(0, 7) === yyyymm;
         }).length;
         document.getElementById('kpi-mes').textContent = esteMes;
 
