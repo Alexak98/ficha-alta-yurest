@@ -176,6 +176,17 @@
             background: #fff1f1; color: #fc5858; font-weight: 700;
         }
         .fn-item.active .fn-num { background: #fc5858; color: #fff; }
+        /* Sección completa: número en verde, y se superpone un check
+           cuando NO está activa (para no chocar con el rojo de active). */
+        .fn-item.done .fn-num { background: #16a34a; color: #fff; }
+        .fn-item.done:not(.active) { color: #16a34a; }
+        .fn-item.done::after {
+            content: "✓";
+            margin-left: auto;
+            color: #16a34a;
+            font-weight: 800;
+            font-size: .78rem;
+        }
         .fn-num {
             display: inline-flex; align-items: center; justify-content: center;
             width: 22px; height: 22px;
@@ -968,6 +979,7 @@
         const clone = document.getElementById('local-template').content.cloneNode(true);
         container.appendChild(clone);
         actualizarNumeracion();
+        if (typeof actualizarEstadoNavSecciones === 'function') actualizarEstadoNavSecciones();
     }
 
     function eliminarLocal(btn) {
@@ -980,6 +992,7 @@
         }
         card.remove();
         actualizarNumeracion();
+        if (typeof actualizarEstadoNavSecciones === 'function') actualizarEstadoNavSecciones();
     }
 
     function actualizarNumeracion() {
@@ -2061,6 +2074,10 @@
         document.getElementById('sepa-d-direccion').textContent = dirCompleta || '—';
         document.getElementById('sepa-d-firma').src             = s.firma_base64;
         document.getElementById('sepa-d-firmado-at').textContent = s.firmado_at ? 'Firmado el ' + new Date(s.firmado_at).toLocaleString('es-ES') : '';
+        // Refrescar nav (la sección SEPA ahora está completa)
+        if (typeof actualizarEstadoNavSecciones === 'function') {
+            setTimeout(actualizarEstadoNavSecciones, 0);
+        }
     }
 
     // ── Adjuntos de la ficha (PDF / JPG / PNG) ────────────────────────────────
@@ -2071,6 +2088,10 @@
     function _renderFichaAdjuntos() {
         const list = document.getElementById('ficha-adjuntos-list');
         if (!list) return;
+        // Refresca el highlight de la sección 'Documentos' en la nav
+        if (typeof actualizarEstadoNavSecciones === 'function') {
+            setTimeout(actualizarEstadoNavSecciones, 0);
+        }
         if (_fichaAdjuntos.length === 0) {
             list.innerHTML = '<div class="ficha-adjuntos-empty">Sin documentos adjuntos</div>';
             return;
@@ -2980,6 +3001,11 @@
             recalcularMensual();
             sincronizarPlanesRecurrencia();
             actualizarResumenFlotante();
+            // Recalcular qué secciones muestran highlight verde al entrar
+            // en modo edición (los campos ya están rellenos desde BD).
+            if (typeof actualizarEstadoNavSecciones === 'function') {
+                actualizarEstadoNavSecciones();
+            }
         });
     }
 
@@ -3148,6 +3174,137 @@
             if (!nav.contains(ev.target)) {
                 document.body.classList.remove('ficha-nav-open');
             }
+        });
+
+        // Recalcula qué secciones están completas (verde) al escribir en
+        // cualquier campo del formulario. Debounce de 200 ms para no
+        // recalcular en cada tecla individual.
+        let _navDoneTimer = null;
+        const recomputarDebounced = () => {
+            clearTimeout(_navDoneTimer);
+            _navDoneTimer = setTimeout(actualizarEstadoNavSecciones, 180);
+        };
+        document.addEventListener('input',  recomputarDebounced, true);
+        document.addEventListener('change', recomputarDebounced, true);
+        // Primera pasada al cargar
+        setTimeout(actualizarEstadoNavSecciones, 60);
+    }
+
+    // ── Reglas de "sección completa" para el highlight verde ──────────────
+    // Un id → array de inputs cuyos valores deben ser no-vacíos para que la
+    // sección se considere completa. Para lógica custom usamos un objeto
+    // { custom: function(){...} } y devolvemos true/false.
+    const SECCION_COMPLETA_RULES = {
+        'datos-cliente-section': {
+            fields: ['denominacion', 'cif', 'calle', 'numero', 'cp',
+                     'municipio', 'provincia', 'email']
+        },
+        'lite-section': {
+            fields: ['entrega_calle', 'entrega_numero', 'entrega_cp',
+                     'entrega_municipio', 'entrega_provincia',
+                     'contacto_nombre', 'contacto_email', 'contacto_telefono']
+        },
+        'facturacion-section': {
+            fields: ['iban']   // email_factura es opcional (se hereda)
+        },
+        'distribuidor-section': {
+            fields: ['dist_empresa', 'dist_cif', 'dist_mail']
+        },
+        'jefe-proyecto-section': {
+            fields: ['jp_nombre', 'jp_apellidos', 'jp_rol', 'jp_mail', 'jp_telefono']
+        },
+        'firmante-section': {
+            fields: ['firm_nombre', 'firm_apellidos', 'firm_mail', 'firm_dni', 'firm_puesto']
+        },
+        'tpv-section': {
+            custom() {
+                const tpvEl = document.getElementById('tpv');
+                const tpv = tpvEl ? String(tpvEl.value || '').trim() : '';
+                const niCheck = document.getElementById('tpv_no_integrado_check');
+                if (niCheck && niCheck.checked) {
+                    // TPV no integrado: exige nombre del TPV + un contacto (email o teléfono)
+                    const niNom = (document.getElementById('tpv_ni_nombre')?.value || '').trim();
+                    const niEm  = (document.getElementById('tpv_ni_email')?.value  || '').trim();
+                    const niCo  = (document.getElementById('tpv_ni_contacto')?.value || '').trim();
+                    return !!niNom && (!!niEm || !!niCo);
+                }
+                return !!tpv;
+            }
+        },
+        'financiero-section': {
+            custom() {
+                // Considera completa cuando hay al menos una fila de setup
+                // o de mensualidad con importe > 0.
+                const setupImp = parseFloat(document.getElementById('ImporteSetup')?.value || 0);
+                const mensual  = parseFloat(document.getElementById('Mensualidad Total Locales')?.value
+                                             || document.getElementById('mensualidad_total_locales')?.value
+                                             || 0);
+                if (setupImp > 0 || mensual > 0) return true;
+                // Alternativa: hay algún paquete del carrito marcado
+                return document.querySelectorAll('input[name="cart_item"]:checked').length > 0;
+            }
+        },
+        'credenciales-section': {
+            fields: ['cred_master', 'cred_yurest']
+        },
+        'modulos-section': {
+            custom() {
+                return document.querySelectorAll('input[name="modulo"]:checked').length > 0;
+            }
+        },
+        'locales-container': {
+            custom() {
+                // Al menos un local con nombre y datos mínimos (sociedad + CP)
+                const cards = document.querySelectorAll('.local-card');
+                if (cards.length === 0) return false;
+                return Array.from(cards).every(c => {
+                    const nombre = c.querySelector('[data-field="nombre"]')?.value.trim();
+                    return !!nombre;
+                });
+            }
+        },
+        'comentarios-section': {
+            custom() {
+                return !!(document.getElementById('comentarios')?.value.trim());
+            }
+        },
+        'sepa-section': {
+            custom() {
+                // La sección SEPA sólo se considera completa si el detalle
+                // está visible (es decir, ya hay firma guardada).
+                const vacio = document.getElementById('sepa-vacio');
+                return !!(vacio && vacio.style.display === 'none');
+            }
+        },
+        'documentos-section': {
+            custom() {
+                return Array.isArray(_fichaAdjuntos) && _fichaAdjuntos.length > 0;
+            }
+        }
+    };
+
+    function _checkSeccionCompleta(id) {
+        const rule = SECCION_COMPLETA_RULES[id];
+        if (!rule) return false;
+        if (typeof rule.custom === 'function') {
+            try { return !!rule.custom(); } catch (_) { return false; }
+        }
+        if (Array.isArray(rule.fields)) {
+            return rule.fields.every(fid => {
+                const el = document.getElementById(fid);
+                if (!el) return false;
+                return !!String(el.value || '').trim();
+            });
+        }
+        return false;
+    }
+
+    function actualizarEstadoNavSecciones() {
+        const nav = document.getElementById('ficha-nav');
+        if (!nav) return;
+        nav.querySelectorAll('.fn-item').forEach(item => {
+            const id = item.dataset.target;
+            item.classList.toggle('done', _checkSeccionCompleta(id));
         });
     }
 
