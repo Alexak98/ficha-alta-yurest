@@ -17,6 +17,27 @@
 -- esto es prácticamente imposible.
 -- ============================================================================
 
+-- ── 0a. Limpiar JSON null sueltos ────────────────────────────────────────
+UPDATE fichas_alta
+   SET sepa_mandato = NULL
+ WHERE sepa_mandato IS NOT NULL
+   AND jsonb_typeof(sepa_mandato) = 'null';
+
+-- ── 0b. Reparar filas donde sepa_mandato se guardó como string JSON ──────
+-- Algún workflow antiguo hizo JSON.stringify antes de mandarlo al nodo
+-- Supabase, que a su vez volvió a serializar → en BD quedó un escalar
+-- string en lugar de un objeto. Lo extraemos con #>>'{}' y reparseamos.
+UPDATE fichas_alta
+   SET sepa_mandato = (sepa_mandato #>> '{}')::jsonb
+ WHERE sepa_mandato IS NOT NULL
+   AND jsonb_typeof(sepa_mandato) = 'string';
+
+-- ── 0c. Cualquier otro tipo no-object (number, boolean, array) → NULL ────
+UPDATE fichas_alta
+   SET sepa_mandato = NULL
+ WHERE sepa_mandato IS NOT NULL
+   AND jsonb_typeof(sepa_mandato) <> 'object';
+
 -- ── 1. Función del trigger ────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION asignar_sepa_ref()
 RETURNS TRIGGER AS $$
@@ -28,6 +49,12 @@ DECLARE
 BEGIN
     -- Sin mandato SEPA no hay nada que hacer.
     IF NEW.sepa_mandato IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Defensivo: si llega algo que no sea object (string, null, array),
+    -- no tocamos y dejamos que lo detecte el código cliente.
+    IF jsonb_typeof(NEW.sepa_mandato) <> 'object' THEN
         RETURN NEW;
     END IF;
 
@@ -52,7 +79,8 @@ BEGIN
            ), 0) + 1
       INTO next_num
       FROM fichas_alta
-     WHERE sepa_mandato->>'referencia' ~ ('^YUREST-' || year_str || '-\d{4}$');
+     WHERE jsonb_typeof(sepa_mandato) = 'object'
+       AND sepa_mandato->>'referencia' ~ ('^YUREST-' || year_str || '-\d{4}$');
 
     NEW.sepa_mandato := jsonb_set(
         NEW.sepa_mandato,
@@ -75,9 +103,11 @@ CREATE TRIGGER trg_asignar_sepa_ref
 
 -- ── 3. Índice UNIQUE parcial para blindar unicidad ────────────────────────
 -- Si dos transacciones esquivan el LOCK (caso raro), la segunda falla aquí.
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_fichas_alta_sepa_referencia
+DROP INDEX IF EXISTS uniq_fichas_alta_sepa_referencia;
+CREATE UNIQUE INDEX uniq_fichas_alta_sepa_referencia
     ON fichas_alta ((sepa_mandato->>'referencia'))
     WHERE sepa_mandato IS NOT NULL
+      AND jsonb_typeof(sepa_mandato) = 'object'
       AND sepa_mandato->>'referencia' ~ '^YUREST-\d{4}-\d{4}$';
 
 -- ── 4. BACKFILL: renumerar todas las referencias existentes ───────────────
@@ -98,6 +128,7 @@ WITH ordenadas AS (
                     to_char(NOW(),'YYYY')) AS anio
       FROM fichas_alta
      WHERE sepa_mandato IS NOT NULL
+       AND jsonb_typeof(sepa_mandato) = 'object'
 )
 UPDATE fichas_alta f
    SET sepa_mandato = jsonb_set(
