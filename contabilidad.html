@@ -170,6 +170,12 @@
             border:1px solid #1e3a8a; border-radius:6px;
             background:#eff6ff; line-height:1.5;
         }
+        .doc-foot-b2b-en {
+            font-size:.62rem; color:#64748b; text-align:center;
+            font-style:italic; letter-spacing:.02em;
+            margin-top:6px; padding:6px 12px;
+            line-height:1.5;
+        }
 
         /* La impresión a PDF usa una ventana popup independiente
            (ver imprimirSepa() en JS), no @media print. */
@@ -479,8 +485,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             </div>
 
             <div class="doc-legal">
-                Mediante la firma de esta orden de domiciliación, el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta y (B) a la entidad para efectuar los adeudos en su cuenta siguiendo las instrucciones del acreedor. Como parte de sus derechos, el deudor está legitimado al reembolso por su entidad en los términos y condiciones del contrato suscrito con la misma. <strong>La solicitud de reembolso deberá efectuarse dentro de las ocho semanas que siguen a la fecha de adeudo en cuenta.</strong>
-                <span class="doc-legal-en">By signing this mandate form, you authorise (A) the Creditor to send instructions to your bank to debit your account and (B) your bank to debit your account in accordance with the instructions from the Creditor. A refund must be claimed within eight weeks starting from the date on which your account was debited.</span>
+                Mediante la firma de esta orden de domiciliación, el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta y (B) a la entidad para efectuar los adeudos en su cuenta siguiendo las instrucciones del acreedor. <strong>Esta orden de domiciliación está prevista para operaciones exclusivamente entre empresas y/o autónomos.</strong> El deudor no tiene derecho a que su entidad le reembolse una vez que se haya realizado el cargo en cuenta, pero puede solicitar a su entidad que no efectúe el adeudo en la cuenta hasta la fecha debida. Podrá obtener información detallada del procedimiento en su entidad financiera.
+                <span class="doc-legal-en">By signing this mandate form, you authorize (A) ${esc(a.nombre || 'the Creditor')} to send instructions to your bank to debit your account and (B) your bank to debit your account in accordance with the instructions from ${esc(a.nombre || 'the Creditor')}. This mandate is only intended for business-to-business transactions. You are not entitled to a refund from your bank after your account has been debited, but you are entitled to request your bank not to debit your account up until the day on which the payment is due. Please contact your bank for detailed procedures in such a case.</span>
             </div>
 
             <div class="doc-block">
@@ -515,10 +521,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             </div>
 
             <p class="doc-foot-b2b">
+                TODOS LOS CAMPOS HAN DE SER CUMPLIMENTADOS OBLIGATORIAMENTE.<br>
+                UNA VEZ FIRMADA ESTA ORDEN DE DOMICILIACIÓN DEBE SER ENVIADA AL ACREEDOR PARA SU CUSTODIA.<br>
                 LA ENTIDAD DE DEUDOR REQUIERE AUTORIZACIÓN DE ÉSTE PREVIA AL CARGO EN CUENTA DE LOS ADEUDOS DIRECTOS B2B.<br>
                 EL DEUDOR PODRÁ GESTIONAR DICHA AUTORIZACIÓN CON LOS MEDIOS QUE SU ENTIDAD PONGA A SU DISPOSICIÓN.
             </p>
-            <p class="doc-foot">Todos los campos han sido cumplimentados. Este documento debe ser custodiado por el acreedor.</p>
+            <p class="doc-foot-b2b-en">
+                ALL FIELDS HAVE TO BE FILLED IN.<br>
+                ONCE THIS MANDATE HAS BEEN SIGNED IT MUST BE FORWARDED TO THE CREDITOR FOR STORAGE.<br>
+                THE DEBTOR'S BANK REQUIRES AUTHORISATION FROM THE DEBTOR PRIOR TO DEBITING ITS ACCOUNT FOR B2B DIRECT DEBITS.<br>
+                THE DEBTOR MAY ARRANGE SUCH AUTHORISATION BY THE MEANS MADE AVAILABLE BY ITS BANK.
+            </p>
         `;
         document.getElementById('sepa-modal').classList.add('open');
     }
@@ -573,6 +586,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                 margin-top:10pt; padding:5pt 8pt;
                 border:1px solid #1e3a8a; border-radius:4pt;
                 background:#eff6ff; line-height:1.5;
+                page-break-inside:avoid;
+            }
+            .doc-foot-b2b-en {
+                font-size:7pt; color:#64748b; text-align:center;
+                font-style:italic; letter-spacing:.02em;
+                margin-top:4pt; padding:4pt 8pt;
+                line-height:1.5;
                 page-break-inside:avoid;
             }
         `;

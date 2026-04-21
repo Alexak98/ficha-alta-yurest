@@ -413,8 +413,8 @@
 
             <!-- Texto legal bilingüe -->
             <div class="sepa-legal">
-                Mediante la firma de esta orden de domiciliación, el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta y (B) a la entidad para efectuar los adeudos en su cuenta siguiendo las instrucciones del acreedor. Como parte de sus derechos, el deudor está legitimado al reembolso por su entidad en los términos y condiciones del contrato suscrito con la misma. <strong>La solicitud de reembolso deberá efectuarse dentro de las ocho semanas que siguen a la fecha de adeudo en cuenta.</strong> Puede obtener información adicional sobre sus derechos en su entidad financiera.
-                <span class="sepa-legal-en">By signing this mandate form, you authorise (A) the Creditor to send instructions to your bank to debit your account and (B) your bank to debit your account in accordance with the instructions from the Creditor. A refund must be claimed within eight weeks starting from the date on which your account was debited.</span>
+                Mediante la firma de esta orden de domiciliación, el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta y (B) a la entidad para efectuar los adeudos en su cuenta siguiendo las instrucciones del acreedor. <strong>Esta orden de domiciliación está prevista para operaciones exclusivamente entre empresas y/o autónomos.</strong> El deudor no tiene derecho a que su entidad le reembolse una vez que se haya realizado el cargo en cuenta, pero puede solicitar a su entidad que no efectúe el adeudo en la cuenta hasta la fecha debida. Podrá obtener información detallada del procedimiento en su entidad financiera.
+                <span class="sepa-legal-en">By signing this mandate form, you authorize (A) Yurest Solutions Sociedad Limitada to send instructions to your bank to debit your account and (B) your bank to debit your account in accordance with the instructions from Yurest Solutions Sociedad Limitada. This mandate is only intended for business-to-business transactions. You are not entitled to a refund from your bank after your account has been debited, but you are entitled to request your bank not to debit your account up until the day on which the payment is due. Please contact your bank for detailed procedures in such a case.</span>
             </div>
 
             <!-- Datos del deudor (editable) -->
@@ -516,11 +516,11 @@
     const HUMAN_MIN_TIME_MS  = 3000;  // tiempo mínimo humano para rellenar
 
     // ─── DATOS DEL ACREEDOR (mandato SEPA) ────────────────────────────────────
-    // Los dos dígitos de control del identificador SEPA los emite el banco al
-    // dar de alta el contrato de domiciliación. Mientras Yurest no nos dé el
-    // identificador definitivo dejamos los caracteres "##" como recordatorio.
+    // Identificador SEPA definitivo emitido por la entidad bancaria para
+    // Yurest Solutions S.L. (formato ISO 20022: ES + dígitos control + sufijo
+    // + NIF).
     const SEPA_ACREEDOR = {
-        identificador: 'ES##ZZZB40597437',
+        identificador: 'ES31000B40597437',
         nombre:        'Yurest Solutions Sociedad Limitada',
         direccion:     'Calle Transits, 6',
         cp:            '46002',
