@@ -586,6 +586,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                 f.grabado_a3 = valor;
                 f.grabado_a3_at = valor ? new Date().toISOString() : null;
             }
+            // Audit log: toggle A3 (marca/desmarca)
+            YurestConfig.logHistorial({
+                ficha_id: id,
+                accion: valor ? 'a3_grabado' : 'a3_desmarcado',
+                descripcion: valor ? 'Marcada como grabada en A3' : 'Desmarcada de A3',
+                cambios: { grabado_a3: { before: !valor, after: valor } },
+                metadata: { sociedad: f?.['Nombre Sociedad'] || '' }
+            });
             mostrarToast(valor ? 'Marcada como grabada en A3' : 'Marcada como pendiente', 'success');
             render();
         } catch (err) {

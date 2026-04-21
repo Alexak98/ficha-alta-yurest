@@ -501,6 +501,19 @@
             proyectos.push(nuevoProyecto);
             guardarProyectosLocal(proyectos);
 
+            // Audit log: registrar que se creó un proyecto desde esta ficha.
+            YurestConfig.logHistorial({
+                ficha_id: f.altaId || null,
+                accion: 'proyecto_creado',
+                descripcion: `Proyecto asignado a ${implementador}`,
+                metadata: {
+                    implementador,
+                    tipo: f.tipo,
+                    modulos_contratados: Array.isArray(f.modulos) ? f.modulos.length : 0,
+                    locales: f.localesCount || 0
+                }
+            });
+
             fichasSinAsignar.splice(idx, 1);
             actualizarContadoresFiltros();
             aplicarFiltros();

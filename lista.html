@@ -2137,6 +2137,17 @@
                 const id = ficha['id'] || ficha['ID'] || ficha['row_number'] || '';
                 if (!id) throw Object.assign(new Error('La ficha no tiene un id válido'), { code: 'tech' });
                 await _doDelete(WEBHOOK_ELIMINAR_FICHA, { action: 'delete', entity: 'ficha', id: id, row_number: id });
+                // Audit log: registra quién borró qué ficha.
+                YurestConfig.logHistorial({
+                    ficha_id: id,
+                    accion: 'delete',
+                    descripcion: 'Ficha eliminada',
+                    metadata: {
+                        origen,
+                        sociedad: ficha['Nombre Sociedad'] || '',
+                        comercial: ficha['Nombre Comercial'] || ''
+                    }
+                });
                 // Limpiar referencias locales de ambas listas (la ficha podría
                 // estar en cualquiera de las dos según la pestaña actual).
                 const fichaRef = ficha;

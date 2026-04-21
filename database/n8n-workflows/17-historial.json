@@ -1,0 +1,212 @@
+{
+  "name": "Yurest - Historial de Fichas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "historial",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "wh-hist-post",
+      "name": "Webhook POST Historial",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "fichas-historial-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepara un row de historial. El cliente envía:\n// {\n//   ficha_id | solicitud_id,\n//   usuario: { id, nombre, rol } | null (null = cliente o sistema),\n//   accion: 'create'|'update'|'delete'|'estado_change'|'adjunto_add'|\n//           'adjunto_remove'|'sepa_firmado'|'cliente_respondio'|\n//           'a3_grabado'|'a3_desmarcado'|'proyecto_creado'|'enviado_cliente'|\n//           'password_reset'|'permiso_change'|'otro',\n//   descripcion,\n//   cambios: { campo: {before, after} },\n//   metadata: { ... }\n// }\nconst ACCIONES_VALIDAS = new Set([\n  'create','update','delete','estado_change',\n  'adjunto_add','adjunto_remove','sepa_firmado',\n  'cliente_respondio','a3_grabado','a3_desmarcado',\n  'proyecto_creado','enviado_cliente','password_reset',\n  'permiso_change','otro'\n]);\nconst body = ($input.first().json.body) || {};\nif (!body.ficha_id && !body.solicitud_id) {\n  throw new Error('ficha_id o solicitud_id es obligatorio');\n}\nconst accion = String(body.accion || '').toLowerCase();\nif (!ACCIONES_VALIDAS.has(accion)) {\n  throw new Error('accion inválida: ' + body.accion);\n}\nconst u = body.usuario || {};\nconst rolValidado = ['admin','user','cliente','sistema'].includes(u.rol) ? u.rol : 'sistema';\nconst row = {\n  ficha_id:       body.ficha_id || null,\n  solicitud_id:   body.solicitud_id || null,\n  usuario_id:     u.id || null,\n  usuario_nombre: (u.nombre || u.username || '').slice(0, 120) || null,\n  usuario_rol:    rolValidado,\n  accion:         accion,\n  descripcion:    body.descripcion ? String(body.descripcion).slice(0, 500) : null,\n  cambios:        JSON.stringify(body.cambios || {}),\n  metadata:       JSON.stringify(body.metadata || {})\n};\nreturn [{ json: row }];"
+      },
+      "id": "prep-hist",
+      "name": "Preparar Historial",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 200],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "fichas_historial",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "insert-hist",
+      "name": "INSERT Historial",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta consistente sin exponer datos internos\nconst input = $input.all();\nlet id = null;\nconst errores = [];\nfor (const it of input) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) { errores.push(String(j.error.message || j.error.code || j.error)); continue; }\n  if (j.id) { id = j.id; }\n}\nreturn [{ json: { success: !!id, id, errores } }];"
+      },
+      "id": "verify-hist",
+      "name": "Verificar Historial",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-hist-post",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "historial",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "wh-hist-get",
+      "name": "Webhook GET Historial",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 440],
+      "webhookId": "fichas-historial-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Saneo de query params:\n// - fichaId (o solicitudId): filtra por una ficha concreta\n// - limit: paginación (default 100, max 500)\n// - offset\nconst q = ($input.first().json && $input.first().json.query) || {};\nconst fichaId = String(q.fichaId || q.ficha_id || '').trim();\nconst solicitudId = String(q.solicitudId || q.solicitud_id || '').trim();\nif (!fichaId && !solicitudId) {\n  throw new Error('Se requiere fichaId o solicitudId en query');\n}\nconst limit = Math.min(Math.max(parseInt(q.limit, 10) || 100, 1), 500);\nconst offset = Math.max(parseInt(q.offset, 10) || 0, 0);\nreturn [{ json: { fichaId, solicitudId, limit, offset } }];"
+      },
+      "id": "prep-hist-get",
+      "name": "Preparar GET Historial",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 440],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "fichas_historial",
+        "returnAll": false,
+        "limit": "={{ $json.limit }}",
+        "filterType": "string",
+        "filterString": "={{ ($json.fichaId ? 'ficha_id=eq.' + $json.fichaId : 'solicitud_id=eq.' + $json.solicitudId) + '&order=creado_at.desc&offset=' + $json.offset }}",
+        "options": {}
+      },
+      "id": "supa-get-hist",
+      "name": "GET Historial Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [640, 440],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve el historial parseando los JSONB como objetos.\nfunction parseJson(v, fb){if(v==null)return fb;if(Array.isArray(v)||typeof v==='object')return v;if(typeof v==='string'){try{return JSON.parse(v);}catch(_){return fb;}}return fb;}\nconst { limit, offset } = $('Preparar GET Historial').first().json;\nconst rows = $input.all().map(i => i.json).filter(r => r && r.id);\nfor (const r of rows) {\n  r.cambios  = parseJson(r.cambios, {});\n  r.metadata = parseJson(r.metadata, {});\n}\nreturn [{ json: {\n  historial: rows,\n  paging: { limit, offset, count: rows.length, has_more: rows.length >= limit }\n} }];"
+      },
+      "id": "format-hist",
+      "name": "Formatear Historial",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 440],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-hist-get",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1040, 440]
+    }
+  ],
+  "connections": {
+    "Webhook POST Historial": {
+      "main": [[{ "node": "Preparar Historial", "type": "main", "index": 0 }]]
+    },
+    "Preparar Historial": {
+      "main": [[{ "node": "INSERT Historial", "type": "main", "index": 0 }]]
+    },
+    "INSERT Historial": {
+      "main": [[{ "node": "Verificar Historial", "type": "main", "index": 0 }]]
+    },
+    "Verificar Historial": {
+      "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]]
+    },
+
+    "Webhook GET Historial": {
+      "main": [[{ "node": "Preparar GET Historial", "type": "main", "index": 0 }]]
+    },
+    "Preparar GET Historial": {
+      "main": [[{ "node": "GET Historial Supabase", "type": "main", "index": 0 }]]
+    },
+    "GET Historial Supabase": {
+      "main": [[{ "node": "Formatear Historial", "type": "main", "index": 0 }]]
+    },
+    "Formatear Historial": {
+      "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [
+    { "name": "yurest" },
+    { "name": "historial" },
+    { "name": "auditoria" }
+  ]
+}

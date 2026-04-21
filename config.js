@@ -70,7 +70,10 @@
         // Auth y gestión de usuarios
         authLogin:            `${WEBHOOK_BASE}/auth/login`,
         authUsuarios:         `${WEBHOOK_BASE}/auth/usuarios`,
-        authVerify:           `${WEBHOOK_BASE}/auth/verify`
+        authVerify:           `${WEBHOOK_BASE}/auth/verify`,
+
+        // Historial de acciones (audit log por ficha)
+        historial:            `${WEBHOOK_BASE}/historial`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
@@ -509,6 +512,107 @@
     }
 
     // ──────────────────────────────────────────────────────────
+    //  HISTORIAL DE ACCIONES (audit log por ficha)
+    // ──────────────────────────────────────────────────────────
+
+    // Compara dos valores de cualquier tipo; devuelve true si son equivalentes.
+    function _esIgual(a, b) {
+        if (a === b) return true;
+        if (a == null || b == null) return a == b;
+        if (typeof a !== typeof b) return false;
+        if (Array.isArray(a) && Array.isArray(b)) {
+            if (a.length !== b.length) return false;
+            return a.every((x, i) => _esIgual(x, b[i]));
+        }
+        if (typeof a === 'object') {
+            const ka = Object.keys(a), kb = Object.keys(b);
+            if (ka.length !== kb.length) return false;
+            return ka.every(k => _esIgual(a[k], b[k]));
+        }
+        return false;
+    }
+
+    // Calcula el diff entre dos objetos — devuelve sólo los campos que
+    // cambian: { campo: {before, after}, ... }. Los campos en `ignorar`
+    // (array) se saltan (útil para timestamps, campos calculados, etc.).
+    function computeDiff(before, after, ignorar) {
+        const ignoreSet = new Set(Array.isArray(ignorar) ? ignorar : []);
+        const diff = {};
+        const keys = new Set([
+            ...Object.keys(before || {}),
+            ...Object.keys(after  || {})
+        ]);
+        for (const k of keys) {
+            if (ignoreSet.has(k)) continue;
+            const b = before && before[k];
+            const a = after  && after[k];
+            if (!_esIgual(b, a)) diff[k] = { before: b, after: a };
+        }
+        return diff;
+    }
+
+    // Registra una entrada en el historial. Fire-and-forget: si falla la
+    // petición NO bloqueamos la operación principal, sólo logueamos en
+    // consola. Devuelve una promesa por si el caller quiere await.
+    //
+    // Parámetros:
+    //   entry = {
+    //     ficha_id, solicitud_id,                    // uno de los dos, obligatorio
+    //     accion: 'create'|'update'|'delete'|…,      // obligatorio
+    //     descripcion: 'texto legible',
+    //     cambios: {campo:{before,after}},
+    //     metadata: {...}
+    //   }
+    //   opts = { actorOverride: {...} }              // para logs del cliente o sistema
+    function logHistorial(entry, opts) {
+        opts = opts || {};
+        const sess = getSession();
+        const actor = opts.actorOverride || (sess ? {
+            id:     sess.id || null,
+            nombre: sess.nombre || sess.user || 'desconocido',
+            rol:    sess.rol   || 'user'
+        } : { nombre: 'sistema', rol: 'sistema' });
+
+        const body = {
+            ficha_id:     entry.ficha_id     || null,
+            solicitud_id: entry.solicitud_id || null,
+            usuario:      actor,
+            accion:       entry.accion,
+            descripcion:  entry.descripcion || '',
+            cambios:      entry.cambios     || {},
+            metadata:     entry.metadata    || {}
+        };
+
+        return apiFetch(ENDPOINTS.historial, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        }).catch(err => {
+            console.warn('[historial] fallo al registrar acción (no bloqueante):', err && err.message);
+            return null;
+        });
+    }
+
+    // Recupera el historial de una ficha. Devuelve un array (o [] si hay
+    // error). Úsalo en UI para pintar el timeline.
+    async function getHistorial(filter) {
+        try {
+            const q = new URLSearchParams();
+            if (filter && filter.fichaId)     q.set('fichaId',     filter.fichaId);
+            if (filter && filter.solicitudId) q.set('solicitudId', filter.solicitudId);
+            if (filter && filter.limit)       q.set('limit',       String(filter.limit));
+            if (filter && filter.offset)      q.set('offset',      String(filter.offset));
+            const url = ENDPOINTS.historial + '?' + q.toString();
+            const res = await apiFetch(url, { method: 'GET' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            return Array.isArray(data.historial) ? data.historial : [];
+        } catch (err) {
+            console.warn('[historial] fallo al leer:', err && err.message);
+            return [];
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────
     //  EXPORTAR
     // ──────────────────────────────────────────────────────────
     global.YurestConfig = {
@@ -539,6 +643,9 @@
         actualizarBadgeSinAsignar,
         actualizarBadgeA3,
         a11yAbrirModal,
-        a11yCerrarModal
+        a11yCerrarModal,
+        logHistorial,
+        getHistorial,
+        computeDiff
     };
 })(window);

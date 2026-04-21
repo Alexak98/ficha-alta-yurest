@@ -64,8 +64,55 @@
     <div id="edit-banner" style="display:none;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:0.88rem;color:#1d4ed8;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         <span>Modo edición — ficha <strong id="edit-banner-id"></strong>. Modifica los campos y pulsa <strong>Guardar</strong> para actualizar.</span>
-        <a href="lista.html" style="margin-left:auto;font-size:0.82rem;color:#2563eb;text-decoration:underline;">← Volver sin guardar</a>
+        <button type="button" onclick="abrirHistorialFicha()" style="margin-left:auto;padding:5px 12px;background:#fff;border:1.5px solid #bfdbfe;color:#1d4ed8;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Historial
+        </button>
+        <a href="lista.html" style="font-size:0.82rem;color:#2563eb;text-decoration:underline;">← Volver sin guardar</a>
     </div>
+
+    <!-- Drawer: Historial de la ficha ─────────────────────────────── -->
+    <div id="hist-overlay" class="hist-overlay" onclick="cerrarHistorialFicha()"></div>
+    <aside id="hist-panel" class="hist-panel" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="hist-head">
+            <div>
+                <h2>Historial de la ficha</h2>
+                <p>Registro cronológico de cambios realizados.</p>
+            </div>
+            <button class="hist-close" onclick="cerrarHistorialFicha()" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="hist-body" id="hist-body">
+            <div class="hist-loading"><div class="spinner"></div> Cargando historial…</div>
+        </div>
+    </aside>
+    <style>
+        .hist-overlay { position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:900;opacity:0;visibility:hidden;transition:opacity .2s }
+        .hist-overlay.open { opacity:1;visibility:visible }
+        .hist-panel { position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:#f8fafc;z-index:901;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.08) }
+        .hist-panel.open { transform:translateX(0) }
+        .hist-head { padding:18px 24px;background:#fff;border-bottom:1.5px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between }
+        .hist-head h2 { margin:0;font-size:16px;font-weight:800;color:#0f172a }
+        .hist-head p  { margin:3px 0 0;font-size:12px;color:#64748b }
+        .hist-close { background:none;border:none;width:32px;height:32px;cursor:pointer;color:#94a3b8;font-size:22px;border-radius:8px;font-family:inherit }
+        .hist-close:hover { background:#f1f5f9;color:#1e293b }
+        .hist-body { flex:1;overflow-y:auto;padding:20px 24px }
+        .hist-loading { text-align:center;padding:40px 0;color:#94a3b8;font-size:13px }
+        .hist-empty { text-align:center;padding:40px 16px;color:#94a3b8;background:#fff;border:1.5px dashed #e2e8f0;border-radius:12px;font-size:13px }
+        .hist-entry { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:10px;border-left:4px solid var(--hist-color, #94a3b8) }
+        .hist-entry-head { display:flex;align-items:center;gap:10px;margin-bottom:6px }
+        .hist-avatar { width:28px;height:28px;border-radius:50%;background:var(--hist-color,#94a3b8);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0 }
+        .hist-meta { flex:1;min-width:0 }
+        .hist-user { font-size:13px;font-weight:700;color:#0f172a }
+        .hist-fecha { font-size:11px;color:#94a3b8 }
+        .hist-badge { font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;background:var(--hist-color,#f1f5f9);color:#fff;opacity:.9 }
+        .hist-desc { font-size:13px;color:#334155;line-height:1.5;margin:4px 0 }
+        .hist-changes { margin-top:8px;padding:10px 12px;background:#f8fafc;border-radius:8px;font-size:12px;color:#475569 }
+        .hist-change-row { display:flex;gap:6px;margin:3px 0;flex-wrap:wrap }
+        .hist-change-field { font-weight:700;color:#0f172a;min-width:110px }
+        .hist-change-before { color:#dc2626;text-decoration:line-through }
+        .hist-change-after  { color:#16a34a;font-weight:600 }
+        .hist-change-arrow  { color:#94a3b8 }
+    </style>
 
     <div class="comercial-bar">
         <label for="comercial" class="comercial-label">Comercial</label>
@@ -2218,6 +2265,127 @@
     // pulse "Guardar" varias veces antes de que se deshabilite el botón.
     let _enviando = false;
 
+    // ── Historial de acciones de la ficha ────────────────────────────────
+    // Drawer que lista cronológicamente las entradas de fichas_historial
+    // para la ficha actualmente en edición. Se abre con el botón del banner
+    // de edición y se cierra con Escape, click fuera o la X.
+    const HIST_COLORS = {
+        create:            '#3b82f6',
+        update:            '#fc5858',
+        delete:            '#dc2626',
+        estado_change:     '#8b5cf6',
+        adjunto_add:       '#10b981',
+        adjunto_remove:    '#f59e0b',
+        sepa_firmado:      '#0ea5e9',
+        cliente_respondio: '#22c55e',
+        a3_grabado:        '#16a34a',
+        a3_desmarcado:     '#94a3b8',
+        proyecto_creado:   '#14b8a6',
+        enviado_cliente:   '#0284c7',
+        password_reset:    '#7c3aed',
+        permiso_change:    '#6366f1',
+        otro:              '#64748b'
+    };
+    const HIST_LABELS = {
+        create:            'Alta',
+        update:            'Edición',
+        delete:            'Borrado',
+        estado_change:     'Estado',
+        adjunto_add:       'Adjunto +',
+        adjunto_remove:    'Adjunto -',
+        sepa_firmado:      'SEPA firmado',
+        cliente_respondio: 'Cliente respondió',
+        a3_grabado:        'A3 ✓',
+        a3_desmarcado:     'A3 —',
+        proyecto_creado:   'Proyecto',
+        enviado_cliente:   'Enviado',
+        password_reset:    'Password',
+        permiso_change:    'Permisos',
+        otro:              'Otro'
+    };
+
+    function _histIniciales(nombre) {
+        const p = String(nombre || '?').trim().split(/\s+/);
+        return ((p[0]?.[0] || '?') + (p[1]?.[0] || '')).toUpperCase();
+    }
+    function _histFormatFecha(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return String(iso);
+        return d.toLocaleString('es-ES', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function _histFormatValor(v) {
+        if (v == null) return '—';
+        if (Array.isArray(v)) return v.length === 0 ? '[]' : v.join(', ');
+        if (typeof v === 'object') return JSON.stringify(v).slice(0, 80);
+        const s = String(v);
+        return s.length > 80 ? s.slice(0, 77) + '…' : s;
+    }
+    const _esc = YurestConfig.escHtml;
+
+    async function abrirHistorialFicha() {
+        if (!_editId) return;
+        document.getElementById('hist-overlay').classList.add('open');
+        const panel = document.getElementById('hist-panel');
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+
+        const body = document.getElementById('hist-body');
+        body.innerHTML = '<div class="hist-loading"><div class="spinner"></div> Cargando historial…</div>';
+
+        const rows = await YurestConfig.getHistorial({ fichaId: _editId, limit: 200 });
+        if (!rows.length) {
+            body.innerHTML = '<div class="hist-empty">Aún no hay acciones registradas para esta ficha.</div>';
+            return;
+        }
+
+        body.innerHTML = rows.map(r => {
+            const color = HIST_COLORS[r.accion] || HIST_COLORS.otro;
+            const label = HIST_LABELS[r.accion] || r.accion;
+            const cambios = r.cambios && typeof r.cambios === 'object' ? r.cambios : {};
+            const camposCambiados = Object.keys(cambios);
+            const cambiosHtml = camposCambiados.length === 0 ? '' : `
+                <div class="hist-changes">
+                    ${camposCambiados.slice(0, 20).map(k => `
+                        <div class="hist-change-row">
+                            <span class="hist-change-field">${_esc(k)}</span>
+                            <span class="hist-change-before">${_esc(_histFormatValor(cambios[k].before))}</span>
+                            <span class="hist-change-arrow">→</span>
+                            <span class="hist-change-after">${_esc(_histFormatValor(cambios[k].after))}</span>
+                        </div>
+                    `).join('')}
+                    ${camposCambiados.length > 20 ? `<div style="margin-top:6px;font-size:11px;color:#94a3b8">+ ${camposCambiados.length - 20} más</div>` : ''}
+                </div>`;
+            const nombre = r.usuario_nombre || (r.usuario_rol === 'cliente' ? 'Cliente' : r.usuario_rol === 'sistema' ? 'Sistema' : '—');
+            return `
+                <article class="hist-entry" style="--hist-color:${color}">
+                    <div class="hist-entry-head">
+                        <span class="hist-avatar" style="background:${color}">${_esc(_histIniciales(nombre))}</span>
+                        <div class="hist-meta">
+                            <div class="hist-user">${_esc(nombre)}</div>
+                            <div class="hist-fecha">${_esc(_histFormatFecha(r.creado_at))}</div>
+                        </div>
+                        <span class="hist-badge" style="background:${color}">${_esc(label)}</span>
+                    </div>
+                    ${r.descripcion ? `<div class="hist-desc">${_esc(r.descripcion)}</div>` : ''}
+                    ${cambiosHtml}
+                </article>`;
+        }).join('');
+    }
+
+    function cerrarHistorialFicha() {
+        document.getElementById('hist-overlay').classList.remove('open');
+        const panel = document.getElementById('hist-panel');
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('hist-panel')?.classList.contains('open')) {
+            cerrarHistorialFicha();
+        }
+    });
+
     async function guardarCambios() {
         if (_enviando) return;
         _enviando = true;
@@ -2279,6 +2447,50 @@
                 const msg = _editId ? '✅ Ficha actualizada correctamente. Redirigiendo al listado…'
                                     : '✅ Ficha guardada correctamente. Redirigiendo al listado…';
                 showStatus(msg, 'success');
+
+                // Audit log: registrar la acción en el historial de la ficha.
+                //   - Edición: incluimos el diff calculado contra el snapshot
+                //     original cargado al entrar en modo edición.
+                //   - Alta nueva: no tenemos ID garantizado sincrónicamente
+                //     (lo asigna Supabase), así que registramos como 'create'
+                //     sin ficha_id si no hay _editId — el workflow 11
+                //     reconcilia luego por nombre si hace falta.
+                try {
+                    // Campos que ignoramos en el diff: se calculan/generan y
+                    // generarían ruido en el historial.
+                    const IGNORE_DIFF = ['updated_at','created_at','id','ID','row_number','Adjuntos','adjuntos','ts','numero_ficha'];
+                    if (_editId) {
+                        const diff = YurestConfig.computeDiff(_editSnapshotOriginal || {}, data, IGNORE_DIFF);
+                        const nCampos = Object.keys(diff).length;
+                        YurestConfig.logHistorial({
+                            ficha_id: _editId,
+                            accion: 'update',
+                            descripcion: nCampos === 0
+                                ? 'Ficha guardada sin cambios detectables'
+                                : `Editados ${nCampos} campo${nCampos === 1 ? '' : 's'}`,
+                            cambios: diff,
+                            metadata: {
+                                sociedad: data['Nombre Sociedad'] || data['Denominación Social'] || '',
+                                comercial: data['Nombre Comercial'] || '',
+                                estado: data['Estado'] || ''
+                            }
+                        });
+                    } else {
+                        // Alta nueva — sin ficha_id todavía; dejamos el registro
+                        // con descripcion y metadata para rastreo por nombre.
+                        YurestConfig.logHistorial({
+                            ficha_id: null,
+                            accion: 'create',
+                            descripcion: 'Ficha creada',
+                            metadata: {
+                                sociedad: data['Nombre Sociedad'] || data['Denominación Social'] || '',
+                                comercial: data['Nombre Comercial'] || '',
+                                cif: data['CIF/NIF'] || ''
+                            }
+                        });
+                    }
+                } catch (_) { /* nunca bloquear la redirección por un fallo de log */ }
+
                 sessionStorage.removeItem('yurest_edit_ficha');
                 sessionStorage.removeItem('yurest_completar_id');
                 sessionStorage.setItem('yurest_refresh_lista', '1');
@@ -2372,8 +2584,18 @@
 
     // ── Modo Edición ──────────────────────────────────────────────────────────
     let _editId = null;
+    // Snapshot de la ficha original al entrar en edición, para calcular el
+    // diff al guardar y registrarlo en el historial.
+    let _editSnapshotOriginal = null;
 
     function cargarModoEdicion(f) {
+        // Tomamos snapshot del objeto recibido (deep-clone superficial con
+        // JSON roundtrip — es suficiente para campos planos y arrays de
+        // strings/objetos simples). Lo usamos luego en guardarCambios() para
+        // comparar con el estado final y construir el diff del historial.
+        try { _editSnapshotOriginal = JSON.parse(JSON.stringify(f)); }
+        catch (_) { _editSnapshotOriginal = null; }
+
         // Acepta tanto fichas (ID) como solicitudes (ID Solicitud).
         // Saneamos: descartamos strings "undefined"/"null" que podrían
         // venir de un f['ID'] = String(undefined) aguas arriba — si se
