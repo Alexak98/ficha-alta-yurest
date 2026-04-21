@@ -2058,7 +2058,12 @@
         document.getElementById('del-modal-desc').textContent   = desc;
         document.getElementById('del-entity-name').textContent  = nombre;
         document.getElementById('del-confirm-input').value      = '';
-        document.getElementById('btn-del-confirm').disabled     = true;
+        // El botón se resetea SIEMPRE al abrir: si el borrado anterior
+        // se cerró por éxito sin pasar por el catch, el textContent
+        // habría quedado como "Eliminando…".
+        const btn = document.getElementById('btn-del-confirm');
+        btn.disabled    = true;
+        btn.textContent = 'Eliminar';
         document.getElementById('confirm-del-overlay').classList.add('active');
         setTimeout(() => document.getElementById('del-confirm-input').focus(), 50);
     }
@@ -2137,6 +2142,10 @@
         const btn = document.getElementById('btn-del-confirm');
         btn.disabled = true;
         btn.textContent = 'Eliminando…';
+        // try/finally: el camino de éxito antes no reseteaba el botón,
+        // así que al abrir el modal para la siguiente ficha seguía
+        // mostrando "Eliminando…" y deshabilitado. Ahora siempre vuelve
+        // a un estado coherente antes de salir de la función.
         try {
             if (fichaParaEliminar) {
                 const { ficha, origen } = fichaParaEliminar;
@@ -2184,8 +2193,6 @@
             }
         } catch (err) {
             cerrarModalEliminar();
-            btn.textContent = 'Eliminar';
-            btn.disabled = false;
             if (err.code === 'not_found') {
                 mostrarToast('No se borró: el registro ya no existía. Refrescando listado…', 'warning');
                 recargarFichas();
@@ -2196,6 +2203,13 @@
             } else {
                 mostrarToast('Error técnico al eliminar: ' + err.message, 'error', 6000);
             }
+        } finally {
+            // Resetea el botón del modal, esté abierto o no. Al reabrir el
+            // modal para otra ficha, _abrirModalEliminar() también lo
+            // resetea — belt-and-suspenders para evitar cualquier estado
+            // colgado si alguien llama a confirmarEliminar() por otra vía.
+            btn.textContent = 'Eliminar';
+            btn.disabled = false;
         }
     }
 
