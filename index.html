@@ -202,8 +202,10 @@
         .fn-item-hidden { display: none; }
 
         /* Scroll-margin para que los anchors no queden tapados por el
-           sticky header. */
-        .card[id], #locales-container, #lite-section {
+           sticky header. Se aplica también a #status-msg, porque al
+           mostrar un error de guardado hacemos scrollIntoView hasta él
+           y el header fijo (~80px) tapaba la primera línea. */
+        .card[id], #locales-container, #lite-section, #status-msg {
             scroll-margin-top: 90px;
         }
 
@@ -2739,7 +2741,10 @@
         const el = document.getElementById('status-msg');
         el.textContent = msg;
         el.className = 'status-msg ' + (msg ? type : 'hidden');
-        if (msg) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // block:'start' + scroll-margin-top:90px en CSS → el mensaje
+        // queda siempre bajo el header sticky y totalmente visible, no
+        // pegado al borde superior (que era lo que pasaba con 'nearest').
+        if (msg) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ── Modo Edición ──────────────────────────────────────────────────────────
