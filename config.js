@@ -82,16 +82,17 @@
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
     // tabla usuarios en la migración 2026-04-21_01_usuarios.sql.
     const PERMISOS_DISPONIBLES = [
-        { id: 'ventas',        label: 'Ventas',               grupo: 'Informes'       },
-        { id: 'distribucion',  label: 'Implementadores',      grupo: 'Informes'       },
-        { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'      },
-        { id: 'bajas',         label: 'Bajas',                grupo: 'Comercial'      },
-        { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación' },
-        { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación' },
-        { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'   },
-        { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'        },
-        { id: 'admin',         label: 'Administración',       grupo: 'Admin'          },
-        { id: 'docs',          label: 'Documentación',        grupo: 'Otros'          }
+        { id: 'ventas',        label: 'Ventas',               grupo: 'Informes'         },
+        { id: 'distribucion',  label: 'Implementadores',      grupo: 'Informes'         },
+        { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'        },
+        { id: 'bajas',         label: 'Bajas',                grupo: 'Comercial'        },
+        { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación'   },
+        { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación'   },
+        { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'     },
+        { id: 'clientes',      label: 'Clientes',             grupo: 'Customer Success' },
+        { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
+        { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
+        { id: 'docs',          label: 'Documentación',        grupo: 'Otros'            }
     ];
 
     // ──────────────────────────────────────────────────────────

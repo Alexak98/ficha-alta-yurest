@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Clientes — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('clientes');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── Sidebar (shared layout) ────────────────────────────────── */
+        .sidebar-overlay { position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:500;opacity:0;pointer-events:none;transition:opacity .25s }
+        .sidebar-overlay.open { opacity:1;pointer-events:all }
+        .sidebar { position:fixed;top:0;left:0;width:248px;height:100vh;background:#fff;z-index:600;transform:translateX(-100%);transition:transform .26s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,.13);display:flex;flex-direction:column }
+        .sidebar.open { transform:translateX(0) }
+        .sidebar-hd { display:flex;align-items:center;justify-content:space-between;padding:20px 18px 16px;border-bottom:1.5px solid #f1f5f9 }
+        .sidebar-brand { display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#fc5858 }
+        .sidebar-brand-dot { width:8px;height:8px;background:#fc5858;border-radius:50%;box-shadow:0 0 0 3px rgba(252,88,88,.25) }
+        .sidebar-close { width:28px;height:28px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s }
+        .sidebar-close:hover { background:#fee2e2;border-color:#fecaca;color:#dc2626 }
+        .sidebar-label { padding:16px 18px 6px;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8 }
+        .sidebar-item { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:.88rem;font-weight:500;color:#334155;text-decoration:none;cursor:pointer;transition:background .14s }
+        .sidebar-item:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-item.active { background:#fff1f1;color:#fc5858;font-weight:700 }
+        .sidebar-item svg { flex-shrink:0;opacity:.7 }
+        .sidebar-item.active svg { opacity:1 }
+        .sidebar-group { margin:2px 0 }
+        .sidebar-group-header { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:.88rem;font-weight:500;color:#334155;cursor:pointer;user-select:none;transition:background .14s,color .14s }
+        .sidebar-group-header:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-group-header svg { flex-shrink:0;opacity:.7 }
+        .sidebar-group-chevron { margin-left:auto;transition:transform .18s }
+        .sidebar-group.open .sidebar-group-chevron { transform:rotate(90deg) }
+        .sidebar-group-children { max-height:0;overflow:hidden;transition:max-height .2s ease }
+        .sidebar-group.open .sidebar-group-children { max-height:500px }
+        .sidebar-group-children .sidebar-item { padding-left:44px;font-size:.84rem;position:relative }
+        .sidebar-group-children .sidebar-item::before { content:'';position:absolute;left:30px;top:50%;width:8px;height:1.5px;background:#cbd5e1 }
+        .sidebar-badge { display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#fb923c,#f59e0b);border-radius:999px;margin-left:auto }
+        .sidebar-badge:empty { display:none }
+        .sidebar-group-badge { display:none;min-width:20px;height:20px;padding:0 7px;font-size:10px;font-weight:800;color:#fff;background:linear-gradient(135deg,#fb923c,#f59e0b);border-radius:999px;align-items:center;justify-content:center;margin-left:auto } .sidebar-group:not(.open) .sidebar-group-badge:not(:empty) { display:inline-flex }
+        .sidebar-ft { margin-top:auto;padding:16px 18px;border-top:1.5px solid #f1f5f9 }
+        .sidebar-ft button { display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;color:#dc2626;font-size:.85rem;font-weight:600;font-family:inherit;cursor:pointer }
+        .sidebar-ft button:hover { background:#fee2e2 }
+        .btn-menu { display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex-shrink:0;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;color:#64748b;transition:border-color .15s }
+        .btn-menu:hover { border-color:#fc5858;color:#fc5858;background:#fff1f1 }
+
+        /* ── Layout ─────────────────────────────────────────────── */
+        .page-header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#fff;
+            position:sticky;top:0;z-index:50
+        }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.1rem;font-weight:800;color:#1e293b }
+        .page-content { max-width:1400px;margin:0 auto;padding:24px }
+
+        /* ── Hero + KPIs ────────────────────────────────────────── */
+        .clientes-hero {
+            display:flex;justify-content:space-between;align-items:flex-end;
+            gap:16px;flex-wrap:wrap;margin-bottom:18px;
+        }
+        .clientes-hero h2 { font-size:1.3rem;font-weight:800;letter-spacing:-.01em }
+        .clientes-hero p  { font-size:13px;color:#64748b;margin-top:3px }
+        .clientes-kpis { display:flex;gap:10px;flex-wrap:wrap }
+        .clientes-kpi {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            padding:10px 16px;min-width:110px;
+        }
+        .clientes-kpi-label { font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em }
+        .clientes-kpi-value { font-size:1.4rem;font-weight:800;color:#0f172a;line-height:1.2;margin-top:2px }
+        .clientes-kpi-value.pink { color:#ec4899 }
+
+        /* ── Filtros ─────────────────────────────────────────────── */
+        .filter-bar {
+            display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+            padding:12px 0;margin-bottom:4px;
+        }
+        .search-wrap { position:relative;flex:1;max-width:340px }
+        .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+        .search-input { width:100%;padding:8px 36px 8px 36px;font-family:inherit;font-size:.85rem;color:#1e293b;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;transition:border-color .15s,background .15s }
+        .search-input:focus { outline:none;border-color:#fc5858;background:#fff }
+        .filter-label { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-right:4px }
+        .filter-select {
+            padding:7px 12px;font-family:inherit;font-size:.83rem;color:#334155;
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;cursor:pointer;
+        }
+        .filter-select.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
+        .filter-sep { width:1px;height:22px;background:#e2e8f0;margin:0 4px }
+        .chip-filter { display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:.82rem;font-weight:600;color:#475569;background:#fff;border:1.5px solid #e2e8f0;cursor:pointer;user-select:none;transition:all .15s }
+        .chip-filter:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .chip-filter.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
+        .chip-filter.chip-all { background:#0f172a;border-color:#0f172a;color:#fff }
+        .chip-filter.chip-all.active { background:#fc5858;border-color:#fc5858;color:#fff }
+        .chip-filter .chip-count { font-size:.7rem;font-weight:700;background:#f1f5f9;color:#64748b;padding:1px 7px;border-radius:999px }
+        .chip-filter.active .chip-count { background:#fc5858;color:#fff }
+        .chip-filter.chip-all .chip-count { background:rgba(255,255,255,.2);color:#fff }
+
+        /* ── Tabla ──────────────────────────────────────────────── */
+        .table-wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden }
+        .clientes-table { width:100%;border-collapse:separate;border-spacing:0 }
+        .clientes-table th {
+            text-align:left;font-size:.7rem;letter-spacing:.08em;
+            text-transform:uppercase;color:#94a3b8;font-weight:700;
+            padding:12px 14px;background:#f8fafc;border-bottom:1.5px solid #e2e8f0;
+        }
+        .clientes-table td { padding:14px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;vertical-align:middle }
+        .clientes-table tr:last-child td { border-bottom:0 }
+        .clientes-table tr { cursor:pointer;transition:background .12s }
+        .clientes-table tr:hover td { background:#fff9fb }
+
+        .cl-nombre { font-weight:700;color:#0f172a }
+        .cl-sociedad { font-size:11px;color:#94a3b8;margin-top:2px }
+        .cl-tipo-badge {
+            display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;
+            border-radius:999px;text-transform:uppercase;letter-spacing:.04em;
+            background:#f1f5f9;color:#475569;
+        }
+        .cl-tipo-badge.lite { background:#dbeafe;color:#1e40af }
+        .cl-tipo-badge.corp { background:#fef3c7;color:#92400e }
+        .cl-estado-badge {
+            display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;
+            border-radius:999px;text-transform:uppercase;letter-spacing:.04em;
+        }
+        .cl-estado-badge.activo   { background:#dcfce7;color:#166534 }
+        .cl-estado-badge.pendiente{ background:#fef3c7;color:#92400e }
+
+        .empty-state {
+            text-align:center;padding:56px 20px;color:#94a3b8;
+            background:#fff;border:1.5px dashed #e2e8f0;border-radius:14px;
+        }
+        .empty-state h3 { font-size:1rem;font-weight:700;color:#475569;margin-bottom:4px }
+
+        .loading { text-align:center;padding:48px 0;color:#94a3b8 }
+        .loading .spinner { display:inline-block;width:22px;height:22px;border:3px solid #e2e8f0;border-top-color:#ec4899;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px }
+        @keyframes spin { to { transform:rotate(360deg) } }
+
+        /* ── Panel lateral detalle cliente ─────────────────────── */
+        .cl-panel-overlay { position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:700;opacity:0;visibility:hidden;transition:opacity .2s }
+        .cl-panel-overlay.open { opacity:1;visibility:visible }
+        .cl-panel { position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:#f8fafc;z-index:701;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.08) }
+        .cl-panel.open { transform:translateX(0) }
+        .cl-panel-head { padding:18px 24px;background:#fff;border-bottom:1.5px solid #e2e8f0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px }
+        .cl-panel-head h2 { margin:0;font-size:16px;font-weight:800;color:#0f172a }
+        .cl-panel-head p  { margin:3px 0 0;font-size:12px;color:#64748b }
+        .cl-panel-close { background:none;border:none;width:32px;height:32px;cursor:pointer;color:#94a3b8;font-size:22px;border-radius:8px;font-family:inherit;flex-shrink:0 }
+        .cl-panel-close:hover { background:#f1f5f9;color:#1e293b }
+        .cl-panel-body { flex:1;overflow-y:auto;padding:18px 24px }
+        .cl-field { background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:8px }
+        .cl-field-label { font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em }
+        .cl-field-value { font-size:13.5px;color:#1e293b;margin-top:3px;word-break:break-word }
+        .cl-field-value.empty { color:#cbd5e1;font-style:italic }
+        .cl-section-title { font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px }
+        .cl-panel-actions { padding:14px 24px;background:#fff;border-top:1.5px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end }
+        .btn { padding:8px 16px;font-family:inherit;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;border:1.5px solid transparent;display:inline-flex;align-items:center;gap:6px }
+        .btn-secondary { background:#fff;color:#475569;border-color:#e2e8f0 }
+        .btn-secondary:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .btn-primary { background:#ec4899;color:#fff }
+        .btn-primary:hover { background:#be185d }
+
+        @media (max-width: 720px) {
+            .clientes-hero { flex-direction:column;align-items:stretch }
+            .clientes-table thead { display:none }
+            .clientes-table tr { display:block;padding:10px;border-bottom:1px solid #f1f5f9 }
+            .clientes-table td { display:block;padding:3px 8px;border:0 }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar"></nav>
+
+<div class="page-header">
+    <button class="btn-menu" onclick="openSidebar()" title="Menú" aria-label="Abrir menú lateral">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+    <h1>Customer Success — Clientes</h1>
+</div>
+
+<div class="page-content">
+
+    <div class="clientes-hero">
+        <div>
+            <h2>Clientes</h2>
+            <p>Listado de clientes activos del portal.</p>
+        </div>
+        <div class="clientes-kpis">
+            <div class="clientes-kpi">
+                <div class="clientes-kpi-label">Total</div>
+                <div class="clientes-kpi-value pink" id="kpi-total">0</div>
+            </div>
+            <div class="clientes-kpi">
+                <div class="clientes-kpi-label">Alta este mes</div>
+                <div class="clientes-kpi-value" id="kpi-mes">0</div>
+            </div>
+            <div class="clientes-kpi">
+                <div class="clientes-kpi-label">Lite / Corporate</div>
+                <div class="clientes-kpi-value" id="kpi-tipos">— / —</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-bar" id="filter-bar" style="display:none">
+        <div class="search-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="search-input" class="search-input" type="search" placeholder="Buscar por nombre, CIF, email…" oninput="aplicarFiltros()">
+        </div>
+        <div class="filter-sep"></div>
+        <span class="filter-label">Tipo</span>
+        <div id="chips-tipo" style="display:flex;gap:6px"></div>
+        <div class="filter-sep"></div>
+        <span class="filter-label">Comercial</span>
+        <select class="filter-select" id="filtro-comercial" onchange="setFiltroComercial(this)">
+            <option value="">Todos</option>
+        </select>
+        <div class="filter-sep"></div>
+        <span class="filter-label">Implementador</span>
+        <select class="filter-select" id="filtro-implementador" onchange="setFiltroImplementador(this)">
+            <option value="">Todos</option>
+        </select>
+    </div>
+
+    <div id="loading" class="loading"><span class="spinner"></span>Cargando clientes…</div>
+    <div id="empty-state" class="empty-state" style="display:none">
+        <div style="font-size:2.4rem;margin-bottom:8px">🤝</div>
+        <h3>Aún no hay clientes</h3>
+        <p>Los clientes activos aparecerán aquí cuando los comerciales completen sus fichas.</p>
+    </div>
+    <div id="table-wrap" class="table-wrap" style="display:none">
+        <table class="clientes-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Tipo</th>
+                    <th>Comercial</th>
+                    <th>Implementador</th>
+                    <th>TPV</th>
+                    <th>Alta</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Panel lateral de detalle del cliente ─────────────────────── -->
+<div id="cl-overlay" class="cl-panel-overlay" onclick="cerrarPanel()"></div>
+<aside id="cl-panel" class="cl-panel" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="cl-panel-head">
+        <div>
+            <h2 id="cl-panel-nombre">—</h2>
+            <p id="cl-panel-sociedad">—</p>
+        </div>
+        <button class="cl-panel-close" onclick="cerrarPanel()" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="cl-panel-body" id="cl-panel-body"></div>
+    <div class="cl-panel-actions">
+        <button class="btn btn-secondary" onclick="cerrarPanel()">Cerrar</button>
+        <button class="btn btn-primary" id="cl-panel-ver-ficha" onclick="abrirFichaCompleta()">Ver ficha completa</button>
+    </div>
+</aside>
+
+<script src="sidebar.js"></script>
+<script>YurestSidebar.render('clientes');</script>
+
+<script>
+    const esc = YurestConfig.escHtml;
+    const WEBHOOK_ALTAS = YurestConfig.ENDPOINTS.altas;
+
+    let todos = [];
+    let filtradas = [];
+    let filtroTipo = '';
+    let filtroComercial = '';
+    let filtroImplementador = '';
+    let clienteActual = null;
+
+    // ── Sidebar helpers ──────────────────────────────────────────────
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open');  document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+    // ── Carga y normalización ────────────────────────────────────────
+    async function cargar() {
+        document.getElementById('loading').style.display = '';
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('table-wrap').style.display = 'none';
+        try {
+            const url = WEBHOOK_ALTAS + '?_=' + Date.now();
+            const res = await YurestConfig.apiFetch(url, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            const raw = Array.isArray(data) ? data
+                : Array.isArray(data.clientes) ? data.clientes
+                : Array.isArray(data.data) ? data.data : [];
+            todos = raw.map(normalizarCliente)
+                       .filter(c => c.nombre)              // descartar filas con solo ID
+                       .filter(c => c.estado !== 'pendiente'); // fichas solo-solicitadas no son clientes aún
+        } catch (err) {
+            console.warn('[clientes] error:', err);
+            todos = [];
+        }
+        document.getElementById('loading').style.display = 'none';
+
+        if (todos.length === 0) {
+            document.getElementById('empty-state').style.display = '';
+            return;
+        }
+        actualizarKPIs();
+        poblarFiltros();
+        document.getElementById('filter-bar').style.display = 'flex';
+        aplicarFiltros();
+    }
+
+    function normalizarCliente(f) {
+        // Traducir snake_case de Supabase → campos legibles
+        const estadoRaw = String(f.estado || f['Estado'] || '').toLowerCase();
+        const estado = estadoRaw === 'pendiente' ? 'pendiente' : 'activo';
+        const tipoRaw = String(f.tipo_cliente || f['Tipo Cliente'] || '').toLowerCase();
+        let tipo = 'otro';
+        if (tipoRaw.includes('lite') || tipoRaw === 'planes') tipo = 'lite';
+        else if (tipoRaw.includes('corporate') || tipoRaw.includes('corp')) tipo = 'corporate';
+        return {
+            id:            f.id || f.ID,
+            nombre:        f.nombre_comercial || f['Nombre Comercial'] || f.denominacion || f['Nombre Sociedad'] || '',
+            sociedad:      f.denominacion || f['Nombre Sociedad'] || '',
+            cif:           f.cif || f['CIF/NIF'] || '',
+            email:         f.email || f['Email'] || '',
+            comercial:     f.comercial || f['Comercial'] || '',
+            implementador: f.implementador || f['Implementador'] || '',
+            tpv:           f.tpv || f['TPV'] || '',
+            tipo,
+            tipoOriginal:  f.tipo_cliente || f['Tipo Cliente'] || '',
+            fecha:         f.created_at || f['Fecha'] || '',
+            estado,
+            modulos:       Array.isArray(f.modulos) ? f.modulos : (typeof f.modulos === 'string' && f.modulos.startsWith('[') ? (()=>{ try { return JSON.parse(f.modulos); } catch(_) { return []; } })() : []),
+            calle:         f.calle || '',
+            municipio:     f.municipio || '',
+            provincia:     f.provincia || '',
+            cp:            f.cp || '',
+            jp_nombre:     (f.jp_nombre || '') + ' ' + (f.jp_apellidos || ''),
+            jp_mail:       f.jp_mail || '',
+            jp_telefono:   f.jp_telefono || '',
+            raw: f
+        };
+    }
+
+    // ── KPIs ──────────────────────────────────────────────────────────
+    function actualizarKPIs() {
+        document.getElementById('kpi-total').textContent = todos.length;
+
+        const ahora = new Date();
+        const mes = ahora.getMonth(), yr = ahora.getFullYear();
+        const esteMes = todos.filter(c => {
+            const d = new Date(c.fecha);
+            return !isNaN(d) && d.getMonth() === mes && d.getFullYear() === yr;
+        }).length;
+        document.getElementById('kpi-mes').textContent = esteMes;
+
+        const lite = todos.filter(c => c.tipo === 'lite').length;
+        const corp = todos.filter(c => c.tipo === 'corporate').length;
+        document.getElementById('kpi-tipos').textContent = `${lite} / ${corp}`;
+    }
+
+    // ── Filtros ───────────────────────────────────────────────────────
+    function poblarFiltros() {
+        // Chips de tipo
+        const tipos = ['lite','corporate'];
+        const counts = { lite:0, corporate:0, otro:0 };
+        todos.forEach(c => { counts[c.tipo] = (counts[c.tipo] || 0) + 1; });
+        const chipsDiv = document.getElementById('chips-tipo');
+        chipsDiv.innerHTML = `
+            <button class="chip-filter chip-all active" onclick="setFiltroTipo('')">
+                Todos <span class="chip-count">${todos.length}</span>
+            </button>
+            ${tipos.map(t => counts[t] > 0 ? `
+                <button class="chip-filter" data-tipo="${t}" onclick="setFiltroTipo('${t}')">
+                    ${t === 'lite' ? 'Lite' : 'Corporate'}
+                    <span class="chip-count">${counts[t]}</span>
+                </button>` : '').join('')}
+        `;
+
+        // Comerciales
+        const comerciales = [...new Set(todos.map(c => c.comercial).filter(Boolean))].sort();
+        document.getElementById('filtro-comercial').innerHTML =
+            '<option value="">Todos</option>' +
+            comerciales.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+        // Implementadores
+        const impls = [...new Set(todos.map(c => c.implementador).filter(Boolean))].sort();
+        document.getElementById('filtro-implementador').innerHTML =
+            '<option value="">Todos</option>' +
+            impls.map(i => `<option value="${esc(i)}">${esc(i)}</option>`).join('');
+    }
+
+    function setFiltroTipo(t) {
+        filtroTipo = t;
+        document.querySelectorAll('#chips-tipo .chip-filter').forEach(c => {
+            const match = (t === '' && c.classList.contains('chip-all')) || c.dataset.tipo === t;
+            c.classList.toggle('active', match);
+        });
+        aplicarFiltros();
+    }
+    function setFiltroComercial(sel) {
+        filtroComercial = sel.value;
+        sel.classList.toggle('active', !!sel.value);
+        aplicarFiltros();
+    }
+    function setFiltroImplementador(sel) {
+        filtroImplementador = sel.value;
+        sel.classList.toggle('active', !!sel.value);
+        aplicarFiltros();
+    }
+
+    function aplicarFiltros() {
+        const q = _norm(document.getElementById('search-input')?.value || '');
+        filtradas = todos.filter(c => {
+            if (filtroTipo && c.tipo !== filtroTipo) return false;
+            if (filtroComercial && c.comercial !== filtroComercial) return false;
+            if (filtroImplementador && c.implementador !== filtroImplementador) return false;
+            if (q) {
+                const hay = [c.nombre, c.sociedad, c.cif, c.email, c.tpv]
+                    .some(v => _norm(v).includes(q));
+                if (!hay) return false;
+            }
+            return true;
+        });
+        renderTabla();
+    }
+    function _norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+
+    // ── Render tabla ──────────────────────────────────────────────────
+    function renderTabla() {
+        const empty = document.getElementById('empty-state');
+        const wrap  = document.getElementById('table-wrap');
+        if (filtradas.length === 0) {
+            wrap.style.display = 'none';
+            empty.style.display = '';
+            empty.querySelector('h3').textContent = 'Sin resultados';
+            empty.querySelector('p').textContent  = 'Prueba a ajustar los filtros o la búsqueda.';
+            return;
+        }
+        empty.style.display = 'none';
+        wrap.style.display = '';
+        document.getElementById('tbody').innerHTML = filtradas.map((c, i) => {
+            const tipoCls = c.tipo === 'lite' ? 'lite' : (c.tipo === 'corporate' ? 'corp' : '');
+            const tipoLbl = c.tipoOriginal || (c.tipo === 'lite' ? 'Lite' : c.tipo === 'corporate' ? 'Corporate' : '—');
+            return `
+                <tr onclick="abrirCliente(${i})">
+                    <td>
+                        <div class="cl-nombre">${esc(c.nombre)}</div>
+                        ${c.sociedad && c.sociedad !== c.nombre ? `<div class="cl-sociedad">${esc(c.sociedad)}</div>` : ''}
+                    </td>
+                    <td><span class="cl-tipo-badge ${tipoCls}">${esc(tipoLbl)}</span></td>
+                    <td>${esc(c.comercial || '—')}</td>
+                    <td>${esc(c.implementador || '—')}</td>
+                    <td>${esc(c.tpv || '—')}</td>
+                    <td style="color:#64748b">${esc(_fmtFecha(c.fecha))}</td>
+                    <td><span class="cl-estado-badge ${c.estado}">${c.estado === 'activo' ? 'Activo' : 'Pendiente'}</span></td>
+                </tr>`;
+        }).join('');
+    }
+    function _fmtFecha(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
+    }
+
+    // ── Panel detalle ─────────────────────────────────────────────────
+    function abrirCliente(idx) {
+        const c = filtradas[idx];
+        if (!c) return;
+        clienteActual = c;
+        document.getElementById('cl-panel-nombre').textContent   = c.nombre || '—';
+        document.getElementById('cl-panel-sociedad').textContent = c.sociedad && c.sociedad !== c.nombre ? c.sociedad : (c.cif || '—');
+
+        const body = document.getElementById('cl-panel-body');
+        const tipoLbl = c.tipoOriginal || (c.tipo === 'lite' ? 'Lite' : c.tipo === 'corporate' ? 'Corporate' : '—');
+        const dir = [c.calle, c.cp, c.municipio, c.provincia].filter(Boolean).join(', ');
+        const modulos = Array.isArray(c.modulos) && c.modulos.length > 0 ? c.modulos.join(', ') : '';
+
+        body.innerHTML = `
+            <div class="cl-section-title">Identidad</div>
+            ${_fieldHtml('Tipo de cliente', tipoLbl)}
+            ${_fieldHtml('CIF / NIF', c.cif)}
+            ${_fieldHtml('Email', c.email)}
+            ${_fieldHtml('Dirección', dir)}
+
+            <div class="cl-section-title">Equipo Yurest</div>
+            ${_fieldHtml('Comercial', c.comercial)}
+            ${_fieldHtml('Implementador', c.implementador)}
+
+            <div class="cl-section-title">Jefe de proyecto (cliente)</div>
+            ${_fieldHtml('Nombre', c.jp_nombre.trim())}
+            ${_fieldHtml('Email', c.jp_mail)}
+            ${_fieldHtml('Teléfono', c.jp_telefono)}
+
+            <div class="cl-section-title">Operativa</div>
+            ${_fieldHtml('TPV', c.tpv)}
+            ${_fieldHtml('Módulos contratados', modulos || '—')}
+            ${_fieldHtml('Alta en portal', _fmtFecha(c.fecha))}
+        `;
+
+        document.getElementById('cl-overlay').classList.add('open');
+        document.getElementById('cl-panel').classList.add('open');
+        document.getElementById('cl-panel').setAttribute('aria-hidden', 'false');
+    }
+    function _fieldHtml(label, value) {
+        const v = String(value || '').trim();
+        return `
+            <div class="cl-field">
+                <div class="cl-field-label">${esc(label)}</div>
+                <div class="cl-field-value ${v ? '' : 'empty'}">${v ? esc(v) : '—'}</div>
+            </div>`;
+    }
+    function cerrarPanel() {
+        document.getElementById('cl-overlay').classList.remove('open');
+        const p = document.getElementById('cl-panel');
+        p.classList.remove('open');
+        p.setAttribute('aria-hidden', 'true');
+    }
+    function abrirFichaCompleta() {
+        if (!clienteActual) return;
+        // Si el usuario tiene permiso sobre 'lista' (fichas de cliente),
+        // abre el formulario completo en modo edición. Si no, le avisamos.
+        if (!YurestConfig.tienePermiso('lista')) {
+            alert('No tienes permiso para abrir la ficha completa. Contacta con un administrador.');
+            return;
+        }
+        try {
+            sessionStorage.setItem('yurest_edit_ficha', JSON.stringify(clienteActual.raw));
+        } catch (_) {}
+        window.location.href = 'index.html?edit=1';
+    }
+
+    // Escape cierra el panel
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('cl-panel').classList.contains('open')) {
+            cerrarPanel();
+        }
+    });
+
+    // Bootstrap
+    cargar();
+</script>
+
+</body>
+</html>
