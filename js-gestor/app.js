@@ -734,6 +734,14 @@ async function guardarProyecto() {
 
     showLoading();
     try {
+        // Snapshot del estado previo para detectar cambios y registrarlos
+        const snapshotPrev = {
+            cliente:       proyectoPrev.cliente,
+            implementador: proyectoPrev.implementador,
+            estado:        proyectoPrev.estado,
+            fechaInicio:   proyectoPrev.fechaInicio
+        };
+
         proyectoPrev.cliente = cliente;
         proyectoPrev.implementador = implementador;
         proyectoPrev.tipo = tipo;
@@ -744,6 +752,36 @@ async function guardarProyecto() {
         await actualizarProyectoAPI(proyectoPrev);
 
         guardarProyectosLocal(proyectos);
+
+        // Audit log de cambio de estado (prioritario) y de otros campos.
+        if (window.YurestConfig && YurestConfig.logProyectoHistorial) {
+            const cambios = YurestConfig.computeDiff(snapshotPrev, {
+                cliente, implementador, estado, fechaInicio
+            }, []);
+            if (snapshotPrev.estado !== estado) {
+                // Acción específica según el nuevo estado
+                const accionEstado =
+                    estado === 'pausado'    ? 'proyecto_pausado' :
+                    estado === 'completado' ? 'proyecto_completado' :
+                    estado === 'activo' && snapshotPrev.estado === 'pausado' ? 'proyecto_reanudado' :
+                    'proyecto_actualizado';
+                YurestConfig.logProyectoHistorial({
+                    proyecto_id: proyectoPrev.id,
+                    accion: accionEstado,
+                    descripcion: `Estado: ${snapshotPrev.estado || '—'} → ${estado}`,
+                    cambios: { estado: { before: snapshotPrev.estado, after: estado } },
+                    metadata: { cliente: proyectoPrev.cliente || '' }
+                });
+            } else if (Object.keys(cambios).length > 0) {
+                YurestConfig.logProyectoHistorial({
+                    proyecto_id: proyectoPrev.id,
+                    accion: 'proyecto_actualizado',
+                    descripcion: `Editados ${Object.keys(cambios).length} campo${Object.keys(cambios).length === 1 ? '' : 's'}`,
+                    cambios
+                });
+            }
+        }
+
         cerrarModal('modal-proyecto');
         refrescarTodo();
         mostrarToast('Proyecto guardado correctamente', 'success');
@@ -808,6 +846,8 @@ function abrirDetalle(id) {
         document.getElementById('detalle-contactos').style.display = 'none';
         document.getElementById('detalle-desarrollos').style.display = 'none';
         document.getElementById('detalle-anotaciones').style.display = 'none';
+        const pTimeline = document.getElementById('detalle-timeline');
+        if (pTimeline) pTimeline.style.display = 'none';
     }
 
     // Re-render sólo el tab activo para preservar el contexto del usuario
@@ -816,6 +856,7 @@ function abrirDetalle(id) {
     else if (tabActivo === 'contactos') renderDetalleContactos(proyecto);
     else if (tabActivo === 'desarrollos') renderDetalleDesarrollos(proyecto);
     else if (tabActivo === 'anotaciones') renderDetalleAnotaciones(proyecto);
+    else if (tabActivo === 'timeline') renderDetalleTimeline(proyecto);
 
     if (!yaAbierto) abrirModal('modal-detalle');
 }
@@ -912,6 +953,8 @@ function cambiarVistaDetalle(vista) {
     document.getElementById('detalle-contactos').style.display = vista === 'contactos' ? '' : 'none';
     document.getElementById('detalle-desarrollos').style.display = vista === 'desarrollos' ? '' : 'none';
     document.getElementById('detalle-anotaciones').style.display = vista === 'anotaciones' ? '' : 'none';
+    const timelineEl = document.getElementById('detalle-timeline');
+    if (timelineEl) timelineEl.style.display = vista === 'timeline' ? '' : 'none';
 
     const proyecto = proyectos.find(p => p.id === detalleProyectoId);
     if (!proyecto) return;
@@ -919,6 +962,139 @@ function cambiarVistaDetalle(vista) {
     if (vista === 'contactos') renderDetalleContactos(proyecto);
     if (vista === 'desarrollos') renderDetalleDesarrollos(proyecto);
     if (vista === 'anotaciones') renderDetalleAnotaciones(proyecto);
+    if (vista === 'timeline') renderDetalleTimeline(proyecto);
+}
+
+// ──────────────────────────────────────────────────────────
+//  Timeline del proyecto (audit log)
+// ──────────────────────────────────────────────────────────
+const _TL_COLORS = {
+    tarea_completada:     '#16a34a',
+    tarea_reabierta:      '#f59e0b',
+    tarea_eliminada:      '#dc2626',
+    tarea_movida:         '#6366f1',
+    tarea_anadida:        '#3b82f6',
+    tarea_actualizada:    '#8b5cf6',
+    subtarea_completada:  '#16a34a',
+    subtarea_reabierta:   '#f59e0b',
+    subtarea_eliminada:   '#dc2626',
+    subtarea_anadida:     '#3b82f6',
+    subtarea_actualizada: '#8b5cf6',
+    subtarea_agendada:    '#0ea5e9',
+    subtarea_desagendada: '#94a3b8',
+    show_asignado:        '#10b981',
+    show_noshow:          '#ef4444',
+    show_limpiado:        '#94a3b8',
+    proyecto_creado:      '#14b8a6',
+    proyecto_pausado:     '#f59e0b',
+    proyecto_reanudado:   '#10b981',
+    proyecto_completado:  '#16a34a',
+    proyecto_eliminado:   '#dc2626',
+    proyecto_actualizado: '#6366f1',
+    anotacion_added:      '#6366f1',
+    anotacion_updated:    '#6366f1',
+    anotacion_deleted:    '#94a3b8',
+    adjunto_add:          '#10b981',
+    adjunto_remove:       '#f59e0b',
+    contacto_added:       '#3b82f6',
+    contacto_removed:     '#94a3b8',
+    otro:                 '#64748b'
+};
+const _TL_LABELS = {
+    tarea_completada:     'Tarea ✓',
+    tarea_reabierta:      'Tarea ↩',
+    tarea_eliminada:      'Tarea ×',
+    tarea_movida:         'Tarea →',
+    tarea_anadida:        '+ Tarea',
+    tarea_actualizada:    'Tarea edit',
+    subtarea_completada:  'Subtarea ✓',
+    subtarea_reabierta:   'Subtarea ↩',
+    subtarea_eliminada:   'Subtarea ×',
+    subtarea_anadida:     '+ Subtarea',
+    subtarea_actualizada: 'Subtarea edit',
+    subtarea_agendada:    'Agendada',
+    subtarea_desagendada: 'Desagendada',
+    proyecto_pausado:     'Pausado',
+    proyecto_reanudado:   'Reanudado',
+    proyecto_completado:  'Completado',
+    proyecto_creado:      'Creado',
+    proyecto_actualizado: 'Actualizado',
+    anotacion_added:      '+ Nota',
+    otro:                 'Otro'
+};
+
+function _tlIniciales(nombre) {
+    const p = String(nombre || '?').trim().split(/\s+/);
+    return ((p[0]?.[0] || '?') + (p[1]?.[0] || '')).toUpperCase();
+}
+function _tlFormatFecha(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleString('es-ES', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+async function renderDetalleTimeline(proyecto) {
+    const cont = document.getElementById('detalle-timeline');
+    if (!cont) return;
+    cont.innerHTML = `
+        <div class="timeline-head">
+            <h3 style="margin:0">Timeline del proyecto</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">Registro cronológico de acciones realizadas sobre este proyecto.</p>
+        </div>
+        <div class="timeline-list" id="timeline-list">
+            <div style="text-align:center;padding:30px 0;color:#94a3b8;font-size:13px">
+                <div class="spinner" style="margin:0 auto 10px"></div>
+                Cargando timeline…
+            </div>
+        </div>`;
+
+    const rows = await YurestConfig.getProyectoHistorial({ proyectoId: proyecto.id, limit: 300 });
+    const list = document.getElementById('timeline-list');
+    if (!list) return;
+
+    if (!rows.length) {
+        list.innerHTML = `
+            <div style="text-align:center;padding:40px 16px;color:#94a3b8;background:#fff;border:1.5px dashed #e2e8f0;border-radius:12px;font-size:13px">
+                Aún no hay acciones registradas. Al marcar tareas, mover subtareas o cambiar el estado del proyecto, las verás aquí.
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = rows.map(r => {
+        const color = _TL_COLORS[r.accion] || _TL_COLORS.otro;
+        const label = _TL_LABELS[r.accion] || r.accion;
+        const cambios = r.cambios && typeof r.cambios === 'object' ? r.cambios : {};
+        const keys = Object.keys(cambios);
+        const diff = keys.length === 0 ? '' : `
+            <div class="tl-changes">
+                ${keys.slice(0, 10).map(k => `
+                    <div class="tl-change-row">
+                        <span class="tl-change-field">${escapeHtml(k)}</span>
+                        <span class="tl-change-before">${escapeHtml(String(cambios[k].before ?? '—'))}</span>
+                        <span class="tl-change-arrow">→</span>
+                        <span class="tl-change-after">${escapeHtml(String(cambios[k].after ?? '—'))}</span>
+                    </div>`).join('')}
+            </div>`;
+        const ctx = [
+            r.seccion_nombre ? `Sección: ${escapeHtml(r.seccion_nombre)}` : '',
+            r.tarea_nombre ? `Tarea: ${escapeHtml(r.tarea_nombre)}` : ''
+        ].filter(Boolean).join(' · ');
+        return `
+            <article class="tl-entry" style="--tl-color:${color}">
+                <div class="tl-entry-head">
+                    <span class="tl-avatar" style="background:${color}">${escapeHtml(_tlIniciales(r.usuario_nombre || '—'))}</span>
+                    <div class="tl-meta">
+                        <div class="tl-user">${escapeHtml(r.usuario_nombre || '—')}</div>
+                        <div class="tl-fecha">${escapeHtml(_tlFormatFecha(r.creado_at))}</div>
+                    </div>
+                    <span class="tl-badge" style="background:${color}">${escapeHtml(label)}</span>
+                </div>
+                ${r.descripcion ? `<div class="tl-desc">${escapeHtml(r.descripcion)}</div>` : ''}
+                ${ctx ? `<div class="tl-ctx">${ctx}</div>` : ''}
+                ${diff}
+            </article>`;
+    }).join('');
 }
 
 function renderDetalleContactos(proyecto) {
@@ -1627,6 +1803,23 @@ async function toggleTareaCompletada(proyectoId, seccionNombre, tareaId) {
     try {
         await actualizarTareaAPI(proyectoId, seccionNombre, tarea);
         guardarProyectosLocal(proyectos);
+        // Audit log: registrar la marca/desmarca en el timeline del proyecto.
+        if (window.YurestConfig && YurestConfig.logProyectoHistorial) {
+            YurestConfig.logProyectoHistorial({
+                proyecto_id: proyectoId,
+                accion: tarea.completada ? 'tarea_completada' : 'tarea_reabierta',
+                seccion_nombre: seccionNombre,
+                tarea_id: tarea.id,
+                tarea_nombre: tarea.nombre || '',
+                descripcion: tarea.completada
+                    ? `Tarea completada: ${tarea.nombre || ''}`
+                    : `Tarea reabierta: ${tarea.nombre || ''}`,
+                metadata: {
+                    cliente: proyecto.cliente || '',
+                    implementador: proyecto.implementador || ''
+                }
+            });
+        }
     } catch (err) {
         tarea.completada = !tarea.completada; // revert
         mostrarToast('Error al actualizar tarea: ' + err.message, 'error');
@@ -2181,6 +2374,25 @@ async function toggleSubtareaCompletada(proyectoId, seccionNombre, tareaId, subt
     try {
         await actualizarTareaAPI(proyectoId, seccionNombre, tarea);
         guardarProyectosLocal(proyectos);
+        // Audit log
+        if (window.YurestConfig && YurestConfig.logProyectoHistorial) {
+            YurestConfig.logProyectoHistorial({
+                proyecto_id: proyectoId,
+                accion: sub.completada ? 'subtarea_completada' : 'subtarea_reabierta',
+                seccion_nombre: seccionNombre,
+                tarea_id: tarea.id,
+                tarea_nombre: tarea.nombre || '',
+                descripcion: sub.completada
+                    ? `Subtarea completada: ${sub.nombre || ''} (en "${tarea.nombre || ''}")`
+                    : `Subtarea reabierta: ${sub.nombre || ''} (en "${tarea.nombre || ''}")`,
+                metadata: {
+                    subtarea_id: sub.id,
+                    subtarea_nombre: sub.nombre || '',
+                    cliente: proyecto.cliente || '',
+                    implementador: proyecto.implementador || ''
+                }
+            });
+        }
     } catch (err) {
         sub.completada = !sub.completada; // revert
         tarea.completada = !todasCompletadas; // revert

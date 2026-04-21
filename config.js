@@ -73,7 +73,10 @@
         authVerify:           `${WEBHOOK_BASE}/auth/verify`,
 
         // Historial de acciones (audit log por ficha)
-        historial:            `${WEBHOOK_BASE}/historial`
+        historial:            `${WEBHOOK_BASE}/historial`,
+
+        // Historial de acciones por proyecto (timeline del gestor)
+        proyectoHistorial:    `${WEBHOOK_BASE}/proyectos/historial`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
@@ -592,6 +595,55 @@
         });
     }
 
+    // Registra una entrada en el historial del PROYECTO (equivalente a
+    // logHistorial pero contra la tabla proyectos_historial). Campos:
+    //   { proyecto_id (oblig.), accion, descripcion, cambios, metadata,
+    //     seccion_nombre?, tarea_id?, tarea_nombre? }
+    function logProyectoHistorial(entry, opts) {
+        opts = opts || {};
+        const sess = getSession();
+        const actor = opts.actorOverride || (sess ? {
+            id:     sess.id || null,
+            nombre: sess.nombre || sess.user || 'desconocido',
+            rol:    sess.rol   || 'user'
+        } : { nombre: 'sistema', rol: 'sistema' });
+        const body = {
+            proyecto_id:    entry.proyecto_id,
+            usuario:        actor,
+            accion:         entry.accion,
+            seccion_nombre: entry.seccion_nombre || null,
+            tarea_id:       entry.tarea_id       || null,
+            tarea_nombre:   entry.tarea_nombre   || null,
+            descripcion:    entry.descripcion    || '',
+            cambios:        entry.cambios        || {},
+            metadata:       entry.metadata       || {}
+        };
+        return apiFetch(ENDPOINTS.proyectoHistorial, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        }).catch(err => {
+            console.warn('[proyecto-historial] fallo al registrar acción (no bloqueante):', err && err.message);
+            return null;
+        });
+    }
+
+    async function getProyectoHistorial(filter) {
+        try {
+            const q = new URLSearchParams();
+            q.set('proyectoId', filter.proyectoId || filter.proyecto_id || '');
+            if (filter && filter.limit)  q.set('limit',  String(filter.limit));
+            if (filter && filter.offset) q.set('offset', String(filter.offset));
+            const url = ENDPOINTS.proyectoHistorial + '?' + q.toString();
+            const res = await apiFetch(url, { method: 'GET' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            return Array.isArray(data.historial) ? data.historial : [];
+        } catch (err) {
+            console.warn('[proyecto-historial] fallo al leer:', err && err.message);
+            return [];
+        }
+    }
+
     // Recupera el historial de una ficha. Devuelve un array (o [] si hay
     // error). Úsalo en UI para pintar el timeline.
     async function getHistorial(filter) {
@@ -646,6 +698,8 @@
         a11yCerrarModal,
         logHistorial,
         getHistorial,
+        logProyectoHistorial,
+        getProyectoHistorial,
         computeDiff
     };
 })(window);
