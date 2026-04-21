@@ -806,8 +806,14 @@
     let _sepaFirmaPainted = false;
 
     function inicializarSEPA() {
-        // Datos fijos del acreedor
-        document.getElementById('sepa-ref').textContent           = 'YUREST-' + solicitudId;
+        // Datos fijos del acreedor.
+        // La referencia del mandato se asigna en BD al guardar (trigger
+        // asignar_sepa_ref), con formato YUREST-YYYY-NNNN secuencial por
+        // año — igual que la numeración de una factura. Aquí sólo
+        // mostramos un placeholder para que el cliente no vea "YUREST-null".
+        document.getElementById('sepa-ref').textContent           = 'Se asignará al firmar';
+        document.getElementById('sepa-ref').style.fontStyle       = 'italic';
+        document.getElementById('sepa-ref').style.color           = '#94a3b8';
         document.getElementById('sepa-acreedor-id').textContent   = SEPA_ACREEDOR.identificador;
         document.getElementById('sepa-acreedor-nombre').textContent    = SEPA_ACREEDOR.nombre;
         document.getElementById('sepa-acreedor-direccion').textContent = SEPA_ACREEDOR.direccion;
@@ -1146,7 +1152,10 @@
             'TPV NI Contacto':  getVal('tpv_ni_contacto'),
             'TPV NI Email':     getVal('tpv_ni_email'),
             'SEPA': {
-                referencia:       'YUREST-' + solicitudId,
+                // No asignamos referencia en el cliente: la genera el
+                // trigger asignar_sepa_ref() en Postgres (atómico,
+                // secuencial por año, sin race conditions entre dos
+                // clientes que firman a la vez).
                 acreedor:         { ...SEPA_ACREEDOR },
                 deudor: {
                     nombre:    getVal('sepa_deudor_nombre'),
