@@ -548,22 +548,33 @@
     // Si ves fichas con deleted_at=null que crees haber borrado, el
     // soft-delete no se aplicó en BD y hay que revisar el workflow 10.
     async function debugSinAsignar() {
-        const url = ENDPOINTS.altas + (ENDPOINTS.altas.includes('?') ? '&' : '?') + '_=' + Date.now();
-        const res = await apiFetch(url, {
-            method: 'GET',
-            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-        });
-        if (!res.ok) { console.error('[debug] HTTP', res.status); return; }
-        const data = await res.json();
-        const raw = Array.isArray(data) ? data
-            : Array.isArray(data.clientes) ? data.clientes
-            : Array.isArray(data.data) ? data.data : [];
-        const proyectos = JSON.parse(localStorage.getItem('gestor_proyectos_v3') || '[]');
-        const existentesNorm = new Set(proyectos.map(x => _normNombre(x.cliente)));
+        const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
+        const urlAltas = ENDPOINTS.altas + (ENDPOINTS.altas.includes('?') ? '&' : '?') + '_=' + Date.now();
+        const urlProy  = ENDPOINTS.proyectos + (ENDPOINTS.proyectos.includes('?') ? '&' : '?') + '_=' + Date.now();
+        const [resAltas, resProy] = await Promise.all([
+            apiFetch(urlAltas, { method: 'GET', headers }),
+            apiFetch(urlProy,  { method: 'GET', headers }).catch(() => null)
+        ]);
+        if (!resAltas || !resAltas.ok) { console.error('[debug] /altas HTTP', resAltas && resAltas.status); return; }
+        const dataAltas = await resAltas.json();
+        const raw = Array.isArray(dataAltas) ? dataAltas
+            : Array.isArray(dataAltas.clientes) ? dataAltas.clientes
+            : Array.isArray(dataAltas.data) ? dataAltas.data : [];
+        let listaProy = [];
+        if (resProy && resProy.ok) {
+            const dataProy = await resProy.json();
+            listaProy = Array.isArray(dataProy) ? dataProy
+                : Array.isArray(dataProy.proyectos) ? dataProy.proyectos
+                : Array.isArray(dataProy.data) ? dataProy.data : [];
+            listaProy = listaProy.filter(p => p && !p.deleted_at);
+        }
+        const proyectosCache = JSON.parse(localStorage.getItem('gestor_proyectos_v3') || '[]');
+        const existentesNorm = new Set(listaProy.map(p => _normNombre(p.cliente)));
         const tomb = _leerTombstonesFichas();
         console.log('=== [debug] Sin asignar ===');
         console.log('Fichas totales devueltas por /altas:', raw.length);
-        console.log('Proyectos locales (cliente):', proyectos.map(p => p.cliente));
+        console.log('Proyectos del backend (/proyectos):', listaProy.map(p => ({ id: p.id, cliente: p.cliente, estado: p.estado })));
+        console.log('Proyectos en caché local (localStorage):', proyectosCache.map(p => p.cliente));
         console.log('Tombstones locales:', [...tomb]);
         const sinAsignar = raw.filter(a => {
             const id = String(a.id || a.ID || '');
@@ -605,29 +616,49 @@
         try {
             const badge = document.getElementById('badge-sinasignar');
             if (!badge) return;
-            // Cache-bust: algunos navegadores cachean el GET incluso sin
-            // headers explícitos, lo que hace que tras borrar una ficha el
-            // badge siga contando la antigua. Forzamos fetch fresco.
-            const url = ENDPOINTS.altas + (ENDPOINTS.altas.includes('?') ? '&' : '?') + '_=' + Date.now();
-            const res = await apiFetch(url, {
-                method: 'GET',
-                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-            });
-            if (!res.ok) return;
-            const data = await res.json();
-            const rawInicial = Array.isArray(data) ? data
-                : Array.isArray(data.clientes) ? data.clientes
-                : Array.isArray(data.data) ? data.data : [];
-            // Aplicar tombstones locales para eliminar fichas que el
-            // backend sigue devolviendo pero que el usuario ya borró.
+
+            // Cache-bust para evitar que el navegador devuelva respuestas
+            // viejas tras borrar una ficha.
+            const urlAltas = ENDPOINTS.altas + (ENDPOINTS.altas.includes('?') ? '&' : '?') + '_=' + Date.now();
+            const headers = { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' };
+
+            // Fetch en PARALELO de fichas y proyectos. Antes leíamos
+            // proyectos solo desde localStorage['gestor_proyectos_v3'],
+            // que es un caché que solo rellena proyectos.html. Si el
+            // usuario no había pasado por ahí, el caché estaba vacío
+            // y el badge contaba CUALQUIER ficha como "sin asignar",
+            // incluidas las que en realidad sí tienen proyecto.
+            const urlProy  = ENDPOINTS.proyectos + (ENDPOINTS.proyectos.includes('?') ? '&' : '?') + '_=' + Date.now();
+            const [resAltas, resProy] = await Promise.all([
+                apiFetch(urlAltas, { method: 'GET', headers }),
+                apiFetch(urlProy,  { method: 'GET', headers })
+            ]);
+            if (!resAltas.ok) return;
+            const dataAltas = await resAltas.json();
+            const rawInicial = Array.isArray(dataAltas) ? dataAltas
+                : Array.isArray(dataAltas.clientes) ? dataAltas.clientes
+                : Array.isArray(dataAltas.data) ? dataAltas.data : [];
             const raw = aplicarTombstonesFichas(rawInicial);
-            const proyectos = JSON.parse(localStorage.getItem('gestor_proyectos_v3') || '[]');
-            // Normalización NFD (sin diacríticos) + espacios — misma que usa
-            // sinasignar.html. Antes eran distintas: el badge solo hacía
-            // toLowerCase(), así que si un proyecto se llamaba "Café A"
-            // y la ficha "Cafe A", el match fallaba aquí y el badge
-            // contaba la ficha como sin asignar pese a existir su proyecto.
-            const existentes = new Set(proyectos.map(x => _normNombre(x.cliente)));
+
+            // Lista de clientes con proyecto activo (del backend). Si la
+            // llamada al endpoint de proyectos falla, caemos al caché local
+            // como fallback y loggeamos el problema en consola.
+            let clientesConProy = [];
+            if (resProy && resProy.ok) {
+                const dataProy = await resProy.json();
+                const listaProy = Array.isArray(dataProy) ? dataProy
+                    : Array.isArray(dataProy.proyectos) ? dataProy.proyectos
+                    : Array.isArray(dataProy.data) ? dataProy.data : [];
+                clientesConProy = listaProy
+                    .filter(p => p && !p.deleted_at)
+                    .map(p => p.cliente);
+            } else {
+                console.warn('[badge] /proyectos no disponible, usando caché local.');
+                const cache = JSON.parse(localStorage.getItem('gestor_proyectos_v3') || '[]');
+                clientesConProy = cache.map(p => p.cliente);
+            }
+
+            const existentes = new Set(clientesConProy.map(_normNombre));
             const count = raw.filter(a => {
                 const nombre = _extraerNombreFicha(a);
                 return nombre && !existentes.has(_normNombre(nombre));
