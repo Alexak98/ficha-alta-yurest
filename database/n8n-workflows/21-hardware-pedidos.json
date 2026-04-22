@@ -113,7 +113,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Actions disponibles:\n//   create                → implementador crea el pedido (estado='solicitada')\n//   adjuntar_proforma     → contabilidad sube PDF (estado='proforma_adjuntada')\n//   adjuntar_justificante → implementador sube pago (estado='pendiente_confirmar')\n//   confirmar_pago        → contabilidad confirma (estado='lista_envio')\n//   actualizar_items      → implementador edita el carrito (solo si sigue en solicitada)\n//   delete                → soft-delete\n//\n// El body debe traer { action, pedido: { id?, ...campos } }.\n// El payload se normaliza aquí para que el UPDATE/INSERT del nodo Supabase\n// consuma directamente el objeto devuelto.\n\n// Tolerante a dos formatos: webhook v2 a veces envuelve en\n// $input.first().json.body y otras lo entrega directamente.\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst errores = [];\nconst now = new Date().toISOString();\n\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nlet row = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  row = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  row = {\n    id: p.id,\n    proforma_pdf: p.proforma_pdf,\n    notas_contabilidad: p.notas_contabilidad !== undefined ? p.notas_contabilidad : undefined,\n    estado: 'proforma_adjuntada',\n    proforma_at: now\n  };\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  row = {\n    id: p.id,\n    justificante_pdf: p.justificante_pdf,\n    notas_implementador: p.notas_implementador !== undefined ? p.notas_implementador : undefined,\n    estado: 'pendiente_confirmar',\n    pagado_at: now\n  };\n} else if (action === 'confirmar_pago') {\n  row = {\n    id: p.id,\n    notas_contabilidad: p.notas_contabilidad !== undefined ? p.notas_contabilidad : undefined,\n    estado: 'lista_envio',\n    confirmado_at: now\n  };\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  row = { id: p.id, items: p.items || [], notas_implementador: p.notas_implementador };\n} else if (action === 'delete') {\n  row = { id: p.id, deleted_at: now };\n}\n\n// Limpia undefined (el nodo Supabase con autoMapInputData mete null si le\n// llega undefined, pisando el valor actual; preferimos no enviar la clave).\nObject.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });\n\nreturn [{ json: { action, row, errores } }];"
+        "jsCode": "// Actions disponibles:\n//   create | adjuntar_proforma | adjuntar_justificante |\n//   confirmar_pago | actualizar_items | delete\n//\n// Arquitectura nueva: si la validación detecta errores, el item\n// devuelto YA tiene la forma de la respuesta final\n//   { __done: true, success: false, errores, action }\n// Si es OK, el item lleva { action, row } para que INSERT/UPDATE\n// lo procesen aguas abajo. El IF downstream solo chequea __done.\n\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst errores = [];\nconst now = new Date().toISOString();\n\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nlet row = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  row = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  row = { id: p.id, proforma_pdf: p.proforma_pdf, estado: 'proforma_adjuntada', proforma_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  row = { id: p.id, justificante_pdf: p.justificante_pdf, estado: 'pendiente_confirmar', pagado_at: now };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'confirmar_pago') {\n  row = { id: p.id, estado: 'lista_envio', confirmado_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  row = { id: p.id, items: p.items || [] };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'delete') {\n  row = { id: p.id, deleted_at: now };\n}\n\n// Limpia undefined — si enviamos undefined al Supabase node, pisa\n// el valor existente con null.\nObject.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });\n\n// Si hay errores de validación, devolvemos DIRECTAMENTE la respuesta\n// final — el flujo salta por el IF a Respond sin tocar Supabase.\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action } }];\n}\nreturn [{ json: { action, row } }];"
       },
       "id": "hw-prep",
       "name": "Preparar Acción",
@@ -129,22 +129,23 @@
         "conditions": {
           "options": {
             "caseSensitive": true,
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "leftValue": "={{ ($json.errores || []).length }}",
-              "rightValue": 0,
+              "leftValue": "={{ $json.__done === true }}",
+              "rightValue": true,
               "operator": {
-                "type": "number",
-                "operation": "gt"
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
               }
             }
           ]
         }
       },
       "id": "hw-if-error",
-      "name": "¿Error validación?",
+      "name": "¿Validación falló?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -280,7 +281,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { success: false, errores: $json.errores || ['Error'], action: $json.action } }];"
+        "jsCode": "// Pass-through: el item ya viene con forma de respuesta desde\n// Preparar Acción cuando hay error de validación.\nreturn [$input.first()];"
       },
       "id": "hw-format-err",
       "name": "Formatear ERROR",
@@ -384,24 +385,6 @@
         ]
       ]
     },
-    "¿Error validación?": {
-      "main": [
-        [
-          {
-            "node": "Formatear ERROR",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "¿Es create?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Formatear ERROR": {
       "main": [
         [
@@ -480,6 +463,24 @@
         [
           {
             "node": "Respond POST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Validación falló?": {
+      "main": [
+        [
+          {
+            "node": "Formatear ERROR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Es create?",
             "type": "main",
             "index": 0
           }
