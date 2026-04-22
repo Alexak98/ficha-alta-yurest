@@ -273,7 +273,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Procesar locales: obtener ficha_id del resultado del insert/update.\n// Si no hay locales devolvemos array vacío para que el siguiente nodo\n// Supabase no se ejecute (antes devolvíamos un objeto con la key 'fichaId'\n// que el nodo trataba como columna y rompía con\n// \"Could not find the 'fichaId' column of 'locales'\").\nconst fichaResult = $input.first().json;\nconst fichaId = fichaResult.id;\n\nconst prepareNode = $('Preparar Ficha').first().json;\nconst locales = prepareNode.locales || [];\n\nif (locales.length === 0) return [];\n\nconst rows = locales.map(l => ({\n  ficha_id: fichaId,\n  nombre: l.nombre || '',\n  email: l.email || '',\n  calle: l.calle || '',\n  numero: l.numero || '',\n  cp: l.cp || '',\n  sociedad_cif: l.sociedad_cif || '',\n  sociedad_denominacion: l.sociedad_denominacion || '',\n  sociedad_calle: l.sociedad_calle || '',\n  sociedad_numero: l.sociedad_numero || '',\n  sociedad_cp: l.sociedad_cp || '',\n  sociedad_municipio: l.sociedad_municipio || '',\n  sociedad_provincia: l.sociedad_provincia || '',\n  mensualidad: parseFloat(l.mensualidad) || 0\n}));\n\nreturn rows.map(r => ({ json: r }));"
+        "jsCode": "// Lee locales y ficha_id directamente del node 'Preparar Ficha'\n// para ser robusto al cambio de topología: ahora este node\n// puede recibir input desde DELETE Locales antiguos (UPDATE\n// path) o desde INSERT Ficha (INSERT path). En ambos casos el\n// id real de la ficha vive en Preparar Ficha o en INSERT Ficha.\nconst prep = $('Preparar Ficha').first().json || {};\nconst row = prep.row || {};\nconst locales = prep.locales || [];\n\n// Si fue INSERT, la ficha recién creada tiene id en el output\n// del node 'INSERT Ficha'. Si fue UPDATE, el id ya venía en\n// row.id (se mandó en el body). Cubrimos ambos.\nlet fichaId = row.id || null;\nif (!fichaId) {\n  try {\n    const ins = $('INSERT Ficha').first();\n    if (ins && ins.json && ins.json.id) fichaId = ins.json.id;\n  } catch (_) {}\n}\nif (!fichaId) {\n  // Sin id no podemos insertar locales — mejor no hacerlo que\n  // crear filas huérfanas.\n  return [];\n}\nif (!Array.isArray(locales) || locales.length === 0) return [];\n\nconst rows = locales.map(l => ({\n  ficha_id: fichaId,\n  nombre: l.nombre || '',\n  email: l.email || '',\n  calle: l.calle || '',\n  numero: l.numero || '',\n  cp: l.cp || '',\n  sociedad_cif: l.sociedad_cif || '',\n  sociedad_denominacion: l.sociedad_denominacion || '',\n  sociedad_calle: l.sociedad_calle || '',\n  sociedad_numero: l.sociedad_numero || '',\n  sociedad_cp: l.sociedad_cp || '',\n  sociedad_municipio: l.sociedad_municipio || '',\n  sociedad_provincia: l.sociedad_provincia || '',\n  mensualidad: parseFloat(l.mensualidad) || 0,\n  sepa_mandato_id: l.sepa_mandato_id || null\n}));\nreturn rows.map(r => ({ json: r }));"
       },
       "id": "prepare-locales",
       "name": "Preparar Locales",
@@ -344,6 +344,40 @@
         1800,
         580
       ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "locales",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ficha_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supa-delete-locales",
+      "name": "DELETE Locales antiguos",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -446,12 +480,7 @@
       "main": [
         [
           {
-            "node": "Respond Guardar OK",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Preparar Locales",
+            "node": "DELETE Locales antiguos",
             "type": "main",
             "index": 0
           }
@@ -472,11 +501,6 @@
     "INSERT Ficha": {
       "main": [
         [
-          {
-            "node": "Respond Guardar OK",
-            "type": "main",
-            "index": 0
-          },
           {
             "node": "Preparar Locales",
             "type": "main",
@@ -501,6 +525,17 @@
         [
           {
             "node": "Respond Guardar OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DELETE Locales antiguos": {
+      "main": [
+        [
+          {
+            "node": "Preparar Locales",
             "type": "main",
             "index": 0
           }

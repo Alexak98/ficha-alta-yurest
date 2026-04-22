@@ -2951,10 +2951,19 @@
             // (workflow 11-auxiliares al recibir respuesta de solicitud.html).
             data['Estado'] = 'rellenado';
 
+            console.log('[ficha] POST payload → WEBHOOK_GUARDAR', {
+                id: data.id, tipoCliente: data['Tipo Cliente'], estado: data['Estado'],
+                nLocales: (data.locales || []).length
+            });
             const res = await YurestConfig.apiFetch(WEBHOOK_GUARDAR, {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
+            // Leer body como texto primero — si n8n devuelve HTML (webhook
+            // no activo / 404) podemos mostrarlo en consola en vez de
+            // "sin detalle".
+            const rawText = await res.clone().text().catch(() => '');
+            console.log('[ficha] respuesta', res.status, rawText.slice(0, 500));
 
             if (res.ok) {
                 // Antes de asumir éxito, verificamos el body — si el workflow
@@ -2962,7 +2971,7 @@
                 // lo tratamos como error para que el usuario no crea que
                 // guardó cuando en realidad el estado sigue sin avanzar.
                 let body = null;
-                try { body = await res.clone().json(); } catch (_) {}
+                try { body = rawText ? JSON.parse(rawText) : null; } catch (_) {}
                 if (body && body.success === false) {
                     const detalle = Array.isArray(body.errores) && body.errores.length
                         ? ': ' + body.errores.join('; ')
