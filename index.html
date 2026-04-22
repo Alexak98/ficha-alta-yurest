@@ -1002,10 +1002,10 @@
                  como única opción (deshabilitado). -->
             <div class="form-group col-12">
                 <label>Mandato SEPA / cuenta de cargo</label>
-                <select data-field="sepa_mandato_id" class="form-control local-sepa-select">
+                <select data-field="sepa_mandato_id" class="form-control local-sepa-select" onchange="onSeleccionarSepaLocal(this)">
                     <option value="">— Sin asignar —</option>
                 </select>
-                <small class="form-hint">Selecciona a qué sociedad/cuenta se facturará este local. Se rellena automáticamente con las sociedades firmadas por el cliente.</small>
+                <small class="form-hint">Selecciona a qué sociedad/cuenta se facturará este local. Los datos de sociedad se rellenan automáticamente con el deudor del mandato firmado.</small>
             </div>
 
             <div class="form-group col-6">
@@ -2393,6 +2393,46 @@
             }
         });
     }
+
+    // Handler del <select> SEPA de cada local. Al elegir un mandato,
+    // rellena automáticamente los campos de "Sociedad" del local con los
+    // datos del deudor firmado en ese SEPA (denominación, dirección, CP,
+    // etc.) — evita teclear dos veces lo mismo que el cliente ya firmó.
+    //
+    // Solo sobreescribe si el campo de destino está vacío (para no pisar
+    // datos que el comercial haya editado a mano); si quiere forzar la
+    // sincronización puede borrar el campo primero y re-seleccionar.
+    function onSeleccionarSepaLocal(selectEl) {
+        const mandatoId = selectEl.value;
+        if (!mandatoId) return;
+        const mandato = (_sepaListActual || []).find(s => {
+            const id = s.id || s.referencia;
+            return id === mandatoId;
+        });
+        if (!mandato || !mandato.deudor) return;
+        const d = mandato.deudor;
+        const card = selectEl.closest('.local-card');
+        if (!card) return;
+        // Mapeo deudor → data-field de sociedad. El nombre legal del
+        // deudor en el SEPA es quien firma/paga, que es exactamente la
+        // sociedad a la que se factura — por eso lo copiamos a
+        // sociedad_denominacion y sociedad_cif (si hubiera CIF en el SEPA,
+        // que no lo hay por defecto; respetamos lo que ya tenga el campo).
+        const setIfEmpty = (field, value) => {
+            const el = card.querySelector('[data-field="' + field + '"]');
+            if (!el) return;
+            if (!el.value.trim() && value) el.value = value;
+        };
+        setIfEmpty('sociedad_denominacion', d.nombre || '');
+        setIfEmpty('sociedad_calle',        d.direccion || '');
+        setIfEmpty('sociedad_cp',           d.cp || '');
+        setIfEmpty('sociedad_municipio',    d.poblacion || '');
+        setIfEmpty('sociedad_provincia',    d.provincia || '');
+        // El SEPA no lleva CIF del deudor explícitamente: lo dejamos como
+        // está (lo habrá rellenado el comercial a mano o via "Copiar de
+        // datos de cliente").
+    }
+    window.onSeleccionarSepaLocal = onSeleccionarSepaLocal;
 
     // ── Adjuntos de la ficha (PDF / JPG / PNG) ────────────────────────────────
     // Estado en memoria. Se persiste como JSONB en la columna `adjuntos` de
