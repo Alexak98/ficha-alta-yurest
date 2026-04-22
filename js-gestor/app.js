@@ -1683,29 +1683,51 @@ async function hwCrearPedido() {
     }
 
     try {
+        const payload = {
+            action: 'create',
+            pedido: {
+                proyecto_id: proyectoId,
+                cliente,
+                implementador,
+                items,
+                notas_implementador: notas,
+                solicitado_por: (YurestConfig.getUsuario && YurestConfig.getUsuario() || {}).username || null
+            }
+        };
+        console.log('[hw] POST pedido →', YurestConfig.ENDPOINTS.hardwarePedidos, payload);
         const res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.hardwarePedidos, {
             method: 'POST',
-            body: JSON.stringify({
-                action: 'create',
-                pedido: {
-                    proyecto_id: proyectoId,
-                    cliente,
-                    implementador,
-                    items,
-                    notas_implementador: notas,
-                    solicitado_por: (YurestConfig.getUsuario && YurestConfig.getUsuario() || {}).username || null
-                }
-            })
+            body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const r = await res.json();
-        if (r && r.success === false) throw new Error((r.errores || ['Error']).join('; '));
+        // Leemos el body como texto primero para poder mostrar errores
+        // incluso cuando no llega JSON (404 HTML de n8n, etc.).
+        const rawText = await res.text();
+        let r = null;
+        try { r = rawText ? JSON.parse(rawText) : null; } catch (_) { r = null; }
+        console.log('[hw] respuesta', res.status, r || rawText);
+
+        if (!res.ok) {
+            const detalle = (r && (r.message || (Array.isArray(r.errores) && r.errores.join('; ')))) || rawText.slice(0, 240);
+            throw new Error('HTTP ' + res.status + (detalle ? ' — ' + detalle : ''));
+        }
+        if (r && r.success === false) {
+            const detalle = Array.isArray(r.errores) && r.errores.length ? r.errores.join('; ') : 'sin detalle';
+            throw new Error(detalle);
+        }
+        if (!r) throw new Error('Respuesta vacía del servidor (revisa que el workflow 21 esté activo).');
+
         mostrarToast('Pedido enviado a contabilidad', 'success');
         cerrarModal('modal-hw-nuevo');
         const proyecto = proyectos.find(p => p.id === proyectoId);
         if (proyecto) renderDetalleHardware(proyecto);
     } catch (err) {
-        mostrarToast('Error al crear pedido: ' + err.message, 'error', 5000);
+        console.error('[hw] crear pedido', err);
+        // err.message puede venir vacío si fue un TypeError de red; añadimos
+        // un fallback descriptivo + pista para el usuario.
+        const msg = err && err.message
+            ? err.message
+            : 'No se pudo contactar con el servidor. ¿Está activo el workflow 21-hardware-pedidos en n8n?';
+        mostrarToast('Error al crear pedido: ' + msg, 'error', 8000);
     }
 }
 window.hwCrearPedido = hwCrearPedido;
