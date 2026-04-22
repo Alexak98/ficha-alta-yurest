@@ -415,11 +415,10 @@
                 <label for="email_cc">Con copia</label>
                 <input type="email" id="email_cc" placeholder="cc@ejemplo.com">
             </div>
-            <div class="form-group col-12">
-                <label for="iban">IBAN</label>
-                <input type="text" id="iban" placeholder="ES12 3456 7890 1234 5678 9012"
-                       maxlength="34" oninput="this.value=this.value.toUpperCase()" onblur="validarIBANBlur(this)">
-            </div>
+            <!-- El IBAN vive ahora exclusivamente en el mandato SEPA (sección
+                 11): el cliente lo firma al rellenar la solicitud y queda
+                 custodiado en sepa_mandato.iban. Duplicarlo aquí generaba
+                 inconsistencias si el comercial lo modificaba a mano. -->
         </div>
     </div>
 
@@ -2205,7 +2204,11 @@
             'Email':          document.getElementById('email').value.trim(),
             'Email Factura':  document.getElementById('email_factura').value.trim(),
             'Email CC':       document.getElementById('email_cc').value.trim(),
-            'IBAN':           (document.getElementById('iban')?.value.trim().replace(/\s+/g, '') || '').toUpperCase(),
+            // 'IBAN' eliminado del payload: la fuente única es sepa_mandato.iban
+            // (columna JSONB). La columna fichas_alta.iban queda obsoleta y no
+            // se actualiza desde index.html — el workflow 04 solo persiste las
+            // claves que vengan en el body (set() condicional), así que no
+            // pisa valores antiguos con cadena vacía.
             'Firmas Contratadas': (document.querySelector('input[name="firmas"]:checked') || {}).value || '',
             'JP Nombre':      document.getElementById('jp_nombre').value.trim(),
             'JP Apellidos':   document.getElementById('jp_apellidos').value.trim(),
@@ -2321,11 +2324,8 @@
             _focoCampoError('cif', 'El CIF/NIF introducido no es válido.');
             return false;
         }
-        // Validar IBAN si se rellenó
-        if (data['IBAN'] && !esIBANValido(data['IBAN'])) {
-            _focoCampoError('iban', 'El IBAN introducido no es válido.');
-            return false;
-        }
+        // (IBAN ya no se valida aquí: el campo vive en el mandato SEPA y allí
+        // se valida con el validador de bloques al firmar.)
         // Validar emails opcionales (formato básico)
         const emailsAValidar = [
             ['email',          data['Email'],           'Email principal'],
@@ -2803,7 +2803,7 @@
         set('email',          'Email', 'email', 'Email contacto');
         set('email_factura',  'Email Factura', 'email_factura');
         set('email_cc',       'Email CC', 'email_cc');
-        set('iban',           'IBAN', 'iban');
+        // set('iban', ...) eliminado: IBAN vive en sepa_mandato.iban
         // Dirección de entrega + contacto (cliente Lite)
         set('entrega_calle',     'Entrega Calle',     'entrega_calle');
         set('entrega_numero',    'Entrega Número',    'Entrega Numero', 'entrega_numero');
@@ -3020,6 +3020,29 @@
         if (grupo) grupo.classList.add('tipo-group--locked');
         // Deshabilitar también los inputs por si algún script los lee
         document.querySelectorAll('input[name="tipo_cliente"]').forEach(r => r.disabled = true);
+
+        // Si la solicitud vino como 'planes' o 'corporate', ocultamos por
+        // completo el toggle "Cliente LITE". El comercial no puede, ni debe,
+        // convertir a Lite un cliente que el cliente final ya eligió como
+        // Planes/Corporate al rellenar su solicitud. Solo se muestra cuando
+        // el tipo está sin seleccionar o es 'lite'.
+        const tipoChecked = document.querySelector('input[name="tipo_cliente"]:checked');
+        const tipo = tipoChecked ? tipoChecked.value : '';
+        const liteCheck = document.getElementById('lite_check');
+        const liteItem = liteCheck ? liteCheck.closest('.toggle-check-item') : null;
+        if (liteItem) {
+            const debeOcultarse = tipo === 'planes' || tipo === 'corporate';
+            liteItem.style.display = debeOcultarse ? 'none' : '';
+            if (debeOcultarse) {
+                // Por si hubiera quedado marcado previamente, lo desmarcamos
+                // y replegamos la sección Lite; sin estas líneas podría haber
+                // estado inconsistente tras navegar entre solicitudes.
+                if (liteCheck.checked) {
+                    liteCheck.checked = false;
+                    toggleLite(false);
+                }
+            }
+        }
     }
 
     // ── Modo Alta Rápida ──────────────────────────────────────────────────────
@@ -3210,7 +3233,12 @@
                      'contacto_nombre', 'contacto_email', 'contacto_telefono']
         },
         'facturacion-section': {
-            fields: ['iban']   // email_factura es opcional (se hereda)
+            // El IBAN ya no vive aquí (está en el mandato SEPA). Consideramos
+            // la sección completada cuando hay email de factura.
+            custom() {
+                const em = (document.getElementById('email_factura')?.value || '').trim();
+                return !!em;
+            }
         },
         'distribuidor-section': {
             fields: ['dist_empresa', 'dist_cif', 'dist_mail']
