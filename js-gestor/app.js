@@ -878,13 +878,32 @@ function abrirDetalle(id) {
     if (!yaAbierto) abrirModal('modal-detalle');
 }
 
-function renderDetalleTareas(proyecto) {
+// Secciones que vive cada pestaña. Se comparan sin diacríticos ni mayúsculas
+// para ser tolerantes a variaciones históricas ("Puesta en Marcha/Finalización"
+// con o sin acento, etc.).
+const _SECC_TAREAS_SET = new Set([
+    _normTxt('Puesta en Marcha / Finalización'),
+    _normTxt('Carga de Datos Yuload')
+]);
+const _SECC_HARDWARE_SET = new Set([
+    _normTxt('Hardware')
+]);
+function _normTxt(s) {
+    return String(s || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+function _esSeccionTareas(nombre)   { return _SECC_TAREAS_SET.has(_normTxt(nombre)); }
+function _esSeccionHardware(nombre) { return _SECC_HARDWARE_SET.has(_normTxt(nombre)); }
+
+// Cabecera común (implementador / tipo / estado / progreso / TPV / participantes)
+// + panel de pausa si aplica. La usamos tanto en el tab Proyecto como en Tareas
+// para que el usuario vea el contexto sin saltar entre pestañas.
+function _renderCabeceraProyecto(proyecto) {
     const color = COLORES_IMPLEMENTADOR[proyecto.implementador] || '#6366f1';
     const iniciales = INICIALES_IMPLEMENTADOR[proyecto.implementador] || '??';
     const resumen = obtenerResumenProyecto(proyecto);
     const ultimaSesion = obtenerUltimaSesionAgendada(proyecto);
-
-    document.getElementById('detalle-tareas').innerHTML = `
+    return `
         <div class="detail-info">
             <div class="detail-field">
                 <span class="detail-label">Implementador</span>
@@ -920,7 +939,6 @@ function renderDetalleTareas(proyecto) {
                 <span class="detail-value"><div class="participantes-chips-inline">${proyecto.participantes.map(e => `<span class="participante-chip-sm">${escapeHtml(e)}</span>`).join('')}</div></span>
             </div>` : ''}
         </div>
-
         ${proyecto.estado === 'pausado' ? `
         <div class="pausa-info-panel">
             <div class="pausa-info-header">
@@ -936,20 +954,13 @@ function renderDetalleTareas(proyecto) {
                 <textarea id="plan-accion" class="form-control" rows="2" placeholder="Describe el plan para retomar..." onchange="guardarDatosPausa()">${escapeHtml(proyecto.planAccion || '')}</textarea>
             </div>
         </div>
-        ` : ''}
+        ` : ''}`;
+}
 
-        <div class="detail-sections">
-            ${proyecto.secciones
-                // Filtrar 'Hardware' legacy: en proyectos antiguos esa
-                // sección aún existe dentro de `secciones`, pero ahora se
-                // muestra como pestaña independiente. No la borramos de BD
-                // (así no perdemos las tareas que el implementador pudiera
-                // haber apuntado allí) — solo la ocultamos del render.
-                .filter(s => String(s.nombre || '').trim().toLowerCase() !== 'hardware')
-                .map((seccion, si) => renderSeccion(proyecto.id, seccion, si))
-                .join('')}
-        </div>
-
+// Acciones comunes (Editar / Eliminar) — se repiten al pie de Proyecto y Tareas
+// para que el usuario las tenga a mano sin tener que cambiar de pestaña.
+function _renderAccionesProyecto(proyecto) {
+    return `
         <div class="detail-actions">
             <button class="btn btn-secondary" onclick="abrirModalProyecto('${proyecto.id}'); cerrarModal('modal-detalle')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -960,6 +971,32 @@ function renderDetalleTareas(proyecto) {
                 Eliminar
             </button>
         </div>`;
+}
+
+// Render de un subconjunto de secciones. Preserva el índice ORIGINAL dentro
+// de proyecto.secciones para que toggleSeccion(index) y renderSeccion sigan
+// identificando correctamente el DOM node (usamos `section-${origIdx}`).
+function _renderSeccionesFiltradas(proyecto, predicate) {
+    const html = proyecto.secciones
+        .map((seccion, origIdx) => ({ seccion, origIdx }))
+        .filter(({ seccion }) => predicate(seccion))
+        .map(({ seccion, origIdx }) => renderSeccion(proyecto.id, seccion, origIdx))
+        .join('');
+    return `<div class="detail-sections">${html}</div>`;
+}
+
+// Tab "Tareas" → contiene las secciones administrativas previas al inicio:
+//   · Puesta en Marcha / Finalización
+//   · Carga de Datos Yuload
+// Son los checklists que cubre el implementador antes de que arranquen las
+// sesiones con el cliente. Todo lo demás ("Planificación de sesiones" y
+// "Módulos terminados") vive ahora en el tab "Proyecto".
+function renderDetalleTareas(proyecto) {
+    document.getElementById('detalle-tareas').innerHTML = `
+        ${_renderCabeceraProyecto(proyecto)}
+        ${_renderSeccionesFiltradas(proyecto, s => _esSeccionTareas(s.nombre))}
+        ${_renderAccionesProyecto(proyecto)}
+    `;
 }
 
 async function guardarDatosPausa() {
@@ -1024,13 +1061,20 @@ function _renderDetallePlaceholder(containerId, titulo, descripcion, icon) {
         </div>`;
 }
 
+// Tab "Proyecto" → vista principal de la implementación. Incluye la cabecera
+// de contexto + las secciones que componen el recorrido del cliente:
+//   · Planificación de sesiones
+//   · Módulos terminados de implementar
+//   · (+ cualquier sección custom que no sea Tareas ni Hardware)
+// El tab "Tareas" se queda con la parte administrativa (Puesta en Marcha y
+// Carga de Datos Yuload). El tab "Hardware" se sigue excluyendo aquí — tiene
+// su propia pestaña dedicada.
 function renderDetalleProyecto(proyecto) {
-    _renderDetallePlaceholder(
-        'detalle-proyecto',
-        'Información del proyecto',
-        'Aquí irá la ficha general del proyecto (cliente, implementador, tipo, estado, participantes, TPV…). Contenido pendiente de definir.',
-        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>'
-    );
+    document.getElementById('detalle-proyecto').innerHTML = `
+        ${_renderCabeceraProyecto(proyecto)}
+        ${_renderSeccionesFiltradas(proyecto, s => !_esSeccionTareas(s.nombre) && !_esSeccionHardware(s.nombre))}
+        ${_renderAccionesProyecto(proyecto)}
+    `;
 }
 
 function renderDetalleHardware(proyecto) {
