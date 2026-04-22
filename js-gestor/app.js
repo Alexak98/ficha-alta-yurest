@@ -2095,33 +2095,50 @@ async function renderDetalleDesarrollos(proyecto) {
     const asanaId = proyecto.asanaProjectId || '';
     const asanaUrl = proyecto.asanaProjectUrl || (asanaId ? `https://app.asana.com/0/${asanaId}/list` : '');
 
+    // Layout centrado con max-width razonable. Antes el form-row con
+    // flex-wrap dejaba el botón "Vincular" flotando en el centro del
+    // modal cuando la ventana era ancha — queda mucho mejor con el
+    // input a ancho completo y los botones alineados debajo.
     container.innerHTML = `
-        <div class="desarrollos-config">
-            <div class="form-row" style="align-items:flex-end;flex-wrap:wrap;gap:8px">
-                <div class="form-group" style="flex:1;min-width:240px">
-                    <label>URL del proyecto en Asana</label>
-                    <input type="url" id="asana-project-url" class="form-control" placeholder="https://app.asana.com/0/1234567890/list" value="${escapeHtml(asanaUrl)}">
-                    <small class="form-hint">Pega la URL completa del proyecto desde Asana. Se guardará en el proyecto y se usará para listar sus tareas aquí.</small>
-                </div>
-                <div style="display:flex;gap:6px;margin-bottom:0">
-                    <button class="btn btn-primary btn-sm" onclick="vincularAsana()" style="height:38px">
+        <div class="desarrollos-wrap">
+            <div class="desarrollos-card">
+                <label class="desarrollos-label" for="asana-project-url">URL del proyecto en Asana</label>
+                <input type="url" id="asana-project-url" class="form-control desarrollos-input"
+                       placeholder="https://app.asana.com/0/1234567890/list"
+                       value="${escapeHtml(asanaUrl)}">
+                <small class="desarrollos-hint">
+                    Pega la URL completa del proyecto desde Asana. Se guardará en el proyecto
+                    y se usará para listar sus tareas aquí.
+                </small>
+                <div class="desarrollos-actions">
+                    <button class="btn btn-primary btn-sm" onclick="vincularAsana()">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                         ${asanaId ? 'Actualizar' : 'Vincular'}
                     </button>
                     ${asanaId ? `
-                        <a class="btn btn-secondary btn-sm" href="${escapeHtml(asanaUrl)}" target="_blank" rel="noopener" style="height:38px;display:inline-flex;align-items:center;gap:6px">
+                        <a class="btn btn-secondary btn-sm" href="${escapeHtml(asanaUrl)}" target="_blank" rel="noopener">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                             Abrir en Asana
                         </a>
-                        <button class="btn btn-secondary btn-sm" onclick="desvincularAsana()" style="height:38px" title="Desvincular">
+                        <button class="btn btn-secondary btn-sm" onclick="desvincularAsana()" title="Desvincular">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            Desvincular
                         </button>
                     ` : ''}
                 </div>
             </div>
-        </div>
-        <div id="asana-tasks-list" class="desarrollos-list">
-            ${asanaId ? '<div class="loading-inline"><div class="spinner"></div> Cargando tareas de Asana...</div>' : '<div style="text-align:center;padding:32px;color:var(--text-muted)">Pega la URL del proyecto Asana para ver sus desarrollos</div>'}
+            <div id="asana-tasks-list" class="desarrollos-list">
+                ${asanaId
+                    ? '<div class="loading-inline"><div class="spinner"></div> Cargando tareas de Asana…</div>'
+                    : `<div class="desarrollos-empty">
+                        <div class="desarrollos-empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                        </div>
+                        <p class="desarrollos-empty-title">Aún no hay desarrollos vinculados</p>
+                        <p class="desarrollos-empty-desc">Pega la URL del proyecto en Asana y pulsa <strong>Vincular</strong> para ver aquí sus tareas.</p>
+                    </div>`
+                }
+            </div>
         </div>`;
 
     if (asanaId) {

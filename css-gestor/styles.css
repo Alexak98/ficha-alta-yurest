@@ -1418,14 +1418,89 @@ body {
    DESARROLLOS VIEW
    ========================================== */
 
-.desarrollos-config {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
+/* Tab Desarrollos — vinculación con proyecto de Asana.
+   Layout centrado con una tarjeta limpia que aloja el input, el hint
+   y los botones alineados a la derecha debajo. En viewport estrecho
+   los botones pasan a apilarse con flex-wrap. */
+.desarrollos-wrap {
+    max-width: 720px;
+    margin: 0 auto;
 }
-
+.desarrollos-card {
+    background: #f8fafc;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 18px;
+}
+.desarrollos-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+.desarrollos-input {
+    width: 100%;
+    height: 40px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+}
+.desarrollos-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-top: 6px;
+}
+.desarrollos-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+.desarrollos-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+}
 .desarrollos-list {
     min-height: 100px;
+}
+
+/* Empty state del tab — sustituye el "Pega la URL…" suelto y sin estilo
+   por un bloque centrado con icono, título y descripción. */
+.desarrollos-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--text-muted);
+}
+.desarrollos-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: #eef2ff;
+    color: #6366f1;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+}
+.desarrollos-empty-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+.desarrollos-empty-desc {
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 420px;
+    margin: 0;
 }
 
 .asana-task-row {
