@@ -368,12 +368,11 @@
         {
             id: 'comercial',
             nombre: 'Comercial',
-            descripcion: 'Gestión de fichas de alta y bajas de clientes.',
+            descripcion: 'Gestión de fichas de alta de clientes.',
             icon: 'comercial',
             colorA: '#fc5858', colorB: '#e84848',
             paginas: [
-                { id: 'lista', href: 'lista.html', label: 'Fichas de cliente', sub: 'Altas, solicitudes y rellenado', icon: 'fichas' },
-                { id: 'bajas', href: 'bajas.html', label: 'Bajas',             sub: 'Gestión de desactivaciones',     icon: 'bajas' }
+                { id: 'lista', href: 'lista.html', label: 'Fichas de cliente', sub: 'Altas, solicitudes y rellenado', icon: 'fichas' }
             ]
         },
         {
@@ -400,11 +399,12 @@
         {
             id: 'customer',
             nombre: 'Customer Success',
-            descripcion: 'Seguimiento y relación con clientes activos.',
+            descripcion: 'Seguimiento, retención y bajas de clientes activos.',
             icon: 'customer',
             colorA: '#ec4899', colorB: '#be185d',
             paginas: [
-                { id: 'clientes', href: 'clientes.html', label: 'Clientes', sub: 'Listado de clientes activos', icon: 'clientes' }
+                { id: 'clientes', href: 'clientes.html', label: 'Clientes', sub: 'Listado de clientes activos',     icon: 'clientes' },
+                { id: 'bajas',    href: 'bajas.html',    label: 'Bajas',    sub: 'Gestión de desactivaciones',      icon: 'bajas'    }
             ]
         },
         {

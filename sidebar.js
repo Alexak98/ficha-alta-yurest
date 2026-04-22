@@ -53,8 +53,7 @@
             label: 'Comercial',
             icon: 'comercial',
             items: [
-                { id: 'lista',  href: 'lista.html',  label: 'Fichas de cliente', icon: 'fichas' },
-                { id: 'bajas',  href: 'bajas.html',  label: 'Bajas',             icon: 'bajas'  }
+                { id: 'lista',  href: 'lista.html',  label: 'Fichas de cliente', icon: 'fichas' }
             ]
         },
         {
@@ -79,7 +78,8 @@
             label: 'Customer Success',
             icon: 'customer',
             items: [
-                { id: 'clientes', href: 'clientes.html', label: 'Clientes', icon: 'clientes' }
+                { id: 'clientes', href: 'clientes.html', label: 'Clientes', icon: 'clientes' },
+                { id: 'bajas',    href: 'bajas.html',    label: 'Bajas',    icon: 'bajas'    }
             ]
         },
         {
