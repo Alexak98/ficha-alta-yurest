@@ -2170,6 +2170,11 @@
                 const id = ficha['id'] || ficha['ID'] || ficha['row_number'] || '';
                 if (!id) throw Object.assign(new Error('La ficha no tiene un id válido'), { code: 'tech' });
                 await _doDelete(WEBHOOK_ELIMINAR_FICHA, { action: 'delete', entity: 'ficha', id: id, row_number: id });
+                // Tombstone local: blinda el borrado contra la ventana en
+                // la que la BD aún no ha propagado el deleted_at y /altas
+                // sigue devolviendo la ficha (se veía como "1" en el badge
+                // Sin asignar pese a que la lista ya la escondía).
+                if (YurestConfig.marcarFichaEliminada) YurestConfig.marcarFichaEliminada(id);
                 // Audit log: registra quién borró qué ficha.
                 YurestConfig.logHistorial({
                     ficha_id: id,

@@ -498,6 +498,55 @@
     }
 
     // ──────────────────────────────────────────────────────────
+    //  TOMBSTONES LOCALES DE FICHAS BORRADAS
+    // ──────────────────────────────────────────────────────────
+    // Cuando borramos una ficha con el workflow 10 (soft-delete por
+    // deleted_at), a veces hay una ventana entre que la BD confirma el
+    // UPDATE y PostgREST refresca su snapshot → el endpoint /altas
+    // vuelve a devolverla momentáneamente. Consecuencia visible: el
+    // badge "Sin asignar" se queda en 1 aunque la ficha ya no existe en
+    // la vista actual. Para blindarlo, guardamos localmente los IDs
+    // borrados y los filtramos en todos los consumers de /altas hasta
+    // que la BD deje de enviarlos.
+    //
+    // Mismo patrón que STORAGE_KEY_ELIMINADOS usa el gestor de proyectos.
+    const STORAGE_KEY_FICHAS_TOMBSTONE = 'yurest_fichas_eliminadas_v1';
+
+    function _leerTombstonesFichas() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY_FICHAS_TOMBSTONE);
+            return new Set(raw ? JSON.parse(raw) : []);
+        } catch (_) { return new Set(); }
+    }
+    function marcarFichaEliminada(id) {
+        if (!id) return;
+        const set = _leerTombstonesFichas();
+        set.add(String(id));
+        try { localStorage.setItem(STORAGE_KEY_FICHAS_TOMBSTONE, JSON.stringify([...set])); }
+        catch (_) { /* quota: no crítico */ }
+    }
+    // Filtra un array de fichas crudas de /altas retirando las que están
+    // en el tombstone. De paso limpia del tombstone aquellas que la BD
+    // ya no devuelve (ya tiene deleted_at propagado y no hay que seguir
+    // bloqueándolas localmente).
+    function aplicarTombstonesFichas(rawFichas) {
+        const tomb = _leerTombstonesFichas();
+        if (tomb.size === 0) return rawFichas || [];
+        const idsEnRaw = new Set((rawFichas || []).map(f => String(f.id || f.ID || '')).filter(Boolean));
+        // Limpieza: cualquier id en tomb que ya no venga en raw → quitar
+        // (la BD lo ha enterrado, ya no hace falta filtrar en cliente).
+        let modificado = false;
+        for (const id of [...tomb]) {
+            if (!idsEnRaw.has(id)) { tomb.delete(id); modificado = true; }
+        }
+        if (modificado) {
+            try { localStorage.setItem(STORAGE_KEY_FICHAS_TOMBSTONE, JSON.stringify([...tomb])); }
+            catch (_) {}
+        }
+        return (rawFichas || []).filter(f => !tomb.has(String(f.id || f.ID || '')));
+    }
+
+    // ──────────────────────────────────────────────────────────
     //  BADGE "SIN ASIGNAR" — se usa en varias páginas
     // ──────────────────────────────────────────────────────────
     // Actualiza el <span id="badge-sinasignar"> con el número de fichas
@@ -506,12 +555,22 @@
         try {
             const badge = document.getElementById('badge-sinasignar');
             if (!badge) return;
-            const res = await apiFetch(ENDPOINTS.altas, { method: 'GET' });
+            // Cache-bust: algunos navegadores cachean el GET incluso sin
+            // headers explícitos, lo que hace que tras borrar una ficha el
+            // badge siga contando la antigua. Forzamos fetch fresco.
+            const url = ENDPOINTS.altas + (ENDPOINTS.altas.includes('?') ? '&' : '?') + '_=' + Date.now();
+            const res = await apiFetch(url, {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
             if (!res.ok) return;
             const data = await res.json();
-            const raw = Array.isArray(data) ? data
+            const rawInicial = Array.isArray(data) ? data
                 : Array.isArray(data.clientes) ? data.clientes
                 : Array.isArray(data.data) ? data.data : [];
+            // Aplicar tombstones locales para eliminar fichas que el
+            // backend sigue devolviendo pero que el usuario ya borró.
+            const raw = aplicarTombstonesFichas(rawInicial);
             const proyectos = JSON.parse(localStorage.getItem('gestor_proyectos_v3') || '[]');
             const existentes = new Set(proyectos.map(x => (x.cliente || '').toLowerCase().trim()));
             const count = raw.filter(a => {
@@ -706,6 +765,8 @@
         escJsInAttr,
         generarId,
         actualizarBadgeSinAsignar,
+        marcarFichaEliminada,
+        aplicarTombstonesFichas,
         actualizarBadgeA3,
         a11yAbrirModal,
         a11yCerrarModal,

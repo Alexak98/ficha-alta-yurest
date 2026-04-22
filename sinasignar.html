@@ -348,13 +348,25 @@
         grid.innerHTML = '<div class="loading-center"><div class="spinner"></div><p>Cargando fichas de alta...</p></div>';
 
         try {
-            const res = await fetch(WEBHOOK_ALTAS, { method: 'GET', headers: getAuthHeaders() });
+            // Cache-bust: evita que el navegador cachee respuestas antiguas
+            // (lo cual hacía que fichas recién borradas siguieran saliendo
+            // aquí durante unos segundos).
+            const url = WEBHOOK_ALTAS + (WEBHOOK_ALTAS.includes('?') ? '&' : '?') + '_=' + Date.now();
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
             if (!res.ok) throw new Error('Error ' + res.status);
             let data = {};
             try { data = await res.json(); } catch (_) {}
-            const raw = Array.isArray(data) ? data
+            const rawInicial = Array.isArray(data) ? data
                 : Array.isArray(data.clientes) ? data.clientes
                 : Array.isArray(data.data) ? data.data : [];
+            // Aplica tombstones: quita fichas borradas localmente que el
+            // backend aún devuelve (ventana de propagación del deleted_at).
+            const raw = (window.YurestConfig && YurestConfig.aplicarTombstonesFichas)
+                ? YurestConfig.aplicarTombstonesFichas(rawInicial)
+                : rawInicial;
 
             const todas = raw.map(normalizarAlta).filter(a => a.nombre);
             const nombresExistentes = new Set(proyectos.map(p => normalizarNombreCliente(p.cliente)));
