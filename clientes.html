@@ -317,10 +317,22 @@
         // Traducir snake_case de Supabase → campos legibles
         const estadoRaw = String(f.estado || f['Estado'] || '').toLowerCase();
         const estado = estadoRaw === 'pendiente' ? 'pendiente' : 'activo';
-        const tipoRaw = String(f.tipo_cliente || f['Tipo Cliente'] || '').toLowerCase();
+        // Normalización del tipo a un pool reducido para filtros/KPIs.
+        // Las variantes 'corporate_cp' y 'corp_cocina' se agrupan como
+        // 'corporate' para los chips y el KPI de reparto Lite / Corporate.
+        // El valor exacto se conserva en `tipoOriginal` para mostrar la
+        // etiqueta correcta ("Corporate + CP", etc.) en el panel.
+        const tipoRaw = String(f.tipo_cliente || f['Tipo Cliente'] || '').toLowerCase().trim();
         let tipo = 'otro';
-        if (tipoRaw.includes('lite') || tipoRaw === 'planes') tipo = 'lite';
-        else if (tipoRaw.includes('corporate') || tipoRaw.includes('corp')) tipo = 'corporate';
+        if (tipoRaw === 'lite' || tipoRaw.includes('lite')) tipo = 'lite';
+        else if (tipoRaw === 'planes') tipo = 'planes';
+        else if (
+            tipoRaw === 'corporate' ||
+            tipoRaw === 'corporate_cp' ||
+            tipoRaw === 'corp_cocina' ||
+            tipoRaw.includes('corporate') ||
+            tipoRaw.includes('corp')
+        ) tipo = 'corporate';
         return {
             id:            f.id || f.ID,
             nombre:        f.nombre_comercial || f['Nombre Comercial'] || f.denominacion || f['Nombre Sociedad'] || '',
@@ -480,7 +492,18 @@
         document.getElementById('cl-panel-sociedad').textContent = c.sociedad && c.sociedad !== c.nombre ? c.sociedad : (c.cif || '—');
 
         const body = document.getElementById('cl-panel-body');
-        const tipoLbl = c.tipoOriginal || (c.tipo === 'lite' ? 'Lite' : c.tipo === 'corporate' ? 'Corporate' : '—');
+        // Etiqueta bonita para el tipo. tipoOriginal guarda el slug de BD
+        // (p. ej. "corporate_cp"); lo mapeamos al label humano. Si viniera
+        // algo fuera del enum, caemos al slug tal cual.
+        const TIPO_LBL_MAP = {
+            lite:         'Lite',
+            planes:       'Planes',
+            corporate:    'Corporate',
+            corporate_cp: 'Corporate + CP',
+            corp_cocina:  'CORP. Cocina Producción'
+        };
+        const slugOriginal = String(c.tipoOriginal || '').toLowerCase().trim();
+        const tipoLbl = TIPO_LBL_MAP[slugOriginal] || c.tipoOriginal || TIPO_LBL_MAP[c.tipo] || '—';
         const dir = [c.calle, c.cp, c.municipio, c.provincia].filter(Boolean).join(', ');
         const modulos = Array.isArray(c.modulos) && c.modulos.length > 0 ? c.modulos.join(', ') : '';
 

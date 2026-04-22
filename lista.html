@@ -1011,6 +1011,8 @@
                     <option value="lite">Lite</option>
                     <option value="planes">Planes</option>
                     <option value="corporate">Corporate</option>
+                    <option value="corporate_cp">Corporate + CP</option>
+                    <option value="corp_cocina">CORP. Cocina Producción</option>
                 </select>
             </div>
             <button class="btn-enviar-solicitud" id="btn-enviar-sol" onclick="enviarSolicitud()">
@@ -1052,9 +1054,11 @@
         <span class="filter-label">Tipo</span>
         <div class="filter-chips">
             <button class="chip active" data-tipo="" onclick="setFiltroTipo(this, '')">Todos <span class="chip-count" id="count-todos">0</span></button>
-            <button class="chip" data-tipo="lite"      onclick="setFiltroTipo(this, 'lite')">Lite <span class="chip-count" id="count-lite">0</span></button>
-            <button class="chip" data-tipo="planes"    onclick="setFiltroTipo(this, 'planes')">Planes <span class="chip-count" id="count-planes">0</span></button>
-            <button class="chip" data-tipo="corporate" onclick="setFiltroTipo(this, 'corporate')">Enterprise <span class="chip-count" id="count-corporate">0</span></button>
+            <button class="chip" data-tipo="lite"         onclick="setFiltroTipo(this, 'lite')">Lite <span class="chip-count" id="count-lite">0</span></button>
+            <button class="chip" data-tipo="planes"       onclick="setFiltroTipo(this, 'planes')">Planes <span class="chip-count" id="count-planes">0</span></button>
+            <button class="chip" data-tipo="corporate"    onclick="setFiltroTipo(this, 'corporate')">Corporate <span class="chip-count" id="count-corporate">0</span></button>
+            <button class="chip" data-tipo="corporate_cp" onclick="setFiltroTipo(this, 'corporate_cp')">Corporate + CP <span class="chip-count" id="count-corporate_cp">0</span></button>
+            <button class="chip" data-tipo="corp_cocina"  onclick="setFiltroTipo(this, 'corp_cocina')">CORP. Cocina Producción <span class="chip-count" id="count-corp_cocina">0</span></button>
         </div>
         <div class="filter-sep"></div>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -1484,10 +1488,12 @@
             (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim() === t
         ).length;
 
-        document.getElementById('count-todos').textContent     = fichasRellenadas.length;
-        document.getElementById('count-lite').textContent      = contarTipo('lite');
-        document.getElementById('count-planes').textContent    = contarTipo('planes');
-        document.getElementById('count-corporate').textContent = contarTipo('corporate');
+        document.getElementById('count-todos').textContent        = fichasRellenadas.length;
+        document.getElementById('count-lite').textContent         = contarTipo('lite');
+        document.getElementById('count-planes').textContent       = contarTipo('planes');
+        document.getElementById('count-corporate').textContent    = contarTipo('corporate');
+        document.getElementById('count-corporate_cp').textContent = contarTipo('corporate_cp');
+        document.getElementById('count-corp_cocina').textContent  = contarTipo('corp_cocina');
     }
 
     // ── Estado de filtros ─────────────────────────────────────────────────────
@@ -1501,9 +1507,13 @@
     // ── Badge tipo cliente ────────────────────────────────────────────────────
     function tipoBadge(f) {
         const t = (f['Tipo Cliente'] || f['tipoCliente'] || f['Tipo de cliente'] || f['tipo_cliente'] || '').toLowerCase().trim();
-        if (t === 'lite')      return `<span class="badge-tipo badge-lite">Lite</span>`;
-        if (t === 'planes')    return `<span class="badge-tipo badge-planes">Planes</span>`;
-        if (t === 'corporate') return `<span class="badge-tipo badge-corporate">Corporate</span>`;
+        // Toda la familia Corporate comparte el mismo color (badge-corporate)
+        // pero cambia la etiqueta para distinguirlas a golpe de vista.
+        if (t === 'lite')         return `<span class="badge-tipo badge-lite">Lite</span>`;
+        if (t === 'planes')       return `<span class="badge-tipo badge-planes">Planes</span>`;
+        if (t === 'corporate')    return `<span class="badge-tipo badge-corporate">Corporate</span>`;
+        if (t === 'corporate_cp') return `<span class="badge-tipo badge-corporate">Corporate + CP</span>`;
+        if (t === 'corp_cocina')  return `<span class="badge-tipo badge-corporate">CORP. Cocina Prod.</span>`;
         return `<span class="badge-tipo badge-desconocido">—</span>`;
     }
 
@@ -1759,9 +1769,17 @@
     function rellenarPanel(f) {
         // ── Tipo cliente ──────────────────────────────────────────────────────
         const tipo = (f['Tipo Cliente'] || f['tipoCliente'] || '').toLowerCase().trim();
-        const tipoLabel = tipo === 'lite' ? 'Lite' : tipo === 'planes' ? 'Planes' : tipo === 'corporate' ? 'Enterprise' : '';
-        const tipoPillClass = tipo === 'lite' ? 'panel-tipo-lite' : tipo === 'planes' ? 'panel-tipo-planes' : tipo === 'corporate' ? 'panel-tipo-corporate' : '';
-        const tipoPill = tipoLabel ? `<span class="panel-tipo-pill ${tipoPillClass}">${tipoLabel}</span>` : '';
+        // Mapeo a etiqueta + clase CSS. Toda la familia Corporate comparte
+        // panel-tipo-corporate (mismo color); lo único que cambia es el label.
+        const TIPO_PANEL = {
+            'lite':         { label: 'Lite',                     cls: 'panel-tipo-lite'      },
+            'planes':       { label: 'Planes',                   cls: 'panel-tipo-planes'    },
+            'corporate':    { label: 'Corporate',                cls: 'panel-tipo-corporate' },
+            'corporate_cp': { label: 'Corporate + CP',           cls: 'panel-tipo-corporate' },
+            'corp_cocina':  { label: 'CORP. Cocina Producción',  cls: 'panel-tipo-corporate' }
+        };
+        const info = TIPO_PANEL[tipo] || null;
+        const tipoPill = info ? `<span class="panel-tipo-pill ${info.cls}">${info.label}</span>` : '';
 
         // ── Header ────────────────────────────────────────────────────────────
         document.getElementById('panel-title').innerHTML = esc(f['Nombre Sociedad'] || '—') + tipoPill;

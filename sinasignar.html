@@ -216,11 +216,14 @@
             <button class="chip-filter" data-tipo="planes" onclick="toggleFiltroTipo(this)">
                 Planes <span class="chip-count" id="count-tipo-planes">0</span>
             </button>
-            <button class="chip-filter" data-tipo="corporate sin cocina" onclick="toggleFiltroTipo(this)">
-                Corporate sin cocina <span class="chip-count" id="count-tipo-corp-sc">0</span>
+            <button class="chip-filter" data-tipo="corporate" onclick="toggleFiltroTipo(this)">
+                Corporate <span class="chip-count" id="count-tipo-corp">0</span>
             </button>
-            <button class="chip-filter" data-tipo="corporate con cocina" onclick="toggleFiltroTipo(this)">
-                Corporate con cocina <span class="chip-count" id="count-tipo-corp-cc">0</span>
+            <button class="chip-filter" data-tipo="corporate_cp" onclick="toggleFiltroTipo(this)">
+                Corporate + CP <span class="chip-count" id="count-tipo-corp-cp">0</span>
+            </button>
+            <button class="chip-filter" data-tipo="corp_cocina" onclick="toggleFiltroTipo(this)">
+                CORP. Cocina Producción <span class="chip-count" id="count-tipo-corp-cocina">0</span>
             </button>
         </div>
         <div class="cards-grid" id="fichas-grid"></div>
@@ -338,29 +341,37 @@
         }
     }
 
-    // Devuelve el tipo normalizado de una ficha para comparar con los chips
+    // Devuelve el slug canónico del tipo de una ficha para comparar con los
+    // chips del filtro. Los valores válidos en BD son:
+    //   lite | planes | corporate | corporate_cp | corp_cocina
+    // Para fichas legacy con texto libre ("corporate con cocina", etc.)
+    // aplicamos heurísticas que mapean al slug nuevo equivalente.
     function tipoDeFicha(f) {
         const raw = (f.tipo || f.tipoOriginal || '').toString().toLowerCase().trim();
+        // 1) Match directo contra los slugs oficiales
+        if (['lite','planes','corporate','corporate_cp','corp_cocina'].includes(raw)) return raw;
+        // 2) Heurísticas legacy
         if (raw.includes('lite')) return 'lite';
-        if (raw.includes('corporate con cocina') || raw === 'corporate con cocina') return 'corporate con cocina';
-        if (raw.includes('corporate sin cocina') || raw === 'corporate sin cocina') return 'corporate sin cocina';
-        if (raw.includes('corporate')) return 'corporate sin cocina';
         if (raw.includes('planes')) return 'planes';
+        if (raw.includes('cocina') || raw.includes('producción') || raw.includes('produccion')) return 'corp_cocina';
+        if (raw.includes('cp') || raw.includes('compra')) return 'corporate_cp';
+        if (raw.includes('corporate') || raw.includes('corp')) return 'corporate';
         return raw;
     }
 
     function actualizarContadoresFiltros() {
         const total = fichasSinAsignar.length;
-        const countByTipo = { lite:0, planes:0, 'corporate sin cocina':0, 'corporate con cocina':0 };
+        const countByTipo = { lite:0, planes:0, corporate:0, corporate_cp:0, corp_cocina:0 };
         fichasSinAsignar.forEach(f => {
             const t = tipoDeFicha(f);
             if (countByTipo[t] != null) countByTipo[t]++;
         });
-        document.getElementById('count-tipo-all').textContent = total;
-        document.getElementById('count-tipo-lite').textContent = countByTipo['lite'];
-        document.getElementById('count-tipo-planes').textContent = countByTipo['planes'];
-        document.getElementById('count-tipo-corp-sc').textContent = countByTipo['corporate sin cocina'];
-        document.getElementById('count-tipo-corp-cc').textContent = countByTipo['corporate con cocina'];
+        document.getElementById('count-tipo-all').textContent        = total;
+        document.getElementById('count-tipo-lite').textContent       = countByTipo.lite;
+        document.getElementById('count-tipo-planes').textContent     = countByTipo.planes;
+        document.getElementById('count-tipo-corp').textContent       = countByTipo.corporate;
+        document.getElementById('count-tipo-corp-cp').textContent    = countByTipo.corporate_cp;
+        document.getElementById('count-tipo-corp-cocina').textContent = countByTipo.corp_cocina;
     }
 
     function toggleFiltroTipo(btn) {
@@ -423,7 +434,7 @@
                 </div>
                 ${f.nombreComercial && f.nombre && f.nombreComercial !== f.nombre ? `<div class="ficha-card-comercial">${escapeHtml(f.nombre)}</div>` : ''}
                 <div class="ficha-card-meta">
-                    <span class="ficha-tipo">${escapeHtml(f.tipoOriginal || f.tipo)}</span>
+                    <span class="ficha-tipo">${escapeHtml(f.tipo || f.tipoOriginal)}</span>
                     ${f.fecha ? `<span class="ficha-fecha">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                         ${escapeHtml(formatearFechaAmigable(f.fecha))}

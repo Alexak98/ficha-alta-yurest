@@ -631,12 +631,25 @@ function normalizarAlta(f) {
         ? rawMods.map(m => String(m).trim()).filter(Boolean)
         : String(rawMods).split(/[,;|]/).map(m => m.trim()).filter(Boolean);
 
-    let tipoNorm = 'Corporate sin cocina';
-    const tipoLower = tipo.toLowerCase();
-    if (tipoLower.includes('lite') || tipoLower.includes('planes') || tipoLower === 'planes') {
-        tipoNorm = 'Planes';
-    } else if (tipoLower.includes('corporate') || tipoLower.includes('corp')) {
-        if (modulos.join(',').toLowerCase().includes('cocina')) tipoNorm = 'Corporate con cocina';
+    // Mapeo del slug oficial (o texto libre legacy) a un label humano.
+    // Slugs actuales en BD: lite | planes | corporate | corporate_cp | corp_cocina.
+    const tipoLower = tipo.toLowerCase().trim();
+    const LABEL_POR_SLUG = {
+        'lite':         'Lite',
+        'planes':       'Planes',
+        'corporate':    'Corporate',
+        'corporate_cp': 'Corporate + CP',
+        'corp_cocina':  'CORP. Cocina Producción'
+    };
+    let tipoNorm = LABEL_POR_SLUG[tipoLower];
+    if (!tipoNorm) {
+        // Heurísticas para texto libre legacy
+        if (tipoLower.includes('lite')) tipoNorm = 'Lite';
+        else if (tipoLower.includes('planes')) tipoNorm = 'Planes';
+        else if (tipoLower.includes('cocina') || tipoLower.includes('producción') || tipoLower.includes('produccion')) tipoNorm = 'CORP. Cocina Producción';
+        else if (tipoLower.includes('cp') || tipoLower.includes('compra')) tipoNorm = 'Corporate + CP';
+        else if (tipoLower.includes('corporate') || tipoLower.includes('corp')) tipoNorm = 'Corporate';
+        else tipoNorm = 'Corporate';  // fallback conservador
     }
 
     // Conteo de locales: el GET de fichas anexa `locales_count` agregado

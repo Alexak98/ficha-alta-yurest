@@ -31,7 +31,7 @@ CREATE TABLE fichas_alta (
     email TEXT,
     email_factura TEXT,
     email_cc TEXT,
-    tipo_cliente TEXT CHECK (tipo_cliente IS NULL OR tipo_cliente IN ('lite', 'planes', 'corporate')),
+    tipo_cliente TEXT CHECK (tipo_cliente IS NULL OR tipo_cliente IN ('lite', 'planes', 'corporate', 'corporate_cp', 'corp_cocina')),
 
     -- Direccion
     calle TEXT,

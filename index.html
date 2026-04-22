@@ -617,15 +617,26 @@
             <div class="form-group col-12">
                 <label>Tipo de cliente</label>
                 <div class="tipo-group">
-                    <input type="radio" id="tipo_lite"       name="tipo_cliente" value="lite"       onchange="seleccionarTipo('lite')">
-                    <label for="tipo_lite"       class="tipo-btn"><span class="tipo-icon">⚡</span>Lite</label>
+                    <!-- Lite queda fuera de la vista porque ya no es una
+                         opción manual aquí: se activa mediante el checkbox
+                         "Cliente LITE" en la sección principal. Mantenemos
+                         el radio en DOM (display:none) para que toggleLite()
+                         pueda marcarlo y el resto de la lógica existente
+                         (document.querySelector('input[name="tipo_cliente"]:checked'))
+                         siga funcionando sin cambios. -->
+                    <input type="radio" id="tipo_lite" name="tipo_cliente" value="lite" style="display:none" onchange="seleccionarTipo('lite')">
 
-                    <input type="radio" id="tipo_planes"     name="tipo_cliente" value="planes"     onchange="seleccionarTipo('planes')">
-                    <label for="tipo_planes"     class="tipo-btn"><span class="tipo-icon">📦</span>Planes</label>
+                    <input type="radio" id="tipo_planes"       name="tipo_cliente" value="planes"       onchange="seleccionarTipo('planes')">
+                    <label for="tipo_planes"       class="tipo-btn"><span class="tipo-icon">📦</span>Planes</label>
 
-                    <input type="radio" id="tipo_corporate"  name="tipo_cliente" value="corporate"  onchange="seleccionarTipo('corporate')">
-                    <label for="tipo_corporate"  class="tipo-btn"><span class="tipo-icon">🏢</span>Corporate</label>
+                    <input type="radio" id="tipo_corporate"    name="tipo_cliente" value="corporate"    onchange="seleccionarTipo('corporate')">
+                    <label for="tipo_corporate"    class="tipo-btn"><span class="tipo-icon">🏢</span>Corporate</label>
 
+                    <input type="radio" id="tipo_corporate_cp" name="tipo_cliente" value="corporate_cp" onchange="seleccionarTipo('corporate_cp')">
+                    <label for="tipo_corporate_cp" class="tipo-btn"><span class="tipo-icon">🏬</span>Corporate + CP</label>
+
+                    <input type="radio" id="tipo_corp_cocina"  name="tipo_cliente" value="corp_cocina"  onchange="seleccionarTipo('corp_cocina')">
+                    <label for="tipo_corp_cocina"  class="tipo-btn"><span class="tipo-icon">🍳</span>CORP. Cocina Producción</label>
                 </div>
             </div>
         </div>
@@ -1006,7 +1017,10 @@
         sincronizarRecurrenciaMensual();
         actualizarCorpModuleLocales();
         const _tipoActual = (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value;
-        if (_tipoActual === 'corporate') recalcularCarrito('corporate');
+        // Para toda la familia Corporate, el carrito se recalcula con la
+        // misma clave 'corporate' (el renderizado interno no cambia entre
+        // variantes — sólo la etiqueta que ve el comercial).
+        if (esCorp(_tipoActual)) recalcularCarrito(_tipoActual);
         // La recurrencia de Planes se cobra por local: re-render al añadir/quitar.
         if (_tipoActual === 'planes') sincronizarPlanesRecurrencia();
     }
@@ -1125,7 +1139,19 @@
             { id: 'corp_almacen',       nombre: 'Almacén Central',                  precio: 10, pago: 'único', modulos: ['Almacén Central'] }
         ]
     };
-    const TIPO_LABELS = { lite: 'Lite', planes: 'Planes', corporate: 'Corporate' };
+    const TIPO_LABELS = {
+        lite:         'Lite',
+        planes:       'Planes',
+        corporate:    'Corporate',
+        corporate_cp: 'Corporate + CP',
+        corp_cocina:  'CORP. Cocina Producción'
+    };
+    // Helper: ¿pertenece a la familia Corporate? Los tres variantes comparten
+    // el mismo flujo de carrito, precios y recurrencia; solo cambia la
+    // taxonomía para reportes y filtrados.
+    function esCorp(t) {
+        return t === 'corporate' || t === 'corporate_cp' || t === 'corp_cocina';
+    }
 
     // ── Costes de recurrencia por plan (Planes) ───────────────────────────────
     const PLAN_MONTHLY_COSTS = {
@@ -1207,7 +1233,8 @@
     function seleccionarTipo(tipo) {
         const prefix = document.getElementById('tipo-cart-prefix');
         const label  = document.getElementById('tipo-cart-label');
-        if (tipo === 'corporate') {
+        // Toda la familia Corporate comparte el mismo flujo de carrito.
+        if (esCorp(tipo)) {
             if (prefix) prefix.textContent = '';
             if (label)  label.textContent  = 'Módulos';
         } else if (tipo === 'planes') {
@@ -1217,13 +1244,15 @@
             if (prefix) prefix.textContent = '';
             if (label)  label.textContent  = '';
         }
-        // Secciones exclusivas de corporate / planes
-        document.getElementById('corp-setup-cart').classList.toggle('hidden', tipo !== 'corporate');
-        document.getElementById('corp-recurrencia-cart').classList.toggle('hidden', tipo !== 'corporate');
+        // Secciones exclusivas: la familia Corporate completa usa el bloque
+        // corp-*; Planes usa el suyo; Lite usa el inline del carrito.
+        const isCorp = esCorp(tipo);
+        document.getElementById('corp-setup-cart').classList.toggle('hidden', !isCorp);
+        document.getElementById('corp-recurrencia-cart').classList.toggle('hidden', !isCorp);
         document.getElementById('planes-recurrencia-cart').classList.toggle('hidden', tipo !== 'planes');
         document.getElementById('planes-setup-descuento-row').classList.toggle('hidden', tipo !== 'planes');
-        document.getElementById('corp-periodo-row').classList.toggle('hidden', tipo !== 'corporate');
-        document.getElementById('mensual-cart-wrapper').classList.toggle('hidden', tipo === 'corporate' || tipo === 'planes');
+        document.getElementById('corp-periodo-row').classList.toggle('hidden', !isCorp);
+        document.getElementById('mensual-cart-wrapper').classList.toggle('hidden', isCorp || tipo === 'planes');
         document.getElementById('fin-tipo-content').classList.remove('hidden');
         document.getElementById('modulos-section').classList.toggle('hidden', tipo === 'lite');
         renderCarrito(tipo);
@@ -1251,6 +1280,9 @@
     }
 
     function actualizarCorpModuleLocales() {
+        // Detectamos que estamos en familia Corporate porque los bloques
+        // corp-* están visibles — vale para corporate, corporate_cp y
+        // corp_cocina sin tener que leer el tipo exacto.
         const isCorporate = !document.getElementById('corp-setup-cart')?.classList.contains('hidden');
         if (!isCorporate) return;
         const locales = getLocales();
@@ -1266,7 +1298,7 @@
     }
 
     function renderCartItem(p, tipo, pagotipo) {
-        const isCorp = tipo === 'corporate';
+        const isCorp = esCorp(tipo);
         const localesPills = isCorp
             ? `<div class="corp-module-locales" id="corp_mod_locs_${p.id}">${renderModuleLocalesPillsHTML(p.id, getLocales(), new Set())}</div>`
             : '';
@@ -1275,7 +1307,7 @@
                 <input type="checkbox" name="cart_item" value="${p.id}" data-pago="${pagotipo}" onchange="recalcularCarrito('${tipo}')">
                 <div class="cart-item-info">
                     <span class="cart-item-nombre">${p.nombre}</span>
-                    ${p.modulos && p.modulos.length > 0 && tipo !== 'planes' && tipo !== 'corporate' ? `<span class="cart-item-modulos">${p.modulos.join(' · ')}</span>` : ''}
+                    ${p.modulos && p.modulos.length > 0 && tipo !== 'planes' && !esCorp(tipo) ? `<span class="cart-item-modulos">${p.modulos.join(' · ')}</span>` : ''}
                     ${localesPills}
                 </div>
                 <div class="cart-item-pricing">
@@ -1292,7 +1324,10 @@
     }
 
     function renderCarrito(tipo) {
-        const paquetes = PAQUETES[tipo] || [];
+        // Las variantes corporate_cp y corp_cocina reutilizan los paquetes de
+        // 'corporate'; solo cambia la etiqueta del tipo que se muestra.
+        const paqueteKey = esCorp(tipo) ? 'corporate' : tipo;
+        const paquetes = PAQUETES[paqueteKey] || [];
         const uniItems = paquetes.filter(p => p.pago !== 'mes');
         const itemsEl  = document.getElementById('tipo-cart-items');
 
@@ -1416,7 +1451,8 @@
         const mensualEl = document.getElementById('tipo-cart-mensual-items');
         if (!mensualEl) return;
 
-        const mesItems = tipo ? (PAQUETES[tipo] || []).filter(p => p.pago === 'mes') : [];
+        const paqueteKey = esCorp(tipo) ? 'corporate' : tipo;
+        const mesItems = paqueteKey ? (PAQUETES[paqueteKey] || []).filter(p => p.pago === 'mes') : [];
 
         if (mesItems.length === 0) {
             mensualEl.innerHTML = '<div class="tipo-cart-empty tipo-cart-empty--sm">Sin elementos de recurrencia</div>';
@@ -2027,7 +2063,9 @@
     //               mensual, no tiene descuento propio de setup).
     function _importeYDescuentoSetup(tipoCliente) {
         const num = (id) => parseFloat(document.getElementById(id)?.value) || 0;
-        if (tipoCliente === 'corporate') {
+        // Todas las variantes Corporate (corporate, corporate_cp, corp_cocina)
+        // usan el mismo par importe+descuento manuales de setup.
+        if (esCorp(tipoCliente)) {
             return { importe: num('corp_setup_precio'), descuento: num('corp_setup_descuento') };
         }
         if (tipoCliente === 'planes') {
@@ -3031,7 +3069,9 @@
         const liteCheck = document.getElementById('lite_check');
         const liteItem = liteCheck ? liteCheck.closest('.toggle-check-item') : null;
         if (liteItem) {
-            const debeOcultarse = tipo === 'planes' || tipo === 'corporate';
+            // Ocultar el toggle Lite cuando el tipo ya está fijado a cualquier
+            // variante no-Lite (planes + toda la familia Corporate).
+            const debeOcultarse = tipo === 'planes' || esCorp(tipo);
             liteItem.style.display = debeOcultarse ? 'none' : '';
             if (debeOcultarse) {
                 // Por si hubiera quedado marcado previamente, lo desmarcamos
