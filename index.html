@@ -1341,7 +1341,12 @@
         document.getElementById('corp-periodo-row').classList.toggle('hidden', !isCorp);
         document.getElementById('mensual-cart-wrapper').classList.toggle('hidden', isCorp || tipo === 'planes');
         document.getElementById('fin-tipo-content').classList.remove('hidden');
-        document.getElementById('modulos-section').classList.toggle('hidden', tipo === 'lite');
+        // La sección Módulos está siempre oculta (los módulos contratados
+        // se derivan del carrito). Forzamos 'hidden' aquí porque antes
+        // el toggle la destapaba al cambiar a un tipo no-Lite — reintroducir
+        // la checkbox grid confundía al comercial, que creía tener que
+        // re-seleccionar los módulos a mano.
+        document.getElementById('modulos-section').classList.add('hidden');
         renderCarrito(tipo);
         // Sincroniza el toggle "Cliente LITE": se oculta si el tipo ya
         // está fijado a planes o corporate (ninguna variante acepta Lite).
@@ -2104,8 +2109,10 @@
         // Resetear selección de tablet y ocultar sección de entrega
         document.querySelectorAll('input[name="tablet"]').forEach(r => r.checked = false);
         document.getElementById('lite-section').classList.add('hidden');
-        // Sección módulos: ocultar si es lite
-        document.getElementById('modulos-section').classList.toggle('hidden', isLite);
+        // La sección Módulos queda siempre oculta (se deriva del carrito).
+        // Antes toggle('hidden', isLite) la mostraba para no-Lite, ahora
+        // forzamos oculto independientemente del modo.
+        document.getElementById('modulos-section').classList.add('hidden');
 
         if (isLite) {
             // Pre-seleccionar tipo Lite en datos financieros
