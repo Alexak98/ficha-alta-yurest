@@ -526,24 +526,74 @@
         catch (_) { /* quota: no crítico */ }
     }
     // Filtra un array de fichas crudas de /altas retirando las que están
-    // en el tombstone. De paso limpia del tombstone aquellas que la BD
-    // ya no devuelve (ya tiene deleted_at propagado y no hay que seguir
-    // bloqueándolas localmente).
+    // en el tombstone. El tombstone NO se auto-purga — si el backend
+    // vuelve a devolver la ficha es síntoma de que el soft-delete falló
+    // en BD, y auto-purgar ocultaría el problema sin resolverlo. El
+    // tombstone solo se limpia al ejecutar YurestConfig.limpiarTombstonesFichas()
+    // manualmente desde la consola.
     function aplicarTombstonesFichas(rawFichas) {
         const tomb = _leerTombstonesFichas();
         if (tomb.size === 0) return rawFichas || [];
-        const idsEnRaw = new Set((rawFichas || []).map(f => String(f.id || f.ID || '')).filter(Boolean));
-        // Limpieza: cualquier id en tomb que ya no venga en raw → quitar
-        // (la BD lo ha enterrado, ya no hace falta filtrar en cliente).
-        let modificado = false;
-        for (const id of [...tomb]) {
-            if (!idsEnRaw.has(id)) { tomb.delete(id); modificado = true; }
-        }
-        if (modificado) {
-            try { localStorage.setItem(STORAGE_KEY_FICHAS_TOMBSTONE, JSON.stringify([...tomb])); }
-            catch (_) {}
-        }
         return (rawFichas || []).filter(f => !tomb.has(String(f.id || f.ID || '')));
+    }
+    function limpiarTombstonesFichas() {
+        try { localStorage.removeItem(STORAGE_KEY_FICHAS_TOMBSTONE); return true; }
+        catch (_) { return false; }
+    }
+
+    // Diagnóstico: devuelve en consola la lista de fichas que el badge
+    // cuenta como "sin asignar" con toda la info útil (id, nombre, estado,
+    // deleted_at). Úsalo así desde la consola del navegador:
+    //    await YurestConfig.debugSinAsignar();
+    // Si ves fichas con deleted_at=null que crees haber borrado, el
+    // soft-delete no se aplicó en BD y hay que revisar el workflow 10.
+    async function debugSinAsignar() {
+        const url = ENDPOINTS.altas + (ENDPOINTS.altas.includes('?') ? '&' : '?') + '_=' + Date.now();
+        const res = await apiFetch(url, {
+            method: 'GET',
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        });
+        if (!res.ok) { console.error('[debug] HTTP', res.status); return; }
+        const data = await res.json();
+        const raw = Array.isArray(data) ? data
+            : Array.isArray(data.clientes) ? data.clientes
+            : Array.isArray(data.data) ? data.data : [];
+        const proyectos = JSON.parse(localStorage.getItem('gestor_proyectos_v3') || '[]');
+        const existentesNorm = new Set(proyectos.map(x => _normNombre(x.cliente)));
+        const tomb = _leerTombstonesFichas();
+        console.log('=== [debug] Sin asignar ===');
+        console.log('Fichas totales devueltas por /altas:', raw.length);
+        console.log('Proyectos locales (cliente):', proyectos.map(p => p.cliente));
+        console.log('Tombstones locales:', [...tomb]);
+        const sinAsignar = raw.filter(a => {
+            const id = String(a.id || a.ID || '');
+            if (tomb.has(id)) return false;
+            const nombre = _extraerNombreFicha(a);
+            if (!nombre) return false;
+            return !existentesNorm.has(_normNombre(nombre));
+        });
+        console.table(sinAsignar.map(a => ({
+            id: a.id || a.ID,
+            nombre: _extraerNombreFicha(a),
+            estado: a.estado || a['Estado'] || '',
+            deleted_at: a.deleted_at || null,
+            created_at: a.created_at || null
+        })));
+        return sinAsignar;
+    }
+
+    // Helpers compartidos con el badge para que la lógica esté centralizada.
+    function _extraerNombreFicha(a) {
+        return (
+            a['Denominación Social'] || a['Denominacion Social'] || a.denominacion ||
+            a['Nombre Sociedad']      || a['Nombre Comercial']     || a.nombreComercial ||
+            a.Nombre || ''
+        ).toString().trim();
+    }
+    function _normNombre(n) {
+        return String(n || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase().replace(/\s+/g, ' ').trim();
     }
 
     // ──────────────────────────────────────────────────────────
@@ -572,14 +622,15 @@
             // backend sigue devolviendo pero que el usuario ya borró.
             const raw = aplicarTombstonesFichas(rawInicial);
             const proyectos = JSON.parse(localStorage.getItem('gestor_proyectos_v3') || '[]');
-            const existentes = new Set(proyectos.map(x => (x.cliente || '').toLowerCase().trim()));
+            // Normalización NFD (sin diacríticos) + espacios — misma que usa
+            // sinasignar.html. Antes eran distintas: el badge solo hacía
+            // toLowerCase(), así que si un proyecto se llamaba "Café A"
+            // y la ficha "Cafe A", el match fallaba aquí y el badge
+            // contaba la ficha como sin asignar pese a existir su proyecto.
+            const existentes = new Set(proyectos.map(x => _normNombre(x.cliente)));
             const count = raw.filter(a => {
-                const nombre = (
-                    a['Denominación Social'] || a['Denominacion Social'] || a.denominacion ||
-                    a['Nombre Sociedad']      || a['Nombre Comercial']     || a.nombreComercial ||
-                    a.Nombre || ''
-                ).toString().trim();
-                return nombre && !existentes.has(nombre.toLowerCase());
+                const nombre = _extraerNombreFicha(a);
+                return nombre && !existentes.has(_normNombre(nombre));
             }).length;
             badge.textContent = count > 0 ? count : '';
             if (typeof window._actualizarSidebarBadgesGrupos === 'function') window._actualizarSidebarBadgesGrupos();
@@ -767,6 +818,8 @@
         actualizarBadgeSinAsignar,
         marcarFichaEliminada,
         aplicarTombstonesFichas,
+        limpiarTombstonesFichas,
+        debugSinAsignar,
         actualizarBadgeA3,
         a11yAbrirModal,
         a11yCerrarModal,
