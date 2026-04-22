@@ -838,25 +838,42 @@ function abrirDetalle(id) {
 
     document.getElementById('detalle-titulo').textContent = proyecto.cliente;
 
-    // Solo resetear tabs si es la primera apertura (o cambio de proyecto)
+    // Lista de todos los IDs de panel para resetear visibilidad de golpe.
+    // Actualizar aquí al añadir una pestaña nueva; así evitamos ir olvidando
+    // el display:none en cada sitio.
+    const PANEL_IDS = [
+        'detalle-proyecto',
+        'detalle-hardware',
+        'detalle-tareas',
+        'detalle-formularios',
+        'detalle-contactos',
+        'detalle-desarrollos',
+        'detalle-anotaciones',
+        'detalle-timeline'
+    ];
+
+    // Solo resetear tabs si es la primera apertura (o cambio de proyecto).
+    // La pestaña por defecto ahora es "Proyecto" (primera en el orden).
     if (!yaAbierto) {
         document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-        document.querySelector('.detail-tab[data-dtab="tareas"]').classList.add('active');
-        document.getElementById('detalle-tareas').style.display = '';
-        document.getElementById('detalle-contactos').style.display = 'none';
-        document.getElementById('detalle-desarrollos').style.display = 'none';
-        document.getElementById('detalle-anotaciones').style.display = 'none';
-        const pTimeline = document.getElementById('detalle-timeline');
-        if (pTimeline) pTimeline.style.display = 'none';
+        const defTab = document.querySelector('.detail-tab[data-dtab="proyecto"]');
+        if (defTab) defTab.classList.add('active');
+        PANEL_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = id === 'detalle-proyecto' ? '' : 'none';
+        });
     }
 
     // Re-render sólo el tab activo para preservar el contexto del usuario
-    const tabActivo = document.querySelector('.detail-tab.active')?.dataset.dtab || 'tareas';
-    if (tabActivo === 'tareas') renderDetalleTareas(proyecto);
-    else if (tabActivo === 'contactos') renderDetalleContactos(proyecto);
+    const tabActivo = document.querySelector('.detail-tab.active')?.dataset.dtab || 'proyecto';
+    if (tabActivo === 'proyecto')         renderDetalleProyecto(proyecto);
+    else if (tabActivo === 'hardware')    renderDetalleHardware(proyecto);
+    else if (tabActivo === 'tareas')      renderDetalleTareas(proyecto);
+    else if (tabActivo === 'formularios') renderDetalleFormularios(proyecto);
+    else if (tabActivo === 'contactos')   renderDetalleContactos(proyecto);
     else if (tabActivo === 'desarrollos') renderDetalleDesarrollos(proyecto);
     else if (tabActivo === 'anotaciones') renderDetalleAnotaciones(proyecto);
-    else if (tabActivo === 'timeline') renderDetalleTimeline(proyecto);
+    else if (tabActivo === 'timeline')    renderDetalleTimeline(proyecto);
 
     if (!yaAbierto) abrirModal('modal-detalle');
 }
@@ -922,7 +939,15 @@ function renderDetalleTareas(proyecto) {
         ` : ''}
 
         <div class="detail-sections">
-            ${proyecto.secciones.map((seccion, si) => renderSeccion(proyecto.id, seccion, si)).join('')}
+            ${proyecto.secciones
+                // Filtrar 'Hardware' legacy: en proyectos antiguos esa
+                // sección aún existe dentro de `secciones`, pero ahora se
+                // muestra como pestaña independiente. No la borramos de BD
+                // (así no perdemos las tareas que el implementador pudiera
+                // haber apuntado allí) — solo la ocultamos del render.
+                .filter(s => String(s.nombre || '').trim().toLowerCase() !== 'hardware')
+                .map((seccion, si) => renderSeccion(proyecto.id, seccion, si))
+                .join('')}
         </div>
 
         <div class="detail-actions">
@@ -948,21 +973,82 @@ async function guardarDatosPausa() {
 }
 
 function cambiarVistaDetalle(vista) {
+    // Mapeo vista → id del panel. Centralizarlo evita las N líneas de
+    // style.display que había antes (y los olvidos cuando se añadían tabs).
+    const PANEL_MAP = {
+        proyecto:    'detalle-proyecto',
+        hardware:    'detalle-hardware',
+        tareas:      'detalle-tareas',
+        formularios: 'detalle-formularios',
+        contactos:   'detalle-contactos',
+        desarrollos: 'detalle-desarrollos',
+        anotaciones: 'detalle-anotaciones',
+        timeline:    'detalle-timeline'
+    };
+
     document.querySelectorAll('.detail-tab').forEach(t => t.classList.toggle('active', t.dataset.dtab === vista));
-    document.getElementById('detalle-tareas').style.display = vista === 'tareas' ? '' : 'none';
-    document.getElementById('detalle-contactos').style.display = vista === 'contactos' ? '' : 'none';
-    document.getElementById('detalle-desarrollos').style.display = vista === 'desarrollos' ? '' : 'none';
-    document.getElementById('detalle-anotaciones').style.display = vista === 'anotaciones' ? '' : 'none';
-    const timelineEl = document.getElementById('detalle-timeline');
-    if (timelineEl) timelineEl.style.display = vista === 'timeline' ? '' : 'none';
+    Object.entries(PANEL_MAP).forEach(([v, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = v === vista ? '' : 'none';
+    });
 
     const proyecto = proyectos.find(p => p.id === detalleProyectoId);
     if (!proyecto) return;
 
-    if (vista === 'contactos') renderDetalleContactos(proyecto);
-    if (vista === 'desarrollos') renderDetalleDesarrollos(proyecto);
-    if (vista === 'anotaciones') renderDetalleAnotaciones(proyecto);
-    if (vista === 'timeline') renderDetalleTimeline(proyecto);
+    // Re-render on demand para cada pestaña. Tareas y las primeras tres
+    // (Proyecto, Hardware, Formularios) se re-renderizan siempre que se
+    // activan; las legacy preservan el comportamiento anterior.
+    if (vista === 'proyecto')         renderDetalleProyecto(proyecto);
+    else if (vista === 'hardware')    renderDetalleHardware(proyecto);
+    else if (vista === 'tareas')      renderDetalleTareas(proyecto);
+    else if (vista === 'formularios') renderDetalleFormularios(proyecto);
+    else if (vista === 'contactos')   renderDetalleContactos(proyecto);
+    else if (vista === 'desarrollos') renderDetalleDesarrollos(proyecto);
+    else if (vista === 'anotaciones') renderDetalleAnotaciones(proyecto);
+    else if (vista === 'timeline')    renderDetalleTimeline(proyecto);
+}
+
+// ──────────────────────────────────────────────────────────
+//  Pestañas nuevas: Proyecto, Hardware, Formularios
+//  Por ahora son placeholders con estado vacío informativo.
+//  El contenido funcional se definirá más adelante.
+// ──────────────────────────────────────────────────────────
+function _renderDetallePlaceholder(containerId, titulo, descripcion, icon) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = `
+        <div class="detail-placeholder">
+            <div class="detail-placeholder-icon">${icon || ''}</div>
+            <h3 class="detail-placeholder-title">${escapeHtml(titulo)}</h3>
+            <p class="detail-placeholder-desc">${escapeHtml(descripcion)}</p>
+        </div>`;
+}
+
+function renderDetalleProyecto(proyecto) {
+    _renderDetallePlaceholder(
+        'detalle-proyecto',
+        'Información del proyecto',
+        'Aquí irá la ficha general del proyecto (cliente, implementador, tipo, estado, participantes, TPV…). Contenido pendiente de definir.',
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>'
+    );
+}
+
+function renderDetalleHardware(proyecto) {
+    _renderDetallePlaceholder(
+        'detalle-hardware',
+        'Hardware del cliente',
+        'Aquí irá el inventario de hardware instalado / pendiente por local (tablets, impresoras, TPVs, lectores OCR…). Antes era una subsección de Tareas; ahora es una pestaña propia. Contenido pendiente de definir.',
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/></svg>'
+    );
+}
+
+function renderDetalleFormularios(proyecto) {
+    _renderDetallePlaceholder(
+        'detalle-formularios',
+        'Formularios',
+        'Aquí vivirán los formularios que el implementador y el cliente comparten durante la implementación. Contenido pendiente de definir.',
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>'
+    );
 }
 
 // ──────────────────────────────────────────────────────────

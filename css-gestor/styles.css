@@ -979,6 +979,39 @@ body {
     flex-shrink: 0;
 }
 
+/* Placeholder para pestañas nuevas aún sin contenido funcional
+   (Proyecto, Hardware, Formularios). Se reemplazará cuando se definan
+   los comportamientos de cada una. */
+.detail-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 32px;
+    color: var(--text-muted);
+}
+.detail-placeholder-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: #eef2ff;
+    color: #6366f1;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+}
+.detail-placeholder-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px 0;
+}
+.detail-placeholder-desc {
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 480px;
+    margin: 0;
+}
+
 /* ==========================================
    TIMELINE DEL PROYECTO (audit log)
    ========================================== */

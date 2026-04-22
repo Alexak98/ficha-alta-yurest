@@ -42,10 +42,13 @@ const TIPOS_PROYECTO = [
 
 const ESTADOS_PROYECTO = ['activo', 'completado', 'pausado'];
 
-// Secciones fijas basadas en la estructura de Asana
+// Secciones fijas basadas en la estructura de Asana.
+// 'Hardware' ya no es una sección dentro de Tareas — se promovió a su propia
+// pestaña del detalle del proyecto (Proyecto ▸ Hardware ▸ Tareas ▸ Formularios
+// ▸ …). Los proyectos nuevos se crean sin esa sección; para los proyectos
+// antiguos que aún la tengan en `secciones`, el render la filtra en app.js.
 const SECCIONES = [
     'Puesta en Marcha / Finalización',
-    'Hardware',
     'Carga de Datos Yuload',
     'Planificación de sesiones',
     'Módulos terminados de implementar'
