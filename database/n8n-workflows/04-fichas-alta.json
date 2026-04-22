@@ -186,7 +186,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// UPDATE: extraer row para actualizar\nconst { row } = $input.first().json;\nreturn [{ json: row }];"
+        "jsCode": "// Construye el body de la PATCH y separa id del resto.\n// No podemos incluir id en el SET de PostgREST porque intenta\n// actualizar la PK (incluso al mismo valor) y algunas\n// configuraciones RLS lo rechazan silenciosamente → el UPDATE\n// devuelve 0 filas afectadas aunque el HTTP sea 200.\nconst { row } = $input.first().json;\nconst id = row.id;\nconst body = { ...row };\ndelete body.id;\n// Limpiamos undefined por si acaso (PostgREST los envía como null)\nObject.keys(body).forEach(k => { if (body[k] === undefined) delete body[k]; });\nreturn [{ json: { id, __body: JSON.stringify(body) } }];"
       },
       "id": "extract-update",
       "name": "Extraer UPDATE",
@@ -200,26 +200,39 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "tableId": "fichas_alta",
-        "filterType": "manual",
-        "matchType": "allFilters",
-        "filters": {
-          "conditions": [
+        "method": "PATCH",
+        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/fichas_alta?id=eq.{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "keyName": "id",
-              "condition": "eq",
-              "keyValue": "={{ $json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
             }
           ]
         },
-        "dataToSend": "autoMapInputData",
-        "options": {}
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.__body }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
       },
       "id": "supa-update-alta",
       "name": "UPDATE Ficha",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
       "position": [
         1140,
         380
@@ -378,6 +391,34 @@
       },
       "alwaysOutputData": true,
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verifica que la PATCH de UPDATE Ficha devolvió al menos una\n// fila. Si devuelve array vacío, el id no existía (o la\n// política RLS no dejó) — lo anunciamos con success:false para\n// que el front muestre error en vez de un engañoso \"guardado\".\nconst items = $input.all() || [];\nlet rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  // HTTP Request con fullResponse:false devuelve el body directo.\n  // Si PostgREST PATCH tuvo éxito con return=representation, es array.\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message) { errores.push(String(j.message)); continue; }\n  // Algún formato inesperado: lo guardamos por si acaso.\n  if (j.id) rows.push(j);\n}\nif (rows.length === 0) {\n  const prep = $('Preparar Ficha').first().json || {};\n  const idIntentado = (prep.row && prep.row.id) || '?';\n  errores.push('UPDATE no afectó a ninguna fila. id=' + idIntentado + '. Verifica que el ficha existe y las políticas RLS permiten UPDATE.');\n}\n// Emitimos siempre una fila con { id } para que los siguientes\n// nodos (DELETE locales, Preparar Locales) tengan el id a mano.\nconst prep2 = $('Preparar Ficha').first().json || {};\nconst fichaId = (rows[0] && rows[0].id) || (prep2.row && prep2.row.id);\nreturn [{ json: { id: fichaId, __updated: rows.length, __errores: errores } }];"
+      },
+      "id": "verify-update",
+      "name": "Verificar UPDATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        480
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Último paso antes de responder al front. Recopila:\n//   · Errores de Verificar UPDATE (UPDATE devolvió 0 filas)\n//   · Errores de INSERT Locales (si lo hubo)\n// Si hay errores, success=false. Si no, success=true y\n// devolvemos el id de la ficha.\nconst errores = [];\ntry {\n  const v = $('Verificar UPDATE').first();\n  if (v && v.json && Array.isArray(v.json.__errores)) errores.push(...v.json.__errores);\n} catch (_) {}\n// INSERT Locales: examinar items por error.\ntry {\n  const items = $('INSERT Locales').all() || [];\n  for (const it of items) {\n    const j = (it && it.json) ? it.json : it;\n    if (j && j.error) errores.push('INSERT Locales: ' + (j.error.message || j.error.code || 'error'));\n    if (j && j.code && j.message && !j.id) errores.push('INSERT Locales: ' + j.message);\n  }\n} catch (_) {}\n\nconst prep = $('Preparar Ficha').first().json || {};\nlet fichaId = (prep.row && prep.row.id) || null;\nif (!fichaId) {\n  try {\n    const ins = $('INSERT Ficha').first();\n    if (ins && ins.json && ins.json.id) fichaId = ins.json.id;\n  } catch (_) {}\n}\nreturn [{ json: { success: errores.length === 0, id: fichaId, errores } }];"
+      },
+      "id": "format-result",
+      "name": "Formatear resultado guardado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        480
+      ],
+      "alwaysOutputData": true
     }
   ],
   "connections": {
@@ -480,7 +521,7 @@
       "main": [
         [
           {
-            "node": "DELETE Locales antiguos",
+            "node": "Verificar UPDATE",
             "type": "main",
             "index": 0
           }
@@ -524,7 +565,7 @@
       "main": [
         [
           {
-            "node": "Respond Guardar OK",
+            "node": "Formatear resultado guardado",
             "type": "main",
             "index": 0
           }
@@ -536,6 +577,28 @@
         [
           {
             "node": "Preparar Locales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar UPDATE": {
+      "main": [
+        [
+          {
+            "node": "DELETE Locales antiguos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear resultado guardado": {
+      "main": [
+        [
+          {
+            "node": "Respond Guardar OK",
             "type": "main",
             "index": 0
           }
