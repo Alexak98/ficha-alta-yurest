@@ -120,13 +120,33 @@
         const grid = document.getElementById('grid');
         grid.innerHTML = pedidos.map(p => {
             const items = Array.isArray(p.items) ? p.items : [];
+            const fmtPrecio = v => {
+                const n = Number(v);
+                if (!Number.isFinite(n)) return '—';
+                return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            };
+            let subtotal = 0, tienePrecios = false;
+            items.forEach(it => {
+                if (Number.isFinite(+it.precio_total))         { subtotal += +it.precio_total;    tienePrecios = true; }
+                else if (Number.isFinite(+it.precio_unitario)) { subtotal += (+it.precio_unitario) * (Number(it.cantidad) || 1); tienePrecios = true; }
+            });
             const itemsHtml = items.length
-                ? items.map(it => `
-                    <div class="hw-item-row">
-                        <span class="hw-item-nombre">${esc(it.nombre || '—')}${it.notas ? ` <span style="color:#94a3b8;font-size:.74rem">· ${esc(it.notas)}</span>` : ''}</span>
-                        <span class="hw-item-qty">${Number(it.cantidad) || 1}${it.unidad ? ' ' + esc(it.unidad) : ''}</span>
-                    </div>`).join('')
+                ? items.map(it => {
+                    const cant = Number(it.cantidad) || 1;
+                    const unidad = esc(it.unidad || 'ud');
+                    const precioUnit = Number.isFinite(+it.precio_unitario) ? fmtPrecio(it.precio_unitario) : null;
+                    const precioTot  = Number.isFinite(+it.precio_total)    ? fmtPrecio(it.precio_total)
+                                     : (precioUnit ? fmtPrecio((+it.precio_unitario) * cant) : null);
+                    return `
+                        <div class="hw-item-row">
+                            <span class="hw-item-nombre">${esc(it.nombre || '—')}${it.formato ? ` <span style="color:#94a3b8;font-size:.74rem">· ${esc(it.formato)}</span>` : ''}${precioUnit ? ` <span style="color:#94a3b8;font-size:.72rem">· ${precioUnit}/${unidad}</span>` : ''}</span>
+                            <span class="hw-item-qty">${cant} ${unidad}${precioTot ? ` · ${precioTot}` : ''}</span>
+                        </div>`;
+                }).join('')
                 : '<span style="color:#94a3b8">Sin items</span>';
+            const subtotalLine = tienePrecios
+                ? `<div style="text-align:right;font-size:.84rem;color:#334155;padding:4px 2px 0"><strong>Total: ${fmtPrecio(subtotal)}</strong></div>`
+                : '';
             const fmt = v => v ? new Date(v).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
             const proforma = p.proforma_pdf && p.proforma_pdf.data
                 ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-btn primary">📄 Abrir proforma</a>`
@@ -144,6 +164,7 @@
                         <span class="hw-estado">Lista envío</span>
                     </div>
                     <div class="hw-items">${itemsHtml}</div>
+                    ${subtotalLine}
                     <div class="hw-fechas">
                         <span><strong>Solicitada:</strong> ${fmt(p.solicitado_at)}</span>
                         <span><strong>Pagada:</strong> ${fmt(p.pagado_at)}</span>

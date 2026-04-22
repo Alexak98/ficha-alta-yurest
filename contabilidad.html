@@ -864,11 +864,38 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         };
         wrap.innerHTML = lista.map(p => {
             const items = Array.isArray(p.items) ? p.items : [];
-            const itemsHtml = items.map(it => `
-                <div class="hw-pedido-item-row">
-                    <span>${esc(it.nombre || '—')}${it.notas ? ` <span style="color:#94a3b8;font-size:.74rem">· ${esc(it.notas)}</span>` : ''}</span>
-                    <span style="font-weight:700;color:#0369a1">${Number(it.cantidad) || 1}${it.unidad ? ' ' + esc(it.unidad) : ''}</span>
-                </div>`).join('') || '<span style="color:#94a3b8">Sin items</span>';
+            // Mismo formateo de precios que el tab Hardware del proyecto:
+            // mostramos precio unitario + total línea + subtotal pedido
+            // cuando el pedido trae precios snapshot-eados (catálogo nuevo).
+            const fmtPrecio = v => {
+                const n = Number(v);
+                if (!Number.isFinite(n)) return '—';
+                return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+            };
+            let subtotal = 0, tienePrecios = false;
+            items.forEach(it => {
+                if (Number.isFinite(+it.precio_total))         { subtotal += +it.precio_total;    tienePrecios = true; }
+                else if (Number.isFinite(+it.precio_unitario)) { subtotal += (+it.precio_unitario) * (Number(it.cantidad) || 1); tienePrecios = true; }
+            });
+            const itemsHtml = items.map(it => {
+                const cant = Number(it.cantidad) || 1;
+                const unidad = esc(it.unidad || 'ud');
+                const precioUnit = Number.isFinite(+it.precio_unitario) ? fmtPrecio(it.precio_unitario) : null;
+                const precioTot  = Number.isFinite(+it.precio_total)    ? fmtPrecio(it.precio_total)
+                                 : (precioUnit ? fmtPrecio((+it.precio_unitario) * cant) : null);
+                return `
+                    <div class="hw-pedido-item-row">
+                        <span>
+                            ${esc(it.nombre || '—')}
+                            ${it.formato ? ` <span style="color:#94a3b8;font-size:.72rem">· ${esc(it.formato)}</span>` : ''}
+                            ${precioUnit ? ` <span style="color:#94a3b8;font-size:.72rem">· ${precioUnit}/${unidad}</span>` : ''}
+                        </span>
+                        <span style="font-weight:700;color:#0369a1">${cant} ${unidad}${precioTot ? ` · ${precioTot}` : ''}</span>
+                    </div>`;
+            }).join('') || '<span style="color:#94a3b8">Sin items</span>';
+            const subtotalHtml = tienePrecios
+                ? `<div style="text-align:right;font-size:.82rem;color:#334155;padding:2px 2px 0"><strong>Subtotal: ${fmtPrecio(subtotal)}</strong></div>`
+                : '';
 
             // Acciones disponibles según estado:
             //   solicitada         → subir proforma PDF
@@ -915,6 +942,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                         <span class="hw-pedido-estado est-${esc(p.estado)}">${esc(ESTADO_LBL[p.estado] || p.estado)}</span>
                     </div>
                     <div class="hw-pedido-items">${itemsHtml}</div>
+                    ${subtotalHtml}
                     ${p.notas_implementador ? `<div style="font-size:.78rem;color:#475569;background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 10px;border-radius:4px"><strong>Nota del implementador:</strong> ${esc(p.notas_implementador)}</div>` : ''}
                     <div class="hw-pedido-actions">${acciones}</div>
                 </div>`;

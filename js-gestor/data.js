@@ -42,6 +42,73 @@ const TIPOS_PROYECTO = [
 
 const ESTADOS_PROYECTO = ['activo', 'completado', 'pausado'];
 
+// ──────────────────────────────────────────────────────────
+//  CATÁLOGO DE HARDWARE (tarifa oficial para carrito de pedidos)
+//
+//  Precios en euros. Al crear un pedido snapshoteamos precio_unitario
+//  en cada línea → si mañana cambia la tarifa aquí, los pedidos ya
+//  emitidos conservan su precio histórico para que Contabilidad no
+//  vea discrepancias entre proforma y factura.
+// ──────────────────────────────────────────────────────────
+const HARDWARE_CATALOGO = [
+    {
+        grupo: 'Etiquetas',
+        icon:  '🏷️',
+        items: [
+            { id: 'etq_s',  nombre: 'Etiqueta S (sencilla)',  formato: '57×32 mm · 2000 uds/rollo', precio: 12.25, unidad: 'rollo' },
+            { id: 'etq_m',  nombre: 'Etiqueta M (avanzada)',  formato: '57×58 mm · 1000 uds/rollo', precio: 9.20,  unidad: 'rollo' },
+            { id: 'etq_l',  nombre: 'Etiqueta L (completa)',  formato: '60×120 mm · 500 uds/rollo', precio: 8.90,  unidad: 'rollo' },
+            { id: 'etq_xl', nombre: 'Etiqueta XL (completa)', formato: '100×100 mm · 800 uds/rollo', precio: 13.90, unidad: 'rollo' }
+        ]
+    },
+    {
+        grupo: 'Hardware',
+        icon:  '💻',
+        items: [
+            { id: 'imp_zebra_zd',    nombre: 'Impresora Zebra ZD',                      precio: 300 },
+            { id: 'kds_pcp_215',     nombre: 'Pantalla KDS PCP-215',                    formato: '21.5" Windows',              precio: 665 },
+            { id: 'lector_hwvoy',    nombre: 'Lector Honeywell Voyager XP 1472G',      precio: 300 },
+            { id: 'zebra_tc22',      nombre: 'Zebra TC22',                              formato: 'ordenador móvil Android',    precio: 650 },
+            { id: 'tablet_a9',       nombre: 'Tablet Samsung Tab A9+',                  formato: '11"',                        precio: 250 },
+            { id: 'bascula_gram_30', nombre: 'Báscula Gram WiFi – hasta 30 kg',         precio: 625 },
+            { id: 'bascula_gram_150',nombre: 'Báscula Gram WiFi – hasta 150 kg',        precio: 775 },
+            { id: 'dobbox_s1',       nombre: 'Sensor temperatura/humedad doBBox S1',    precio: 158 },
+            { id: 'dobbox_g15',      nombre: 'Receptor WiFi doBBox G15',                precio: 98  }
+        ]
+    },
+    {
+        grupo: 'Soportes y Fundas',
+        icon:  '🖇️',
+        items: [
+            { id: 'sop_tab_ext',   nombre: 'Soporte tablet extensible y rotatorio',       precio: 50 },
+            { id: 'sop_tab_reg',   nombre: 'Soporte tablet sencillo regulable',            precio: 30 },
+            { id: 'sop_tab_pared', nombre: 'Soporte tablet fijo de pared (aluminio)',     precio: 70 },
+            { id: 'sop_kds_movil', nombre: 'Soporte KDS VESA móvil de pared',             precio: 35 },
+            { id: 'sop_kds_fijo',  nombre: 'Soporte KDS VESA fijo de pared',              precio: 20 },
+            { id: 'sop_kds_ancl',  nombre: 'Soporte KDS VESA con anclaje a mesa',         precio: 50 },
+            { id: 'sop_kds_mesa',  nombre: 'Soporte KDS VESA de mesa (sin anclaje)',      precio: 50 },
+            { id: 'funda_antic',   nombre: 'Funda anticaída con soporte giratorio y correas', precio: 34 }
+        ]
+    }
+];
+
+// Helper: localiza un item del catálogo por id. Devuelve null si no existe
+// (puede pasar con pedidos antiguos de antes de introducir el catálogo).
+function hardwareBuscarItem(id) {
+    for (const g of HARDWARE_CATALOGO) {
+        const f = g.items.find(i => i.id === id);
+        if (f) return { ...f, grupo: g.grupo };
+    }
+    return null;
+}
+
+// Formatea un importe en € con 2 decimales usando la convención española.
+function hwFmtPrecio(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '—';
+    return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
 // Label bonito para cada estado de proyecto. El slug en BD sigue siendo
 // 'completado' (evita una migración y no rompe histórico) pero al usuario
 // se le muestra "Finalizado" — suena más claro como término de cierre.

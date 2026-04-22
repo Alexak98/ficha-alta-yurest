@@ -1450,11 +1450,37 @@ function _hwRenderLista(proyecto) {
     wrap.innerHTML = _hwPedidos.map(p => {
         const info = ESTADO_LBL[p.estado] || { lbl: p.estado, cls: '' };
         const items = Array.isArray(p.items) ? p.items : [];
-        const itemsHtml = items.map(it => `
-            <div class="hw-pedido-item-row">
-                <span>${escapeHtml(it.nombre || '—')}${it.notas ? ` <span style="color:#94a3b8;font-size:.74rem">· ${escapeHtml(it.notas)}</span>` : ''}</span>
-                <span style="font-weight:700;color:#0369a1">${Number(it.cantidad) || 1}${it.unidad ? ' ' + escapeHtml(it.unidad) : ''}</span>
-            </div>`).join('') || '<span style="color:#94a3b8">Sin items</span>';
+        // Subtotal del pedido leyendo los precios snapshot-eados en cada
+        // línea. Si es un pedido antiguo sin precios (formato libre de la
+        // versión previa al catálogo) salimos sin total.
+        let subtotal = 0;
+        let tienePrecios = false;
+        items.forEach(it => {
+            if (Number.isFinite(+it.precio_total)) {
+                subtotal += +it.precio_total; tienePrecios = true;
+            } else if (Number.isFinite(+it.precio_unitario)) {
+                subtotal += (+it.precio_unitario) * (Number(it.cantidad) || 1); tienePrecios = true;
+            }
+        });
+        const itemsHtml = items.map(it => {
+            const cant = Number(it.cantidad) || 1;
+            const unidad = escapeHtml(it.unidad || 'ud');
+            const precioUnit = Number.isFinite(+it.precio_unitario) ? hwFmtPrecio(it.precio_unitario) : null;
+            const precioTot  = Number.isFinite(+it.precio_total)    ? hwFmtPrecio(it.precio_total)
+                             : (precioUnit ? hwFmtPrecio((+it.precio_unitario) * cant) : null);
+            return `
+                <div class="hw-pedido-item-row">
+                    <span class="hw-pedido-item-name">
+                        ${escapeHtml(it.nombre || '—')}
+                        ${it.formato ? ` <span style="color:#94a3b8;font-size:.72rem">· ${escapeHtml(it.formato)}</span>` : ''}
+                        ${precioUnit ? ` <span style="color:#94a3b8;font-size:.72rem">· ${precioUnit}/${unidad}</span>` : ''}
+                    </span>
+                    <span class="hw-pedido-item-qty">${cant} ${unidad}${precioTot ? ` · <strong>${precioTot}</strong>` : ''}</span>
+                </div>`;
+        }).join('') || '<span style="color:#94a3b8">Sin items</span>';
+        const subtotalHtml = tienePrecios
+            ? `<div class="hw-pedido-subtotal">Subtotal: <strong>${hwFmtPrecio(subtotal)}</strong></div>`
+            : '';
 
         // Acciones según estado (lado implementador):
         //   solicitada         → ver estado; esperar proforma
@@ -1498,6 +1524,7 @@ function _hwRenderLista(proyecto) {
                     <span class="hw-pedido-estado ${info.cls}">${escapeHtml(info.lbl)}</span>
                 </div>
                 <div class="hw-pedido-items">${itemsHtml}</div>
+                ${subtotalHtml}
                 ${p.notas_implementador ? `<div style="font-size:.78rem;color:#475569;background:#f8fafc;border-left:3px solid #94a3b8;padding:6px 10px;border-radius:4px">${escapeHtml(p.notas_implementador)}</div>` : ''}
                 ${p.notas_contabilidad ? `<div style="font-size:.78rem;color:#475569;background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 10px;border-radius:4px"><strong>Contabilidad:</strong> ${escapeHtml(p.notas_contabilidad)}</div>` : ''}
                 <div class="hw-pedido-actions">${acciones}</div>
@@ -1505,17 +1532,19 @@ function _hwRenderLista(proyecto) {
     }).join('');
 }
 
-// ── Modal nuevo pedido ───────────────────────────────────────────────────
+// ── Modal nuevo pedido — catálogo con cantidades ─────────────────────────
+// Cantidades en memoria: { itemId: cantidad }. Se construye vacío al abrir
+// el modal y se persiste sólo al enviar (no se auto-guarda).
+let _hwCart = {};
+
 function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
     let modal = document.getElementById('modal-hw-nuevo');
     if (!modal) {
-        // Crea el modal al vuelo la primera vez — evita tener que editar
-        // proyectos.html para añadirlo.
         modal = document.createElement('div');
         modal.id = 'modal-hw-nuevo';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal" style="max-width:620px">
+            <div class="modal modal-hw-catalogo">
                 <div class="modal-header">
                     <h2>Nuevo pedido de hardware</h2>
                     <button class="modal-close" onclick="cerrarModal('modal-hw-nuevo')">&times;</button>
@@ -1527,16 +1556,22 @@ function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
                     <div style="font-size:.82rem;color:#475569;margin-bottom:10px">
                         Cliente: <strong id="hw-new-cliente-lbl">—</strong>
                     </div>
-                    <div id="hw-items-container"></div>
-                    <button type="button" class="hw-cta" onclick="hwAddItem()" style="margin-top:6px">+ Añadir artículo</button>
+                    <div id="hw-cat-container"></div>
                     <div class="form-group" style="margin-top:14px">
                         <label>Notas para contabilidad (opcional)</label>
                         <textarea id="hw-new-notas" class="form-control" rows="2" placeholder="Urgencia, contexto, dirección de facturación distinta…"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="cerrarModal('modal-hw-nuevo')">Cancelar</button>
-                    <button class="btn btn-primary" onclick="hwCrearPedido()">Enviar solicitud</button>
+                <div class="modal-footer hw-footer-total">
+                    <div class="hw-footer-total-info">
+                        <span class="hw-footer-total-lbl">Total estimado</span>
+                        <span class="hw-footer-total-val" id="hw-total">0,00 €</span>
+                        <span class="hw-footer-total-items" id="hw-total-items"></span>
+                    </div>
+                    <div style="display:flex;gap:10px">
+                        <button class="btn btn-secondary" onclick="cerrarModal('modal-hw-nuevo')">Cancelar</button>
+                        <button class="btn btn-primary" onclick="hwCrearPedido()">Enviar solicitud</button>
+                    </div>
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -1546,42 +1581,107 @@ function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
     document.getElementById('hw-new-implementador').value = implementador || '';
     document.getElementById('hw-new-cliente-lbl').textContent = cliente || '—';
     document.getElementById('hw-new-notas').value = '';
-    // Reinicia los items con uno vacío.
-    document.getElementById('hw-items-container').innerHTML = '';
-    hwAddItem();
+    _hwCart = {};
+    _hwRenderCatalogo();
+    _hwActualizarTotal();
     abrirModal('modal-hw-nuevo');
 }
 window.hwAbrirModalNuevo = hwAbrirModalNuevo;
 
-function hwAddItem() {
-    const cont = document.getElementById('hw-items-container');
-    const row = document.createElement('div');
-    row.className = 'hw-item-input-row';
-    row.innerHTML = `
-        <input type="text"   class="form-control hw-item-nombre"   placeholder="Ej: Tablet Samsung Tab A8" style="flex:2">
-        <input type="number" class="form-control hw-item-cantidad" placeholder="Cant" min="1" value="1"  style="width:70px">
-        <input type="text"   class="form-control hw-item-unidad"   placeholder="unid" style="width:80px">
-        <button type="button" class="hw-item-del" onclick="this.parentNode.remove()" aria-label="Eliminar">&times;</button>`;
-    cont.appendChild(row);
+function _hwRenderCatalogo() {
+    const cont = document.getElementById('hw-cat-container');
+    if (!cont) return;
+    cont.innerHTML = HARDWARE_CATALOGO.map(grupo => {
+        const cards = grupo.items.map(it => `
+            <div class="hw-cat-item" data-item-id="${escapeHtml(it.id)}">
+                <div class="hw-cat-item-info">
+                    <div class="hw-cat-item-nombre">${escapeHtml(it.nombre)}</div>
+                    ${it.formato ? `<div class="hw-cat-item-formato">${escapeHtml(it.formato)}</div>` : ''}
+                    <div class="hw-cat-item-precio">${hwFmtPrecio(it.precio)}${it.unidad ? ` / ${escapeHtml(it.unidad)}` : ''}</div>
+                </div>
+                <div class="hw-cat-item-qty">
+                    <button type="button" class="hw-qty-btn" onclick="_hwCambiarCantidad('${escapeHtml(it.id)}', -1)" aria-label="Restar">−</button>
+                    <input type="number" min="0" value="0" class="hw-qty-input" id="hw-qty-${escapeHtml(it.id)}"
+                           oninput="_hwSetCantidad('${escapeHtml(it.id)}', this.value)">
+                    <button type="button" class="hw-qty-btn" onclick="_hwCambiarCantidad('${escapeHtml(it.id)}', 1)" aria-label="Sumar">+</button>
+                </div>
+            </div>`).join('');
+        return `
+            <div class="hw-cat-grupo">
+                <h4 class="hw-cat-grupo-title"><span>${grupo.icon}</span> ${escapeHtml(grupo.grupo)}</h4>
+                <div class="hw-cat-grid">${cards}</div>
+            </div>`;
+    }).join('');
 }
-window.hwAddItem = hwAddItem;
+
+function _hwSetCantidad(itemId, valor) {
+    const n = Math.max(0, parseInt(valor, 10) || 0);
+    if (n === 0) delete _hwCart[itemId];
+    else _hwCart[itemId] = n;
+    const input = document.getElementById('hw-qty-' + itemId);
+    if (input) input.value = n;
+    // Resalta visualmente la tarjeta si tiene cantidad > 0.
+    const card = document.querySelector(`.hw-cat-item[data-item-id="${itemId}"]`);
+    if (card) card.classList.toggle('has-qty', n > 0);
+    _hwActualizarTotal();
+}
+window._hwSetCantidad = _hwSetCantidad;
+
+function _hwCambiarCantidad(itemId, delta) {
+    const actual = _hwCart[itemId] || 0;
+    _hwSetCantidad(itemId, actual + delta);
+}
+window._hwCambiarCantidad = _hwCambiarCantidad;
+
+function _hwActualizarTotal() {
+    let total = 0;
+    let totalItems = 0;
+    Object.entries(_hwCart).forEach(([id, qty]) => {
+        const it = hardwareBuscarItem(id);
+        if (!it) return;
+        total += (Number(it.precio) || 0) * qty;
+        totalItems += qty;
+    });
+    const totalEl = document.getElementById('hw-total');
+    const itemsEl = document.getElementById('hw-total-items');
+    if (totalEl) totalEl.textContent = hwFmtPrecio(total);
+    if (itemsEl) itemsEl.textContent = totalItems === 0 ? 'carrito vacío'
+        : (totalItems === 1 ? '1 artículo' : `${totalItems} artículos`);
+}
 
 async function hwCrearPedido() {
     const proyectoId    = document.getElementById('hw-new-proyecto-id').value;
     const cliente       = document.getElementById('hw-new-cliente').value;
     const implementador = document.getElementById('hw-new-implementador').value;
     const notas         = document.getElementById('hw-new-notas').value.trim();
-    const filas = [...document.querySelectorAll('.hw-item-input-row')];
-    const items = filas.map(r => ({
-        nombre:   r.querySelector('.hw-item-nombre').value.trim(),
-        cantidad: parseInt(r.querySelector('.hw-item-cantidad').value) || 1,
-        unidad:   r.querySelector('.hw-item-unidad').value.trim() || null,
-        notas:    null
-    })).filter(i => i.nombre);
+
+    // Construye la lista de items a partir del carrito: solo entran los
+    // que tienen cantidad > 0. Cada línea snapshot-ea id, nombre, formato,
+    // precio_unitario y precio_total — así el pedido queda "congelado"
+    // aunque luego cambie la tarifa en el catálogo.
+    const items = Object.entries(_hwCart)
+        .filter(([_, qty]) => (qty || 0) > 0)
+        .map(([id, qty]) => {
+            const it = hardwareBuscarItem(id);
+            if (!it) return null;
+            return {
+                id:              it.id,
+                nombre:          it.nombre,
+                formato:         it.formato || null,
+                grupo:           it.grupo,
+                cantidad:        qty,
+                unidad:          it.unidad || 'ud',
+                precio_unitario: Number(it.precio) || 0,
+                precio_total:    +((Number(it.precio) || 0) * qty).toFixed(2)
+            };
+        })
+        .filter(Boolean);
+
     if (items.length === 0) {
-        mostrarToast('Añade al menos un artículo', 'error');
+        mostrarToast('Añade al menos un artículo al carrito', 'error');
         return;
     }
+
     try {
         const res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.hardwarePedidos, {
             method: 'POST',
