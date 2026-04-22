@@ -274,6 +274,14 @@
                         <select id="asignar-implementador" class="form-control"></select>
                     </div>
                 </div>
+                <!-- Jefe de proyecto (cliente): info meramente informativa
+                     — no editable aquí. Al crear el proyecto, su email se
+                     añade automáticamente a participantes. Si no había JP
+                     capturado en la ficha, mostramos un aviso discreto. -->
+                <div class="form-group" id="asignar-jp-wrap" style="display:none">
+                    <label>Jefe de proyecto (cliente)</label>
+                    <div id="asignar-jp-info" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-size:0.85rem;color:#334155"></div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="cerrarModal('modal-asignar')">Cancelar</button>
@@ -477,6 +485,29 @@
             IMPLEMENTADORES.map(impl => `<option value="${impl}">${impl}</option>`).join('');
         selImpl.value = '';
 
+        // Jefe de Proyecto: info + aviso de auto-add a participantes del
+        // proyecto que se va a crear. Si la ficha no capturó JP (ficha
+        // antigua incompleta), ocultamos el bloque en vez de mostrar vacío.
+        const jpWrap = document.getElementById('asignar-jp-wrap');
+        const jpInfo = document.getElementById('asignar-jp-info');
+        const jpDisplay = f.jpDisplay || '';
+        const jpMail    = f.jpMail || '';
+        if (jpMail || jpDisplay) {
+            const nombreHtml = jpDisplay
+                ? `<strong>${escapeHtml(jpDisplay)}</strong>${f.jpRol ? ` <span style="color:#64748b">· ${escapeHtml(f.jpRol)}</span>` : ''}`
+                : '<em style="color:#64748b">Sin nombre registrado</em>';
+            const mailHtml = jpMail
+                ? `<div style="margin-top:2px;font-family:monospace;font-size:0.8rem;color:#475569">${escapeHtml(jpMail)}</div>`
+                : '';
+            const aviso = jpMail
+                ? `<div style="margin-top:6px;font-size:0.75rem;color:#0891b2">Se añadirá automáticamente como participante del proyecto</div>`
+                : `<div style="margin-top:6px;font-size:0.75rem;color:#d97706">⚠️ Sin email: no se puede añadir como participante automáticamente</div>`;
+            jpInfo.innerHTML = nombreHtml + mailHtml + aviso;
+            jpWrap.style.display = '';
+        } else {
+            jpWrap.style.display = 'none';
+        }
+
         abrirModal('modal-asignar');
     }
 
@@ -494,6 +525,17 @@
 
         showLoading();
         try {
+            // El JP del cliente entra como primer participante del proyecto
+            // si tiene email registrado en la ficha. Así recibe invites de
+            // calendario y aparece en la ficha del proyecto sin que el
+            // implementador tenga que teclearlo. Si la ficha no capturó JP
+            // (ficha antigua) el array queda vacío y el implementador puede
+            // añadir participantes manualmente más tarde.
+            const participantesIniciales = [];
+            if (f.jpMail) {
+                participantesIniciales.push(f.jpMail);
+            }
+
             const nuevoProyecto = {
                 id: generarId(),
                 cliente: f.nombre,
@@ -505,7 +547,8 @@
                 secciones: crearEstructuraProyecto(f.modulos),
                 anotaciones: [],
                 asanaProjectId: '',
-                tpv: f.tpv || ''
+                tpv: f.tpv || '',
+                participantes: participantesIniciales
             };
 
             await crearProyectoAPI(nuevoProyecto).catch(() => {});

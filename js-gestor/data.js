@@ -656,6 +656,19 @@ function normalizarAlta(f) {
     // desde la tabla locales. Si no viene (workflow antiguo) lo dejamos en 0.
     const localesCount = Number(f.locales_count ?? f.localesCount ?? f['Locales Count'] ?? 0) || 0;
 
+    // Jefe de Proyecto del cliente: cuando el comercial cierra la ficha, el
+    // JP ya está registrado. Al crear el proyecto de implementación quiero
+    // que aparezca como participante automáticamente — así se le invitan
+    // las reuniones de calendar, recibe avisos, etc. Extraemos los campos
+    // aquí para que el consumer (crearProyectoDesdeAlta) los use sin tener
+    // que conocer los nombres exactos de las claves del backend.
+    const jpNombre    = get(['JP Nombre',    'jp_nombre']);
+    const jpApellidos = get(['JP Apellidos', 'jp_apellidos']);
+    const jpMail      = get(['JP Mail',      'jp_mail', 'JP Email']).toLowerCase();
+    const jpTelefono  = get(['JP Teléfono',  'JP Telefono', 'jp_telefono']);
+    const jpRol       = get(['JP Rol',       'jp_rol']);
+    const jpDisplay   = [jpNombre, jpApellidos].filter(Boolean).join(' ').trim();
+
     return {
         altaId: id,
         nombre: nombre || comercial,
@@ -667,7 +680,16 @@ function normalizarAlta(f) {
         estado,
         tpv,
         modulos,
-        localesCount
+        localesCount,
+        // JP del cliente (datos brutos + helper `jpDisplay` con nombre+apellidos
+        // ya concatenado). Si jpMail está vacío el consumer debe saltarse el
+        // auto-add a participantes — no metemos "" en un array TEXT[] de BD.
+        jpNombre,
+        jpApellidos,
+        jpMail,
+        jpTelefono,
+        jpRol,
+        jpDisplay
     };
 }
 
