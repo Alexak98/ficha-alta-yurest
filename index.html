@@ -2228,15 +2228,25 @@
     // ── Mandato SEPA: render solo lectura ─────────────────────────────────────
     // Normaliza `sepa_mandato` al tipo array SIEMPRE para simplificar el
     // resto del código. Acepta null, objeto legacy, array, o string JSON.
+    // ADEMÁS garantiza que cada mandato tenga un `id` utilizable para el
+    // selector por local — los mandatos legacy (pre-multi) se guardaban
+    // sin id, y el dropdown los saltaba, dejando "Sin asignar" aunque la
+    // SEPA estaba firmada. Fallback: referencia ("YUREST-2026-0001") o
+    // índice sintético ("sepa-0").
     function _sepaToArray(raw) {
         if (!raw) return [];
         let p = raw;
         if (typeof p === 'string') {
             try { p = JSON.parse(p); } catch (_) { return []; }
         }
-        if (Array.isArray(p)) return p.filter(Boolean);
-        if (typeof p === 'object') return [p];
-        return [];
+        let arr = [];
+        if (Array.isArray(p))        arr = p.filter(Boolean);
+        else if (typeof p === 'object') arr = [p];
+        else return [];
+        return arr.map((s, i) => ({
+            ...s,
+            id: s.id || s.referencia || ('sepa-' + i)
+        }));
     }
 
     // Cache en memoria de los mandatos SEPA de la ficha en edición. Se
@@ -2366,11 +2376,15 @@
             const prev = sel.value;
             const opts = ['<option value="">— Sin asignar —</option>'];
             _sepaListActual.forEach((s, i) => {
-                if (!s || !s.id) return;
+                if (!s) return;
+                // _sepaToArray ya garantiza un id (propio, referencia o
+                // sintético); aun así, si por alguna razón falta, usamos
+                // índice como último fallback para no perder la entrada.
+                const id = s.id || ('sepa-' + i);
                 const nombre = (s.deudor && s.deudor.nombre) || `Sociedad ${i + 1}`;
                 const iban = (s.iban || '').slice(-4);
                 const etq = iban ? `${nombre} · ****${iban}` : nombre;
-                opts.push(`<option value="${YurestConfig.escAttr(s.id)}">${YurestConfig.escHtml(etq)}</option>`);
+                opts.push(`<option value="${YurestConfig.escAttr(id)}">${YurestConfig.escHtml(etq)}</option>`);
             });
             sel.innerHTML = opts.join('');
             // Restaurar selección previa si sigue siendo válida
