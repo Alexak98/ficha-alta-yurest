@@ -361,7 +361,7 @@
 
     <div id="lite-section" class="card hidden">
         <div class="card-header">
-            <span class="section-num">07</span>
+            <span class="section-num">02</span>
             <h3>Dirección de Entrega y Contacto</h3>
         </div>
         <div class="form-grid">
@@ -407,7 +407,7 @@
 
     <div class="card" id="facturacion-section">
         <div class="card-header">
-            <span class="section-num">02</span>
+            <span class="section-num">03</span>
             <h3>Datos de Facturación</h3>
         </div>
         <div class="form-grid">
@@ -428,7 +428,7 @@
 
     <div class="card hidden" id="distribuidor-section">
         <div class="card-header">
-            <span class="section-num">03</span>
+            <span class="section-num">04</span>
             <h3>Distribuidor</h3>
         </div>
         <div class="form-grid">
@@ -490,7 +490,7 @@
 
     <div class="card" id="jefe-proyecto-section">
         <div class="card-header">
-            <span class="section-num">04</span>
+            <span class="section-num">05</span>
             <h3>Jefe de Proyecto <span style="font-weight:400;font-size:0.85em;color:#94a3b8;">(cliente)</span></h3>
         </div>
         <div class="form-grid">
@@ -519,7 +519,7 @@
 
     <div class="card" id="firmante-section">
         <div class="card-header">
-            <span class="section-num">05</span>
+            <span class="section-num">06</span>
             <h3>Persona Firmante Contrato</h3>
             <button type="button" class="btn-copy-jp" onclick="copiarDatosJP()" title="Copiar datos del Jefe de Proyecto">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -552,7 +552,7 @@
 
     <div class="card" id="tpv-section">
         <div class="card-header">
-            <span class="section-num">06</span>
+            <span class="section-num">07</span>
             <h3>Integración TPV</h3>
             <label class="toggle-tpv-no-int" title="Marcar si el TPV no está integrado">
                 <input type="checkbox" id="tpv_no_integrado_check" onchange="toggleTpvNoIntegrado(this.checked)">
@@ -888,7 +888,7 @@
 
     <div class="card" id="comentarios-section">
         <div class="card-header">
-            <span class="section-num">11</span>
+            <span class="section-num">12</span>
             <h3>Comentarios</h3>
         </div>
         <div class="form-grid">
@@ -900,7 +900,7 @@
 
     <div class="card" id="sepa-section">
         <div class="card-header">
-            <span class="section-num">11</span>
+            <span class="section-num">13</span>
             <h3>Mandato SEPA</h3>
             <span id="sepa-badge" style="margin-left:auto;font-size:0.72rem;font-weight:600;padding:4px 10px;border-radius:999px;background:#f1f5f9;color:#64748b">Sin firmar</span>
         </div>
@@ -927,7 +927,7 @@
 
     <div class="card" id="documentos-section">
         <div class="card-header">
-            <span class="section-num">12</span>
+            <span class="section-num">14</span>
             <h3>Documentos</h3>
             <label class="btn btn-secondary btn-sm" style="margin-left:auto;cursor:pointer">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1343,6 +1343,11 @@
         document.getElementById('fin-tipo-content').classList.remove('hidden');
         document.getElementById('modulos-section').classList.toggle('hidden', tipo === 'lite');
         renderCarrito(tipo);
+        // Sincroniza el toggle "Cliente LITE": se oculta si el tipo ya
+        // está fijado a planes o corporate (ninguna variante acepta Lite).
+        if (typeof actualizarVisibilidadLiteToggle === 'function') {
+            actualizarVisibilidadLiteToggle();
+        }
     }
 
     function getLocales() {
@@ -3224,6 +3229,10 @@
             const radio = document.getElementById('tipo_' + tipo);
             if (radio) { radio.checked = true; seleccionarTipo(tipo); }
         }
+        // Aun si la ficha no traía tipo, sincronizamos la visibilidad del
+        // toggle Lite — si algún tipo estaba preseleccionado por defecto en
+        // el DOM (raro, pero posible) queremos el estado coherente.
+        actualizarVisibilidadLiteToggle();
 
         // Prellenamos _sepaListActual ANTES de cargar los locales para que,
         // al hacer input.value = l.sepa_mandato_id, el <select> ya tenga las
@@ -3383,37 +3392,38 @@
         });
     }
 
+    // ── Visibilidad del toggle "Cliente LITE" ────────────────────────────────
+    // Oculta el checkbox si el tipo ya está fijado a cualquier variante
+    // no-Lite (planes o familia Corporate). Se invoca desde:
+    //   · bloquearTipoCliente() (flujo solicitud → completar ficha)
+    //   · cargarModoEdicion() tras aplicar el tipo de una ficha existente
+    //   · seleccionarTipo() cuando el usuario cambia manualmente el tipo
+    // Si no hay tipo o es 'lite', se muestra para permitir la elección.
+    function actualizarVisibilidadLiteToggle() {
+        const tipoChecked = document.querySelector('input[name="tipo_cliente"]:checked');
+        const tipo = tipoChecked ? tipoChecked.value : '';
+        const liteCheck = document.getElementById('lite_check');
+        const liteItem = liteCheck ? liteCheck.closest('.toggle-check-item') : null;
+        if (!liteItem) return;
+        const debeOcultarse = tipo === 'planes' || esCorp(tipo);
+        liteItem.style.display = debeOcultarse ? 'none' : '';
+        if (debeOcultarse && liteCheck.checked) {
+            // Consistencia: si estaba marcado pero ya no aplica, lo
+            // desmarcamos y replegamos la sección Lite.
+            liteCheck.checked = false;
+            toggleLite(false);
+        }
+    }
+
     // ── Bloquear selector de tipo (completar ficha desde solicitud) ──────────
     function bloquearTipoCliente() {
         const grupo = document.querySelector('.tipo-group');
         if (grupo) grupo.classList.add('tipo-group--locked');
         // Deshabilitar también los inputs por si algún script los lee
         document.querySelectorAll('input[name="tipo_cliente"]').forEach(r => r.disabled = true);
-
-        // Si la solicitud vino como 'planes' o 'corporate', ocultamos por
-        // completo el toggle "Cliente LITE". El comercial no puede, ni debe,
-        // convertir a Lite un cliente que el cliente final ya eligió como
-        // Planes/Corporate al rellenar su solicitud. Solo se muestra cuando
-        // el tipo está sin seleccionar o es 'lite'.
-        const tipoChecked = document.querySelector('input[name="tipo_cliente"]:checked');
-        const tipo = tipoChecked ? tipoChecked.value : '';
-        const liteCheck = document.getElementById('lite_check');
-        const liteItem = liteCheck ? liteCheck.closest('.toggle-check-item') : null;
-        if (liteItem) {
-            // Ocultar el toggle Lite cuando el tipo ya está fijado a cualquier
-            // variante no-Lite (planes + toda la familia Corporate).
-            const debeOcultarse = tipo === 'planes' || esCorp(tipo);
-            liteItem.style.display = debeOcultarse ? 'none' : '';
-            if (debeOcultarse) {
-                // Por si hubiera quedado marcado previamente, lo desmarcamos
-                // y replegamos la sección Lite; sin estas líneas podría haber
-                // estado inconsistente tras navegar entre solicitudes.
-                if (liteCheck.checked) {
-                    liteCheck.checked = false;
-                    toggleLite(false);
-                }
-            }
-        }
+        // El comercial no puede convertir a Lite un cliente cuyo tipo ya
+        // eligió el cliente final en la solicitud.
+        actualizarVisibilidadLiteToggle();
     }
 
     // ── Modo Alta Rápida ──────────────────────────────────────────────────────
