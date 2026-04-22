@@ -66,8 +66,12 @@
             <a href="#firmante-section"       data-target="firmante-section"     class="fn-item"><span class="fn-num">06</span>Firmante</a>
             <a href="#tpv-section"            data-target="tpv-section"          class="fn-item"><span class="fn-num">07</span>TPV</a>
             <a href="#financiero-section"     data-target="financiero-section"   class="fn-item"><span class="fn-num">08</span>Financiero</a>
-            <a href="#credenciales-section"   data-target="credenciales-section" class="fn-item"><span class="fn-num">09</span>Credenciales</a>
-            <a href="#modulos-section"        data-target="modulos-section"      class="fn-item"><span class="fn-num">10</span>Módulos</a>
+            <a href="#intfin-section"         data-target="intfin-section"       class="fn-item"><span class="fn-num">09</span>Integración financiera</a>
+            <a href="#credenciales-section"   data-target="credenciales-section" class="fn-item"><span class="fn-num">10</span>Credenciales</a>
+            <!-- Módulos se mantiene en DOM como checklist oculto (se rellena
+                 automáticamente desde los paquetes del carrito) pero ya no
+                 aparece en el nav lateral ni como card visible — el comercial
+                 no tiene que seleccionar módulos a mano. -->
             <a href="#locales-container"      data-target="locales-container"    class="fn-item"><span class="fn-num">11</span>Locales</a>
             <a href="#comentarios-section"    data-target="comentarios-section"  class="fn-item"><span class="fn-num">12</span>Comentarios</a>
             <a href="#sepa-section"           data-target="sepa-section"         class="fn-item"><span class="fn-num">13</span>SEPA</a>
@@ -796,9 +800,45 @@
         </div><!-- /fin-body -->
     </div>
 
-    <div class="card" id="credenciales-section">
+    <!-- ── 09 · Integración financiera ───────────────────────────────────────
+         Qué software de contabilidad tiene el cliente (No aplica / Sage / A3)
+         y con quién contactar para la integración. Se guarda en tres columnas
+         nuevas de fichas_alta: integracion_financiera, int_fin_persona,
+         int_fin_email (ver migración 2026-04-21_09_integracion_financiera.sql).
+    -->
+    <div class="card" id="intfin-section">
         <div class="card-header">
             <span class="section-num">09</span>
+            <h3>Integración financiera</h3>
+        </div>
+        <div class="form-grid">
+            <div class="form-group col-12">
+                <label>Software de contabilidad</label>
+                <div class="pct-group">
+                    <input type="radio" id="intfin_noaplica" name="intfin" value="no_aplica" onchange="onIntfinChange()">
+                    <label for="intfin_noaplica" class="pct-btn">No aplica</label>
+                    <input type="radio" id="intfin_sage" name="intfin" value="sage" onchange="onIntfinChange()">
+                    <label for="intfin_sage" class="pct-btn">Sage</label>
+                    <input type="radio" id="intfin_a3" name="intfin" value="a3" onchange="onIntfinChange()">
+                    <label for="intfin_a3" class="pct-btn">A3</label>
+                </div>
+            </div>
+            <!-- Persona/Email solo se muestran si el cliente usa Sage o A3;
+                 para "No aplica" no tiene sentido pedir contacto de integración. -->
+            <div class="form-group col-6 intfin-contacto" style="display:none">
+                <label for="intfin_persona">Persona de referencia</label>
+                <input type="text" id="intfin_persona" placeholder="Nombre y apellidos">
+            </div>
+            <div class="form-group col-6 intfin-contacto" style="display:none">
+                <label for="intfin_email">Email de contacto</label>
+                <input type="email" id="intfin_email" placeholder="contacto@ejemplo.com">
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="credenciales-section">
+        <div class="card-header">
+            <span class="section-num">10</span>
             <h3>Credenciales</h3>
         </div>
         <div class="form-grid">
@@ -813,7 +853,12 @@
         </div>
     </div>
 
-    <div class="card" id="modulos-section">
+    <!-- Sección Módulos: oculta de la vista del comercial pero los inputs
+         permanecen en DOM para que el guardado/cargado (y las fichas
+         antiguas con módulos guardados a mano) sigan funcionando. Los
+         módulos efectivamente contratados se derivan ahora del carrito
+         Corporate/Planes mediante sincronizarModulos(). -->
+    <div class="card hidden" id="modulos-section" aria-hidden="true">
         <div class="card-header">
             <span class="section-num">10</span>
             <h3>Módulos</h3>
@@ -1048,6 +1093,30 @@
     function toggleSeccionDistribuidor(show) {
         document.getElementById('distribuidor-section').classList.toggle('hidden', !show);
     }
+
+    // Integración financiera: muestra/oculta los inputs de persona+email
+    // según la opción elegida. "No aplica" oculta los contactos (no tiene
+    // sentido pedirlos). Sage/A3 los muestra para que el comercial capture
+    // a quién tocar en la empresa del cliente para la integración.
+    function onIntfinChange() {
+        const sel = (document.querySelector('input[name="intfin"]:checked') || {}).value || '';
+        const muestra = sel === 'sage' || sel === 'a3';
+        document.querySelectorAll('.intfin-contacto').forEach(el => {
+            el.style.display = muestra ? '' : 'none';
+        });
+        if (!muestra) {
+            // Si cambia a "No aplica" limpiamos los campos — evitamos guardar
+            // datos de contacto desactivados que luego confundan al revisar.
+            const p = document.getElementById('intfin_persona');
+            const e = document.getElementById('intfin_email');
+            if (p) p.value = '';
+            if (e) e.value = '';
+        }
+        if (typeof actualizarEstadoNavSecciones === 'function') {
+            setTimeout(actualizarEstadoNavSecciones, 0);
+        }
+    }
+    window.onIntfinChange = onIntfinChange;
 
     function getComisionRate() {
         const rateEl = document.querySelector('input[name="dist_comision_pct"]:checked');
@@ -2349,6 +2418,12 @@
             'Descuentosetup': _importeYDescuentoSetup(tipoCliente).descuento || '',
             'Credencial Master': document.getElementById('cred_master').value.trim(),
             'Credencial Yurest': document.getElementById('cred_yurest').value.trim(),
+            // Integración financiera: slug ('' si no hay selección) + contactos.
+            // Si el selector quedó en "No aplica" los contactos se guardan
+            // vacíos (onIntfinChange los limpia al cambiar).
+            'Integracion Financiera': (document.querySelector('input[name="intfin"]:checked') || {}).value || '',
+            'Int Fin Persona':        document.getElementById('intfin_persona').value.trim(),
+            'Int Fin Email':          document.getElementById('intfin_email').value.trim().toLowerCase(),
             'Comentarios':    document.getElementById('comentarios').value.trim(),
             'Mensualidad Total Locales': _calcularMensualidadTotal(),
 
@@ -2430,7 +2505,8 @@
             ['tpv_email',      data['TPV Email'],       'Email del TPV'],
             ['tpv_ni_email',   data['TPV NI Email'],    'Email del TPV no integrado'],
             ['contacto_email', data['Contacto Email'],  'Email de contacto Lite'],
-            ['dist_mail',      data['Dist. Mail'],      'Email del distribuidor']
+            ['dist_mail',      data['Dist. Mail'],      'Email del distribuidor'],
+            ['intfin_email',   data['Int Fin Email'],   'Email de integración financiera']
         ];
         for (const [id, val, etiqueta] of emailsAValidar) {
             if (val && !esEmailValido(val)) {
@@ -2813,6 +2889,7 @@
          'entrega_calle','entrega_numero','entrega_cp','entrega_municipio','entrega_provincia',
          'contacto_nombre','contacto_email','contacto_telefono',
          'dist_empresa','dist_cif','dist_direccion','dist_cp','dist_contacto','dist_mail','dist_telefono',
+         'intfin_persona','intfin_email',
          'comentarios'].forEach(id => {
             document.getElementById(id).value = '';
         });
@@ -2838,6 +2915,10 @@
         });
         document.querySelectorAll('input[name="tipo_cliente"]').forEach(r => r.checked = false);
         document.querySelectorAll('input[name="cart_item"]').forEach(cb => cb.checked = false);
+        // Integración financiera: limpia radio + re-sincroniza visibilidad
+        // (oculta los contactos al no haber opción seleccionada).
+        document.querySelectorAll('input[name="intfin"]').forEach(r => r.checked = false);
+        if (typeof onIntfinChange === 'function') onIntfinChange();
         const descEl = document.getElementById('cart_descuento');
         if (descEl) descEl.value = '0';
         const anualEl = document.getElementById('mensual_anualizada');
@@ -2961,6 +3042,26 @@
         set('dist_telefono',  'Dist. Teléfono', 'Dist. Telefono', 'dist_telefono');
         set('cred_master',      'Credencial Master', 'cred_master');
         set('cred_yurest',      'Credencial Yurest', 'cred_yurest');
+        // Integración financiera: marca el radio según el slug guardado y
+        // dispara onIntfinChange para que los contactos se muestren/oculten
+        // coherentemente. Tolerante a variantes del valor (minúsculas, espacio
+        // en "no aplica", "No aplica", etc.).
+        const intfinRaw = (f['Integracion Financiera'] || f['integracion_financiera'] || '').toString().toLowerCase().trim();
+        const intfinSlug = intfinRaw === 'sage' ? 'sage'
+                          : intfinRaw === 'a3'   ? 'a3'
+                          : (intfinRaw === 'no_aplica' || intfinRaw === 'no aplica' || intfinRaw === 'noaplica') ? 'no_aplica'
+                          : '';
+        if (intfinSlug) {
+            const r = document.getElementById(
+                intfinSlug === 'no_aplica' ? 'intfin_noaplica' : 'intfin_' + intfinSlug
+            );
+            if (r) r.checked = true;
+        }
+        set('intfin_persona', 'Int Fin Persona', 'int_fin_persona');
+        set('intfin_email',   'Int Fin Email',   'int_fin_email');
+        // Sincroniza visibilidad de los contactos según la opción cargada.
+        onIntfinChange();
+
         set('comentarios',      'Comentarios', 'comentarios');
         set('corp_setup_precio',    'ImporteSetup', 'Setup Importe', 'setup_importe', 'corp_setup_precio');
         set('corp_setup_descuento', 'Descuentosetup', 'Setup Descuento', 'setup_descuento', 'corp_setup_descuento');
@@ -3412,6 +3513,15 @@
         },
         'credenciales-section': {
             fields: ['cred_master', 'cred_yurest']
+        },
+        'intfin-section': {
+            // Considera la sección completa en cuanto haya una opción marcada.
+            // "No aplica" cuenta: el comercial ha tomado una decisión explícita.
+            // Si es Sage/A3 y además hay persona o email, también completa —
+            // pero los contactos no son obligatorios para marcar la sección.
+            custom() {
+                return !!document.querySelector('input[name="intfin"]:checked');
+            }
         },
         'modulos-section': {
             custom() {
