@@ -2092,7 +2092,18 @@ body {
 }
 
 .modal-detail {
-    max-width: 720px;
+    /* El modal de detalle aloja muchas pestañas (Proyecto, Hardware,
+       Tareas, Formularios, Contactos, Desarrollos, Anotaciones, Timeline).
+       Con 720px se quedaba demasiado estrecho y las tabs desbordaban al
+       horizonte. Le damos más ancho: 96% del viewport con tope de 1200px. */
+    width: 96%;
+    max-width: 1200px;
+}
+/* Las pestañas hacen scroll horizontal si aún no caben (pantallas muy
+   estrechas) y el contenedor permite wrap como último recurso. */
+.modal-detail .detail-tabs {
+    flex-wrap: wrap;
+    overflow-x: auto;
 }
 
 .modal-header {
@@ -2983,7 +2994,9 @@ textarea.form-control {
    ========================================== */
 
 .modal-detail {
-    max-width: 820px;
+    /* Override responsive: mantiene el ancho amplio del modal de detalle
+       incluso en breakpoints medianos. */
+    max-width: 1200px;
 }
 
 /* ==========================================

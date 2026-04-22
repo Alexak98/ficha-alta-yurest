@@ -274,6 +274,31 @@
                         <select id="asignar-implementador" class="form-control"></select>
                     </div>
                 </div>
+
+                <!-- Promoción (solo para clientes tipo "Planes").
+                     Si la ficha es Planes, el implementador elige una promo
+                     con hueco libre + su turno (mañana/tarde). Se persiste
+                     en proyectos.promocion_id + proyectos.promocion_turno.
+                     Las promociones con 0 plazas totales libres no se muestran. -->
+                <div class="form-group" id="asignar-promo-wrap" style="display:none">
+                    <label>Promoción (tipo Planes)</label>
+                    <select id="asignar-promocion" class="form-control" onchange="onPromocionChange()">
+                        <option value="">— Selecciona una promoción con plazas libres —</option>
+                    </select>
+                    <small class="form-hint">Solo se listan promociones activas con al menos 1 plaza libre.</small>
+                </div>
+                <div class="form-row" id="asignar-turno-wrap" style="display:none">
+                    <div class="form-group">
+                        <label>Turno</label>
+                        <div class="pct-group" id="asignar-turno-group">
+                            <input type="radio" id="turno_manana" name="promo_turno" value="manana" onchange="onTurnoChange()">
+                            <label for="turno_manana" class="pct-btn">🌅 Mañana <span id="turno_manana_libres" style="opacity:.7;font-size:.72rem"></span></label>
+                            <input type="radio" id="turno_tarde"  name="promo_turno" value="tarde"  onchange="onTurnoChange()">
+                            <label for="turno_tarde"  class="pct-btn">🌇 Tarde <span id="turno_tarde_libres" style="opacity:.7;font-size:.72rem"></span></label>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Jefe de proyecto (cliente): info meramente informativa
                      — no editable aquí. Al crear el proyecto, su email se
                      añade automáticamente a participantes. Si no había JP
@@ -485,6 +510,24 @@
             IMPLEMENTADORES.map(impl => `<option value="${impl}">${impl}</option>`).join('');
         selImpl.value = '';
 
+        // ── Promoción (solo para fichas tipo Planes) ────────────────────
+        // Detección tolerante: tipoOriginal viene de BD como slug (puede ser
+        // "planes") o como texto libre legacy ("Planes", "PLANES"). Normaliza.
+        const tipoSlug = String(f.tipoOriginal || f.tipo || '').toLowerCase().trim();
+        const esPlanes = tipoSlug === 'planes' || tipoSlug.includes('planes');
+        const promoWrap = document.getElementById('asignar-promo-wrap');
+        const turnoWrap = document.getElementById('asignar-turno-wrap');
+        if (esPlanes) {
+            promoWrap.style.display = '';
+            _cargarPromocionesParaSelector();
+        } else {
+            promoWrap.style.display = 'none';
+            turnoWrap.style.display = 'none';
+            // Limpieza por si el usuario abrió antes una de tipo Planes
+            document.getElementById('asignar-promocion').innerHTML = '<option value="">—</option>';
+            document.querySelectorAll('input[name="promo_turno"]').forEach(r => r.checked = false);
+        }
+
         // Jefe de Proyecto: info + aviso de auto-add a participantes del
         // proyecto que se va a crear. Si la ficha no capturó JP (ficha
         // antigua incompleta), ocultamos el bloque en vez de mostrar vacío.
@@ -511,6 +554,73 @@
         abrirModal('modal-asignar');
     }
 
+    // ── Promociones (Planes) ─────────────────────────────────────────────
+    // Cache en memoria para no re-consultar el endpoint cada vez que se
+    // abre el modal: se invalida al crear un proyecto (nueva ocupación).
+    let _promoCache = null;
+
+    async function _cargarPromocionesParaSelector() {
+        const sel = document.getElementById('asignar-promocion');
+        sel.innerHTML = '<option value="">Cargando…</option>';
+        sel.disabled = true;
+        try {
+            if (!_promoCache) {
+                const ep = YurestConfig.ENDPOINTS.promociones;
+                const res = await YurestConfig.apiFetch(ep, { method: 'GET' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                _promoCache = Array.isArray(data) ? data
+                            : Array.isArray(data.promociones) ? data.promociones
+                            : [];
+            }
+            // Filtramos: solo activas con al menos 1 plaza libre total.
+            const disponibles = _promoCache.filter(p => p.estado !== 'cerrada' && (Number(p.libres_total) || 0) > 0);
+            sel.innerHTML = '<option value="">— Selecciona una promoción con plazas libres —</option>'
+                + disponibles.map(p => {
+                    const libres = Number(p.libres_total) || 0;
+                    const total = (Number(p.plazas_manana) || 0) + (Number(p.plazas_tarde) || 0);
+                    const fecha = p.fecha_inicio ? new Date(p.fecha_inicio).toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) : '';
+                    return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nombre)} · ${libres}/${total} libres${fecha ? ' · ' + fecha : ''}</option>`;
+                }).join('');
+            if (disponibles.length === 0) {
+                sel.innerHTML = '<option value="">— No hay promociones con plazas libres —</option>';
+            }
+        } catch (err) {
+            console.warn('[promociones] cargar', err);
+            sel.innerHTML = '<option value="">Error al cargar promociones</option>';
+        } finally {
+            sel.disabled = false;
+        }
+        document.getElementById('asignar-turno-wrap').style.display = 'none';
+        document.querySelectorAll('input[name="promo_turno"]').forEach(r => r.checked = false);
+    }
+
+    function onPromocionChange() {
+        const promoId = document.getElementById('asignar-promocion').value;
+        const wrap = document.getElementById('asignar-turno-wrap');
+        if (!promoId) { wrap.style.display = 'none'; return; }
+        const p = (_promoCache || []).find(x => x.id === promoId);
+        if (!p) { wrap.style.display = 'none'; return; }
+        const libM = Number(p.libres_manana) || 0;
+        const libT = Number(p.libres_tarde)  || 0;
+        // Muestra el contador + deshabilita el turno sin plazas.
+        const rM = document.getElementById('turno_manana');
+        const rT = document.getElementById('turno_tarde');
+        rM.disabled = libM <= 0;
+        rT.disabled = libT <= 0;
+        document.getElementById('turno_manana_libres').textContent = ' (' + libM + ' libre' + (libM === 1 ? '' : 's') + ')';
+        document.getElementById('turno_tarde_libres').textContent  = ' (' + libT + ' libre' + (libT === 1 ? '' : 's') + ')';
+        // Auto-seleccionar el único turno disponible si solo hay uno.
+        if (libM > 0 && libT <= 0) { rM.checked = true; }
+        else if (libT > 0 && libM <= 0) { rT.checked = true; }
+        else { rM.checked = false; rT.checked = false; }
+        wrap.style.display = '';
+    }
+    window.onPromocionChange = onPromocionChange;
+
+    function onTurnoChange() { /* hook reservado; nada que hacer ahora mismo */ }
+    window.onTurnoChange = onTurnoChange;
+
     async function crearProyectoDesdeAlta() {
         const idx = parseInt(document.getElementById('asignar-ficha-idx').value);
         const f = fichasSinAsignar[idx];
@@ -521,6 +631,34 @@
         if (!implementador) {
             mostrarToast('Selecciona un implementador', 'error');
             return;
+        }
+
+        // Validación Planes: si la sección promo está visible, exigimos
+        // promoción + turno con plazas libres.
+        let promocionId = null;
+        let promocionTurno = null;
+        if (document.getElementById('asignar-promo-wrap').style.display !== 'none') {
+            promocionId = document.getElementById('asignar-promocion').value || null;
+            const turnoRadio = document.querySelector('input[name="promo_turno"]:checked');
+            promocionTurno = turnoRadio ? turnoRadio.value : null;
+            if (!promocionId) {
+                mostrarToast('Selecciona una promoción para este cliente Planes', 'error');
+                return;
+            }
+            if (!promocionTurno) {
+                mostrarToast('Selecciona un turno (mañana o tarde) dentro de la promoción', 'error');
+                return;
+            }
+            // Doble-chequeo: la promo que el usuario eligió sigue teniendo plaza libre
+            // en el turno elegido (por si otro implementador creó un proyecto
+            // desde que se cargó el selector).
+            const p = (_promoCache || []).find(x => x.id === promocionId);
+            const libres = p ? (promocionTurno === 'manana' ? p.libres_manana : p.libres_tarde) : 0;
+            if ((libres || 0) <= 0) {
+                mostrarToast('La promoción y turno elegidos ya no tienen plazas libres. Recarga e intenta de nuevo.', 'error');
+                _promoCache = null;  // fuerza recarga al reabrir
+                return;
+            }
         }
 
         showLoading();
@@ -548,10 +686,16 @@
                 anotaciones: [],
                 asanaProjectId: '',
                 tpv: f.tpv || '',
-                participantes: participantesIniciales
+                participantes: participantesIniciales,
+                // Promoción + turno (solo no-null para fichas tipo Planes).
+                promocionId:    promocionId,
+                promocionTurno: promocionTurno,
+                promocion_id:    promocionId,
+                promocion_turno: promocionTurno
             };
 
             await crearProyectoAPI(nuevoProyecto).catch(() => {});
+            _promoCache = null;  // invalidar para que el próximo modal muestre ocupación actualizada
             proyectos.push(nuevoProyecto);
             guardarProyectosLocal(proyectos);
 

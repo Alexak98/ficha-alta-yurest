@@ -65,6 +65,11 @@
         // solicitud, ahora se difieren hasta que la ficha está lista.
         notificarFichaCompleta: `${WEBHOOK_BASE}/ficha/notificar-completa`,
 
+        // Promociones (Customer Success): tandas de implementación con
+        // 16 plazas (8 mañana + 8 tarde). El front lee vía /promociones
+        // una vista con la ocupación ya calculada.
+        promociones:          `${WEBHOOK_BASE}/promociones`,
+
         // Contabilidad
         grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`,
 
@@ -96,6 +101,7 @@
         { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'     },
         { id: 'clientes',      label: 'Clientes',             grupo: 'Customer Success' },
         { id: 'bajas',         label: 'Bajas',                grupo: 'Customer Success' },
+        { id: 'promociones',   label: 'Promociones',          grupo: 'Customer Success' },
         { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
         { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
         { id: 'docs',          label: 'Documentación',        grupo: 'Otros'            }

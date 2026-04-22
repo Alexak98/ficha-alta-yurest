@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Promociones — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('promociones');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f8fafc; }
+        .page-header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#fff;
+            position:sticky;top:0;z-index:100;
+        }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.2rem;font-weight:800;color:#0f172a;margin:0 }
+
+        .page-content { padding: 24px; max-width: 1200px; margin: 0 auto }
+        .page-toolbar { display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:14px;flex-wrap:wrap }
+        .page-toolbar h2 { font-size:1.35rem;font-weight:700;color:#0f172a;margin:0 }
+        .page-toolbar p  { font-size:.85rem;color:#64748b;margin:3px 0 0 0 }
+
+        /* ── Tarjetas de promoción ───────────────────────────────── */
+        .promo-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px }
+        .promo-card {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;
+            padding:18px 20px;display:flex;flex-direction:column;gap:12px;
+            transition:border-color .15s, box-shadow .15s;
+        }
+        .promo-card:hover { border-color:#ec4899;box-shadow:0 4px 14px rgba(236,72,153,.12) }
+        .promo-card.full { border-color:#f59e0b;background:#fffbeb }
+        .promo-card.cerrada { opacity:.72 }
+
+        .promo-head { display:flex;align-items:flex-start;justify-content:space-between;gap:10px }
+        .promo-name { font-size:1.02rem;font-weight:700;color:#0f172a;margin:0;line-height:1.3 }
+        .promo-desc { font-size:.8rem;color:#64748b;margin:3px 0 0 0;line-height:1.4 }
+
+        .promo-badge { font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:999px;flex-shrink:0 }
+        .promo-badge.activa  { background:#dcfce7;color:#15803d }
+        .promo-badge.cerrada { background:#f1f5f9;color:#64748b }
+        .promo-badge.full    { background:#fed7aa;color:#c2410c }
+
+        .promo-fecha { font-size:.76rem;color:#64748b }
+
+        .promo-turnos { display:grid;grid-template-columns:1fr 1fr;gap:10px }
+        .promo-turno {
+            border:1px solid #e2e8f0;border-radius:10px;padding:10px;text-align:center;
+            background:#f8fafc;
+        }
+        .promo-turno.completo { background:#fff7ed;border-color:#fed7aa }
+        .promo-turno-lbl { font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:4px }
+        .promo-turno-num { font-size:1.35rem;font-weight:800;color:#0f172a;margin:0 }
+        .promo-turno.completo .promo-turno-num { color:#c2410c }
+        .promo-turno-sub { font-size:.72rem;color:#64748b;margin-top:2px }
+
+        .promo-bar { height:8px;border-radius:999px;background:#f1f5f9;overflow:hidden;margin-top:2px }
+        .promo-bar-fill { height:100%;background:linear-gradient(90deg,#ec4899,#be185d);transition:width .3s }
+        .promo-bar-fill.full { background:linear-gradient(90deg,#f97316,#ea580c) }
+
+        .promo-actions { display:flex;gap:8px;flex-wrap:wrap;margin-top:4px }
+        .promo-actions button {
+            padding:7px 12px;font-size:.78rem;font-weight:600;border-radius:8px;cursor:pointer;font-family:inherit;
+            border:1.5px solid #e2e8f0;background:#fff;color:#475569;
+        }
+        .promo-actions button:hover { border-color:#ec4899;color:#ec4899 }
+        .promo-actions .danger:hover { border-color:#dc2626;color:#dc2626;background:#fef2f2 }
+
+        /* ── Modal ─────────────────────────────────────────────── */
+        .modal-overlay {
+            position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:800;
+            display:none;align-items:center;justify-content:center;padding:20px;
+        }
+        .modal-overlay.open { display:flex }
+        .modal {
+            background:#fff;border-radius:14px;width:100%;max-width:560px;
+            max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);
+        }
+        .modal-header { padding:18px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between }
+        .modal-header h3 { margin:0;font-size:1.1rem;font-weight:700;color:#0f172a }
+        .modal-close { width:32px;height:32px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;font-size:1.2rem;font-family:inherit }
+        .modal-body { padding:20px 24px }
+        .modal-footer { padding:14px 24px 18px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px }
+
+        .form-group { margin-bottom:14px }
+        .form-group label { display:block;font-size:.78rem;font-weight:600;color:#334155;margin-bottom:6px }
+        .form-group input, .form-group textarea, .form-group select {
+            width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;
+            font-size:.88rem;font-family:inherit;transition:border-color .15s;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline:none;border-color:#ec4899 }
+        .form-row { display:grid;grid-template-columns:1fr 1fr;gap:12px }
+
+        .btn-primary {
+            background:#ec4899;color:#fff;border:none;padding:9px 18px;border-radius:9px;
+            font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;
+        }
+        .btn-primary:hover { background:#be185d }
+        .btn-primary:disabled { opacity:.5;cursor:not-allowed }
+        .btn-secondary {
+            background:#fff;color:#475569;border:1.5px solid #e2e8f0;padding:9px 18px;border-radius:9px;
+            font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;
+        }
+
+        .empty {
+            text-align:center;padding:60px 20px;color:#94a3b8;
+            background:#fff;border:1.5px dashed #e2e8f0;border-radius:14px;
+        }
+        .empty-icon { font-size:3rem;margin-bottom:12px }
+    </style>
+</head>
+<body>
+    <!-- Sidebar compartida -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <nav class="sidebar" id="sidebar"></nav>
+    <script src="sidebar.js"></script>
+    <script>YurestSidebar.render('promociones');</script>
+
+    <div class="page-header">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <h1>Promociones</h1>
+    </div>
+
+    <div class="page-content">
+        <div class="page-toolbar">
+            <div>
+                <h2>Tandas de implementación (Planes)</h2>
+                <p>Cada promoción tiene 16 plazas: 8 en turno de mañana y 8 en turno de tarde. Cuando se completa una, deja de aparecer en el selector al asignar un proyecto.</p>
+            </div>
+            <button class="btn-primary" onclick="abrirModal()">+ Nueva promoción</button>
+        </div>
+
+        <div id="loading" style="text-align:center;padding:40px;color:#94a3b8">Cargando…</div>
+        <div id="promo-grid" class="promo-grid" style="display:none"></div>
+        <div id="empty-state" class="empty" style="display:none">
+            <div class="empty-icon">🎟️</div>
+            <p style="font-weight:700;color:#475569;margin:0 0 6px">Sin promociones todavía</p>
+            <p style="margin:0">Crea la primera promoción para empezar a asignar proyectos Planes a tandas concretas.</p>
+        </div>
+    </div>
+
+    <!-- Modal crear / editar -->
+    <div class="modal-overlay" id="modal-promo">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Nueva promoción</h3>
+                <button class="modal-close" onclick="cerrarModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="f-id">
+                <div class="form-group">
+                    <label for="f-nombre">Nombre *</label>
+                    <input type="text" id="f-nombre" placeholder="Ej: Promoción Enero 2026" maxlength="80">
+                </div>
+                <div class="form-group">
+                    <label for="f-descripcion">Descripción (opcional)</label>
+                    <textarea id="f-descripcion" rows="2" placeholder="Detalles, comentarios internos…"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="f-fecha">Fecha inicio</label>
+                        <input type="date" id="f-fecha">
+                    </div>
+                    <div class="form-group">
+                        <label for="f-estado">Estado</label>
+                        <select id="f-estado">
+                            <option value="activa">Activa</option>
+                            <option value="cerrada">Cerrada</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="f-plazas-m">Plazas mañana</label>
+                        <input type="number" id="f-plazas-m" min="0" max="50" value="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="f-plazas-t">Plazas tarde</label>
+                        <input type="number" id="f-plazas-t" min="0" max="50" value="8">
+                    </div>
+                </div>
+                <div id="f-error" style="display:none;color:#dc2626;font-size:.82rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;margin-top:8px"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                <button class="btn-primary" id="btn-save" onclick="guardar()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+    const EP = YurestConfig.ENDPOINTS.promociones;
+    let promociones = [];
+
+    async function cargar() {
+        document.getElementById('loading').style.display = '';
+        document.getElementById('promo-grid').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'none';
+        try {
+            const res = await YurestConfig.apiFetch(EP, { method: 'GET' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            promociones = Array.isArray(data) ? data
+                        : Array.isArray(data.promociones) ? data.promociones
+                        : Array.isArray(data.data) ? data.data : [];
+            render();
+        } catch (err) {
+            console.warn('[promociones] cargar', err);
+            document.getElementById('loading').innerHTML = '<span style="color:#dc2626">Error al cargar: ' + YurestConfig.escHtml(err.message) + '</span>';
+        }
+    }
+
+    function render() {
+        document.getElementById('loading').style.display = 'none';
+        const grid = document.getElementById('promo-grid');
+        if (promociones.length === 0) {
+            document.getElementById('empty-state').style.display = '';
+            return;
+        }
+        const esc = YurestConfig.escHtml;
+        grid.innerHTML = promociones.map(p => {
+            const occM = Number(p.ocupadas_manana) || 0;
+            const occT = Number(p.ocupadas_tarde)  || 0;
+            const capM = Number(p.plazas_manana)   || 0;
+            const capT = Number(p.plazas_tarde)    || 0;
+            const occTotal = occM + occT;
+            const capTotal = capM + capT;
+            const full = capTotal > 0 && occTotal >= capTotal;
+            const pct = capTotal > 0 ? Math.round((occTotal / capTotal) * 100) : 0;
+            const estadoCls = p.estado === 'cerrada' ? 'cerrada' : (full ? 'full' : 'activa');
+            const estadoLbl = p.estado === 'cerrada' ? 'Cerrada' : (full ? 'Completa' : 'Activa');
+            const fecha = p.fecha_inicio ? new Date(p.fecha_inicio).toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) : '';
+            return `
+                <div class="promo-card ${full ? 'full' : ''} ${p.estado === 'cerrada' ? 'cerrada' : ''}">
+                    <div class="promo-head">
+                        <div>
+                            <h3 class="promo-name">${esc(p.nombre)}</h3>
+                            ${p.descripcion ? `<p class="promo-desc">${esc(p.descripcion)}</p>` : ''}
+                            ${fecha ? `<div class="promo-fecha">Inicio: ${esc(fecha)}</div>` : ''}
+                        </div>
+                        <span class="promo-badge ${estadoCls}">${esc(estadoLbl)}</span>
+                    </div>
+
+                    <div class="promo-turnos">
+                        <div class="promo-turno ${occM >= capM && capM > 0 ? 'completo' : ''}">
+                            <div class="promo-turno-lbl">Mañana</div>
+                            <div class="promo-turno-num">${occM}/${capM}</div>
+                            <div class="promo-turno-sub">${capM - occM} libre${capM - occM === 1 ? '' : 's'}</div>
+                        </div>
+                        <div class="promo-turno ${occT >= capT && capT > 0 ? 'completo' : ''}">
+                            <div class="promo-turno-lbl">Tarde</div>
+                            <div class="promo-turno-num">${occT}/${capT}</div>
+                            <div class="promo-turno-sub">${capT - occT} libre${capT - occT === 1 ? '' : 's'}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:.72rem;color:#64748b;margin-bottom:4px">
+                            <span>Total</span>
+                            <span><strong style="color:#334155">${occTotal}/${capTotal}</strong> · ${pct}%</span>
+                        </div>
+                        <div class="promo-bar"><div class="promo-bar-fill ${full ? 'full' : ''}" style="width:${pct}%"></div></div>
+                    </div>
+
+                    <div class="promo-actions">
+                        <button onclick='editar(${JSON.stringify(p).replace(/'/g,"&#39;")})'>✏️ Editar</button>
+                        <button class="danger" onclick="borrar('${esc(p.id)}', '${esc(p.nombre).replace(/'/g,"&#39;")}')">🗑️ Archivar</button>
+                    </div>
+                </div>`;
+        }).join('');
+        grid.style.display = '';
+    }
+
+    // ── Modal crear / editar ───────────────────────────────────────────
+    function abrirModal() {
+        document.getElementById('modal-title').textContent = 'Nueva promoción';
+        document.getElementById('f-id').value = '';
+        document.getElementById('f-nombre').value = '';
+        document.getElementById('f-descripcion').value = '';
+        document.getElementById('f-fecha').value = new Date().toISOString().slice(0,10);
+        document.getElementById('f-estado').value = 'activa';
+        document.getElementById('f-plazas-m').value = '8';
+        document.getElementById('f-plazas-t').value = '8';
+        _hideError();
+        document.getElementById('modal-promo').classList.add('open');
+        setTimeout(() => document.getElementById('f-nombre').focus(), 50);
+    }
+    function editar(p) {
+        document.getElementById('modal-title').textContent = 'Editar promoción';
+        document.getElementById('f-id').value = p.id;
+        document.getElementById('f-nombre').value = p.nombre || '';
+        document.getElementById('f-descripcion').value = p.descripcion || '';
+        document.getElementById('f-fecha').value = p.fecha_inicio || '';
+        document.getElementById('f-estado').value = p.estado || 'activa';
+        document.getElementById('f-plazas-m').value = p.plazas_manana ?? 8;
+        document.getElementById('f-plazas-t').value = p.plazas_tarde ?? 8;
+        _hideError();
+        document.getElementById('modal-promo').classList.add('open');
+    }
+    function cerrarModal() {
+        document.getElementById('modal-promo').classList.remove('open');
+    }
+    function _showError(msg) {
+        const el = document.getElementById('f-error');
+        el.textContent = msg;
+        el.style.display = '';
+    }
+    function _hideError() {
+        document.getElementById('f-error').style.display = 'none';
+    }
+
+    async function guardar() {
+        const id = document.getElementById('f-id').value.trim();
+        const nombre = document.getElementById('f-nombre').value.trim();
+        if (!nombre) return _showError('El nombre es obligatorio.');
+        const descripcion = document.getElementById('f-descripcion').value.trim();
+        const fecha = document.getElementById('f-fecha').value || null;
+        const estado = document.getElementById('f-estado').value;
+        const plazas_manana = parseInt(document.getElementById('f-plazas-m').value, 10);
+        const plazas_tarde  = parseInt(document.getElementById('f-plazas-t').value, 10);
+        if (!Number.isFinite(plazas_manana) || plazas_manana < 0) return _showError('Plazas mañana debe ser ≥ 0.');
+        if (!Number.isFinite(plazas_tarde)  || plazas_tarde  < 0) return _showError('Plazas tarde debe ser ≥ 0.');
+
+        const btn = document.getElementById('btn-save');
+        btn.disabled = true; btn.textContent = 'Guardando…';
+        try {
+            const body = {
+                action: id ? 'update' : 'create',
+                promocion: { id: id || undefined, nombre, descripcion, fecha_inicio: fecha, estado, plazas_manana, plazas_tarde }
+            };
+            const res = await YurestConfig.apiFetch(EP, { method: 'POST', body: JSON.stringify(body) });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const r = await res.json();
+            if (r && r.success === false) throw new Error((r.errores || ['Error desconocido']).join('; '));
+            cerrarModal();
+            await cargar();
+        } catch (err) {
+            _showError(err.message || 'Error al guardar');
+        } finally {
+            btn.disabled = false; btn.textContent = 'Guardar';
+        }
+    }
+
+    async function borrar(id, nombre) {
+        if (!confirm(`¿Archivar la promoción "${nombre}"?\nNo se borra de BD — se marca como eliminada. Los proyectos ya asignados a ella se mantienen.`)) return;
+        try {
+            const res = await YurestConfig.apiFetch(EP, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'delete', promocion: { id } })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            await cargar();
+        } catch (err) {
+            alert('Error al archivar: ' + err.message);
+        }
+    }
+
+    // Exponer globals para onclick inline
+    window.openSidebar  = openSidebar;
+    window.closeSidebar = closeSidebar;
+    window.abrirModal = abrirModal;
+    window.cerrarModal = cerrarModal;
+    window.guardar = guardar;
+    window.editar  = editar;
+    window.borrar  = borrar;
+
+    // Escape cierra el modal
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+
+    cargar();
+    </script>
+</body>
+</html>
