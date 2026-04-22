@@ -672,6 +672,19 @@ function normalizarAlta(f) {
     const jpRol       = get(['JP Rol',       'jp_rol']);
     const jpDisplay   = [jpNombre, jpApellidos].filter(Boolean).join(' ').trim();
 
+    // Integración financiera: software contable del cliente (Sage / A3 /
+    // no_aplica). Snapshotamos el slug + contactos aquí para que el tab
+    // "Proyecto" del detalle pueda mostrarlos sin tener que re-consultar
+    // la ficha cada vez.
+    const intFinRaw  = get(['Integracion Financiera', 'integracion_financiera']).toLowerCase().trim();
+    const integracionFinanciera =
+          intFinRaw === 'sage' ? 'sage'
+        : intFinRaw === 'a3'   ? 'a3'
+        : (intFinRaw === 'no_aplica' || intFinRaw === 'no aplica' || intFinRaw === 'noaplica') ? 'no_aplica'
+        : '';
+    const intFinPersona = get(['Int Fin Persona', 'int_fin_persona']);
+    const intFinEmail   = get(['Int Fin Email',   'int_fin_email']).toLowerCase();
+
     return {
         altaId: id,
         nombre: nombre || comercial,
@@ -692,7 +705,11 @@ function normalizarAlta(f) {
         jpMail,
         jpTelefono,
         jpRol,
-        jpDisplay
+        jpDisplay,
+        // Integración financiera del cliente (Sage / A3 / no_aplica / '').
+        integracionFinanciera,
+        intFinPersona,
+        intFinEmail
     };
 }
 

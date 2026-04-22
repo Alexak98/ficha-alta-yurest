@@ -934,6 +934,20 @@ function _renderCabeceraProyecto(proyecto) {
                 <span class="detail-label">Integracion TPV</span>
                 <span class="detail-value">${proyecto.tpv ? `<span class="detail-tpv-badge">${escapeHtml(proyecto.tpv)}</span>` : '<span style="color:var(--text-muted)">Sin TPV</span>'}</span>
             </div>
+            <!-- Integración financiera (Sage / A3 / No aplica). El valor
+                 lo tiene la ficha (fichas_alta.integracion_financiera) y lo
+                 resolvemos asíncronamente vía obtenerFichaPorCliente +
+                 caché. Usamos clase (no id) porque la cabecera se dibuja
+                 en DOS pestañas (Proyecto y Tareas) — usar el mismo id
+                 daría duplicado y document.getElementById solo devolvería
+                 el primero. El helper _poblarIntegracionFinanciera itera
+                 todos los matches con querySelectorAll. -->
+            <div class="detail-field">
+                <span class="detail-label">Integración financiera</span>
+                <span class="detail-value det-intfin" data-proyecto-id="${proyecto.id}">
+                    <span style="color:var(--text-muted)">Cargando…</span>
+                </span>
+            </div>
             ${(proyecto.participantes && proyecto.participantes.length > 0) ? `<div class="detail-field">
                 <span class="detail-label">Participantes</span>
                 <span class="detail-value"><div class="participantes-chips-inline">${proyecto.participantes.map(e => `<span class="participante-chip-sm">${escapeHtml(e)}</span>`).join('')}</div></span>
@@ -955,6 +969,54 @@ function _renderCabeceraProyecto(proyecto) {
             </div>
         </div>
         ` : ''}`;
+}
+
+// Rellena los spans ".det-intfin" con el badge de integración financiera
+// de la ficha. Se invoca tras renderizar el detalle (Proyecto o Tareas)
+// y resuelve la ficha vía caché (obtenerFichaPorCliente). Best-effort:
+// si la ficha no se encuentra, deja "Sin definir" en gris.
+//
+// Usa querySelectorAll porque la cabecera se dibuja en las DOS pestañas
+// (Proyecto + Tareas) — hay dos spans simultáneos que hay que actualizar.
+async function _poblarIntegracionFinanciera(proyecto) {
+    const spans = document.querySelectorAll('.det-intfin');
+    if (spans.length === 0) return;
+
+    let ficha = null;
+    try {
+        ficha = await obtenerFichaPorCliente(proyecto.cliente);
+    } catch (_) { ficha = null; }
+
+    const slug = ficha ? (ficha.integracionFinanciera || '') : '';
+    const LABEL = { sage: 'Sage', a3: 'A3', no_aplica: 'No aplica' };
+    const COLOR = {
+        sage:      { bg: '#fef3c7', color: '#92400e' },
+        a3:        { bg: '#dbeafe', color: '#1e40af' },
+        no_aplica: { bg: '#f1f5f9', color: '#64748b' }
+    };
+
+    const vacio = '<span style="color:var(--text-muted)">Sin definir</span>';
+    let html;
+    if (!slug) {
+        html = vacio;
+    } else {
+        const c = COLOR[slug] || { bg: '#f1f5f9', color: '#334155' };
+        const lbl = LABEL[slug] || slug;
+        const contactoHtml = (ficha && (ficha.intFinPersona || ficha.intFinEmail))
+            ? `<span style="font-size:.72rem;color:var(--text-muted);margin-left:8px">${escapeHtml(ficha.intFinPersona || ficha.intFinEmail)}</span>`
+            : '';
+        html = `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:${c.bg};color:${c.color}">${escapeHtml(lbl)}</span>${contactoHtml}`;
+    }
+
+    // Solo actualiza los spans cuyo dataset.proyectoId coincida con el
+    // proyecto actual — si el usuario cambió de proyecto mientras la
+    // promesa resolvía, los nuevos spans pertenecen a otro proyecto y los
+    // dejamos en paz (se resolverán con su propio fetch).
+    spans.forEach(s => {
+        if (!s.isConnected) return;
+        if (s.dataset.proyectoId !== String(proyecto.id)) return;
+        s.innerHTML = html;
+    });
 }
 
 // Acciones comunes (Editar / Eliminar) — se repiten al pie de Proyecto y Tareas
@@ -997,6 +1059,9 @@ function renderDetalleTareas(proyecto) {
         ${_renderSeccionesFiltradas(proyecto, s => _esSeccionTareas(s.nombre))}
         ${_renderAccionesProyecto(proyecto)}
     `;
+    // Resuelve la integración financiera del cliente de forma asíncrona
+    // (lee de fichas_alta vía caché). Si falla, el span queda en "Sin definir".
+    _poblarIntegracionFinanciera(proyecto);
 }
 
 async function guardarDatosPausa() {
@@ -1075,6 +1140,7 @@ function renderDetalleProyecto(proyecto) {
         ${_renderSeccionesFiltradas(proyecto, s => !_esSeccionTareas(s.nombre) && !_esSeccionHardware(s.nombre))}
         ${_renderAccionesProyecto(proyecto)}
     `;
+    _poblarIntegracionFinanciera(proyecto);
 }
 
 function renderDetalleHardware(proyecto) {
