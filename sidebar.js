@@ -73,7 +73,8 @@
             label: 'Contabilidad',
             icon: 'contabilidad',
             items: [
-                { id: 'contabilidad', href: 'contabilidad.html', label: 'Grabar en A3', icon: 'a3', badgeId: 'badge-a3' }
+                { id: 'contabilidad', href: 'contabilidad.html', label: 'Grabar en A3',          icon: 'a3',       badgeId: 'badge-a3' },
+                { id: 'proformas',    href: 'proformas.html',    label: 'Solicitud de proformas', icon: 'fichas', badgeId: 'badge-proformas' }
             ]
         },
         {

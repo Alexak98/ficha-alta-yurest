@@ -105,6 +105,7 @@
         { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación'   },
         { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación'   },
         { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'     },
+        { id: 'proformas',     label: 'Solicitud de proformas', grupo: 'Contabilidad'   },
         { id: 'clientes',      label: 'Clientes',             grupo: 'Customer Success' },
         { id: 'bajas',         label: 'Bajas',                grupo: 'Customer Success' },
         { id: 'promociones',   label: 'Promociones',          grupo: 'Customer Success' },
