@@ -994,6 +994,20 @@
                 <button type="button" class="btn-copy-cliente" onclick="copiarDatosCliente(this)">Copiar de datos de cliente</button>
             </div>
 
+            <!-- Selector de mandato SEPA: dropdown con las sociedades que el
+                 cliente firmó en la solicitud. Lo que elija el comercial se
+                 guarda en locales.sepa_mandato_id, y así Contabilidad sabe
+                 qué cuenta facturar para cada local. Si la ficha aún no
+                 tiene SEPA firmado, el select muestra "Sin mandato asignado"
+                 como única opción (deshabilitado). -->
+            <div class="form-group col-12">
+                <label>Mandato SEPA / cuenta de cargo</label>
+                <select data-field="sepa_mandato_id" class="form-control local-sepa-select">
+                    <option value="">— Sin asignar —</option>
+                </select>
+                <small class="form-hint">Selecciona a qué sociedad/cuenta se facturará este local. Se rellena automáticamente con las sociedades firmadas por el cliente.</small>
+            </div>
+
             <div class="form-group col-6">
                 <label>CIF / NIF</label>
                 <input type="text" data-field="sociedad_cif" placeholder="A00000000">
@@ -1036,6 +1050,10 @@
         const clone = document.getElementById('local-template').content.cloneNode(true);
         container.appendChild(clone);
         actualizarNumeracion();
+        // El template trae un <select> vacío; lo poblamos con los mandatos
+        // SEPA que ya haya en la ficha (para que el comercial pueda asignar
+        // la cuenta de facturación al nuevo local inmediatamente).
+        if (typeof _repoblarLocalesSepaSelects === 'function') _repoblarLocalesSepaSelects();
         if (typeof actualizarEstadoNavSecciones === 'function') actualizarEstadoNavSecciones();
     }
 
@@ -2203,29 +2221,73 @@
     }
 
     // ── Mandato SEPA: render solo lectura ─────────────────────────────────────
+    // Normaliza `sepa_mandato` al tipo array SIEMPRE para simplificar el
+    // resto del código. Acepta null, objeto legacy, array, o string JSON.
+    function _sepaToArray(raw) {
+        if (!raw) return [];
+        let p = raw;
+        if (typeof p === 'string') {
+            try { p = JSON.parse(p); } catch (_) { return []; }
+        }
+        if (Array.isArray(p)) return p.filter(Boolean);
+        if (typeof p === 'object') return [p];
+        return [];
+    }
+
+    // Cache en memoria de los mandatos SEPA de la ficha en edición. Se
+    // rellena en cargarModoEdicion y se lee al poblar los <select> de los
+    // locales (cada local elige a qué sociedad factura).
+    let _sepaListActual = [];
+
     function _renderSepaMandato(raw) {
         const sec = document.getElementById('sepa-section');
         if (!sec) return;
-        let s = raw;
-        if (typeof s === 'string') {
-            try { s = s.trim().startsWith('{') ? JSON.parse(s) : null; } catch (_) { s = null; }
-        }
+        const lista = _sepaToArray(raw);
+        _sepaListActual = lista;
         const badge = document.getElementById('sepa-badge');
         const vacio = document.getElementById('sepa-vacio');
         const det   = document.getElementById('sepa-detalle');
-        if (!s || !s.firma_base64) {
+
+        if (lista.length === 0 || !lista.some(s => s && s.firma_base64)) {
             badge.textContent = 'Sin firmar';
             badge.style.background = '#f1f5f9';
             badge.style.color = '#64748b';
             vacio.style.display = '';
             det.style.display = 'none';
+            _repoblarLocalesSepaSelects();
             return;
         }
-        badge.textContent = '✓ Firmado';
+
+        // Badge: indica cuántos mandatos firmados hay.
+        const firmados = lista.filter(s => s && s.firma_base64).length;
+        badge.textContent = firmados === 1 ? '✓ Firmado' : `✓ ${firmados} mandatos firmados`;
         badge.style.background = '#dcfce7';
         badge.style.color = '#15803d';
         vacio.style.display = 'none';
         det.style.display = '';
+
+        // Si hay 1 solo mandato, rellenamos los spans existentes como antes.
+        // Si hay varios, reemplazamos el bloque por un listado apilado.
+        if (lista.length === 1) {
+            _renderSingleMandato(lista[0]);
+        } else {
+            _renderMultiMandatos(lista);
+        }
+
+        _repoblarLocalesSepaSelects();
+        if (typeof actualizarEstadoNavSecciones === 'function') {
+            setTimeout(actualizarEstadoNavSecciones, 0);
+        }
+    }
+
+    function _renderSingleMandato(s) {
+        const det = document.getElementById('sepa-detalle');
+        // Restauramos el layout con los spans "sepa-d-*" que ya existían en
+        // el HTML original (para el caso de 1 solo mandato). Si el DOM se
+        // alteró por una renderización multi previa, lo reconstruimos.
+        if (!document.getElementById('sepa-d-ref')) {
+            det.innerHTML = _sepaDetalleSingleHTML();
+        }
         const d = s.deudor || {};
         const dirCompleta = [d.direccion, d.cp, d.poblacion, d.provincia, d.pais].filter(Boolean).join(' · ');
         const tipo = s.tipo_pago === 'unico' ? 'Pago único' : 'Pago recurrente';
@@ -2238,10 +2300,79 @@
         document.getElementById('sepa-d-direccion').textContent = dirCompleta || '—';
         document.getElementById('sepa-d-firma').src             = s.firma_base64;
         document.getElementById('sepa-d-firmado-at').textContent = s.firmado_at ? 'Firmado el ' + new Date(s.firmado_at).toLocaleString('es-ES') : '';
-        // Refrescar nav (la sección SEPA ahora está completa)
-        if (typeof actualizarEstadoNavSecciones === 'function') {
-            setTimeout(actualizarEstadoNavSecciones, 0);
-        }
+    }
+
+    function _renderMultiMandatos(lista) {
+        // Render apilado: cada mandato como sub-tarjeta, para que el comercial
+        // vea todas las sociedades firmadas por el cliente.
+        const det = document.getElementById('sepa-detalle');
+        const esc = YurestConfig.escHtml;
+        det.innerHTML = lista.map((s, i) => {
+            const d = s.deudor || {};
+            const dirCompleta = [d.direccion, d.cp, d.poblacion, d.provincia, d.pais].filter(Boolean).join(' · ');
+            const tipo = s.tipo_pago === 'unico' ? 'Pago único' : 'Pago recurrente';
+            const ibanFmt = (s.iban || '').replace(/(.{4})/g, '$1 ').trim() || '—';
+            return `
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;background:#fff">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                        <strong style="color:#1e3a8a;font-size:.9rem">Sociedad #${i + 1} — ${esc(d.nombre || 'Sin nombre')}</strong>
+                        <span style="font-family:monospace;font-size:.72rem;color:#64748b">${esc(s.referencia || '—')}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px 14px;font-size:.82rem;color:#1e293b">
+                        <div><strong style="color:#64748b">Tipo</strong><br>${esc(tipo)}</div>
+                        <div><strong style="color:#64748b">IBAN</strong><br><span style="font-family:monospace">${esc(ibanFmt)}</span></div>
+                        <div><strong style="color:#64748b">SWIFT</strong><br><span style="font-family:monospace">${esc(s.swift || '—')}</span></div>
+                        <div><strong style="color:#64748b">Fecha · Localidad</strong><br>${esc([s.fecha_firma, s.localidad].filter(Boolean).join(' · ') || '—')}</div>
+                        <div style="grid-column:1/-1"><strong style="color:#64748b">Dirección</strong><br>${esc(dirCompleta || '—')}</div>
+                    </div>
+                    ${s.firma_base64 ? `
+                      <div style="margin-top:10px;border:1px solid #e2e8f0;border-radius:6px;padding:6px;background:#fff">
+                          <div style="font-size:.66rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#94a3b8;margin-bottom:4px">Firma</div>
+                          <img src="${esc(s.firma_base64)}" alt="Firma" style="max-width:100%;max-height:80px">
+                      </div>` : ''}
+                </div>`;
+        }).join('');
+    }
+
+    function _sepaDetalleSingleHTML() {
+        // HTML original del bloque detalle (1 mandato) — reutilizable.
+        return `
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px 14px;font-size:0.85rem;color:#1e293b;margin-bottom:14px">
+                <div><strong style="color:#64748b">Referencia</strong><br><span id="sepa-d-ref">—</span></div>
+                <div><strong style="color:#64748b">Tipo de pago</strong><br><span id="sepa-d-tipo">—</span></div>
+                <div><strong style="color:#64748b">Titular</strong><br><span id="sepa-d-titular">—</span></div>
+                <div><strong style="color:#64748b">IBAN</strong><br><span id="sepa-d-iban" style="font-family:monospace">—</span></div>
+                <div><strong style="color:#64748b">SWIFT BIC</strong><br><span id="sepa-d-swift" style="font-family:monospace">—</span></div>
+                <div><strong style="color:#64748b">Fecha · Localidad</strong><br><span id="sepa-d-fecha">—</span></div>
+                <div style="grid-column:1/-1"><strong style="color:#64748b">Dirección del deudor</strong><br><span id="sepa-d-direccion">—</span></div>
+            </div>
+            <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#fff">
+                <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Firma del deudor</div>
+                <img id="sepa-d-firma" alt="Firma" style="max-width:100%;height:auto;background:#fff;border-radius:4px">
+                <div style="font-size:0.72rem;color:#94a3b8;margin-top:6px"><span id="sepa-d-firmado-at">—</span></div>
+            </div>`;
+    }
+
+    // Rellena todos los <select class="local-sepa-select"> con las opciones
+    // de los mandatos SEPA actuales. Conserva la selección previa de cada
+    // select cuando los options son regenerados.
+    function _repoblarLocalesSepaSelects() {
+        document.querySelectorAll('select.local-sepa-select').forEach(sel => {
+            const prev = sel.value;
+            const opts = ['<option value="">— Sin asignar —</option>'];
+            _sepaListActual.forEach((s, i) => {
+                if (!s || !s.id) return;
+                const nombre = (s.deudor && s.deudor.nombre) || `Sociedad ${i + 1}`;
+                const iban = (s.iban || '').slice(-4);
+                const etq = iban ? `${nombre} · ****${iban}` : nombre;
+                opts.push(`<option value="${YurestConfig.escAttr(s.id)}">${YurestConfig.escHtml(etq)}</option>`);
+            });
+            sel.innerHTML = opts.join('');
+            // Restaurar selección previa si sigue siendo válida
+            if (prev && _sepaListActual.some(s => s && s.id === prev)) {
+                sel.value = prev;
+            }
+        });
     }
 
     // ── Adjuntos de la ficha (PDF / JPG / PNG) ────────────────────────────────
@@ -3094,13 +3225,19 @@
             if (radio) { radio.checked = true; seleccionarTipo(tipo); }
         }
 
+        // Prellenamos _sepaListActual ANTES de cargar los locales para que,
+        // al hacer input.value = l.sepa_mandato_id, el <select> ya tenga las
+        // opciones correspondientes disponibles. Si lo hacemos después, el
+        // set del valor queda en vacío porque el option aún no existe.
+        _sepaListActual = _sepaToArray(f['SEPA'] || f.sepa_mandato || null);
+
         // ── Locales (antes del carrito: los precios mensuales por local y los
         //   multiplicadores corp_ml_* dependen de los locales ya creados) ─────
         try {
             const rawL = f['Locales'] || f['locales'] || f._locales || '';
             const locales = typeof rawL === 'string' && rawL.startsWith('[') ? JSON.parse(rawL) : (Array.isArray(rawL) ? rawL : []);
             locales.forEach(l => {
-                agregarLocal();
+                agregarLocal();  // internamente dispara _repoblarLocalesSepaSelects con la lista ya cacheada
                 const cards = document.querySelectorAll('.local-card');
                 const card  = cards[cards.length - 1];
                 Object.keys(l).forEach(field => {

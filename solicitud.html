@@ -393,14 +393,33 @@
             </div>
         </div>
 
-        <!-- 06 Mandato SEPA -->
+        <!-- 06 Mandato SEPA multi-sociedad ──────────────────────────────────
+             Cada ficha puede tener N mandatos SEPA (uno por sociedad del
+             cliente). El cliente declara primero cuántas sociedades va a
+             domiciliar y luego rellena N formularios. Al guardar la ficha,
+             el comercial asignará cada local a la sociedad/cuenta
+             correspondiente en `index.html`. -->
         <div class="card">
             <div class="card-header">
                 <span class="section-num">06</span>
-                <h3>Orden de domiciliación de adeudo directo SEPA</h3>
+                <h3>Órdenes de domiciliación SEPA</h3>
             </div>
 
-            <!-- Datos del acreedor (fijo, no editable) -->
+            <div class="form-grid" style="margin-bottom:14px">
+                <div class="form-group col-6">
+                    <label for="sepa_num_sociedades">Número de sociedades a domiciliar *</label>
+                    <input type="number" id="sepa_num_sociedades" min="1" max="10" value="1"
+                           onchange="renderSepaForms(parseInt(this.value) || 1)"
+                           oninput="renderSepaForms(parseInt(this.value) || 1)">
+                    <small style="display:block;font-size:0.74rem;color:#94a3b8;margin-top:4px">
+                        Una misma ficha puede incluir varias sociedades con cuentas distintas.
+                        Más tarde el comercial asignará cada local a su sociedad correspondiente.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Acreedor + texto legal son iguales para todas las sociedades,
+                 así que se dibujan una vez arriba. -->
             <div class="sepa-block">
                 <p class="sepa-block-title">A cumplimentar por el acreedor / To be completed by the creditor</p>
                 <div class="sepa-row"><strong>Referencia de la orden</strong><span id="sepa-ref">—</span></div>
@@ -411,87 +430,99 @@
                 <div class="sepa-row"><strong>País</strong><span id="sepa-acreedor-pais">—</span></div>
             </div>
 
-            <!-- Texto legal bilingüe -->
             <div class="sepa-legal">
                 Mediante la firma de esta orden de domiciliación, el deudor autoriza (A) al acreedor a enviar instrucciones a la entidad del deudor para adeudar su cuenta y (B) a la entidad para efectuar los adeudos en su cuenta siguiendo las instrucciones del acreedor. <strong>Esta orden de domiciliación está prevista para operaciones exclusivamente entre empresas y/o autónomos.</strong> El deudor no tiene derecho a que su entidad le reembolse una vez que se haya realizado el cargo en cuenta, pero puede solicitar a su entidad que no efectúe el adeudo en la cuenta hasta la fecha debida. Podrá obtener información detallada del procedimiento en su entidad financiera.
                 <span class="sepa-legal-en">By signing this mandate form, you authorize (A) Yurest Solutions Sociedad Limitada to send instructions to your bank to debit your account and (B) your bank to debit your account in accordance with the instructions from Yurest Solutions Sociedad Limitada. This mandate is only intended for business-to-business transactions. You are not entitled to a refund from your bank after your account has been debited, but you are entitled to request your bank not to debit your account up until the day on which the payment is due. Please contact your bank for detailed procedures in such a case.</span>
             </div>
 
-            <!-- Datos del deudor (editable) -->
-            <p class="sepa-block-title" style="margin:8px 4px">A cumplimentar por el deudor / To be completed by the debtor</p>
-            <div class="form-grid">
-                <div class="form-group col-12">
-                    <label for="sepa_deudor_nombre">Nombre del deudor (titular/es de la cuenta de cargo) *</label>
-                    <input type="text" id="sepa_deudor_nombre" placeholder="Nombre y apellidos o razón social">
-                </div>
-                <div class="form-group col-8">
-                    <label for="sepa_deudor_direccion">Dirección del deudor *</label>
-                    <input type="text" id="sepa_deudor_direccion" placeholder="Calle y número">
-                </div>
-                <div class="form-group col-4">
-                    <label for="sepa_deudor_cp">CP *</label>
-                    <input type="text" id="sepa_deudor_cp" maxlength="5" placeholder="46002">
-                </div>
-                <div class="form-group col-6">
-                    <label for="sepa_deudor_poblacion">Población *</label>
-                    <input type="text" id="sepa_deudor_poblacion" placeholder="Valencia">
-                </div>
-                <div class="form-group col-6">
-                    <label for="sepa_deudor_provincia">Provincia *</label>
-                    <input type="text" id="sepa_deudor_provincia" placeholder="Valencia">
-                </div>
-                <div class="form-group col-6">
-                    <label for="sepa_deudor_pais">País del deudor *</label>
-                    <input type="text" id="sepa_deudor_pais" value="España">
-                </div>
-                <div class="form-group col-6">
-                    <label for="sepa_swift">SWIFT BIC <span style="color:#94a3b8;font-weight:400">(8 u 11 caracteres, opcional)</span></label>
-                    <input type="text" id="sepa_swift" maxlength="11" placeholder="BSCHESMM" style="text-transform:uppercase">
-                </div>
-                <div class="form-group col-12">
-                    <label>Número de cuenta - IBAN * <span style="color:#94a3b8;font-weight:400">(España: 24 caracteres, en bloques de 4)</span></label>
-                    <div class="sepa-iban-grid">
-                        <input type="text" id="sepa_iban_1" class="sepa-iban-block" maxlength="4" placeholder="ES##" autocomplete="off" oninput="onIbanBlockInput(this,1)" onkeydown="onIbanBlockKey(event,1)">
-                        <span class="sepa-iban-sep">·</span>
-                        <input type="text" id="sepa_iban_2" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,2)" onkeydown="onIbanBlockKey(event,2)">
-                        <span class="sepa-iban-sep">·</span>
-                        <input type="text" id="sepa_iban_3" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,3)" onkeydown="onIbanBlockKey(event,3)">
-                        <span class="sepa-iban-sep">·</span>
-                        <input type="text" id="sepa_iban_4" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,4)" onkeydown="onIbanBlockKey(event,4)">
-                        <span class="sepa-iban-sep">·</span>
-                        <input type="text" id="sepa_iban_5" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,5)" onkeydown="onIbanBlockKey(event,5)">
-                        <span class="sepa-iban-sep">·</span>
-                        <input type="text" id="sepa_iban_6" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,6)" onkeydown="onIbanBlockKey(event,6)">
+            <!-- Contenedor donde renderSepaForms() dibuja N formularios. -->
+            <div id="sepa-forms-container"></div>
+        </div>
+
+        <!-- Template del formulario SEPA de un deudor. renderSepaForms clona
+             este template N veces y reemplaza {i} por el índice (0, 1, 2…)
+             en todos los id/for/onXxx para que cada sociedad tenga sus
+             propios inputs y su propia firma sin colisionar. -->
+        <template id="sepa-form-template">
+            <div class="sepa-form-wrapper" data-sepa-idx="{i}">
+                <p class="sepa-block-title" style="margin:18px 4px 6px;display:flex;align-items:center;justify-content:space-between">
+                    <span>Sociedad <strong>#{n}</strong> — datos del deudor</span>
+                    <span style="font-size:0.7rem;color:#94a3b8;font-weight:400">(a cumplimentar por el deudor)</span>
+                </p>
+                <div class="form-grid">
+                    <div class="form-group col-12">
+                        <label for="sepa_deudor_nombre_{i}">Nombre del deudor (titular/es de la cuenta de cargo) *</label>
+                        <input type="text" id="sepa_deudor_nombre_{i}" class="sepa-field" placeholder="Razón social de la sociedad">
                     </div>
-                    <small id="sepa-iban-hint" style="display:block;font-size:0.72rem;color:#94a3b8;margin-top:6px">Pega el IBAN completo en cualquier bloque y se repartirá automáticamente.</small>
-                </div>
-                <div class="form-group col-6">
-                    <label>Tipo de pago</label>
-                    <div class="sepa-pago-group">
-                        <button type="button" class="sepa-pago-pill active" data-pago="recurrente" onclick="seleccionarTipoPagoSEPA('recurrente')">Pago recurrente</button>
-                        <button type="button" class="sepa-pago-pill" data-pago="unico" onclick="seleccionarTipoPagoSEPA('unico')">Pago único</button>
+                    <div class="form-group col-8">
+                        <label for="sepa_deudor_direccion_{i}">Dirección del deudor *</label>
+                        <input type="text" id="sepa_deudor_direccion_{i}" class="sepa-field" placeholder="Calle y número">
                     </div>
-                </div>
-                <div class="form-group col-3">
-                    <label for="sepa_fecha">Fecha</label>
-                    <input type="date" id="sepa_fecha">
-                </div>
-                <div class="form-group col-3">
-                    <label for="sepa_localidad">Localidad de firma *</label>
-                    <input type="text" id="sepa_localidad" placeholder="Valencia">
-                </div>
-                <div class="form-group col-12">
-                    <label>Firma del deudor *</label>
-                    <div class="sepa-firma-wrap">
-                        <canvas id="sepa-firma-canvas" class="sepa-firma-canvas" width="800" height="180"></canvas>
-                        <div class="sepa-firma-actions">
-                            <span>Firma con el ratón o el dedo dentro del recuadro.</span>
-                            <button type="button" class="sepa-firma-clear" onclick="limpiarFirmaSEPA()">Borrar firma</button>
+                    <div class="form-group col-4">
+                        <label for="sepa_deudor_cp_{i}">CP *</label>
+                        <input type="text" id="sepa_deudor_cp_{i}" class="sepa-field" maxlength="5" placeholder="46002">
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="sepa_deudor_poblacion_{i}">Población *</label>
+                        <input type="text" id="sepa_deudor_poblacion_{i}" class="sepa-field" placeholder="Valencia">
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="sepa_deudor_provincia_{i}">Provincia *</label>
+                        <input type="text" id="sepa_deudor_provincia_{i}" class="sepa-field" placeholder="Valencia">
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="sepa_deudor_pais_{i}">País del deudor *</label>
+                        <input type="text" id="sepa_deudor_pais_{i}" class="sepa-field" value="España">
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="sepa_swift_{i}">SWIFT BIC <span style="color:#94a3b8;font-weight:400">(8 u 11 caracteres, opcional)</span></label>
+                        <input type="text" id="sepa_swift_{i}" class="sepa-field" maxlength="11" placeholder="BSCHESMM" style="text-transform:uppercase">
+                    </div>
+                    <div class="form-group col-12">
+                        <label>Número de cuenta - IBAN * <span style="color:#94a3b8;font-weight:400">(España: 24 caracteres, en bloques de 4)</span></label>
+                        <div class="sepa-iban-grid">
+                            <input type="text" id="sepa_iban_1_{i}" class="sepa-iban-block" maxlength="4" placeholder="ES##" autocomplete="off" oninput="onIbanBlockInput(this,1,{i})" onkeydown="onIbanBlockKey(event,1,{i})">
+                            <span class="sepa-iban-sep">·</span>
+                            <input type="text" id="sepa_iban_2_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,2,{i})" onkeydown="onIbanBlockKey(event,2,{i})">
+                            <span class="sepa-iban-sep">·</span>
+                            <input type="text" id="sepa_iban_3_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,3,{i})" onkeydown="onIbanBlockKey(event,3,{i})">
+                            <span class="sepa-iban-sep">·</span>
+                            <input type="text" id="sepa_iban_4_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,4,{i})" onkeydown="onIbanBlockKey(event,4,{i})">
+                            <span class="sepa-iban-sep">·</span>
+                            <input type="text" id="sepa_iban_5_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,5,{i})" onkeydown="onIbanBlockKey(event,5,{i})">
+                            <span class="sepa-iban-sep">·</span>
+                            <input type="text" id="sepa_iban_6_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,6,{i})" onkeydown="onIbanBlockKey(event,6,{i})">
+                        </div>
+                        <small style="display:block;font-size:0.72rem;color:#94a3b8;margin-top:6px">Pega el IBAN completo en cualquier bloque y se repartirá automáticamente.</small>
+                    </div>
+                    <div class="form-group col-6">
+                        <label>Tipo de pago</label>
+                        <div class="sepa-pago-group">
+                            <button type="button" class="sepa-pago-pill active" data-pago="recurrente" onclick="seleccionarTipoPagoSEPA('recurrente',{i})">Pago recurrente</button>
+                            <button type="button" class="sepa-pago-pill" data-pago="unico" onclick="seleccionarTipoPagoSEPA('unico',{i})">Pago único</button>
+                        </div>
+                    </div>
+                    <div class="form-group col-3">
+                        <label for="sepa_fecha_{i}">Fecha</label>
+                        <input type="date" id="sepa_fecha_{i}" class="sepa-field">
+                    </div>
+                    <div class="form-group col-3">
+                        <label for="sepa_localidad_{i}">Localidad de firma *</label>
+                        <input type="text" id="sepa_localidad_{i}" class="sepa-field" placeholder="Valencia">
+                    </div>
+                    <div class="form-group col-12">
+                        <label>Firma del deudor *</label>
+                        <div class="sepa-firma-wrap">
+                            <canvas id="sepa-firma-canvas-{i}" class="sepa-firma-canvas" width="800" height="180"></canvas>
+                            <div class="sepa-firma-actions">
+                                <span>Firma con el ratón o el dedo dentro del recuadro.</span>
+                                <button type="button" class="sepa-firma-clear" onclick="limpiarFirmaSEPA({i})">Borrar firma</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </template>
 
         <!-- Honeypot anti-bots: campo oculto que un humano no rellena. -->
         <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
@@ -801,16 +832,29 @@
         }
     }
 
-    // ── SEPA: pintar acreedor + canvas firma + helpers ────────────────────────
-    let _sepaTipoPago = SEPA_ACREEDOR.tipoPagoDefault;
-    let _sepaFirmaPainted = false;
+    // ── SEPA multi-mandato ────────────────────────────────────────────────────
+    // Estado por formulario: indexado por idx (0..N-1) del sepa-form-wrapper.
+    //   tipoPago     → 'recurrente' | 'unico'
+    //   firmaPainted → bool (el usuario ha dibujado algo)
+    //   configured   → bool (los listeners del canvas ya se engancharon)
+    const _sepaForms = {};
+
+    // Devuelve una entrada de estado para la sociedad idx, creándola al vuelo.
+    function _sepaState(idx) {
+        if (!_sepaForms[idx]) {
+            _sepaForms[idx] = {
+                tipoPago: SEPA_ACREEDOR.tipoPagoDefault,
+                firmaPainted: false,
+                configured: false
+            };
+        }
+        return _sepaForms[idx];
+    }
 
     function inicializarSEPA() {
-        // Datos fijos del acreedor.
-        // La referencia del mandato se asigna en BD al guardar (trigger
-        // asignar_sepa_ref), con formato YUREST-YYYY-NNNN secuencial por
-        // año — igual que la numeración de una factura. Aquí sólo
-        // mostramos un placeholder para que el cliente no vea "YUREST-null".
+        // Datos fijos del acreedor. La referencia del mandato la asigna el
+        // trigger asignar_sepa_ref() en BD con formato YUREST-YYYY-NNNN; aquí
+        // mostramos placeholder para que el cliente no vea "YUREST-null".
         document.getElementById('sepa-ref').textContent           = 'Se asignará al firmar';
         document.getElementById('sepa-ref').style.fontStyle       = 'italic';
         document.getElementById('sepa-ref').style.color           = '#94a3b8';
@@ -820,33 +864,120 @@
         document.getElementById('sepa-acreedor-cpp').textContent       = `${SEPA_ACREEDOR.cp} · ${SEPA_ACREEDOR.poblacion} · ${SEPA_ACREEDOR.provincia}`;
         document.getElementById('sepa-acreedor-pais').textContent      = SEPA_ACREEDOR.pais;
 
-        // Pre-rellenar fecha de firma con hoy
-        const hoy = new Date().toISOString().slice(0, 10);
-        document.getElementById('sepa_fecha').value = hoy;
-
-        // Sincronizar nombre del deudor con la denominación social al rellenar
-        const denomEl = document.getElementById('denominacion');
-        const deudorEl = document.getElementById('sepa_deudor_nombre');
-        denomEl.addEventListener('blur', () => {
-            if (!deudorEl.value.trim() && denomEl.value.trim()) deudorEl.value = denomEl.value.trim();
-        });
-
-        configurarFirmaSEPA();
+        // Render inicial con 1 sociedad (default).
+        renderSepaForms(1);
     }
 
-    function seleccionarTipoPagoSEPA(tipo) {
-        _sepaTipoPago = tipo;
-        document.querySelectorAll('.sepa-pago-pill').forEach(p => {
+    // Renderiza N formularios SEPA clonando el <template id="sepa-form-template">
+    // y sustituyendo {i} por el índice real en todos los id/onXxx. Preserva
+    // los valores ya introducidos por el usuario si reduce N, para que no
+    // pierda trabajo si toca el selector de número.
+    function renderSepaForms(n) {
+        n = Math.max(1, Math.min(10, parseInt(n, 10) || 1));
+        const container = document.getElementById('sepa-forms-container');
+        const template  = document.getElementById('sepa-form-template');
+        if (!container || !template) return;
+
+        // Snapshot de los valores actuales para preservar lo rellenado cuando
+        // se añaden o quitan sociedades.
+        const snapshot = _snapshotSepaForms();
+        container.innerHTML = '';
+
+        const templHtml = template.innerHTML;
+        for (let i = 0; i < n; i++) {
+            const html = templHtml.replace(/\{i\}/g, String(i)).replace(/\{n\}/g, String(i + 1));
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html.trim();
+            container.appendChild(wrapper.firstElementChild);
+            _sepaForms[i] = _sepaForms[i] || { tipoPago: SEPA_ACREEDOR.tipoPagoDefault, firmaPainted: false, configured: false };
+            _sepaForms[i].configured = false;
+        }
+
+        // Descarta el estado de formularios eliminados (si N baja).
+        Object.keys(_sepaForms).forEach(k => {
+            if (parseInt(k, 10) >= n) delete _sepaForms[k];
+        });
+
+        // Pre-rellenar fecha con hoy + restaurar valores previos.
+        const hoy = new Date().toISOString().slice(0, 10);
+        for (let i = 0; i < n; i++) {
+            const f = document.getElementById('sepa_fecha_' + i);
+            if (f && !f.value) f.value = hoy;
+            if (snapshot[i]) _restoreSepaForm(i, snapshot[i]);
+            configurarFirmaSEPA(i);
+        }
+
+        // Sincroniza nombre del deudor de la sociedad #1 con la denominación
+        // social general del formulario (atajo UX para que el cliente no
+        // tenga que teclearlo dos veces si solo hay 1 sociedad).
+        const denomEl = document.getElementById('denominacion');
+        const deudor0 = document.getElementById('sepa_deudor_nombre_0');
+        if (denomEl && deudor0) {
+            denomEl.onblur = () => {
+                if (!deudor0.value.trim() && denomEl.value.trim()) deudor0.value = denomEl.value.trim();
+            };
+        }
+    }
+    window.renderSepaForms = renderSepaForms;
+
+    // Captura todos los campos de un form SEPA (útil para preservar al re-renderizar).
+    function _snapshotSepaForms() {
+        const out = {};
+        document.querySelectorAll('.sepa-form-wrapper').forEach(w => {
+            const idx = parseInt(w.dataset.sepaIdx, 10);
+            const vals = {};
+            w.querySelectorAll('.sepa-field').forEach(el => {
+                vals[el.id.replace(/_\d+$/, '')] = el.value;
+            });
+            // IBAN blocks
+            const iban = [];
+            for (let b = 1; b <= 6; b++) {
+                const el = document.getElementById(`sepa_iban_${b}_${idx}`);
+                iban.push(el ? el.value : '');
+            }
+            vals._iban = iban;
+            vals._state = _sepaForms[idx] ? { tipoPago: _sepaForms[idx].tipoPago } : null;
+            out[idx] = vals;
+        });
+        return out;
+    }
+    function _restoreSepaForm(idx, snap) {
+        Object.entries(snap).forEach(([k, v]) => {
+            if (k === '_iban' || k === '_state') return;
+            const el = document.getElementById(k + '_' + idx);
+            if (el && v != null) el.value = v;
+        });
+        if (Array.isArray(snap._iban)) {
+            for (let b = 1; b <= 6; b++) {
+                const el = document.getElementById(`sepa_iban_${b}_${idx}`);
+                if (el) el.value = snap._iban[b - 1] || '';
+            }
+            _refreshIbanValidationStyle(idx);
+        }
+        if (snap._state && snap._state.tipoPago) {
+            seleccionarTipoPagoSEPA(snap._state.tipoPago, idx);
+        }
+    }
+
+    function seleccionarTipoPagoSEPA(tipo, idx) {
+        idx = idx == null ? 0 : idx;
+        _sepaState(idx).tipoPago = tipo;
+        const wrap = document.querySelector(`.sepa-form-wrapper[data-sepa-idx="${idx}"]`);
+        if (!wrap) return;
+        wrap.querySelectorAll('.sepa-pago-pill').forEach(p => {
             p.classList.toggle('active', p.dataset.pago === tipo);
         });
     }
     window.seleccionarTipoPagoSEPA = seleccionarTipoPagoSEPA;
 
-    // ── Canvas de firma del deudor ────────────────────────────────────────────
-    function configurarFirmaSEPA() {
-        const canvas = document.getElementById('sepa-firma-canvas');
+    // ── Canvas de firma del deudor (por sociedad) ─────────────────────────────
+    function configurarFirmaSEPA(idx) {
+        const canvas = document.getElementById('sepa-firma-canvas-' + idx);
         if (!canvas) return;
-        // Resolución alta para que la firma quede nítida al exportar.
+        const state = _sepaState(idx);
+        if (state.configured) return;   // evita duplicar listeners al re-render
+        state.configured = true;
+
         const ratio = window.devicePixelRatio || 1;
         const cssW = canvas.clientWidth || 800;
         const cssH = 180;
@@ -862,80 +993,78 @@
 
         let drawing = false;
         let last = null;
-
         function pos(ev) {
             const rect = canvas.getBoundingClientRect();
             const t = ev.touches ? ev.touches[0] : ev;
             return { x: t.clientX - rect.left, y: t.clientY - rect.top };
         }
-        function start(ev) {
-            ev.preventDefault();
-            drawing = true;
-            last = pos(ev);
-        }
+        function start(ev) { ev.preventDefault(); drawing = true; last = pos(ev); }
         function move(ev) {
             if (!drawing) return;
             ev.preventDefault();
             const p = pos(ev);
-            ctx.beginPath();
-            ctx.moveTo(last.x, last.y);
-            ctx.lineTo(p.x, p.y);
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
             last = p;
-            if (!_sepaFirmaPainted) {
-                _sepaFirmaPainted = true;
+            if (!state.firmaPainted) {
+                state.firmaPainted = true;
                 canvas.classList.add('has-signature');
             }
         }
-        function end(ev) { drawing = false; last = null; }
+        function end() { drawing = false; last = null; }
 
         canvas.addEventListener('mousedown', start);
         canvas.addEventListener('mousemove', move);
         window.addEventListener('mouseup', end);
         canvas.addEventListener('touchstart', start, { passive: false });
-        canvas.addEventListener('touchmove', move,  { passive: false });
-        canvas.addEventListener('touchend', end);
+        canvas.addEventListener('touchmove',  move,  { passive: false });
+        canvas.addEventListener('touchend',   end);
     }
 
-    function limpiarFirmaSEPA() {
-        const canvas = document.getElementById('sepa-firma-canvas');
+    function limpiarFirmaSEPA(idx) {
+        idx = idx == null ? 0 : idx;
+        const canvas = document.getElementById('sepa-firma-canvas-' + idx);
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        _sepaFirmaPainted = false;
+        _sepaState(idx).firmaPainted = false;
         canvas.classList.remove('has-signature');
     }
     window.limpiarFirmaSEPA = limpiarFirmaSEPA;
 
-    function obtenerFirmaSEPABase64() {
-        if (!_sepaFirmaPainted) return null;
-        const canvas = document.getElementById('sepa-firma-canvas');
+    function obtenerFirmaSEPABase64(idx) {
+        idx = idx == null ? 0 : idx;
+        if (!_sepaState(idx).firmaPainted) return null;
+        const canvas = document.getElementById('sepa-firma-canvas-' + idx);
         return canvas ? canvas.toDataURL('image/png') : null;
     }
 
-    // ── IBAN en bloques de 4 ────────────────────────────────────────────────
-    function _focusIbanBlock(n) {
-        const el = document.getElementById('sepa_iban_' + n);
+    // ── IBAN en bloques de 4 (por sociedad) ───────────────────────────────────
+    function _focusIbanBlock(blockNum, idx) {
+        const el = document.getElementById(`sepa_iban_${blockNum}_${idx}`);
         if (el) { el.focus(); el.select(); }
     }
-    function getIbanCompleto() {
+    function getIbanCompleto(idx) {
+        idx = idx == null ? 0 : idx;
         let v = '';
-        for (let i = 1; i <= 6; i++) {
-            v += (document.getElementById('sepa_iban_' + i)?.value || '');
+        for (let b = 1; b <= 6; b++) {
+            v += (document.getElementById(`sepa_iban_${b}_${idx}`)?.value || '');
         }
         return v.replace(/\s+/g, '').toUpperCase();
     }
-    function setIbanFromString(raw) {
+    function setIbanFromString(raw, idx) {
+        idx = idx == null ? 0 : idx;
         const clean = String(raw || '').replace(/\s+/g, '').toUpperCase().slice(0, 24);
-        for (let i = 1; i <= 6; i++) {
-            const el = document.getElementById('sepa_iban_' + i);
-            if (el) el.value = clean.slice((i - 1) * 4, i * 4);
+        for (let b = 1; b <= 6; b++) {
+            const el = document.getElementById(`sepa_iban_${b}_${idx}`);
+            if (el) el.value = clean.slice((b - 1) * 4, b * 4);
         }
-        _refreshIbanValidationStyle();
+        _refreshIbanValidationStyle(idx);
     }
-    function _refreshIbanValidationStyle() {
-        const v = getIbanCompleto();
-        const blocks = document.querySelectorAll('.sepa-iban-block');
+    function _refreshIbanValidationStyle(idx) {
+        const v = getIbanCompleto(idx);
+        const wrap = document.querySelector(`.sepa-form-wrapper[data-sepa-idx="${idx}"]`);
+        if (!wrap) return;
+        const blocks = wrap.querySelectorAll('.sepa-iban-block');
         if (v.length === 0) {
             blocks.forEach(b => b.classList.remove('valid', 'invalid'));
             return;
@@ -946,63 +1075,57 @@
             b.classList.toggle('invalid', v.length === 24 && !ok);
         });
     }
-    function onIbanBlockInput(input, idx) {
-        // Si el usuario pega el IBAN completo en un bloque, lo repartimos.
+    function onIbanBlockInput(input, blockNum, idx) {
+        idx = idx == null ? 0 : idx;
         if (input.value.replace(/\s+/g, '').length > 4) {
-            setIbanFromString((idx === 1 ? '' : getIbanCompleto().slice(0, (idx - 1) * 4)) + input.value);
-            // Foco al último bloque con contenido
-            const v = getIbanCompleto();
-            const lastFull = Math.min(6, Math.ceil(v.length / 4));
-            _focusIbanBlock(lastFull);
+            setIbanFromString((blockNum === 1 ? '' : getIbanCompleto(idx).slice(0, (blockNum - 1) * 4)) + input.value, idx);
+            const v = getIbanCompleto(idx);
+            _focusIbanBlock(Math.min(6, Math.ceil(v.length / 4)), idx);
             return;
         }
-        // Bloque 1: ES + 2 dígitos. Forzamos formato.
-        if (idx === 1) {
+        if (blockNum === 1) {
             input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
         } else {
             input.value = input.value.replace(/[^0-9]/g, '').slice(0, 4);
         }
-        if (input.value.length === 4 && idx < 6) _focusIbanBlock(idx + 1);
-        _refreshIbanValidationStyle();
+        if (input.value.length === 4 && blockNum < 6) _focusIbanBlock(blockNum + 1, idx);
+        _refreshIbanValidationStyle(idx);
     }
     window.onIbanBlockInput = onIbanBlockInput;
 
-    function onIbanBlockKey(ev, idx) {
-        // Backspace en bloque vacío → ir al anterior
-        if (ev.key === 'Backspace' && !ev.target.value && idx > 1) {
+    function onIbanBlockKey(ev, blockNum, idx) {
+        idx = idx == null ? 0 : idx;
+        if (ev.key === 'Backspace' && !ev.target.value && blockNum > 1) {
             ev.preventDefault();
-            const prev = document.getElementById('sepa_iban_' + (idx - 1));
-            if (prev) { prev.focus(); prev.value = prev.value.slice(0, -1); _refreshIbanValidationStyle(); }
+            const prev = document.getElementById(`sepa_iban_${blockNum - 1}_${idx}`);
+            if (prev) { prev.focus(); prev.value = prev.value.slice(0, -1); _refreshIbanValidationStyle(idx); }
         }
-        // Flechas para moverse entre bloques
-        if (ev.key === 'ArrowLeft' && ev.target.selectionStart === 0 && idx > 1) {
-            ev.preventDefault(); _focusIbanBlock(idx - 1);
+        if (ev.key === 'ArrowLeft' && ev.target.selectionStart === 0 && blockNum > 1) {
+            ev.preventDefault(); _focusIbanBlock(blockNum - 1, idx);
         }
-        if (ev.key === 'ArrowRight' && ev.target.selectionStart === ev.target.value.length && idx < 6) {
-            ev.preventDefault(); _focusIbanBlock(idx + 1);
+        if (ev.key === 'ArrowRight' && ev.target.selectionStart === ev.target.value.length && blockNum < 6) {
+            ev.preventDefault(); _focusIbanBlock(blockNum + 1, idx);
         }
     }
     window.onIbanBlockKey = onIbanBlockKey;
 
-    // Pegar el IBAN completo en cualquier bloque: interceptamos antes de que
-    // el maxlength="4" trunque el contenido.
+    // Pegar IBAN completo en cualquier bloque. Extraemos blockNum + idx del id
+    // (formato sepa_iban_{block}_{idx}).
     document.addEventListener('paste', function(ev) {
         const t = ev.target;
         if (!t || !t.classList || !t.classList.contains('sepa-iban-block')) return;
         const txt = (ev.clipboardData || window.clipboardData).getData('text');
         if (!txt) return;
         const limpio = txt.replace(/\s+/g, '').toUpperCase();
-        // Solo asumimos "pegar IBAN completo" si trae más de 4 caracteres útiles.
         if (limpio.length <= 4) return;
         ev.preventDefault();
-        // Si el bloque actual no es el 1, conservamos lo ya escrito antes.
-        const idx = Number(t.id.replace('sepa_iban_', '')) || 1;
-        const prefijo = idx === 1 ? '' : getIbanCompleto().slice(0, (idx - 1) * 4);
-        setIbanFromString(prefijo + limpio);
-        // Foco al último bloque con contenido para continuar escribiendo si falta.
-        const v = getIbanCompleto();
-        const lastFull = Math.min(6, Math.max(1, Math.ceil(v.length / 4)));
-        _focusIbanBlock(lastFull);
+        const m = t.id.match(/^sepa_iban_(\d+)_(\d+)$/);
+        const blockNum = m ? parseInt(m[1], 10) : 1;
+        const idx      = m ? parseInt(m[2], 10) : 0;
+        const prefijo = blockNum === 1 ? '' : getIbanCompleto(idx).slice(0, (blockNum - 1) * 4);
+        setIbanFromString(prefijo + limpio, idx);
+        const v = getIbanCompleto(idx);
+        _focusIbanBlock(Math.min(6, Math.max(1, Math.ceil(v.length / 4))), idx);
     });
 
     // ── Validación IBAN con mensaje detallado por tipo de error ──────────────
@@ -1078,40 +1201,82 @@
             }
         }
 
-        // ── Validaciones SEPA (todos los campos del deudor son obligatorios) ─
-        const sepaCampos = [
-            ['sepa_deudor_nombre',    'Indica el nombre del titular de la cuenta para el mandato SEPA.'],
-            ['sepa_deudor_direccion', 'Indica la dirección del deudor para el mandato SEPA.'],
-            ['sepa_deudor_cp',        'CP del deudor obligatorio (5 dígitos).'],
-            ['sepa_deudor_poblacion', 'Indica la población del deudor.'],
-            ['sepa_deudor_provincia', 'Indica la provincia del deudor.'],
-            ['sepa_deudor_pais',      'Indica el país del deudor.'],
-            ['sepa_localidad',        'Indica la localidad de firma del mandato SEPA.']
+        // ── Validaciones SEPA por sociedad ────────────────────────────────
+        // Recorremos cada .sepa-form-wrapper y exigimos que todos los campos
+        // obligatorios + IBAN válido + firma estén presentes en cada uno.
+        const sepaWrappers = document.querySelectorAll('.sepa-form-wrapper');
+        if (sepaWrappers.length === 0) {
+            errorValidacion('Falta el mandato SEPA. Añade al menos una sociedad.', document.getElementById('sepa_num_sociedades'));
+            return;
+        }
+        const sepaCamposObligatorios = [
+            ['sepa_deudor_nombre',    'Indica el nombre del titular de la cuenta para el mandato SEPA de la sociedad #'],
+            ['sepa_deudor_direccion', 'Indica la dirección del deudor para la sociedad #'],
+            ['sepa_deudor_cp',        'CP del deudor obligatorio (5 dígitos) para la sociedad #'],
+            ['sepa_deudor_poblacion', 'Indica la población del deudor de la sociedad #'],
+            ['sepa_deudor_provincia', 'Indica la provincia del deudor de la sociedad #'],
+            ['sepa_deudor_pais',      'Indica el país del deudor de la sociedad #'],
+            ['sepa_localidad',        'Indica la localidad de firma del mandato SEPA de la sociedad #']
         ];
-        for (const [id, msg] of sepaCampos) {
-            if (!getVal(id)) {
-                errorValidacion(msg, document.getElementById(id));
+        const sepaMandatos = []; // se rellenará durante las validaciones para reutilizar abajo
+        for (const wrap of sepaWrappers) {
+            const idx = parseInt(wrap.dataset.sepaIdx, 10);
+            const label = idx + 1; // 1-based para mensajes al usuario
+
+            for (const [suffix, msgPre] of sepaCamposObligatorios) {
+                const id = suffix + '_' + idx;
+                if (!getVal(id)) {
+                    errorValidacion(msgPre + label + '.', document.getElementById(id));
+                    return;
+                }
+            }
+            if (!esCP(getVal('sepa_deudor_cp_' + idx))) {
+                errorValidacion('CP del deudor inválido (5 dígitos) en la sociedad #' + label + '.',
+                                document.getElementById('sepa_deudor_cp_' + idx));
                 return;
             }
-        }
-        if (!esCP(getVal('sepa_deudor_cp'))) {
-            errorValidacion('CP del deudor inválido (5 dígitos).', document.getElementById('sepa_deudor_cp'));
-            return;
-        }
-        const ibanRaw = getIbanCompleto();
-        const ibanError = validarIbanDetallado(ibanRaw);
-        if (ibanError) {
-            errorValidacion(ibanError, document.getElementById('sepa_iban_1'));
-            return;
-        }
-        if (!esBIC_OPC(getVal('sepa_swift'))) {
-            errorValidacion('SWIFT BIC inválido (8 u 11 caracteres alfanuméricos).', document.getElementById('sepa_swift'));
-            return;
-        }
-        const firmaB64 = obtenerFirmaSEPABase64();
-        if (!firmaB64) {
-            errorValidacion('Falta la firma del mandato SEPA. Firma dentro del recuadro.', document.getElementById('sepa-firma-canvas'));
-            return;
+            const ibanRaw = getIbanCompleto(idx);
+            const ibanError = validarIbanDetallado(ibanRaw);
+            if (ibanError) {
+                errorValidacion(`Sociedad #${label}: ${ibanError}`, document.getElementById('sepa_iban_1_' + idx));
+                return;
+            }
+            if (!esBIC_OPC(getVal('sepa_swift_' + idx))) {
+                errorValidacion(`SWIFT BIC inválido en la sociedad #${label} (8 u 11 caracteres alfanuméricos).`,
+                                document.getElementById('sepa_swift_' + idx));
+                return;
+            }
+            const firmaB64 = obtenerFirmaSEPABase64(idx);
+            if (!firmaB64) {
+                errorValidacion(`Falta la firma del mandato SEPA de la sociedad #${label}. Firma dentro del recuadro.`,
+                                document.getElementById('sepa-firma-canvas-' + idx));
+                return;
+            }
+            // Construimos aquí el objeto SEPA para reutilizarlo en el payload
+            // (evita volver a recorrer los formularios más abajo).
+            sepaMandatos.push({
+                // id local generado con crypto.randomUUID() si disponible (fallback timestamp)
+                // se usa luego en index.html para que cada local referencie su SEPA.
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sepa-' + Date.now() + '-' + idx),
+                // No asignamos referencia en el cliente — la genera el trigger
+                // asignar_sepa_ref() en Postgres.
+                acreedor: { ...SEPA_ACREEDOR },
+                deudor: {
+                    nombre:    getVal('sepa_deudor_nombre_' + idx),
+                    direccion: getVal('sepa_deudor_direccion_' + idx),
+                    cp:        getVal('sepa_deudor_cp_' + idx),
+                    poblacion: getVal('sepa_deudor_poblacion_' + idx),
+                    provincia: getVal('sepa_deudor_provincia_' + idx),
+                    pais:      getVal('sepa_deudor_pais_' + idx)
+                },
+                swift:        getVal('sepa_swift_' + idx).replace(/\s+/g,'').toUpperCase(),
+                iban:         ibanRaw.replace(/\s+/g,'').toUpperCase(),
+                tipo_pago:    (_sepaForms[idx] || {}).tipoPago || SEPA_ACREEDOR.tipoPagoDefault,
+                fecha_firma:  getVal('sepa_fecha_' + idx),
+                localidad:    getVal('sepa_localidad_' + idx),
+                firma_base64: firmaB64,
+                firmado_at:   new Date().toISOString()
+            });
         }
 
         const btn = document.getElementById('submitBtn');
@@ -1151,28 +1316,10 @@
             'TPV NI Nombre':    getVal('tpv_ni_nombre'),
             'TPV NI Contacto':  getVal('tpv_ni_contacto'),
             'TPV NI Email':     getVal('tpv_ni_email'),
-            'SEPA': {
-                // No asignamos referencia en el cliente: la genera el
-                // trigger asignar_sepa_ref() en Postgres (atómico,
-                // secuencial por año, sin race conditions entre dos
-                // clientes que firman a la vez).
-                acreedor:         { ...SEPA_ACREEDOR },
-                deudor: {
-                    nombre:    getVal('sepa_deudor_nombre'),
-                    direccion: getVal('sepa_deudor_direccion'),
-                    cp:        getVal('sepa_deudor_cp'),
-                    poblacion: getVal('sepa_deudor_poblacion'),
-                    provincia: getVal('sepa_deudor_provincia'),
-                    pais:      getVal('sepa_deudor_pais')
-                },
-                swift:        getVal('sepa_swift').replace(/\s+/g,'').toUpperCase(),
-                iban:         ibanRaw.replace(/\s+/g,'').toUpperCase(),
-                tipo_pago:    _sepaTipoPago,
-                fecha_firma:  getVal('sepa_fecha'),
-                localidad:    getVal('sepa_localidad'),
-                firma_base64: firmaB64,
-                firmado_at:   new Date().toISOString()
-            }
+            // SEPA multi-mandato: array de objetos (uno por sociedad). Cada
+            // uno lleva su propio `id` local — el comercial luego asigna en
+            // index.html a qué local aplica cada mandato.
+            'SEPA': sepaMandatos
         };
 
         // Timeout por si el backend cuelga

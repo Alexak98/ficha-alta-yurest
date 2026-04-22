@@ -301,6 +301,18 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         }
         return null;
     }
+    // Devuelve SIEMPRE un array de mandatos a partir del campo `sepa_mandato`
+    // que puede venir como:
+    //   · null / undefined     → []
+    //   · objeto (legacy)      → [obj]
+    //   · array (multi-mandato) → array tal cual
+    // Simplifica el resto del código — no tiene que mirar el tipo.
+    function sepaMandatos(raw) {
+        const p = parseSepa(raw);
+        if (!p) return [];
+        if (Array.isArray(p)) return p.filter(Boolean);
+        return [p];
+    }
     function fmtIban(v) {
         const s = String(v || '').replace(/\s+/g, '').toUpperCase();
         return s.replace(/(.{4})/g, '$1 ').trim() || '—';
@@ -338,10 +350,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             const lista = Array.isArray(data) ? data : (data.clientes || data.data || []);
-            // Solo fichas que tengan mandato SEPA firmado (es lo que pide Contabilidad).
+            // Normaliza cada ficha a {..., _sepaList: [mandato1, mandato2, ...]}.
+            // Solo mantenemos las que tengan al menos un mandato con firma
+            // (que es lo que el área de Contabilidad quiere procesar).
             fichas = lista
-                .map(f => ({ ...f, _sepa: parseSepa(f.sepa_mandato || f.SEPA) }))
-                .filter(f => f._sepa && f._sepa.firma_base64);
+                .map(f => {
+                    const list = sepaMandatos(f.sepa_mandato || f.SEPA).filter(s => s && s.firma_base64);
+                    // _sepa = primer mandato (retrocompatibilidad con la tabla
+                    // y los filtros existentes); _sepaList = todos.
+                    return { ...f, _sepa: list[0] || null, _sepaList: list };
+                })
+                .filter(f => f._sepaList.length > 0);
             els.loading.classList.add('hidden');
             els.content.style.display = '';
             render();
@@ -414,10 +433,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             const checked = f.grabado_a3 ? 'checked' : '';
             const fechaSepa = fmtFecha(sepa.firmado_at || sepa.fecha_firma);
             const fechaA3   = f.grabado_a3 ? `<span class="cont-fecha">${fmtFecha(f.grabado_a3_at)}</span>` : '';
+            const nMand = f._sepaList ? f._sepaList.length : 1;
+            // Badge "N mandatos" cuando la ficha tiene más de uno.
+            const multi = nMand > 1
+                ? `<span style="display:inline-block;margin-left:6px;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:999px;background:#e0e7ff;color:#4338ca">${nMand} mandatos</span>`
+                : '';
             return `
                 <tr data-id="${esc(f.id)}">
                     <td>
-                        <div class="cont-sociedad">${esc(f.denominacion || '—')}</div>
+                        <div class="cont-sociedad">${esc(f.denominacion || '—')}${multi}</div>
                         ${f.cif ? `<div class="cont-cif">${esc(f.cif)}</div>` : ''}
                     </td>
                     <td>
@@ -425,7 +449,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                         <div class="cont-titular">Titular: ${esc(titular)}</div>
                     </td>
                     <td><span class="cont-fecha">${fechaSepa}</span></td>
-                    <td><button class="cont-ver-btn" onclick="abrirSepaModal('${esc(f.id)}')">📄 Ver mandato</button></td>
+                    <td><button class="cont-ver-btn" onclick="abrirSepaModal('${esc(f.id)}')">📄 Ver mandato${nMand > 1 ? 's' : ''}</button></td>
                     <td>
                         <label class="a3-toggle">
                             <input type="checkbox" ${checked} onchange="toggleA3(this, '${esc(f.id)}')">
@@ -453,21 +477,43 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
     }
 
     // ── Modal mandato SEPA + impresión PDF ─────────────────────────────────
+    // Fichas con multi-mandato: se muestran tabs arriba para cambiar entre
+    // los N mandatos. Cada tab regenera el documento con los datos del que
+    // corresponda. _sepaActualIdx guarda el índice visible actualmente.
     let _sepaModalSociedad = '';
-    function abrirSepaModal(fichaId) {
+    let _sepaActualFicha = null;
+    let _sepaActualIdx = 0;
+
+    function abrirSepaModal(fichaId, idx) {
         const f = fichas.find(x => x.id === fichaId);
-        if (!f || !f._sepa) {
+        if (!f || !f._sepaList || f._sepaList.length === 0) {
             mostrarToast('Esta ficha no tiene mandato SEPA', 'warning');
             return;
         }
-        _sepaModalSociedad = (f.denominacion || f._sepa.deudor?.nombre || 'mandato').toString().trim();
-        const s = f._sepa;
+        _sepaActualFicha = f;
+        _sepaActualIdx = Math.max(0, Math.min(f._sepaList.length - 1, idx || 0));
+        const s = f._sepaList[_sepaActualIdx];
+        _sepaModalSociedad = (s.deudor?.nombre || f.denominacion || 'mandato').toString().trim();
         const a = s.acreedor || {};
         const d = s.deudor || {};
         const tipoRecur = s.tipo_pago === 'unico'
             ? { rec: '', uni: '✓' }
             : { rec: '✓', uni: '' };
+        // Tabs de mandatos (solo aparecen si la ficha tiene >1 mandato).
+        const tabs = f._sepaList.length > 1
+            ? `<div class="sepa-tabs" style="display:flex;gap:4px;margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap">
+                ${f._sepaList.map((m, i) => {
+                    const active = i === _sepaActualIdx;
+                    const nom = (m.deudor?.nombre || '').slice(0, 28) || `Sociedad ${i + 1}`;
+                    return `<button type="button" onclick="abrirSepaModal('${esc(f.id)}', ${i})" style="padding:6px 12px;border-radius:8px;border:1.5px solid ${active ? '#1e3a8a' : '#e2e8f0'};background:${active ? '#1e3a8a' : '#fff'};color:${active ? '#fff' : '#334155'};font-size:.78rem;font-weight:600;cursor:pointer">
+                        ${esc(nom)}${m.referencia ? `<span style="opacity:.6;font-size:.68rem;margin-left:6px">${esc(m.referencia)}</span>` : ''}
+                    </button>`;
+                }).join('')}
+               </div>`
+            : '';
+
         document.getElementById('sepa-doc').innerHTML = `
+            ${tabs}
             <div class="doc-logo"><img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest"></div>
             <h2>Orden de domiciliación de adeudo directo SEPA</h2>
             <p class="doc-sub">SEPA Direct Debit Mandate</p>
