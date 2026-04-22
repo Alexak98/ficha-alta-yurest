@@ -1241,6 +1241,192 @@ function _calClickSubtarea(subtareaId, tareaId, seccionNombre) {
 }
 window._calClickSubtarea = _calClickSubtarea;
 
+// ──────────────────────────────────────────────────────────
+//  Exportar calendario a PDF — popup de impresión con TODOS los
+//  meses del proyecto. Mismo patrón que imprimirSepa en
+//  contabilidad.html: construye un documento autocontenido con
+//  @page A4 landscape, uno por mes, y dispara window.print() al
+//  cargar. Se imprime a PDF desde el diálogo del navegador y se
+//  manda por email a los participantes del proyecto.
+// ──────────────────────────────────────────────────────────
+function _calExportarPDF() {
+    const proyecto = proyectos.find(p => p.id === _calProyectoId);
+    if (!proyecto) return;
+    const { subtareas, tareas } = _recolectarSubtareasConFecha(proyecto);
+
+    // Rango: mismo que el modal — desde fechaInicio hasta última subtarea.
+    const meses = [];
+    if (_calRangoMin && _calRangoMax) {
+        let m = new Date(_calRangoMin);
+        while (m <= _calRangoMax) {
+            meses.push(new Date(m));
+            m = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+        }
+    }
+    if (meses.length === 0) {
+        mostrarToast('No hay rango de fechas que exportar', 'warning');
+        return;
+    }
+
+    // Tareas que efectivamente tienen subtareas con fecha — para la leyenda
+    // del PDF. Ordenadas por nombre para consistencia.
+    const tareasConSub = {};
+    subtareas.forEach(s => { tareasConSub[s.tareaId] = s; });
+    const leyendaItems = Object.values(tareasConSub)
+        .sort((a, b) => a.tareaNombre.localeCompare(b.tareaNombre, 'es'));
+
+    // Renderiza una página (un mes) en HTML.
+    function renderMesHTML(fecha) {
+        const yy = fecha.getFullYear();
+        const mm = fecha.getMonth();
+        const primerIdx = (new Date(yy, mm, 1).getDay() + 6) % 7;  // 0 = lunes
+        const ultDia = new Date(yy, mm + 1, 0).getDate();
+
+        const porDia = {};
+        subtareas.forEach(s => {
+            if (s.fecha.getFullYear() === yy && s.fecha.getMonth() === mm) {
+                const d = s.fecha.getDate();
+                (porDia[d] = porDia[d] || []).push(s);
+            }
+        });
+
+        const cells = [];
+        for (let i = 0; i < primerIdx; i++) cells.push('<div class="pdf-cell pdf-empty"></div>');
+        for (let d = 1; d <= ultDia; d++) {
+            const subs = porDia[d] || [];
+            const pills = subs.map(s => {
+                const cls = s.completada ? 'pdf-sub completada' : 'pdf-sub';
+                return `<span class="${cls}" style="background:${s.color}">${escapeHtml(s.nombre)}</span>`;
+            }).join('');
+            cells.push(`<div class="pdf-cell"><div class="pdf-cell-num">${d}</div>${pills}</div>`);
+        }
+
+        const mesLbl = fecha.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        return `
+            <section class="pdf-page">
+                <div class="pdf-mes-title">${escapeHtml(mesLbl)}</div>
+                <div class="pdf-weekdays">
+                    <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+                </div>
+                <div class="pdf-grid">${cells.join('')}</div>
+            </section>`;
+    }
+
+    const pagesHtml = meses.map(renderMesHTML).join('');
+    const leyendaHtml = leyendaItems.length
+        ? leyendaItems.map(s => `
+            <span class="pdf-legend-item">
+                <span class="pdf-legend-dot" style="background:${s.color}"></span>
+                ${escapeHtml(s.tareaNombre)}
+            </span>`).join('')
+        : '<span style="color:#94a3b8">Sin subtareas agendadas en el proyecto.</span>';
+
+    const generadoEl = new Date().toLocaleString('es-ES', {
+        day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    // CSS autocontenido + @page landscape — cada mes se fuerza en su propia
+    // hoja con page-break-after para que el calendario no se parta al medio.
+    const css = `
+        @page { size: A4 landscape; margin: 10mm 10mm 12mm; }
+        * { box-sizing: border-box; }
+        body { margin:0; padding:0; font-family:'Bw Modelica', Helvetica, Arial, sans-serif; color:#0f172a; font-size:9pt; line-height:1.35; }
+        .pdf-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:6pt 0 8pt; margin-bottom:8pt;
+            border-bottom:2px solid #1e3a8a;
+        }
+        .pdf-logo img { height:28pt; }
+        .pdf-head-right { text-align:right; }
+        .pdf-head-right h1 { margin:0; font-size:14pt; color:#0f172a; font-weight:800; }
+        .pdf-head-right .pdf-sub { font-size:9pt; color:#475569; margin-top:2pt; }
+        .pdf-legend-wrap {
+            display:flex; flex-wrap:wrap; gap:6pt;
+            padding:6pt 8pt; margin-bottom:10pt;
+            background:#f8fafc; border:1px solid #e2e8f0; border-radius:6pt;
+            font-size:8.5pt;
+        }
+        .pdf-legend-item { display:inline-flex; align-items:center; gap:4pt; }
+        .pdf-legend-dot { width:10pt; height:10pt; border-radius:2pt; display:inline-block; }
+        .pdf-page { page-break-after:always; }
+        .pdf-page:last-child { page-break-after:auto; }
+        .pdf-mes-title {
+            font-size:13pt; font-weight:800; color:#1e3a8a;
+            text-transform:capitalize; margin:8pt 0 6pt;
+        }
+        .pdf-weekdays {
+            display:grid; grid-template-columns:repeat(7, 1fr); gap:2pt;
+            margin-bottom:3pt;
+        }
+        .pdf-weekdays div {
+            text-align:center; font-size:7.5pt; font-weight:700;
+            color:#64748b; letter-spacing:.06em; text-transform:uppercase;
+        }
+        .pdf-grid {
+            display:grid; grid-template-columns:repeat(7, 1fr); gap:3pt;
+        }
+        .pdf-cell {
+            background:#fff; border:1px solid #e2e8f0; border-radius:4pt;
+            min-height:70pt; padding:3pt 4pt;
+            display:flex; flex-direction:column; gap:2pt;
+            overflow:hidden;
+            page-break-inside:avoid;
+        }
+        .pdf-cell.pdf-empty { background:transparent; border-color:transparent; }
+        .pdf-cell-num { font-size:8pt; font-weight:700; color:#475569; align-self:flex-start; }
+        .pdf-sub {
+            font-size:7pt; line-height:1.2;
+            padding:1.5pt 4pt; border-radius:3pt;
+            color:#fff; font-weight:600;
+            white-space:normal;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }
+        .pdf-sub.completada { opacity:.6; text-decoration:line-through; }
+        .pdf-foot {
+            margin-top:6pt; padding-top:4pt; border-top:1px solid #e2e8f0;
+            font-size:7pt; color:#94a3b8; text-align:right;
+        }
+    `;
+
+    // Cabecera (se imprime al principio de la primera página — con page-break
+    // las siguientes páginas no la repiten, pero sí el título del mes).
+    const cabeceraHtml = `
+        <div class="pdf-header">
+            <div class="pdf-logo"><img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest"></div>
+            <div class="pdf-head-right">
+                <h1>Calendario de sesiones</h1>
+                <div class="pdf-sub">
+                    <strong>${escapeHtml(proyecto.cliente || '—')}</strong>
+                    ${proyecto.implementador ? ' · Implementador: ' + escapeHtml(proyecto.implementador) : ''}
+                </div>
+            </div>
+        </div>
+        <div class="pdf-legend-wrap">${leyendaHtml}</div>
+    `;
+
+    const autoprintScript = '<scr' + 'ipt>window.onload=function(){var imgs=document.images;var left=imgs.length+1;var fire=function(){if(--left<=0)setTimeout(function(){window.print();},80);};if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fire);}else{fire();}if(imgs.length===0){fire();}else{for(var i=0;i<imgs.length;i++){if(imgs[i].complete)fire();else{imgs[i].addEventListener("load",fire);imgs[i].addEventListener("error",fire);}}}};window.onafterprint=function(){window.close();};</scr' + 'ipt>';
+
+    // URL absoluta al fonts.css del portal para que Bw Modelica llegue al
+    // popup (igual que el PDF del SEPA). En gestor está bajo /js-gestor/,
+    // así que fonts.css vive un nivel arriba respecto al HTML actual si el
+    // usuario está en proyectos.html (que está en root). window.location
+    // resuelve bien contra la página actual.
+    const fontsUrl = new URL('fonts.css', window.location.href).href;
+    const titulo = `Calendario · ${(proyecto.cliente || 'proyecto').replace(/[^\w\s\-.áéíóúüñÁÉÍÓÚÜÑ]/g, '').trim()}`;
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${escapeHtml(titulo)}</title><link rel="stylesheet" href="${fontsUrl}"><style>${css}</style></head><body>${cabeceraHtml}${pagesHtml}<div class="pdf-foot">Generado el ${escapeHtml(generadoEl)} · Yurest</div>${autoprintScript}</body></html>`;
+
+    const w = window.open('', '_blank', 'width=1100,height=800');
+    if (!w) {
+        mostrarToast('El navegador bloqueó el popup. Permite ventanas emergentes para exportar.', 'warning', 5000);
+        return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+}
+window._calExportarPDF = _calExportarPDF;
+
 // Totales de tiempo: recorre TODAS las subtareas del proyecto sumando
 // tiempoEstimado y tiempoReal. Útil para comparar en la cabecera y para
 // el cálculo de desviación.

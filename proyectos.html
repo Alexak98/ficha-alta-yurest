@@ -308,7 +308,17 @@
         <div class="modal modal-calendario">
             <div class="modal-header">
                 <h2 id="calendario-titulo">Calendario de subtareas</h2>
-                <button class="modal-close" onclick="cerrarModal('modal-calendario')">&times;</button>
+                <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+                    <!-- Genera PDF del rango completo de meses del proyecto
+                         para mandar al cliente / participantes. Usa el
+                         mismo patrón que imprimirSepa: popup nuevo con
+                         todo el contenido y autoprint al cargar. -->
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="_calExportarPDF()" title="Exportar calendario a PDF">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Exportar PDF
+                    </button>
+                    <button class="modal-close" onclick="cerrarModal('modal-calendario')">&times;</button>
+                </div>
             </div>
             <div class="modal-body">
                 <div class="cal-nav">
