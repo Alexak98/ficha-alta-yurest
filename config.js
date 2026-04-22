@@ -70,6 +70,12 @@
         // una vista con la ocupación ya calculada.
         promociones:          `${WEBHOOK_BASE}/promociones`,
 
+        // Pedidos de hardware por proyecto — ciclo solicitada → proforma →
+        // pago → lista_envío. Se consume desde proyecto.Hardware (crear),
+        // contabilidad.Proformas (adjuntar PDF / confirmar) y soporte
+        // Hardware envíos (ver proforma lista).
+        hardwarePedidos:      `${WEBHOOK_BASE}/hardware/pedidos`,
+
         // Contabilidad
         grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`,
 
@@ -103,6 +109,7 @@
         { id: 'bajas',         label: 'Bajas',                grupo: 'Customer Success' },
         { id: 'promociones',   label: 'Promociones',          grupo: 'Customer Success' },
         { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
+        { id: 'hardware',      label: 'Hardware envíos',      grupo: 'Soporte'          },
         { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
         { id: 'docs',          label: 'Documentación',        grupo: 'Otros'            }
     ];

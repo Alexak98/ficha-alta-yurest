@@ -1,0 +1,260 @@
+{
+  "name": "Yurest - Hardware Pedidos CRUD",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "hardware/pedidos",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "wh-hw-get",
+      "name": "Webhook GET Pedidos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "hw-pedidos-get"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "hardware_pedidos",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-hw-get",
+      "name": "GET Pedidos Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [440, 200],
+      "credentials": {
+        "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve solo pedidos vivos (no soft-deleted). Si la URL trae\n// ?estado=solicitada|proforma_adjuntada|... filtramos; si trae\n// ?proyecto_id=<uuid> filtramos por proyecto. Sin filtro devolvemos todos.\nconst raw = ($input.all() || []).map(i => i.json).filter(x => x && x.id && !x.deleted_at);\nconst q = ($input.first().json && $input.first().json.query) || {};\nlet out = raw;\nif (q.estado) out = out.filter(p => p.estado === q.estado);\nif (q.proyecto_id) out = out.filter(p => p.proyecto_id === q.proyecto_id);\nreturn [{ json: { pedidos: out } }];"
+      },
+      "id": "hw-format-get",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin",  "value": "*"},
+              {"name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS"},
+              {"name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization"},
+              {"name": "Content-Type", "value": "application/json"}
+            ]
+          }
+        }
+      },
+      "id": "hw-respond-get",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hardware/pedidos",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "*" }
+      },
+      "id": "wh-hw-post",
+      "name": "Webhook POST Pedidos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "webhookId": "hw-pedidos-post"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Actions disponibles:\n//   create                → implementador crea el pedido (estado='solicitada')\n//   adjuntar_proforma     → contabilidad sube PDF (estado='proforma_adjuntada')\n//   adjuntar_justificante → implementador sube pago (estado='pendiente_confirmar')\n//   confirmar_pago        → contabilidad confirma (estado='lista_envio')\n//   actualizar_items      → implementador edita el carrito (solo si sigue en solicitada)\n//   delete                → soft-delete\n//\n// El body debe traer { action, pedido: { id?, ...campos } }.\n// El payload se normaliza aquí para que el UPDATE/INSERT del nodo Supabase\n// consuma directamente el objeto devuelto.\n\nconst b = $input.first().json.body || {};\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst errores = [];\nconst now = new Date().toISOString();\n\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nlet row = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  row = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  row = {\n    id: p.id,\n    proforma_pdf: p.proforma_pdf,\n    notas_contabilidad: p.notas_contabilidad !== undefined ? p.notas_contabilidad : undefined,\n    estado: 'proforma_adjuntada',\n    proforma_at: now\n  };\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  row = {\n    id: p.id,\n    justificante_pdf: p.justificante_pdf,\n    notas_implementador: p.notas_implementador !== undefined ? p.notas_implementador : undefined,\n    estado: 'pendiente_confirmar',\n    pagado_at: now\n  };\n} else if (action === 'confirmar_pago') {\n  row = {\n    id: p.id,\n    notas_contabilidad: p.notas_contabilidad !== undefined ? p.notas_contabilidad : undefined,\n    estado: 'lista_envio',\n    confirmado_at: now\n  };\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  row = { id: p.id, items: p.items || [], notas_implementador: p.notas_implementador };\n} else if (action === 'delete') {\n  row = { id: p.id, deleted_at: now };\n}\n\n// Limpia undefined (el nodo Supabase con autoMapInputData mete null si le\n// llega undefined, pisando el valor actual; preferimos no enviar la clave).\nObject.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });\n\nreturn [{ json: { action, row, errores } }];"
+      },
+      "id": "hw-prep",
+      "name": "Preparar Acción",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [{
+            "leftValue": "={{ ($json.errores || []).length }}",
+            "rightValue": 0,
+            "operator": { "type": "number", "operation": "gt" }
+          }]
+        }
+      },
+      "id": "hw-if-error",
+      "name": "¿Error validación?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [{
+            "leftValue": "={{ $json.action }}",
+            "rightValue": "create",
+            "operator": { "type": "string", "operation": "equals" }
+          }]
+        }
+      },
+      "id": "hw-if-create",
+      "name": "¿Es create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [840, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json.row }];"
+      },
+      "id": "hw-flatten-create",
+      "name": "Aplanar CREATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 540]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "hardware_pedidos",
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "hw-insert",
+      "name": "INSERT Pedido",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1240, 540],
+      "credentials": {
+        "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json.row }];"
+      },
+      "id": "hw-flatten-update",
+      "name": "Aplanar UPDATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 660]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "hardware_pedidos",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [{
+            "keyName": "id",
+            "condition": "eq",
+            "keyValue": "={{ $json.id }}"
+          }]
+        },
+        "dataToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "hw-update",
+      "name": "UPDATE Pedido",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1240, 660],
+      "credentials": {
+        "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta unificada — devuelve el pedido persistido + success.\nconst rows = ($input.all() || []).map(i => i.json).filter(x => x && x.id);\nreturn [{ json: { success: rows.length > 0, pedido: rows[0] || null, errores: [] } }];"
+      },
+      "id": "hw-format-ok",
+      "name": "Formatear OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { success: false, errores: $json.errores || ['Error'], action: $json.action } }];"
+      },
+      "id": "hw-format-err",
+      "name": "Formatear ERROR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin",  "value": "*"},
+              {"name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS"},
+              {"name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization"},
+              {"name": "Content-Type", "value": "application/json"}
+            ]
+          }
+        }
+      },
+      "id": "hw-respond-post",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1640, 500]
+    }
+  ],
+  "connections": {
+    "Webhook GET Pedidos":    { "main": [[{ "node": "GET Pedidos Supabase", "type": "main", "index": 0 }]] },
+    "GET Pedidos Supabase":   { "main": [[{ "node": "Formatear GET",        "type": "main", "index": 0 }]] },
+    "Formatear GET":          { "main": [[{ "node": "Respond GET",          "type": "main", "index": 0 }]] },
+
+    "Webhook POST Pedidos":   { "main": [[{ "node": "Preparar Acción",     "type": "main", "index": 0 }]] },
+    "Preparar Acción":        { "main": [[{ "node": "¿Error validación?",  "type": "main", "index": 0 }]] },
+    "¿Error validación?": {
+      "main": [
+        [{ "node": "Formatear ERROR", "type": "main", "index": 0 }],
+        [{ "node": "¿Es create?",    "type": "main", "index": 0 }]
+      ]
+    },
+    "Formatear ERROR":        { "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]] },
+    "¿Es create?": {
+      "main": [
+        [{ "node": "Aplanar CREATE", "type": "main", "index": 0 }],
+        [{ "node": "Aplanar UPDATE", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aplanar CREATE":         { "main": [[{ "node": "INSERT Pedido",  "type": "main", "index": 0 }]] },
+    "Aplanar UPDATE":         { "main": [[{ "node": "UPDATE Pedido",  "type": "main", "index": 0 }]] },
+    "INSERT Pedido":          { "main": [[{ "node": "Formatear OK",   "type": "main", "index": 0 }]] },
+    "UPDATE Pedido":          { "main": [[{ "node": "Formatear OK",   "type": "main", "index": 0 }]] },
+    "Formatear OK":           { "main": [[{ "node": "Respond POST",   "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

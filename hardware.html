@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Hardware envíos — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('hardware');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background:#f8fafc; }
+        .page-header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#fff;
+            position:sticky;top:0;z-index:100;
+        }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.2rem;font-weight:800;color:#0f172a;margin:0 }
+
+        .page-content { padding:24px;max-width:1200px;margin:0 auto }
+        .page-toolbar { display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px }
+        .page-toolbar h2 { font-size:1.3rem;font-weight:700;color:#0f172a;margin:0 }
+        .page-toolbar p  { font-size:.85rem;color:#64748b;margin:3px 0 0 }
+
+        .hw-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px }
+        .hw-card { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px }
+        .hw-card-head { display:flex;align-items:flex-start;justify-content:space-between;gap:10px }
+        .hw-cliente { font-size:1rem;font-weight:700;color:#0f172a;margin:0 }
+        .hw-proyecto { font-size:.78rem;color:#64748b;margin-top:2px }
+        .hw-estado {
+            font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+            padding:4px 9px;border-radius:999px;background:#dcfce7;color:#15803d;flex-shrink:0;
+        }
+
+        .hw-items { background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:.82rem;color:#334155 }
+        .hw-item-row { display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted #e2e8f0 }
+        .hw-item-row:last-child { border-bottom:none }
+        .hw-item-nombre { flex:1 }
+        .hw-item-qty { font-weight:700;color:#0369a1;margin-left:10px;white-space:nowrap }
+
+        .hw-fechas { display:flex;gap:10px;font-size:.72rem;color:#64748b;flex-wrap:wrap }
+        .hw-fechas strong { color:#475569 }
+
+        .hw-actions { display:flex;gap:8px;flex-wrap:wrap }
+        .hw-btn { padding:7px 13px;font-size:.78rem;font-weight:600;border-radius:8px;cursor:pointer;font-family:inherit;border:1.5px solid #e2e8f0;background:#fff;color:#475569;text-decoration:none;display:inline-flex;align-items:center;gap:6px }
+        .hw-btn:hover { border-color:#0ea5e9;color:#0ea5e9 }
+        .hw-btn.primary { background:#0ea5e9;color:#fff;border-color:#0ea5e9 }
+        .hw-btn.primary:hover { background:#0369a1 }
+
+        .empty { text-align:center;padding:60px 20px;background:#fff;border:1.5px dashed #e2e8f0;border-radius:12px;color:#94a3b8 }
+        .empty-icon { font-size:2.6rem;margin-bottom:8px }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <nav class="sidebar" id="sidebar"></nav>
+    <script src="sidebar.js"></script>
+    <script>YurestSidebar.render('hardware');</script>
+
+    <div class="page-header">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <h1>Hardware envíos</h1>
+    </div>
+
+    <div class="page-content">
+        <div class="page-toolbar">
+            <div>
+                <h2>Pedidos listos para enviar</h2>
+                <p>Pedidos de hardware cuya proforma ya está confirmada por contabilidad. Abre el PDF para ver qué se pidió y qué factura corresponde.</p>
+            </div>
+            <button class="hw-btn" onclick="cargar()">↻ Recargar</button>
+        </div>
+        <div id="loading" style="text-align:center;padding:40px;color:#94a3b8">Cargando…</div>
+        <div id="grid" class="hw-grid" style="display:none"></div>
+        <div id="empty" class="empty" style="display:none">
+            <div class="empty-icon">📦</div>
+            <p style="font-weight:700;color:#475569;margin:0 0 6px">Nada pendiente de envío</p>
+            <p style="margin:0">Cuando contabilidad confirme el pago de un pedido, aparecerá aquí listo para que organicéis su envío.</p>
+        </div>
+    </div>
+
+    <script>
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+    window.openSidebar = openSidebar; window.closeSidebar = closeSidebar;
+
+    const EP = YurestConfig.ENDPOINTS.hardwarePedidos;
+    const esc = YurestConfig.escHtml;
+
+    async function cargar() {
+        document.getElementById('loading').style.display = '';
+        document.getElementById('grid').style.display = 'none';
+        document.getElementById('empty').style.display = 'none';
+        try {
+            const url = EP + (EP.includes('?') ? '&' : '?') + 'estado=lista_envio&_=' + Date.now();
+            const res = await YurestConfig.apiFetch(url, {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache' }
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            const pedidos = Array.isArray(data.pedidos) ? data.pedidos
+                          : Array.isArray(data) ? data : [];
+            render(pedidos);
+        } catch (err) {
+            document.getElementById('loading').innerHTML = '<span style="color:#dc2626">Error al cargar: ' + esc(err.message) + '</span>';
+        }
+    }
+
+    function render(pedidos) {
+        document.getElementById('loading').style.display = 'none';
+        if (pedidos.length === 0) {
+            document.getElementById('empty').style.display = '';
+            return;
+        }
+        const grid = document.getElementById('grid');
+        grid.innerHTML = pedidos.map(p => {
+            const items = Array.isArray(p.items) ? p.items : [];
+            const itemsHtml = items.length
+                ? items.map(it => `
+                    <div class="hw-item-row">
+                        <span class="hw-item-nombre">${esc(it.nombre || '—')}${it.notas ? ` <span style="color:#94a3b8;font-size:.74rem">· ${esc(it.notas)}</span>` : ''}</span>
+                        <span class="hw-item-qty">${Number(it.cantidad) || 1}${it.unidad ? ' ' + esc(it.unidad) : ''}</span>
+                    </div>`).join('')
+                : '<span style="color:#94a3b8">Sin items</span>';
+            const fmt = v => v ? new Date(v).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+            const proforma = p.proforma_pdf && p.proforma_pdf.data
+                ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-btn primary">📄 Abrir proforma</a>`
+                : '<span style="color:#dc2626;font-size:.74rem">Sin proforma (estado inconsistente)</span>';
+            const justif = p.justificante_pdf && p.justificante_pdf.data
+                ? `<a href="${esc(p.justificante_pdf.data)}" download="${esc(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-btn">🧾 Justificante de pago</a>`
+                : '';
+            return `
+                <div class="hw-card">
+                    <div class="hw-card-head">
+                        <div>
+                            <p class="hw-cliente">${esc(p.cliente || '—')}</p>
+                            ${p.implementador ? `<div class="hw-proyecto">Implementador: ${esc(p.implementador)}</div>` : ''}
+                        </div>
+                        <span class="hw-estado">Lista envío</span>
+                    </div>
+                    <div class="hw-items">${itemsHtml}</div>
+                    <div class="hw-fechas">
+                        <span><strong>Solicitada:</strong> ${fmt(p.solicitado_at)}</span>
+                        <span><strong>Pagada:</strong> ${fmt(p.pagado_at)}</span>
+                        <span><strong>Confirmada:</strong> ${fmt(p.confirmado_at)}</span>
+                    </div>
+                    <div class="hw-actions">
+                        ${proforma}
+                        ${justif}
+                    </div>
+                </div>`;
+        }).join('');
+        grid.style.display = '';
+    }
+
+    window.cargar = cargar;
+    cargar();
+    </script>
+</body>
+</html>

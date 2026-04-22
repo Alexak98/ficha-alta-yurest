@@ -1390,14 +1390,263 @@ function renderDetalleProyecto(proyecto) {
     _poblarIntegracionFinanciera(proyecto);
 }
 
-function renderDetalleHardware(proyecto) {
-    _renderDetallePlaceholder(
-        'detalle-hardware',
-        'Hardware del cliente',
-        'Aquí irá el inventario de hardware instalado / pendiente por local (tablets, impresoras, TPVs, lectores OCR…). Antes era una subsección de Tareas; ahora es una pestaña propia. Contenido pendiente de definir.',
-        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/></svg>'
-    );
+// ──────────────────────────────────────────────────────────
+//  Tab "Hardware" del proyecto — pedidos con flujo proforma
+//  estados: solicitada → proforma_adjuntada → pendiente_confirmar → lista_envio
+// ──────────────────────────────────────────────────────────
+let _hwPedidos = [];
+
+async function renderDetalleHardware(proyecto) {
+    const el = document.getElementById('detalle-hardware');
+    if (!el) return;
+    el.innerHTML = `
+        <div class="hw-tab-head">
+            <div>
+                <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#0f172a">Pedidos de hardware</h3>
+                <p style="margin:3px 0 0;font-size:.8rem;color:#64748b">Crea un pedido, contabilidad te enviará la proforma. Al pagar, sube el justificante y Soporte lo enviará al cliente.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="hwAbrirModalNuevo('${proyecto.id}', ${JSON.stringify(proyecto.cliente).replace(/"/g, '&quot;')}, ${JSON.stringify(proyecto.implementador || '').replace(/"/g, '&quot;')})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Nuevo pedido
+            </button>
+        </div>
+        <div id="hw-lista-${proyecto.id}" class="hw-lista-wrap">
+            <div class="hw-loading">Cargando pedidos…</div>
+        </div>`;
+
+    try {
+        const url = YurestConfig.ENDPOINTS.hardwarePedidos + '?proyecto_id=' + encodeURIComponent(proyecto.id) + '&_=' + Date.now();
+        const res = await YurestConfig.apiFetch(url, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        _hwPedidos = Array.isArray(data.pedidos) ? data.pedidos
+                   : Array.isArray(data) ? data : [];
+        _hwRenderLista(proyecto);
+    } catch (err) {
+        const w = document.getElementById('hw-lista-' + proyecto.id);
+        if (w) w.innerHTML = `<div class="hw-empty" style="color:#dc2626">Error: ${escapeHtml(err.message)}</div>`;
+    }
 }
+
+function _hwRenderLista(proyecto) {
+    const wrap = document.getElementById('hw-lista-' + proyecto.id);
+    if (!wrap) return;
+    if (_hwPedidos.length === 0) {
+        wrap.innerHTML = `
+            <div class="hw-empty">
+                <div class="hw-empty-icon">📦</div>
+                <p style="font-weight:700;color:#475569;margin:0 0 6px">Aún no hay pedidos</p>
+                <p style="margin:0;font-size:.85rem">Crea el primer pedido con "Nuevo pedido" para que contabilidad emita la proforma.</p>
+            </div>`;
+        return;
+    }
+    const ESTADO_LBL = {
+        solicitada:          { lbl: 'Esperando proforma',     cls: 'est-solicitada' },
+        proforma_adjuntada:  { lbl: 'Proforma recibida',      cls: 'est-proforma_adjuntada' },
+        pendiente_confirmar: { lbl: 'Pendiente confirmar pago', cls: 'est-pendiente_confirmar' },
+        lista_envio:         { lbl: 'Lista para envío',       cls: 'est-lista_envio' }
+    };
+    const fmt = v => v ? new Date(v).toLocaleString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    wrap.innerHTML = _hwPedidos.map(p => {
+        const info = ESTADO_LBL[p.estado] || { lbl: p.estado, cls: '' };
+        const items = Array.isArray(p.items) ? p.items : [];
+        const itemsHtml = items.map(it => `
+            <div class="hw-pedido-item-row">
+                <span>${escapeHtml(it.nombre || '—')}${it.notas ? ` <span style="color:#94a3b8;font-size:.74rem">· ${escapeHtml(it.notas)}</span>` : ''}</span>
+                <span style="font-weight:700;color:#0369a1">${Number(it.cantidad) || 1}${it.unidad ? ' ' + escapeHtml(it.unidad) : ''}</span>
+            </div>`).join('') || '<span style="color:#94a3b8">Sin items</span>';
+
+        // Acciones según estado (lado implementador):
+        //   solicitada         → ver estado; esperar proforma
+        //   proforma_adjuntada → ver proforma + subir justificante de pago
+        //   pendiente_confirmar→ ver proforma + ver justificante + esperar confirmación
+        //   lista_envio        → solo lectura
+        let acciones = '';
+        if (p.estado === 'proforma_adjuntada') {
+            const prof = p.proforma_pdf && p.proforma_pdf.data
+                ? `<a href="${escapeHtml(p.proforma_pdf.data)}" download="${escapeHtml(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Ver proforma</a>`
+                : '';
+            acciones = `${prof}
+                <label class="hw-cta primary">
+                    🧾 Subir justificante de pago
+                    <input type="file" accept="application/pdf" onchange="hwSubirJustificante('${escapeHtml(p.id)}', '${escapeHtml(proyecto.id)}', this)">
+                </label>`;
+        } else if (p.estado === 'pendiente_confirmar') {
+            const prof = p.proforma_pdf && p.proforma_pdf.data
+                ? `<a href="${escapeHtml(p.proforma_pdf.data)}" download="${escapeHtml(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
+                : '';
+            const just = p.justificante_pdf && p.justificante_pdf.data
+                ? `<a href="${escapeHtml(p.justificante_pdf.data)}" download="${escapeHtml(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-cta">🧾 Justificante</a>`
+                : '';
+            acciones = `${prof}${just}<span style="font-size:.72rem;color:#64748b;align-self:center">Esperando confirmación de contabilidad…</span>`;
+        } else if (p.estado === 'lista_envio') {
+            const prof = p.proforma_pdf && p.proforma_pdf.data
+                ? `<a href="${escapeHtml(p.proforma_pdf.data)}" download="${escapeHtml(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
+                : '';
+            acciones = `${prof}<span style="font-size:.72rem;color:#16a34a;align-self:center">✓ Enviado a Soporte</span>`;
+        } else {
+            acciones = `<span style="font-size:.72rem;color:#64748b;align-self:center">Esperando a que contabilidad suba la proforma…</span>`;
+        }
+
+        return `
+            <div class="hw-pedido">
+                <div class="hw-pedido-head">
+                    <div>
+                        <p class="hw-pedido-cliente">Pedido del ${fmt(p.solicitado_at)}</p>
+                        ${p.implementador ? `<div class="hw-pedido-sub">Solicitó: ${escapeHtml(p.implementador)}</div>` : ''}
+                    </div>
+                    <span class="hw-pedido-estado ${info.cls}">${escapeHtml(info.lbl)}</span>
+                </div>
+                <div class="hw-pedido-items">${itemsHtml}</div>
+                ${p.notas_implementador ? `<div style="font-size:.78rem;color:#475569;background:#f8fafc;border-left:3px solid #94a3b8;padding:6px 10px;border-radius:4px">${escapeHtml(p.notas_implementador)}</div>` : ''}
+                ${p.notas_contabilidad ? `<div style="font-size:.78rem;color:#475569;background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 10px;border-radius:4px"><strong>Contabilidad:</strong> ${escapeHtml(p.notas_contabilidad)}</div>` : ''}
+                <div class="hw-pedido-actions">${acciones}</div>
+            </div>`;
+    }).join('');
+}
+
+// ── Modal nuevo pedido ───────────────────────────────────────────────────
+function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
+    let modal = document.getElementById('modal-hw-nuevo');
+    if (!modal) {
+        // Crea el modal al vuelo la primera vez — evita tener que editar
+        // proyectos.html para añadirlo.
+        modal = document.createElement('div');
+        modal.id = 'modal-hw-nuevo';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal" style="max-width:620px">
+                <div class="modal-header">
+                    <h2>Nuevo pedido de hardware</h2>
+                    <button class="modal-close" onclick="cerrarModal('modal-hw-nuevo')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="hw-new-proyecto-id">
+                    <input type="hidden" id="hw-new-cliente">
+                    <input type="hidden" id="hw-new-implementador">
+                    <div style="font-size:.82rem;color:#475569;margin-bottom:10px">
+                        Cliente: <strong id="hw-new-cliente-lbl">—</strong>
+                    </div>
+                    <div id="hw-items-container"></div>
+                    <button type="button" class="hw-cta" onclick="hwAddItem()" style="margin-top:6px">+ Añadir artículo</button>
+                    <div class="form-group" style="margin-top:14px">
+                        <label>Notas para contabilidad (opcional)</label>
+                        <textarea id="hw-new-notas" class="form-control" rows="2" placeholder="Urgencia, contexto, dirección de facturación distinta…"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="cerrarModal('modal-hw-nuevo')">Cancelar</button>
+                    <button class="btn btn-primary" onclick="hwCrearPedido()">Enviar solicitud</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+    document.getElementById('hw-new-proyecto-id').value = proyectoId;
+    document.getElementById('hw-new-cliente').value = cliente || '';
+    document.getElementById('hw-new-implementador').value = implementador || '';
+    document.getElementById('hw-new-cliente-lbl').textContent = cliente || '—';
+    document.getElementById('hw-new-notas').value = '';
+    // Reinicia los items con uno vacío.
+    document.getElementById('hw-items-container').innerHTML = '';
+    hwAddItem();
+    abrirModal('modal-hw-nuevo');
+}
+window.hwAbrirModalNuevo = hwAbrirModalNuevo;
+
+function hwAddItem() {
+    const cont = document.getElementById('hw-items-container');
+    const row = document.createElement('div');
+    row.className = 'hw-item-input-row';
+    row.innerHTML = `
+        <input type="text"   class="form-control hw-item-nombre"   placeholder="Ej: Tablet Samsung Tab A8" style="flex:2">
+        <input type="number" class="form-control hw-item-cantidad" placeholder="Cant" min="1" value="1"  style="width:70px">
+        <input type="text"   class="form-control hw-item-unidad"   placeholder="unid" style="width:80px">
+        <button type="button" class="hw-item-del" onclick="this.parentNode.remove()" aria-label="Eliminar">&times;</button>`;
+    cont.appendChild(row);
+}
+window.hwAddItem = hwAddItem;
+
+async function hwCrearPedido() {
+    const proyectoId    = document.getElementById('hw-new-proyecto-id').value;
+    const cliente       = document.getElementById('hw-new-cliente').value;
+    const implementador = document.getElementById('hw-new-implementador').value;
+    const notas         = document.getElementById('hw-new-notas').value.trim();
+    const filas = [...document.querySelectorAll('.hw-item-input-row')];
+    const items = filas.map(r => ({
+        nombre:   r.querySelector('.hw-item-nombre').value.trim(),
+        cantidad: parseInt(r.querySelector('.hw-item-cantidad').value) || 1,
+        unidad:   r.querySelector('.hw-item-unidad').value.trim() || null,
+        notas:    null
+    })).filter(i => i.nombre);
+    if (items.length === 0) {
+        mostrarToast('Añade al menos un artículo', 'error');
+        return;
+    }
+    try {
+        const res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.hardwarePedidos, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'create',
+                pedido: {
+                    proyecto_id: proyectoId,
+                    cliente,
+                    implementador,
+                    items,
+                    notas_implementador: notas,
+                    solicitado_por: (YurestConfig.getUsuario && YurestConfig.getUsuario() || {}).username || null
+                }
+            })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const r = await res.json();
+        if (r && r.success === false) throw new Error((r.errores || ['Error']).join('; '));
+        mostrarToast('Pedido enviado a contabilidad', 'success');
+        cerrarModal('modal-hw-nuevo');
+        const proyecto = proyectos.find(p => p.id === proyectoId);
+        if (proyecto) renderDetalleHardware(proyecto);
+    } catch (err) {
+        mostrarToast('Error al crear pedido: ' + err.message, 'error', 5000);
+    }
+}
+window.hwCrearPedido = hwCrearPedido;
+
+async function hwSubirJustificante(pedidoId, proyectoId, input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+        mostrarToast('El justificante debe ser un PDF', 'warning');
+        input.value = ''; return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        mostrarToast('PDF demasiado grande (máx 10 MB)', 'warning');
+        input.value = ''; return;
+    }
+    try {
+        const r = new FileReader();
+        const dataUrl = await new Promise((ok, ko) => { r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(file); });
+        const justificante_pdf = {
+            nombre: file.name, tipo: file.type || 'application/pdf', size: file.size,
+            data: dataUrl, fecha: new Date().toISOString()
+        };
+        const res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.hardwarePedidos, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'adjuntar_justificante',
+                pedido: { id: pedidoId, justificante_pdf }
+            })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const resp = await res.json();
+        if (resp && resp.success === false) throw new Error((resp.errores || ['Error']).join('; '));
+        mostrarToast('Justificante enviado a contabilidad', 'success');
+        const proyecto = proyectos.find(p => p.id === proyectoId);
+        if (proyecto) renderDetalleHardware(proyecto);
+    } catch (err) {
+        mostrarToast('Error al subir justificante: ' + err.message, 'error', 5000);
+    }
+    input.value = '';
+}
+window.hwSubirJustificante = hwSubirJustificante;
 
 function renderDetalleFormularios(proyecto) {
     _renderDetallePlaceholder(

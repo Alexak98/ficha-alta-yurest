@@ -1096,6 +1096,53 @@ body {
 }
 .cal-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
 
+/* Tab Hardware del proyecto — pedidos con flujo proforma */
+.hw-tab-head {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    margin-bottom:14px; flex-wrap:wrap;
+}
+.hw-tab-head .btn { white-space:nowrap; }
+.hw-lista-wrap { display:flex; flex-direction:column; gap:10px; }
+.hw-loading { padding:20px; text-align:center; color:var(--text-muted); }
+.hw-empty { padding:30px 20px; text-align:center; color:var(--text-muted); background:#f8fafc; border:1px dashed #e2e8f0; border-radius:10px; }
+.hw-empty-icon { font-size:2rem; margin-bottom:6px; }
+.hw-pedido {
+    background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+    padding:12px 14px; display:flex; flex-direction:column; gap:8px;
+}
+.hw-pedido-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.hw-pedido-cliente { font-size:.92rem; font-weight:700; color:#0f172a; margin:0; }
+.hw-pedido-sub { font-size:.74rem; color:#64748b; margin-top:2px; }
+.hw-pedido-estado {
+    font-size:.64rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    padding:3px 8px; border-radius:999px; flex-shrink:0;
+}
+.est-solicitada         { background:#fef3c7; color:#92400e; }
+.est-proforma_adjuntada { background:#dbeafe; color:#1e40af; }
+.est-pendiente_confirmar{ background:#fee2e2; color:#991b1b; }
+.est-lista_envio        { background:#dcfce7; color:#15803d; }
+.hw-pedido-items { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:.8rem; color:#334155; }
+.hw-pedido-item-row { display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px dotted #e2e8f0; }
+.hw-pedido-item-row:last-child { border-bottom:none; }
+.hw-pedido-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.hw-cta {
+    padding:6px 11px; font-size:.74rem; font-weight:600; border-radius:7px;
+    cursor:pointer; font-family:inherit; border:1.5px solid #e2e8f0; background:#fff; color:#475569;
+    display:inline-flex; align-items:center; gap:5px; text-decoration:none;
+}
+.hw-cta:hover { border-color:#6366f1; color:#6366f1; }
+.hw-cta.primary { background:#6366f1; color:#fff; border-color:#6366f1; }
+.hw-cta.primary:hover { background:#4f46e5; }
+.hw-cta input[type="file"] { display:none; }
+
+/* Filas del modal "Nuevo pedido" */
+.hw-item-input-row { display:flex; gap:6px; margin-bottom:6px; align-items:center; }
+.hw-item-del {
+    width:28px; height:28px; border-radius:6px; border:1.5px solid #e2e8f0;
+    background:#fff; color:#94a3b8; font-size:1rem; cursor:pointer;
+}
+.hw-item-del:hover { border-color:#dc2626; color:#dc2626; background:#fef2f2; }
+
 /* Placeholder para pestañas nuevas aún sin contenido funcional
    (Proyecto, Hardware, Formularios). Se reemplazará cuando se definan
    los comportamientos de cada una. */

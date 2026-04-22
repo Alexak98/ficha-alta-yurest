@@ -46,8 +46,47 @@
 
         body { background:#f8fafc; }
         .cont-wrap { max-width:1180px; margin:0 auto; padding:24px 18px 64px; }
-        .page-title { display:flex; align-items:center; gap:10px; font-size:1.15rem; font-weight:700; color:#1e293b; margin:4px 0 18px; }
+        .page-title { display:flex; align-items:center; gap:10px; font-size:1.15rem; font-weight:700; color:#1e293b; margin:4px 0 10px; }
         .page-title .muted { font-size:.8rem; font-weight:500; color:#94a3b8; }
+        /* Tabs de contabilidad (A3 / Proformas) */
+        .cont-tabs { display:flex; gap:0; margin:0 0 16px; border-bottom:2px solid #e2e8f0; flex-wrap:wrap; }
+        .cont-tab { padding:10px 18px; font-size:.88rem; font-weight:600; color:#64748b; background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:8px; transition:color .15s, border-color .15s; }
+        .cont-tab:hover { color:#334155; }
+        .cont-tab.active { color:#fc5858; border-bottom-color:#fc5858; }
+        .cont-tab .count { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:20px; padding:0 7px; font-size:.72rem; font-weight:800; color:#fff; background:#fc5858; border-radius:999px; }
+        .cont-tab:not(.active) .count { background:#94a3b8; }
+        /* Tarjetas de pedidos de hardware (panel proformas) */
+        .hw-pedido {
+            background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+            padding:14px 16px; margin:10px 14px; display:flex; flex-direction:column; gap:10px;
+        }
+        .hw-pedido-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+        .hw-pedido-cliente { font-size:.95rem; font-weight:700; color:#0f172a; margin:0; }
+        .hw-pedido-sub { font-size:.74rem; color:#64748b; margin-top:2px; }
+        .hw-pedido-estado {
+            font-size:.66rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+            padding:4px 9px; border-radius:999px; flex-shrink:0;
+        }
+        .est-solicitada         { background:#fef3c7; color:#92400e; }
+        .est-proforma_adjuntada { background:#dbeafe; color:#1e40af; }
+        .est-pendiente_confirmar{ background:#fee2e2; color:#991b1b; }
+        .est-lista_envio        { background:#dcfce7; color:#15803d; }
+        .hw-pedido-items { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:.8rem; color:#334155; }
+        .hw-pedido-item-row { display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px dotted #e2e8f0; }
+        .hw-pedido-item-row:last-child { border-bottom:none; }
+        .hw-pedido-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .hw-cta {
+            padding:6px 12px; font-size:.76rem; font-weight:600; border-radius:7px;
+            cursor:pointer; font-family:inherit; border:1.5px solid #e2e8f0; background:#fff; color:#475569;
+            display:inline-flex; align-items:center; gap:5px; text-decoration:none;
+        }
+        .hw-cta:hover { border-color:#fc5858; color:#fc5858; }
+        .hw-cta.primary { background:#fc5858; color:#fff; border-color:#fc5858; }
+        .hw-cta.primary:hover { background:#e84848; }
+        .hw-cta.success { background:#16a34a; color:#fff; border-color:#16a34a; }
+        .hw-cta.success:hover { background:#15803d; }
+        .hw-cta input[type="file"] { display:none; }
+        .hw-empty { text-align:center; padding:40px 20px; color:#94a3b8; }
 
         .v-loading { padding:48px 16px; text-align:center; color:#64748b; font-size:.9rem; }
         .v-loading.hidden { display:none; }
@@ -200,8 +239,20 @@
 
     <div class="page-title">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fc5858" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-        Pendientes de A3
+        <span id="cont-tabtitle">Pendientes de A3</span>
         <span class="muted" id="cont-subtitle">Cargando…</span>
+    </div>
+
+    <!-- Tabs de contabilidad: cambian entre la pantalla A3 original y
+         la nueva "Solicitud de proformas" de hardware. Cada tab tiene
+         su propio data loader y su badge con el contador pendiente. -->
+    <div class="cont-tabs">
+        <button class="cont-tab active" data-tab="a3" onclick="cambiarTabContabilidad('a3')">
+            Grabación A3 <span class="count" id="cont-count-a3">0</span>
+        </button>
+        <button class="cont-tab" data-tab="proformas" onclick="cambiarTabContabilidad('proformas')">
+            Solicitud de proformas <span class="count" id="cont-count-proformas">0</span>
+        </button>
     </div>
 
     <div id="cont-error" class="v-error hidden"></div>
@@ -209,37 +260,69 @@
 
     <div id="cont-content" style="display:none">
 
-        <!-- KPIs -->
-        <div class="kpi-grid">
-            <div class="kpi kpi-pendientes">
-                <span class="kpi-label">Pendientes de grabar en A3</span>
-                <span class="kpi-value" id="kpi-pendientes">—</span>
-                <span class="kpi-sub" id="kpi-pendientes-sub"></span>
+        <!-- Panel A3 (vista original) ───────────────────────────────── -->
+        <div id="panel-a3" class="cont-panel">
+            <div class="kpi-grid">
+                <div class="kpi kpi-pendientes">
+                    <span class="kpi-label">Pendientes de grabar en A3</span>
+                    <span class="kpi-value" id="kpi-pendientes">—</span>
+                    <span class="kpi-sub" id="kpi-pendientes-sub"></span>
+                </div>
+                <div class="kpi kpi-grabados">
+                    <span class="kpi-label">Ya grabados en A3</span>
+                    <span class="kpi-value" id="kpi-grabados">—</span>
+                    <span class="kpi-sub" id="kpi-grabados-sub"></span>
+                </div>
+                <div class="kpi kpi-total">
+                    <span class="kpi-label">Fichas con SEPA firmado</span>
+                    <span class="kpi-value" id="kpi-total">—</span>
+                    <span class="kpi-sub muted">solo entran las que tienen mandato</span>
+                </div>
             </div>
-            <div class="kpi kpi-grabados">
-                <span class="kpi-label">Ya grabados en A3</span>
-                <span class="kpi-value" id="kpi-grabados">—</span>
-                <span class="kpi-sub" id="kpi-grabados-sub"></span>
-            </div>
-            <div class="kpi kpi-total">
-                <span class="kpi-label">Fichas con SEPA firmado</span>
-                <span class="kpi-value" id="kpi-total">—</span>
-                <span class="kpi-sub muted">solo entran las que tienen mandato</span>
+
+            <div class="cont-card">
+                <div class="cont-toolbar">
+                    <div class="search">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input id="cont-search" type="search" placeholder="Buscar sociedad, CIF, IBAN…" oninput="aplicarFiltrosA3()">
+                    </div>
+                    <button class="filter-pill active" data-filter="pendientes" onclick="setFiltroA3('pendientes')">Pendientes <span class="count" id="filt-pendientes">0</span></button>
+                    <button class="filter-pill" data-filter="grabados" onclick="setFiltroA3('grabados')">Grabados <span class="count" id="filt-grabados">0</span></button>
+                    <button class="filter-pill" data-filter="todos" onclick="setFiltroA3('todos')">Todas <span class="count" id="filt-todos">0</span></button>
+                </div>
+                <div id="cont-table-wrap"></div>
             </div>
         </div>
 
-        <!-- Tabla -->
-        <div class="cont-card">
-            <div class="cont-toolbar">
-                <div class="search">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input id="cont-search" type="search" placeholder="Buscar sociedad, CIF, IBAN…" oninput="aplicarFiltrosA3()">
+        <!-- Panel Proformas (nuevo) ─────────────────────────────────── -->
+        <div id="panel-proformas" class="cont-panel" style="display:none">
+            <div class="kpi-grid">
+                <div class="kpi kpi-pendientes">
+                    <span class="kpi-label">Proformas pendientes de emitir</span>
+                    <span class="kpi-value" id="kpi-proformas-solicitadas">—</span>
+                    <span class="kpi-sub muted">implementadores esperando PDF</span>
                 </div>
-                <button class="filter-pill active" data-filter="pendientes" onclick="setFiltroA3('pendientes')">Pendientes <span class="count" id="filt-pendientes">0</span></button>
-                <button class="filter-pill" data-filter="grabados" onclick="setFiltroA3('grabados')">Grabados <span class="count" id="filt-grabados">0</span></button>
-                <button class="filter-pill" data-filter="todos" onclick="setFiltroA3('todos')">Todas <span class="count" id="filt-todos">0</span></button>
+                <div class="kpi kpi-grabados">
+                    <span class="kpi-label">Pagos por confirmar</span>
+                    <span class="kpi-value" id="kpi-proformas-pendientes">—</span>
+                    <span class="kpi-sub muted">justificante subido por el implementador</span>
+                </div>
+                <div class="kpi kpi-total">
+                    <span class="kpi-label">Listas para envío</span>
+                    <span class="kpi-value" id="kpi-proformas-listas">—</span>
+                    <span class="kpi-sub muted">visibles en Soporte · Hardware envíos</span>
+                </div>
             </div>
-            <div id="cont-table-wrap"></div>
+
+            <div class="cont-card">
+                <div class="cont-toolbar">
+                    <button class="filter-pill active" data-filter-proforma="solicitada" onclick="setFiltroProforma('solicitada')">Por emitir <span class="count" id="filt-prof-sol">0</span></button>
+                    <button class="filter-pill" data-filter-proforma="pendiente_confirmar" onclick="setFiltroProforma('pendiente_confirmar')">Pendientes pago <span class="count" id="filt-prof-pend">0</span></button>
+                    <button class="filter-pill" data-filter-proforma="proforma_adjuntada" onclick="setFiltroProforma('proforma_adjuntada')">Proforma enviada <span class="count" id="filt-prof-env">0</span></button>
+                    <button class="filter-pill" data-filter-proforma="lista_envio" onclick="setFiltroProforma('lista_envio')">Confirmadas <span class="count" id="filt-prof-listas">0</span></button>
+                </div>
+                <div id="proformas-wrap"></div>
+            </div>
         </div>
 
     </div>
@@ -375,6 +458,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         const pend  = fichas.filter(f => !f.grabado_a3).length;
         const grab  = total - pend;
         document.getElementById('kpi-pendientes').textContent = pend;
+        // Badge del tab superior — mismo valor que las fichas pendientes
+        // de grabar, para que desde la otra pestaña se vea el trabajo
+        // pendiente de A3 sin tener que volver.
+        const tabA3 = document.getElementById('cont-count-a3');
+        if (tabA3) tabA3.textContent = pend;
         document.getElementById('kpi-grabados').textContent   = grab;
         document.getElementById('kpi-total').textContent      = total;
         document.getElementById('kpi-pendientes-sub').textContent = pend === 0 ? 'Todo al día 🎉' : (pend === 1 ? '1 ficha por grabar' : `${pend} fichas por grabar`);
@@ -696,6 +784,227 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         }
     }
     window.toggleA3 = toggleA3;
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  TAB PROFORMAS — pedidos de hardware
+    // ═══════════════════════════════════════════════════════════════════
+    const EP_HW = YurestConfig.ENDPOINTS.hardwarePedidos;
+    let pedidos = [];
+    let filtroProforma = 'solicitada';
+
+    function cambiarTabContabilidad(tab) {
+        document.querySelectorAll('.cont-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+        document.getElementById('panel-a3').style.display         = tab === 'a3'        ? '' : 'none';
+        document.getElementById('panel-proformas').style.display  = tab === 'proformas' ? '' : 'none';
+        document.getElementById('cont-tabtitle').textContent      = tab === 'a3' ? 'Pendientes de A3' : 'Solicitud de proformas';
+        if (tab === 'proformas') cargarPedidos();
+    }
+    window.cambiarTabContabilidad = cambiarTabContabilidad;
+
+    async function cargarPedidos() {
+        try {
+            const url = EP_HW + (EP_HW.includes('?') ? '&' : '?') + '_=' + Date.now();
+            const res = await YurestConfig.apiFetch(url, {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-cache' }
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            pedidos = Array.isArray(data.pedidos) ? data.pedidos
+                    : Array.isArray(data) ? data : [];
+            renderProformas();
+        } catch (err) {
+            document.getElementById('proformas-wrap').innerHTML =
+                `<div class="hw-empty" style="color:#dc2626">Error: ${esc(err.message)}</div>`;
+        }
+    }
+
+    function setFiltroProforma(f) {
+        filtroProforma = f;
+        document.querySelectorAll('[data-filter-proforma]').forEach(p =>
+            p.classList.toggle('active', p.dataset.filterProforma === f)
+        );
+        renderProformas();
+    }
+    window.setFiltroProforma = setFiltroProforma;
+
+    function renderProformas() {
+        // Contadores por estado (actualizan las pills).
+        const porEstado = {
+            solicitada: 0, proforma_adjuntada: 0, pendiente_confirmar: 0, lista_envio: 0
+        };
+        pedidos.forEach(p => {
+            if (porEstado[p.estado] !== undefined) porEstado[p.estado]++;
+        });
+        document.getElementById('filt-prof-sol').textContent    = porEstado.solicitada;
+        document.getElementById('filt-prof-pend').textContent   = porEstado.pendiente_confirmar;
+        document.getElementById('filt-prof-env').textContent    = porEstado.proforma_adjuntada;
+        document.getElementById('filt-prof-listas').textContent = porEstado.lista_envio;
+        document.getElementById('kpi-proformas-solicitadas').textContent = porEstado.solicitada;
+        document.getElementById('kpi-proformas-pendientes').textContent  = porEstado.pendiente_confirmar;
+        document.getElementById('kpi-proformas-listas').textContent      = porEstado.lista_envio;
+
+        // Badge del tab superior = la suma de "acción requerida" por
+        // contabilidad (solicitadas + pendientes de confirmar).
+        const accionReq = porEstado.solicitada + porEstado.pendiente_confirmar;
+        const tabCount = document.getElementById('cont-count-proformas');
+        if (tabCount) tabCount.textContent = accionReq;
+
+        const lista = pedidos.filter(p => p.estado === filtroProforma);
+        const wrap = document.getElementById('proformas-wrap');
+        if (lista.length === 0) {
+            wrap.innerHTML = `<div class="hw-empty">Sin pedidos en este estado.</div>`;
+            return;
+        }
+        const ESTADO_LBL = {
+            solicitada:          'Por emitir',
+            proforma_adjuntada:  'Proforma enviada',
+            pendiente_confirmar: 'Pendiente confirmar',
+            lista_envio:         'Lista envío'
+        };
+        wrap.innerHTML = lista.map(p => {
+            const items = Array.isArray(p.items) ? p.items : [];
+            const itemsHtml = items.map(it => `
+                <div class="hw-pedido-item-row">
+                    <span>${esc(it.nombre || '—')}${it.notas ? ` <span style="color:#94a3b8;font-size:.74rem">· ${esc(it.notas)}</span>` : ''}</span>
+                    <span style="font-weight:700;color:#0369a1">${Number(it.cantidad) || 1}${it.unidad ? ' ' + esc(it.unidad) : ''}</span>
+                </div>`).join('') || '<span style="color:#94a3b8">Sin items</span>';
+
+            // Acciones disponibles según estado:
+            //   solicitada         → subir proforma PDF
+            //   pendiente_confirmar → ver proforma + justificante + confirmar pago
+            //   proforma_adjuntada / lista_envio → ver adjuntos (solo lectura en este tab)
+            let acciones = '';
+            if (p.estado === 'solicitada') {
+                acciones = `
+                    <label class="hw-cta primary">
+                        📎 Adjuntar proforma
+                        <input type="file" accept="application/pdf" onchange="subirProforma('${esc(p.id)}', this)">
+                    </label>`;
+            } else if (p.estado === 'pendiente_confirmar') {
+                const prof = p.proforma_pdf && p.proforma_pdf.data
+                    ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
+                    : '';
+                const just = p.justificante_pdf && p.justificante_pdf.data
+                    ? `<a href="${esc(p.justificante_pdf.data)}" download="${esc(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-cta">🧾 Justificante</a>`
+                    : '';
+                acciones = `${prof}${just}
+                    <button class="hw-cta success" onclick="confirmarPago('${esc(p.id)}')">✓ Confirmar pago</button>`;
+            } else if (p.estado === 'proforma_adjuntada') {
+                const prof = p.proforma_pdf && p.proforma_pdf.data
+                    ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Ver proforma enviada</a>`
+                    : '';
+                acciones = `${prof}<span style="font-size:.72rem;color:#64748b;align-self:center">Esperando justificante del implementador…</span>`;
+            } else if (p.estado === 'lista_envio') {
+                const prof = p.proforma_pdf && p.proforma_pdf.data
+                    ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
+                    : '';
+                acciones = `${prof}<span style="font-size:.72rem;color:#16a34a;align-self:center">✓ En Soporte listo para envío</span>`;
+            }
+
+            const fmt = v => v ? new Date(v).toLocaleString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+            return `
+                <div class="hw-pedido">
+                    <div class="hw-pedido-head">
+                        <div>
+                            <p class="hw-pedido-cliente">${esc(p.cliente || '—')}</p>
+                            <div class="hw-pedido-sub">
+                                ${p.implementador ? 'Solicita: ' + esc(p.implementador) + ' · ' : ''}${fmt(p.solicitado_at)}
+                            </div>
+                        </div>
+                        <span class="hw-pedido-estado est-${esc(p.estado)}">${esc(ESTADO_LBL[p.estado] || p.estado)}</span>
+                    </div>
+                    <div class="hw-pedido-items">${itemsHtml}</div>
+                    ${p.notas_implementador ? `<div style="font-size:.78rem;color:#475569;background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 10px;border-radius:4px"><strong>Nota del implementador:</strong> ${esc(p.notas_implementador)}</div>` : ''}
+                    <div class="hw-pedido-actions">${acciones}</div>
+                </div>`;
+        }).join('');
+    }
+
+    // Convierte un File a objeto { nombre, tipo, size, data(base64), fecha }.
+    // Mismo formato que adjuntos de ficha.
+    function _fileToObj(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve({
+                nombre: file.name,
+                tipo:   file.type || 'application/pdf',
+                size:   file.size,
+                data:   r.result,
+                fecha:  new Date().toISOString()
+            });
+            r.onerror = reject;
+            r.readAsDataURL(file);
+        });
+    }
+
+    async function subirProforma(pedidoId, input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        if (file.type !== 'application/pdf') {
+            mostrarToast('El archivo debe ser un PDF', 'warning');
+            input.value = '';
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            mostrarToast('PDF demasiado grande (máx 10 MB)', 'warning');
+            input.value = '';
+            return;
+        }
+        try {
+            const proforma_pdf = await _fileToObj(file);
+            const res = await YurestConfig.apiFetch(EP_HW, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'adjuntar_proforma',
+                    pedido: { id: pedidoId, proforma_pdf }
+                })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const r = await res.json();
+            if (r && r.success === false) throw new Error((r.errores || ['Error']).join('; '));
+            mostrarToast('Proforma enviada al implementador', 'success');
+            await cargarPedidos();
+        } catch (err) {
+            mostrarToast('Error al adjuntar: ' + err.message, 'error', 5000);
+        }
+        input.value = '';
+    }
+    window.subirProforma = subirProforma;
+
+    async function confirmarPago(pedidoId) {
+        if (!confirm('¿Confirmar el pago? El pedido pasará a Soporte · Hardware envíos.')) return;
+        try {
+            const res = await YurestConfig.apiFetch(EP_HW, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'confirmar_pago',
+                    pedido: { id: pedidoId }
+                })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            mostrarToast('Pago confirmado. Pedido disponible en Soporte.', 'success');
+            await cargarPedidos();
+        } catch (err) {
+            mostrarToast('Error al confirmar: ' + err.message, 'error', 5000);
+        }
+    }
+    window.confirmarPago = confirmarPago;
+
+    // Precarga ligera del badge del tab al abrir la página (sin renderizar
+    // la lista si no estamos en el tab de proformas).
+    (async () => {
+        try {
+            const url = EP_HW + (EP_HW.includes('?') ? '&' : '?') + '_=' + Date.now();
+            const res = await YurestConfig.apiFetch(url, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } });
+            if (!res.ok) return;
+            const data = await res.json();
+            const lista = Array.isArray(data.pedidos) ? data.pedidos : [];
+            const accionReq = lista.filter(p => p.estado === 'solicitada' || p.estado === 'pendiente_confirmar').length;
+            const tabCount = document.getElementById('cont-count-proformas');
+            if (tabCount) tabCount.textContent = accionReq;
+        } catch (_) {}
+    })();
 
     cargar();
 })();
