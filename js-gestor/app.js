@@ -933,9 +933,18 @@ function _renderCabeceraProyecto(proyecto) {
                 <span class="detail-label">Ultima sesion</span>
                 <span class="detail-value detail-sesion-fecha">${formatearFecha(ultimaSesion)}</span>
             </div>` : ''}
+            <!-- TPV: valor vivo leído desde fichas_alta en cada render.
+                 Antes se pintaba proyecto.tpv (snapshot al crear), y si
+                 el comercial lo actualizaba en la ficha después, el
+                 proyecto seguía mostrando el valor viejo (o "Sin TPV"
+                 si la ficha aún no lo tenía). Mismo patrón que el
+                 badge de Integración financiera: placeholder con clase
+                 compartida + rellenado asíncrono vía obtenerFichaPorCliente. -->
             <div class="detail-field">
                 <span class="detail-label">Integracion TPV</span>
-                <span class="detail-value">${proyecto.tpv ? `<span class="detail-tpv-badge">${escapeHtml(proyecto.tpv)}</span>` : '<span style="color:var(--text-muted)">Sin TPV</span>'}</span>
+                <span class="detail-value det-tpv" data-proyecto-id="${proyecto.id}">
+                    ${proyecto.tpv ? `<span class="detail-tpv-badge">${escapeHtml(proyecto.tpv)}</span>` : '<span style="color:var(--text-muted)">Cargando…</span>'}
+                </span>
             </div>
             <!-- Integración financiera (Sage / A3 / No aplica). El valor
                  lo tiene la ficha (fichas_alta.integracion_financiera) y lo
@@ -990,22 +999,28 @@ function _renderCabeceraProyecto(proyecto) {
         ` : ''}`;
 }
 
-// Rellena los spans ".det-intfin" con el badge de integración financiera
-// de la ficha. Se invoca tras renderizar el detalle (Proyecto o Tareas)
-// y resuelve la ficha vía caché (obtenerFichaPorCliente). Best-effort:
-// si la ficha no se encuentra, deja "Sin definir" en gris.
+// Rellena los spans de cabecera que dependen de la ficha:
+//   · .det-intfin → badge de integración financiera (Sage / A3 / no aplica)
+//   · .det-tpv    → badge del TPV del cliente
+// Se resuelve la ficha una sola vez vía caché (obtenerFichaPorCliente) y
+// se actualizan ambos spans de una tacada. Best-effort: si la ficha no
+// está disponible, los spans quedan con su fallback.
 //
-// Usa querySelectorAll porque la cabecera se dibuja en las DOS pestañas
-// (Proyecto + Tareas) — hay dos spans simultáneos que hay que actualizar.
+// Se usan clases (no ids) porque la cabecera se dibuja en las DOS
+// pestañas (Proyecto + Tareas) → hay dos pares de spans simultáneos.
+// dataset.proyectoId protege de condiciones de carrera si el usuario
+// cambia de proyecto mientras la promesa resolvía.
 async function _poblarIntegracionFinanciera(proyecto) {
-    const spans = document.querySelectorAll('.det-intfin');
-    if (spans.length === 0) return;
+    const spansIntfin = document.querySelectorAll('.det-intfin');
+    const spansTpv    = document.querySelectorAll('.det-tpv');
+    if (spansIntfin.length === 0 && spansTpv.length === 0) return;
 
     let ficha = null;
     try {
         ficha = await obtenerFichaPorCliente(proyecto.cliente);
     } catch (_) { ficha = null; }
 
+    // ── Integración financiera ────────────────────────────────────────
     const slug = ficha ? (ficha.integracionFinanciera || '') : '';
     const LABEL = { sage: 'Sage', a3: 'A3', no_aplica: 'No aplica' };
     const COLOR = {
@@ -1013,28 +1028,37 @@ async function _poblarIntegracionFinanciera(proyecto) {
         a3:        { bg: '#dbeafe', color: '#1e40af' },
         no_aplica: { bg: '#f1f5f9', color: '#64748b' }
     };
-
     const vacio = '<span style="color:var(--text-muted)">Sin definir</span>';
-    let html;
+    let htmlIntfin;
     if (!slug) {
-        html = vacio;
+        htmlIntfin = vacio;
     } else {
         const c = COLOR[slug] || { bg: '#f1f5f9', color: '#334155' };
         const lbl = LABEL[slug] || slug;
         const contactoHtml = (ficha && (ficha.intFinPersona || ficha.intFinEmail))
             ? `<span style="font-size:.72rem;color:var(--text-muted);margin-left:8px">${escapeHtml(ficha.intFinPersona || ficha.intFinEmail)}</span>`
             : '';
-        html = `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:${c.bg};color:${c.color}">${escapeHtml(lbl)}</span>${contactoHtml}`;
+        htmlIntfin = `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:${c.bg};color:${c.color}">${escapeHtml(lbl)}</span>${contactoHtml}`;
     }
-
-    // Solo actualiza los spans cuyo dataset.proyectoId coincida con el
-    // proyecto actual — si el usuario cambió de proyecto mientras la
-    // promesa resolvía, los nuevos spans pertenecen a otro proyecto y los
-    // dejamos en paz (se resolverán con su propio fetch).
-    spans.forEach(s => {
+    spansIntfin.forEach(s => {
         if (!s.isConnected) return;
         if (s.dataset.proyectoId !== String(proyecto.id)) return;
-        s.innerHTML = html;
+        s.innerHTML = htmlIntfin;
+    });
+
+    // ── TPV ─────────────────────────────────────────────────────────
+    // Preferimos el TPV de la ficha (fuente de verdad) sobre el snapshot
+    // guardado en proyecto.tpv — así los cambios del comercial en la
+    // ficha se reflejan al instante en el proyecto sin resincronizar.
+    const tpvFicha = ficha ? (ficha.tpv || '').trim() : '';
+    const tpvFinal = tpvFicha || (proyecto.tpv || '');
+    const htmlTpv = tpvFinal
+        ? `<span class="detail-tpv-badge">${escapeHtml(tpvFinal)}</span>`
+        : '<span style="color:var(--text-muted)">Sin TPV</span>';
+    spansTpv.forEach(s => {
+        if (!s.isConnected) return;
+        if (s.dataset.proyectoId !== String(proyecto.id)) return;
+        s.innerHTML = htmlTpv;
     });
 }
 
