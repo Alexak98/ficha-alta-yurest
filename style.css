@@ -953,11 +953,53 @@ select option { color: var(--text); }
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 5px;
+    align-items: center;
 }
+/* Pills de locales cuando el módulo padre aún NO está activo: se dibujan
+   atenuados para dar pista visual de que el módulo no está contratado,
+   pero SIGUEN siendo clicables — al seleccionar uno, onModuloLocalToggle()
+   activa automáticamente el módulo padre y la opacidad vuelve a 100%. */
 .cart-item:not(:has(> input[name="cart_item"]:checked)) .corp-module-locales .pct-btn--xs {
-    opacity: 0.3;
-    pointer-events: none;
-    cursor: default;
+    opacity: 0.45;
+}
+/* Botón "Todos" dentro de la lista de locales de un módulo. Es pequeño,
+   con estilo diferenciado (fondo sutil azul) para que destaque un poco
+   sobre los pills de locales. Al activarse (todos los locales marcados)
+   invierte a estilo sólido para dar feedback visual. */
+.corp-ml-todos {
+    padding: 3px 9px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+    margin-right: 2px;
+}
+.corp-ml-todos:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(252, 88, 88, 0.06);
+}
+.corp-ml-todos.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: #fff;
+}
+.corp-ml-todos.active:hover {
+    background: #e84848;
+}
+/* El botón Todos NO se desactiva visualmente aunque el módulo padre
+   esté sin marcar — queremos poder pulsarlo para activar todos los
+   locales y que el módulo se auto-active. */
+.cart-item:not(:has(> input[name="cart_item"]:checked)) .corp-module-locales .corp-ml-todos {
+    opacity: 1;
+    pointer-events: auto;
 }
 .cart-item-pricing { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
 .cart-item-pago { font-size: 0.70rem; color: var(--text-muted); opacity: 0.75; white-space: nowrap; }

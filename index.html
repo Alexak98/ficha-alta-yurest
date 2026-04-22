@@ -1267,10 +1267,66 @@
 
     function renderModuleLocalesPillsHTML(moduleId, locales, checkedVals) {
         if (!locales || locales.length === 0) return '';
-        return locales.map((loc, i) => {
+        const allChecked = locales.every((_, i) => checkedVals.has(String(i)));
+        // Botón "Todos" al inicio — clickea para activar/desactivar todos los
+        // locales de este módulo de golpe (útil en clientes con 10+ locales).
+        // event.stopPropagation()+preventDefault() evitan que el click suba al
+        // <label class="cart-item"> y dispare el checkbox del módulo padre
+        // sin querer; esa activación ya la maneja toggleTodosLocalesModulo
+        // cuando procede.
+        const btnTodos = `<button type="button" class="corp-ml-todos${allChecked ? ' active' : ''}"
+            onclick="event.stopPropagation();event.preventDefault();toggleTodosLocalesModulo('${moduleId}', this)"
+            title="Seleccionar/deseleccionar todos los locales">${allChecked ? '✓ Todos' : 'Todos'}</button>`;
+        const pills = locales.map((loc, i) => {
             const isChecked = checkedVals.has(String(i));
-            return `<input type="checkbox" id="corp_ml_${moduleId}_${i}" name="corp_ml_${moduleId}" value="${i}"${isChecked ? ' checked' : ''} onchange="recalcularCarrito()"><label for="corp_ml_${moduleId}_${i}" class="pct-btn pct-btn--xs">${loc.nombre}</label>`;
+            return `<input type="checkbox" id="corp_ml_${moduleId}_${i}" name="corp_ml_${moduleId}" value="${i}"${isChecked ? ' checked' : ''} onchange="onModuloLocalToggle('${moduleId}')"><label for="corp_ml_${moduleId}_${i}" class="pct-btn pct-btn--xs">${loc.nombre}</label>`;
         }).join('');
+        return btnTodos + pills;
+    }
+
+    // Cambia el estado de un local dentro de un módulo. Si tras el cambio
+    // queda al menos un local marcado, el módulo padre (input name=cart_item
+    // value=moduleId) se activa automáticamente — antes se podía marcar
+    // locales sin activar el módulo y quedaba inconsistente.
+    window.onModuloLocalToggle = function (moduleId) {
+        const anyChecked = document.querySelectorAll(`input[name="corp_ml_${moduleId}"]:checked`).length > 0;
+        const moduloCb = document.querySelector(`input[name="cart_item"][value="${moduleId}"]`);
+        if (moduloCb && anyChecked && !moduloCb.checked) {
+            moduloCb.checked = true;
+        }
+        // Actualiza el estado del botón "Todos" (para que su texto/clase
+        // refleje si ya están todos seleccionados).
+        _actualizarBtnTodosLocales(moduleId);
+        recalcularCarrito();
+    };
+
+    // Toggle "Todos los locales" de un módulo. Si todos están marcados los
+    // desmarca; si falta alguno, los marca todos. Al marcar, activa también
+    // el módulo padre (igual que la interacción individual).
+    window.toggleTodosLocalesModulo = function (moduleId /*, btn */) {
+        const checkboxes = document.querySelectorAll(`input[name="corp_ml_${moduleId}"]`);
+        if (checkboxes.length === 0) return;
+        const todosMarcados = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => { cb.checked = !todosMarcados; });
+        const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+        const moduloCb = document.querySelector(`input[name="cart_item"][value="${moduleId}"]`);
+        if (moduloCb && anyChecked && !moduloCb.checked) moduloCb.checked = true;
+        _actualizarBtnTodosLocales(moduleId);
+        recalcularCarrito();
+    };
+
+    // Re-renderiza solo el estado visual del botón "Todos" sin reconstruir
+    // todo el bloque de locales (evita perder foco/animaciones del click).
+    function _actualizarBtnTodosLocales(moduleId) {
+        const cont = document.getElementById('corp_mod_locs_' + moduleId);
+        if (!cont) return;
+        const btn = cont.querySelector('.corp-ml-todos');
+        if (!btn) return;
+        const cbs = cont.querySelectorAll(`input[name="corp_ml_${moduleId}"]`);
+        if (cbs.length === 0) return;
+        const allChecked = Array.from(cbs).every(cb => cb.checked);
+        btn.classList.toggle('active', allChecked);
+        btn.textContent = allChecked ? '✓ Todos' : 'Todos';
     }
 
     function getModuleLocalsMult(moduleId) {
@@ -2997,6 +3053,19 @@
                     const cb = document.getElementById(`corp_ml_${pid}_${idx}`);
                     if (cb) cb.checked = true;
                 });
+                // Si el módulo no estaba marcado pero tiene locales, lo
+                // sincronizamos. Protege contra fichas antiguas guardadas
+                // antes de que existiera la auto-activación: sin esto el
+                // comercial veía locales marcados pero el módulo padre
+                // descaticado.
+                if (Array.isArray(arr) && arr.length > 0) {
+                    const parentCb = document.querySelector(`input[name="cart_item"][value="${pid}"]`);
+                    if (parentCb && !parentCb.checked) parentCb.checked = true;
+                }
+                // Refresca el estado del botón "Todos" del bloque.
+                if (typeof _actualizarBtnTodosLocales === 'function') {
+                    _actualizarBtnTodosLocales(pid);
+                }
             });
             // Restaurar precios mensuales por local (el orden del DOM coincide
             // con el orden de creación de locales).
