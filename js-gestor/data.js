@@ -42,6 +42,19 @@ const TIPOS_PROYECTO = [
 
 const ESTADOS_PROYECTO = ['activo', 'completado', 'pausado'];
 
+// Label bonito para cada estado de proyecto. El slug en BD sigue siendo
+// 'completado' (evita una migración y no rompe histórico) pero al usuario
+// se le muestra "Finalizado" — suena más claro como término de cierre.
+const ESTADO_PROYECTO_LABEL = {
+    activo:     'Activo',
+    completado: 'Finalizado',
+    pausado:    'Pausado'
+};
+function labelEstadoProyecto(slug) {
+    const s = String(slug || '').toLowerCase().trim();
+    return ESTADO_PROYECTO_LABEL[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+}
+
 // Secciones fijas basadas en la estructura de Asana.
 // 'Hardware' ya no es una sección dentro de Tareas — se promovió a su propia
 // pestaña del detalle del proyecto (Proyecto ▸ Hardware ▸ Tareas ▸ Formularios

@@ -66,7 +66,7 @@ function inicializarFiltros() {
 
     const filtroEstadoChecks = document.getElementById('filtro-estado-checks');
     filtroEstadoChecks.innerHTML = ESTADOS_PROYECTO.map(estado =>
-        `<label class="filter-check-item"><input type="checkbox" value="${estado}" class="filtro-estado-cb" onchange="aplicarFiltros()"> ${capitalizar(estado)}</label>`
+        `<label class="filter-check-item"><input type="checkbox" value="${estado}" class="filtro-estado-cb" onchange="aplicarFiltros()"> ${labelEstadoProyecto(estado)}</label>`
     ).join('');
 
     const proyImpl = document.getElementById('proyecto-implementador');
@@ -79,7 +79,7 @@ function inicializarFiltros() {
 
     const proyEstado = document.getElementById('proyecto-estado');
     ESTADOS_PROYECTO.forEach(estado => {
-        proyEstado.innerHTML += `<option value="${estado}">${capitalizar(estado)}</option>`;
+        proyEstado.innerHTML += `<option value="${estado}">${labelEstadoProyecto(estado)}</option>`;
     });
 }
 
@@ -552,7 +552,7 @@ function renderCard(proyecto) {
         <div class="project-card" style="--card-color: ${color}" onclick="abrirDetalle('${proyecto.id}')">
             <div class="card-header">
                 <span class="card-cliente">${escapeHtml(proyecto.cliente)}</span>
-                <span class="card-estado estado-${proyecto.estado}">${proyecto.estado}</span>
+                <span class="card-estado estado-${proyecto.estado}">${escapeHtml(labelEstadoProyecto(proyecto.estado))}</span>
             </div>
             <div class="card-body">
                 <div class="card-meta">
@@ -768,7 +768,10 @@ async function guardarProyecto() {
                 YurestConfig.logProyectoHistorial({
                     proyecto_id: proyectoPrev.id,
                     accion: accionEstado,
-                    descripcion: `Estado: ${snapshotPrev.estado || '—'} → ${estado}`,
+                    // Usamos el label humano en la descripción del historial
+                    // para que Timeline lea "Estado: Activo → Finalizado"
+                    // en vez de los slugs internos.
+                    descripcion: `Estado: ${labelEstadoProyecto(snapshotPrev.estado) || '—'} → ${labelEstadoProyecto(estado)}`,
                     cambios: { estado: { before: snapshotPrev.estado, after: estado } },
                     metadata: { cliente: proyectoPrev.cliente || '' }
                 });
@@ -919,7 +922,7 @@ function _renderCabeceraProyecto(proyecto) {
             <div class="detail-field">
                 <span class="detail-label">Estado</span>
                 <span class="detail-value">
-                    <span class="card-estado estado-${proyecto.estado}">${proyecto.estado}</span>
+                    <span class="card-estado estado-${proyecto.estado}">${escapeHtml(labelEstadoProyecto(proyecto.estado))}</span>
                 </span>
             </div>
             <div class="detail-field">
@@ -1212,7 +1215,7 @@ const _TL_LABELS = {
     subtarea_desagendada: 'Desagendada',
     proyecto_pausado:     'Pausado',
     proyecto_reanudado:   'Reanudado',
-    proyecto_completado:  'Completado',
+    proyecto_completado:  'Finalizado',
     proyecto_creado:      'Creado',
     proyecto_actualizado: 'Actualizado',
     anotacion_added:      '+ Nota',
@@ -1264,13 +1267,21 @@ async function renderDetalleTimeline(proyecto) {
         const keys = Object.keys(cambios);
         const diff = keys.length === 0 ? '' : `
             <div class="tl-changes">
-                ${keys.slice(0, 10).map(k => `
+                ${keys.slice(0, 10).map(k => {
+                    // Para el campo 'estado' mostramos el label bonito
+                    // ("Finalizado" en vez de "completado") en Timeline;
+                    // los demás campos van tal cual.
+                    const fmt = (k === 'estado')
+                        ? v => labelEstadoProyecto(v) || '—'
+                        : v => (v ?? '—');
+                    return `
                     <div class="tl-change-row">
                         <span class="tl-change-field">${escapeHtml(k)}</span>
-                        <span class="tl-change-before">${escapeHtml(String(cambios[k].before ?? '—'))}</span>
+                        <span class="tl-change-before">${escapeHtml(String(fmt(cambios[k].before)))}</span>
                         <span class="tl-change-arrow">→</span>
-                        <span class="tl-change-after">${escapeHtml(String(cambios[k].after ?? '—'))}</span>
-                    </div>`).join('')}
+                        <span class="tl-change-after">${escapeHtml(String(fmt(cambios[k].after)))}</span>
+                    </div>`;
+                }).join('')}
             </div>`;
         const ctx = [
             r.seccion_nombre ? `Sección: ${escapeHtml(r.seccion_nombre)}` : '',
