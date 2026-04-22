@@ -3349,16 +3349,18 @@
             recalcularMensual();
         }
 
-        // Si las credenciales están vacías Y la ficha no las tiene en el backend
-        // (ni siquiera vacías guardadas), generarlas a partir del Nombre Comercial.
-        // Si la ficha vino con creds explícitamente vacías ("" guardado por el
-        // comercial a propósito), respetamos esa decisión y no autorrellenamos.
+        // Auto-generar credenciales si los dos campos quedaron vacíos tras
+        // cargar la ficha. Antes había un chequeo extra fichaTraeCredenciales
+        // que bloqueaba el auto-fill si la BD tenía las columnas presentes
+        // aunque estuvieran como "" — lo que es el caso habitual en fichas
+        // sin credenciales definidas todavía. Consecuencia: el Nombre
+        // Comercial estaba cargado pero las credenciales nunca se generaban.
+        // Ahora solo miramos los inputs: si están vacíos, los proponemos a
+        // partir del nombre. Si el comercial los quiere vacíos de verdad
+        // puede borrarlos antes de guardar — no es destructivo.
         const credMaster = document.getElementById('cred_master');
         const credYurest = document.getElementById('cred_yurest');
-        const credenMaster = f['Credencial Master'] ?? f.cred_master;
-        const credYurestKey = f['Credencial Yurest'] ?? f.cred_yurest;
-        const fichaTraeCredenciales = (credenMaster !== undefined) || (credYurestKey !== undefined);
-        if (credMaster && credYurest && !credMaster.value && !credYurest.value && !fichaTraeCredenciales) {
+        if (credMaster && credYurest && !credMaster.value.trim() && !credYurest.value.trim()) {
             actualizarCredenciales();
         }
 
