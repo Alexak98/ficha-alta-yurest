@@ -220,7 +220,10 @@
       "name": "Detectar TPV no integrado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 740],
+      "position": [
+        1040,
+        740
+      ],
       "alwaysOutputData": true
     },
     {
@@ -238,7 +241,10 @@
       "name": "Crear tarea Asana TPV NI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1260, 740],
+      "position": [
+        1260,
+        740
+      ],
       "credentials": {
         "asanaApi": {
           "id": "ASANA_CREDENTIAL_ID",
@@ -259,7 +265,10 @@
       "name": "Email integraciones TPV NI",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [1480, 740],
+      "position": [
+        1480,
+        740
+      ],
       "credentials": {
         "smtp": {
           "id": "2V6BD1M7DfSWvpIf",
@@ -575,11 +584,6 @@
             "node": "Map Comercial Email",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Detectar TPV no integrado",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -652,13 +656,7 @@
     },
     "UPDATE Ficha Drive": {
       "main": [
-        [
-          {
-            "node": "Email cliente Drive listo",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Preparar Update Solicitud": {

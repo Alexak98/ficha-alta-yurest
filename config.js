@@ -59,6 +59,12 @@
         // Formulario público (cliente rellena desde email)
         responderSolicitud:   `${WEBHOOK_BASE}/6da4274f-5a6d-4981-a92a-f9d7eb734144`,
 
+        // Notificación cuando el comercial completa la ficha → dispara
+        // email Drive al cliente + tarea Asana + email integraciones
+        // (workflow 19). Antes vivían en el workflow 11 al recibir la
+        // solicitud, ahora se difieren hasta que la ficha está lista.
+        notificarFichaCompleta: `${WEBHOOK_BASE}/ficha/notificar-completa`,
+
         // Contabilidad
         grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`,
 

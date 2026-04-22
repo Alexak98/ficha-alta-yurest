@@ -1,0 +1,391 @@
+{
+  "name": "Yurest - Notificar ficha completa (emails + Asana)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ficha/notificar-completa",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-notif-completa",
+      "name": "Webhook POST Notificar Completa",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "ficha-notificar-completa"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "fichas_alta",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "=id=eq.{{ $json.body.ficha_id }}",
+        "options": {}
+      },
+      "id": "supa-get-ficha-notif",
+      "name": "GET Ficha by id",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza los datos de la ficha + decide qué notificaciones disparar.\n// Idempotencia: si notificada_completa_at ya no es null, no re-envía.\n// Flags de salida:\n//   enviar_drive   → email drive al cliente\n//   enviar_integ   → tarea Asana + email integraciones (solo si TPV NI)\nconst rows = ($input.all() || []).map(i => i.json).filter(r => r && r.id);\nif (rows.length === 0) {\n  return [{ json: { error: 'ficha_id no encontrado', enviar_drive:false, enviar_integ:false } }];\n}\nconst f = rows[0];\nconst yaNotificada = !!f.notificada_completa_at;\nconst driveId  = f.carpeta_drive || '';\nconst noInt    = f.tpv_no_integrado === true;\n// Si ya la notificamos antes, ambos flags a false (idempotencia).\nconst enviar_drive = !yaNotificada && !!f.email && !!driveId;\nconst enviar_integ = !yaNotificada && noInt;\nreturn [{ json: {\n  id:               f.id,\n  email_cliente:    f.email || '',\n  nombre_comercial: f.nombre_comercial || f.denominacion || 'Cliente',\n  denominacion:     f.denominacion || '',\n  comercial:        f.comercial || '',\n  carpeta_drive:    driveId,\n  tpv_no_integrado: noInt,\n  tpv_ni_nombre:    f.tpv_ni_nombre   || '',\n  tpv_ni_contacto:  f.tpv_ni_contacto || '',\n  tpv_ni_email:     f.tpv_ni_email    || '',\n  ya_notificada:    yaNotificada,\n  enviar_drive,\n  enviar_integ\n}}];"
+      },
+      "id": "cargar-ficha-notif",
+      "name": "Cargar Ficha",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.enviar_drive }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-enviar-drive",
+      "name": "¿Enviar Drive?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "soporte@yurest.com",
+        "toEmail": "={{ $('Cargar Ficha').first().json.email_cliente }}",
+        "subject": "Ya puedes subir tus documentos",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>¡Bienvenido a Yurest!</title>\n</head>\n<body style=\"margin:0;padding:0;background:#f1f1f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;\">\n\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f1f1f1;padding:40px 16px;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:580px;\">\n\n          <tr>\n            <td style=\"background:linear-gradient(135deg,#111111 0%,#1c0808 50%,#2d0c0c 100%);border-radius:16px 16px 0 0;padding:36px 40px 32px;\">\n\n              <table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin-bottom:24px;\">\n                <tr>\n                  <td style=\"background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:5px 14px 5px 10px;\">\n                    <table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n                      <tr>\n                        <td style=\"width:8px;height:8px;background:#fc5858;border-radius:50%;vertical-align:middle;\"></td>\n                        <td style=\"padding-left:8px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fca5a5;vertical-align:middle;\">Yurest</td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n              </table>\n\n              <p style=\"margin:0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.3;\">¡Ya casi estás dentro!</p>\n              <p style=\"margin:8px 0 0;font-size:14px;color:#94a3b8;line-height:1.5;\">Tu alta en Yurest está prácticamente lista.</p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background:#ffffff;padding:36px 40px;\">\n\n              <p style=\"margin:0 0 20px;font-size:15px;color:#1e293b;line-height:1.6;\">\n                Hola <strong>{{ $('Guardar Body').first().json.clienteData['Nombre Comercial'] || $('Guardar Body').first().json.clienteData['Nombre'] || $('Guardar Body').first().json.clienteData['Nombre Sociedad'] }}</strong>,\n              </p>\n\n              <p style=\"margin:0 0 20px;font-size:15px;color:#334155;line-height:1.7;\">\n                Muchas gracias por completar tu información. Ya tenemos todo lo que necesitamos para ponernos en marcha y en breve nuestro equipo se pondrá en contacto contigo para darte los últimos detalles antes de tu arranque con Yurest.\n              </p>\n\n              <p style=\"margin:0 0 24px;font-size:15px;color:#334155;line-height:1.7;\">\n                Mientras tanto, ya hemos preparado una <strong style=\"color:#1e293b;\">carpeta en Google Drive</strong> exclusiva para ti donde puedes ir subiendo cualquier documento que necesitemos para completar el proceso.\n              </p>\n\n              <table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:0 0 32px;\">\n                <tr>\n                  <td align=\"center\" style=\"background:#fc5858;border-radius:10px;\">\n                    <a href=\"https://drive.google.com/drive/u/1/folders/{{ $('Extraer ID Drive').first().json.carpeta_drive }}\" target=\"_blank\"\n                       style=\"display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.01em;\">\n                      Abrir mi carpeta de Drive →\n                    </a>\n                  </td>\n                </tr>\n              </table>\n\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border:1.5px solid #f1f5f9;border-radius:12px;overflow:hidden;margin:0 0 32px;\">\n                <tr>\n                  <td style=\"background:#f8fafc;border-bottom:1.5px solid #f1f5f9;padding:12px 18px;\">\n                    <p style=\"margin:0;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#fc5858;\">¿Qué sigue ahora?</p>\n                  </td>\n                </tr>\n                <tr>\n                  <td style=\"padding:22px 22px 8px;\">\n\n                    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n                      <tr>\n                        <td width=\"36\" valign=\"top\" style=\"padding-bottom:18px;\">\n                          <span style=\"display:inline-block;width:28px;height:28px;background:#fc5858;border-radius:50%;color:#fff;font-size:12px;font-weight:800;text-align:center;line-height:28px;\">1</span>\n                        </td>\n                        <td valign=\"top\" style=\"padding-bottom:18px;padding-left:10px;\">\n                          <p style=\"margin:0;font-size:14px;font-weight:700;color:#1e293b;line-height:1.4;\">Sube tus documentos a la carpeta</p>\n                          <p style=\"margin:4px 0 0;font-size:13px;color:#64748b;line-height:1.55;\">Contrato, logotipo, carta de menús o cualquier archivo que tu comercial te haya indicado.</p>\n                        </td>\n                      </tr>\n                      <tr>\n                        <td width=\"36\" valign=\"top\" style=\"padding-bottom:18px;\">\n                          <span style=\"display:inline-block;width:28px;height:28px;background:#fc5858;border-radius:50%;color:#fff;font-size:12px;font-weight:800;text-align:center;line-height:28px;\">2</span>\n                        </td>\n                        <td valign=\"top\" style=\"padding-bottom:18px;padding-left:10px;\">\n                          <p style=\"margin:0;font-size:14px;font-weight:700;color:#1e293b;line-height:1.4;\">Nuestro equipo revisa tu ficha</p>\n                          <p style=\"margin:4px 0 0;font-size:13px;color:#64748b;line-height:1.55;\">Verificamos que todo esté en orden y preparamos tu entorno en la plataforma.</p>\n                        </td>\n                      </tr>\n                      <tr>\n                        <td width=\"36\" valign=\"top\" style=\"padding-bottom:14px;\">\n                          <span style=\"display:inline-block;width:28px;height:28px;background:#fc5858;border-radius:50%;color:#fff;font-size:12px;font-weight:800;text-align:center;line-height:28px;\">3</span>\n                        </td>\n                        <td valign=\"top\" style=\"padding-bottom:14px;padding-left:10px;\">\n                          <p style=\"margin:0;font-size:14px;font-weight:700;color:#1e293b;line-height:1.4;\">¡Arrancamos!</p>\n                          <p style=\"margin:4px 0 0;font-size:13px;color:#64748b;line-height:1.55;\">Te contactaremos para confirmar la fecha de arranque y los accesos a Yurest.</p>\n                        </td>\n                      </tr>\n                    </table>\n\n                  </td>\n                </tr>\n              </table>\n\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:0 0 24px;\">\n                <tr><td style=\"border-top:1.5px solid #f1f5f9;\"></td></tr>\n              </table>\n\n              <p style=\"margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.7;\">\n                Si tienes cualquier duda, responde a este email o contacta directamente con tu comercial. ¡Estamos deseando trabajar contigo!\n              </p>\n\n              <p style=\"margin:0;font-size:14px;color:#64748b;line-height:1.7;\">\n                Un saludo,<br>\n                <strong style=\"color:#1e293b;\">El equipo de Yurest</strong>\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background:#f8fafc;border-radius:0 0 16px 16px;border-top:1.5px solid #e2e8f0;padding:20px 40px;\">\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n                <tr>\n                  <td style=\"font-size:12px;color:#94a3b8;\">© Yurest · Has completado el formulario de alta.</td>\n                  <td align=\"right\" style=\"font-size:12px;\"><a href=\"https://yurest.com\" style=\"color:#fc5858;text-decoration:none;font-weight:600;\">yurest.com</a></td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n        </table>\n      </td>\n    </tr>\n  </table>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "email-drive-completa",
+      "name": "Email cliente Drive listo",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1060,
+        200
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "2V6BD1M7DfSWvpIf",
+          "name": "Soporte"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.enviar_integ }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-enviar-integ",
+      "name": "¿Enviar Integraciones?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        860,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye el item que consumen Crear tarea Asana + Email integraciones.\n// Mantiene los mismos nombres de campos que usaba el workflow 11 para que\n// los bodies de Asana y la plantilla HTML del email sigan funcionando\n// sin cambios en sus expresiones.\nconst c = $('Cargar Ficha').first().json;\nreturn [{ json: {\n  tpvNombre:  (c.tpv_ni_nombre   || '').trim() || 'TPV sin nombre',\n  tpvPersona: (c.tpv_ni_contacto || '').trim(),\n  tpvEmail:   (c.tpv_ni_email    || '').trim(),\n  nombreCom:  (c.nombre_comercial || c.denominacion || '').trim() || 'Cliente sin nombre',\n  comercial:  (c.comercial       || '').trim() || '—',\n  sociedad:   (c.denominacion    || '').trim()\n}}];"
+      },
+      "id": "prep-notif-tpv",
+      "name": "Preparar Notif TPV NI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        400
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.asana.com/api/1.0/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": {\n    \"name\": {{ JSON.stringify($json.tpvNombre + ' - ' + $json.nombreCom) }},\n    \"notes\": {{ JSON.stringify('Persona de referencia: ' + ($json.tpvPersona || '—') + '\\nEmail de referencia: ' + ($json.tpvEmail || '—') + '\\nCliente: ' + $json.nombreCom + '\\nComercial: ' + $json.comercial) }},\n    \"projects\": [\"1207920061546505\"]\n  }\n}",
+        "options": {}
+      },
+      "id": "asana-completa",
+      "name": "Crear tarea Asana TPV NI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1260,
+        400
+      ],
+      "credentials": {
+        "asanaApi": {
+          "id": "ASANA_CREDENTIAL_ID",
+          "name": "Asana Yurest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "soporte@yurest.com",
+        "toEmail": "soporte@yurest.com,a.jareno@yurest.com,luis@roocket.io",
+        "subject": "=Nueva integracion TPV - {{ $('Preparar Notif TPV NI').first().json.tpvNombre }}",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<body style=\"margin:0;padding:0;background:#f1f1f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#f1f1f1;padding:32px 16px;\">\n  <tr><td align=\"center\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:560px;\">\n      <tr><td style=\"background:linear-gradient(135deg,#111111,#2d0c0c);border-radius:14px 14px 0 0;padding:28px 32px;\">\n        <p style=\"margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fca5a5;\">Yurest · Integraciones</p>\n        <p style=\"margin:8px 0 0;font-size:20px;font-weight:700;color:#ffffff;\">Nueva integración TPV pendiente</p>\n      </td></tr>\n      <tr><td style=\"background:#ffffff;padding:28px 32px;\">\n        <p style=\"margin:0 0 16px;font-size:14px;color:#334155;line-height:1.6;\">\n          Se ha añadido un cliente con una integración TPV <strong>no realizada</strong>. Se ha creado la tarea correspondiente en el proyecto <strong>Integraciones</strong> de Asana.\n        </p>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border:1.5px solid #f1f5f9;border-radius:10px;margin:0 0 18px;\">\n          <tr><td style=\"background:#f8fafc;padding:10px 16px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fc5858;\">Datos de referencia</td></tr>\n          <tr><td style=\"padding:14px 16px;font-size:13px;color:#1e293b;line-height:1.7;\">\n            <strong>TPV:</strong> {{ $('Preparar Notif TPV NI').first().json.tpvNombre }}<br>\n            <strong>Cliente (nombre comercial):</strong> {{ $('Preparar Notif TPV NI').first().json.nombreCom }}<br>\n            <strong>Comercial responsable:</strong> {{ $('Preparar Notif TPV NI').first().json.comercial }}<br>\n            <strong>Persona de referencia del TPV:</strong> {{ $('Preparar Notif TPV NI').first().json.tpvPersona || '—' }}<br>\n            <strong>Email de referencia del TPV:</strong> {{ $('Preparar Notif TPV NI').first().json.tpvEmail || '—' }}\n          </td></tr>\n        </table>\n        <p style=\"margin:0;font-size:13px;color:#64748b;line-height:1.6;\">Equipo Yurest</p>\n      </td></tr>\n      <tr><td style=\"background:#f8fafc;border-radius:0 0 14px 14px;border-top:1.5px solid #e2e8f0;padding:14px 32px;font-size:11px;color:#94a3b8;\">© Yurest · Aviso automático</td></tr>\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "email-integ-completa",
+      "name": "Email integraciones TPV NI",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1460,
+        400
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "2V6BD1M7DfSWvpIf",
+          "name": "Soporte"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "fichas_alta",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Cargar Ficha').first().json.id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "notificada_completa_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "marcar-notificada",
+      "name": "Marcar notificada",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        600
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, id: $('Cargar Ficha').first().json.id, enviar_drive: $('Cargar Ficha').first().json.enviar_drive, enviar_integ: $('Cargar Ficha').first().json.enviar_integ, ya_notificada: $('Cargar Ficha').first().json.ya_notificada }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-notif",
+      "name": "Respond Notif",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook POST Notificar Completa": {
+      "main": [
+        [
+          {
+            "node": "GET Ficha by id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Ficha by id": {
+      "main": [
+        [
+          {
+            "node": "Cargar Ficha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cargar Ficha": {
+      "main": [
+        [
+          {
+            "node": "¿Enviar Drive?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "¿Enviar Integraciones?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Marcar notificada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Enviar Drive?": {
+      "main": [
+        [
+          {
+            "node": "Email cliente Drive listo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "¿Enviar Integraciones?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Notif TPV NI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Preparar Notif TPV NI": {
+      "main": [
+        [
+          {
+            "node": "Crear tarea Asana TPV NI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear tarea Asana TPV NI": {
+      "main": [
+        [
+          {
+            "node": "Email integraciones TPV NI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar notificada": {
+      "main": [
+        [
+          {
+            "node": "Respond Notif",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

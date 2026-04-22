@@ -2747,6 +2747,30 @@
                     }
                 } catch (_) { /* nunca bloquear la redirección por un fallo de log */ }
 
+                // ── Notificación "ficha completada" ──────────────────────
+                // Si el comercial acaba de guardar la ficha con estado
+                // 'rellenado' (= completada por comercial) Y veníamos de una
+                // ficha que antes estaba 'completada' (= rellenada por
+                // cliente), disparamos el workflow 19 que envía:
+                //   · Email al cliente con el enlace a Drive.
+                //   · Tarea Asana + email a integraciones (si TPV no integrado).
+                // Si ya se había notificado antes, el workflow 19 es
+                // idempotente (usa fichas_alta.notificada_completa_at).
+                // Lo hacemos best-effort sin bloquear la redirección.
+                try {
+                    const estadoPrevio = String((_editSnapshotOriginal || {}).estado
+                                              || (_editSnapshotOriginal || {})['Estado']
+                                              || '').toLowerCase();
+                    const transicion = data['Estado'] === 'rellenado' && estadoPrevio === 'completada';
+                    const fichaIdNotif = _editId || (body && body.id) || null;
+                    if (transicion && fichaIdNotif && YurestConfig.ENDPOINTS.notificarFichaCompleta) {
+                        YurestConfig.apiFetch(YurestConfig.ENDPOINTS.notificarFichaCompleta, {
+                            method: 'POST',
+                            body: JSON.stringify({ ficha_id: fichaIdNotif })
+                        }).catch(err => console.warn('[notificarFichaCompleta]', err));
+                    }
+                } catch (_) { /* no bloquear el flujo si falla la notificación */ }
+
                 sessionStorage.removeItem('yurest_edit_ficha');
                 sessionStorage.removeItem('yurest_completar_id');
                 sessionStorage.setItem('yurest_refresh_lista', '1');
