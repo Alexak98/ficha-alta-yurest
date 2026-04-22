@@ -951,6 +951,22 @@ function _renderCabeceraProyecto(proyecto) {
                     <span style="color:var(--text-muted)">Cargando…</span>
                 </span>
             </div>
+            <!-- Tiempo teórico vs real: suma tiempoEstimado y tiempoReal
+                 de todas las subtareas. El helper _sumaTiemposProyecto()
+                 devuelve ambos totales + % de desviación. -->
+            <div class="detail-field">
+                <span class="detail-label">Tiempo (est / real)</span>
+                <span class="detail-value">${_renderTiemposBadge(proyecto)}</span>
+            </div>
+            <div class="detail-field">
+                <span class="detail-label">Calendario</span>
+                <span class="detail-value">
+                    <button type="button" class="btn btn-secondary btn-calendario" onclick="abrirCalendarioProyecto('${proyecto.id}')" title="Ver calendario de subtareas">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:5px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Ver calendario
+                    </button>
+                </span>
+            </div>
             ${(proyecto.participantes && proyecto.participantes.length > 0) ? `<div class="detail-field">
                 <span class="detail-label">Participantes</span>
                 <span class="detail-value"><div class="participantes-chips-inline">${proyecto.participantes.map(e => `<span class="participante-chip-sm">${escapeHtml(e)}</span>`).join('')}</div></span>
@@ -1020,6 +1036,234 @@ async function _poblarIntegracionFinanciera(proyecto) {
         if (s.dataset.proyectoId !== String(proyecto.id)) return;
         s.innerHTML = html;
     });
+}
+
+// ──────────────────────────────────────────────────────────
+//  Calendario de subtareas del proyecto
+// ──────────────────────────────────────────────────────────
+// Estado del modal: qué proyecto está abierto y qué mes se muestra.
+// _calMesActual es un Date con día=1 apuntando al mes visible.
+let _calProyectoId = null;
+let _calMesActual  = null;
+let _calRangoMin   = null; // primer mes permitido (Date con día 1)
+let _calRangoMax   = null; // último mes permitido (Date con día 1)
+let _calMapaColor  = {};   // tareaId → hsl color
+
+// Derivador de color estable: hash simple del id de la tarea → hue 0-360.
+// Usa HSL con saturación/luminosidad fijas para que todas las tareas tengan
+// colores bien diferenciados y legibles sobre fondo blanco.
+function _colorParaTarea(tareaId) {
+    if (_calMapaColor[tareaId]) return _calMapaColor[tareaId];
+    let h = 0;
+    const s = String(tareaId || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    const hue = h % 360;
+    const color = `hsl(${hue}, 62%, 48%)`;
+    _calMapaColor[tareaId] = color;
+    return color;
+}
+
+// Parsea una fecha YYYY-MM-DD (o ISO) a Date local con hora 12:00 — evita
+// el clásico off-by-one de timezones al mostrar días.
+function _parseFechaSubtarea(fechaStr) {
+    if (!fechaStr) return null;
+    const s = String(fechaStr).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const d = new Date(fechaStr);
+        return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+    }
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d, 12);
+}
+
+// Recolecta todas las subtareas del proyecto con su fecha + el color de
+// su tarea padre (más el nombre de la tarea para la leyenda).
+function _recolectarSubtareasConFecha(proyecto) {
+    const out = [];
+    const tareas = {}; // id → { nombre, color }
+    (proyecto.secciones || []).forEach(sec => {
+        (sec.tareas || []).forEach(t => {
+            tareas[t.id] = { nombre: t.nombre, color: _colorParaTarea(t.id) };
+            (t.subtareas || []).forEach(s => {
+                const f = _parseFechaSubtarea(s.fechaEntrega);
+                if (!f) return;
+                out.push({
+                    id: s.id,
+                    nombre: s.nombre,
+                    tareaId: t.id,
+                    tareaNombre: t.nombre,
+                    seccionNombre: sec.nombre,
+                    fecha: f,
+                    completada: !!s.completada,
+                    color: tareas[t.id].color
+                });
+            });
+        });
+    });
+    return { subtareas: out, tareas };
+}
+
+function abrirCalendarioProyecto(proyectoId) {
+    const proyecto = proyectos.find(p => p.id === proyectoId);
+    if (!proyecto) return;
+    _calProyectoId = proyectoId;
+
+    const { subtareas, tareas } = _recolectarSubtareasConFecha(proyecto);
+
+    // Rango de meses permitido: desde el mes de fechaInicio hasta el mes
+    // de la subtarea más tardía (o el actual si no hay subtareas).
+    const fechaInicio = _parseFechaSubtarea(proyecto.fechaInicio) || new Date();
+    _calRangoMin = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), 1);
+    let maxFecha = new Date(fechaInicio);
+    subtareas.forEach(s => { if (s.fecha > maxFecha) maxFecha = s.fecha; });
+    _calRangoMax = new Date(maxFecha.getFullYear(), maxFecha.getMonth(), 1);
+
+    // Mes inicial: mes actual si cae en rango, si no el primero.
+    const hoy = new Date();
+    const mesHoy = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    if (mesHoy >= _calRangoMin && mesHoy <= _calRangoMax) _calMesActual = mesHoy;
+    else _calMesActual = new Date(_calRangoMin);
+
+    document.getElementById('calendario-titulo').textContent =
+        `Calendario de ${proyecto.cliente || 'proyecto'}`;
+    _calRender(proyecto, subtareas, tareas);
+    abrirModal('modal-calendario');
+}
+window.abrirCalendarioProyecto = abrirCalendarioProyecto;
+
+function _calMoverMes(delta) {
+    if (!_calMesActual) return;
+    const nuevo = new Date(_calMesActual.getFullYear(), _calMesActual.getMonth() + delta, 1);
+    if (nuevo < _calRangoMin || nuevo > _calRangoMax) return;
+    _calMesActual = nuevo;
+    const proyecto = proyectos.find(p => p.id === _calProyectoId);
+    if (!proyecto) return;
+    const { subtareas, tareas } = _recolectarSubtareasConFecha(proyecto);
+    _calRender(proyecto, subtareas, tareas);
+}
+window._calMoverMes = _calMoverMes;
+
+function _calRender(proyecto, subtareas, tareas) {
+    const yy = _calMesActual.getFullYear();
+    const mm = _calMesActual.getMonth();
+
+    // Etiqueta del mes en español — locale 'es-ES' con mes largo + año.
+    document.getElementById('cal-mes-label').textContent =
+        _calMesActual.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+    // Deshabilitar navegación cuando estamos en los extremos del rango.
+    document.getElementById('cal-prev').disabled =
+        new Date(yy, mm - 1, 1) < _calRangoMin;
+    document.getElementById('cal-next').disabled =
+        new Date(yy, mm + 1, 1) > _calRangoMax;
+
+    // Primer día del mes (convertido a índice 0=lun..6=dom) + nº de días.
+    const primerDia = new Date(yy, mm, 1);
+    const primerIdx = (primerDia.getDay() + 6) % 7;  // 0=lun
+    const ultDia = new Date(yy, mm + 1, 0).getDate();
+
+    // Agrupamos subtareas por día del mes visible (clave "d").
+    const porDia = {};
+    subtareas.forEach(s => {
+        if (s.fecha.getFullYear() === yy && s.fecha.getMonth() === mm) {
+            const d = s.fecha.getDate();
+            (porDia[d] = porDia[d] || []).push(s);
+        }
+    });
+
+    const hoy = new Date();
+    const esMesActual = hoy.getFullYear() === yy && hoy.getMonth() === mm;
+    const diaHoy = esMesActual ? hoy.getDate() : -1;
+
+    const cells = [];
+    // Celdas vacías para alinear el 1 del mes al día de la semana correcto.
+    for (let i = 0; i < primerIdx; i++) cells.push('<div class="cal-cell cal-empty"></div>');
+    for (let d = 1; d <= ultDia; d++) {
+        const subs = porDia[d] || [];
+        const clsHoy = d === diaHoy ? ' cal-today' : '';
+        const pills = subs.map(s => {
+            const tip = `${s.nombre} — ${s.tareaNombre} · ${s.seccionNombre}`;
+            const cls = s.completada ? ' completada' : '';
+            return `<span class="cal-sub${cls}" title="${escapeHtml(tip)}"
+                          style="background:${s.color}"
+                          onclick="_calClickSubtarea('${escapeHtml(s.id)}', '${escapeHtml(s.tareaId)}', '${escapeHtml(s.seccionNombre)}')">${escapeHtml(s.nombre)}</span>`;
+        }).join('');
+        cells.push(`<div class="cal-cell${clsHoy}">
+            <span class="cal-cell-num">${d}</span>
+            ${pills}
+        </div>`);
+    }
+    document.getElementById('cal-grid').innerHTML = cells.join('');
+
+    // Leyenda: una pill por cada tarea que tenga subtareas en el proyecto.
+    // Ayuda a identificar a qué tarea pertenece cada color.
+    const tareasUsadas = {};
+    subtareas.forEach(s => { tareasUsadas[s.tareaId] = s; });
+    const legendHtml = Object.values(tareasUsadas).map(s => `
+        <span class="cal-legend-item">
+            <span class="cal-legend-dot" style="background:${s.color}"></span>
+            ${escapeHtml(s.tareaNombre)}
+        </span>`).join('');
+    document.getElementById('cal-legend').innerHTML = legendHtml
+        || '<span style="color:var(--text-muted)">Sin subtareas en este proyecto.</span>';
+}
+
+function _calClickSubtarea(subtareaId, tareaId, seccionNombre) {
+    // Abre el modal de la subtarea para editarla rápido desde el calendario.
+    if (typeof abrirModalSubtarea === 'function') {
+        cerrarModal('modal-calendario');
+        abrirModalSubtarea(_calProyectoId, seccionNombre, tareaId, subtareaId);
+    }
+}
+window._calClickSubtarea = _calClickSubtarea;
+
+// Totales de tiempo: recorre TODAS las subtareas del proyecto sumando
+// tiempoEstimado y tiempoReal. Útil para comparar en la cabecera y para
+// el cálculo de desviación.
+function _sumaTiemposProyecto(proyecto) {
+    let est = 0, real = 0, conReal = 0;
+    (proyecto.secciones || []).forEach(sec => {
+        (sec.tareas || []).forEach(t => {
+            // También sumamos el tiempo de la TAREA (no solo subtareas)
+            // por si alguien lo usa al nivel de tarea directamente.
+            if (Number.isFinite(+t.tiempoEstimado)) est += +t.tiempoEstimado;
+            if (Number.isFinite(+t.tiempoReal))      { real += +t.tiempoReal; conReal++; }
+            (t.subtareas || []).forEach(s => {
+                if (Number.isFinite(+s.tiempoEstimado)) est += +s.tiempoEstimado;
+                if (Number.isFinite(+s.tiempoReal))      { real += +s.tiempoReal; conReal++; }
+            });
+        });
+    });
+    const desviacion = est > 0 ? Math.round(((real - est) / est) * 100) : 0;
+    return { est, real, conReal, desviacion };
+}
+
+// Badge de "Tiempo estimado / real" con color según desviación.
+// Si no hay ningún tiempoReal registrado todavía, solo mostramos el
+// estimado y un "—" gris para el real.
+function _renderTiemposBadge(proyecto) {
+    const t = _sumaTiemposProyecto(proyecto);
+    const formato = min => {
+        if (!min) return '0 min';
+        const h = Math.floor(min / 60);
+        const m = min % 60;
+        return h > 0 ? `${h}h ${m}m` : `${m} min`;
+    };
+    if (t.real === 0 && t.conReal === 0) {
+        return `<span style="color:#334155;font-weight:600">${formato(t.est)}</span>
+                <span style="color:var(--text-muted);margin:0 6px">/</span>
+                <span style="color:var(--text-muted)">sin registrar</span>`;
+    }
+    // Colorimetría de desviación:
+    //   <= 0%  (dentro de estimado) → verde
+    //   0-20%  (dentro de margen)   → ámbar
+    //   > 20%  (se pasó)            → rojo
+    const color = t.desviacion <= 0 ? '#15803d' : t.desviacion <= 20 ? '#b45309' : '#b91c1c';
+    const signo = t.desviacion > 0 ? '+' : '';
+    return `<span style="color:#334155;font-weight:600">${formato(t.est)}</span>
+            <span style="color:var(--text-muted);margin:0 6px">/</span>
+            <span style="color:${color};font-weight:700">${formato(t.real)}</span>
+            <span style="color:${color};font-size:.72rem;margin-left:6px">(${signo}${t.desviacion}%)</span>`;
 }
 
 // Acciones comunes (Editar / Eliminar) — se repiten al pie de Proyecto y Tareas
@@ -2436,6 +2680,7 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         document.getElementById('subtarea-nombre').value = subtarea.nombre;
         document.getElementById('subtarea-fecha').value = subtarea.fechaEntrega || '';
         document.getElementById('subtarea-tiempo').value = subtarea.tiempoEstimado || '';
+        document.getElementById('subtarea-tiempo-real').value = subtarea.tiempoReal || '';
         document.getElementById('subtarea-completada').value = subtarea.completada ? 'true' : 'false';
         document.getElementById('subtarea-notas').value = subtarea.notas || '';
         // Check participantes
@@ -2461,6 +2706,7 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         document.getElementById('subtarea-nombre').value = '';
         document.getElementById('subtarea-fecha').value = '';
         document.getElementById('subtarea-tiempo').value = '';
+        document.getElementById('subtarea-tiempo-real').value = '';
         document.getElementById('subtarea-completada').value = 'false';
         document.getElementById('subtarea-notas').value = '';
         partContainer.querySelectorAll('.sub-part-cb').forEach(cb => { cb.checked = false; });
@@ -2479,6 +2725,11 @@ async function guardarSubtarea() {
     const nombre = document.getElementById('subtarea-nombre').value.trim();
     const fechaEntrega = document.getElementById('subtarea-fecha').value || null;
     const tiempoEstimado = parseInt(document.getElementById('subtarea-tiempo').value) || null;
+    // Tiempo real: leemos el número tal cual; null si vacío para no
+    // forzar 0 (un valor real de 0 minutos no tiene sentido y confundiría
+    // el cómputo de desviación vs estimado).
+    const _tReal = document.getElementById('subtarea-tiempo-real').value;
+    const tiempoReal = _tReal === '' ? null : (parseInt(_tReal) || null);
     const completada = document.getElementById('subtarea-completada').value === 'true';
     const notas = document.getElementById('subtarea-notas').value.trim();
     const participantesSeleccionados = [...document.querySelectorAll('.sub-part-cb:checked')].map(cb => cb.value);
@@ -2506,6 +2757,7 @@ async function guardarSubtarea() {
                 subtareaObj.nombre = nombre;
                 subtareaObj.fechaEntrega = fechaEntrega;
                 subtareaObj.tiempoEstimado = tiempoEstimado;
+                subtareaObj.tiempoReal = tiempoReal;
                 subtareaObj.completada = completada;
                 subtareaObj.notas = notas;
                 subtareaObj.participantes = participantesSeleccionados;
@@ -2517,6 +2769,7 @@ async function guardarSubtarea() {
                 completada,
                 fechaEntrega,
                 tiempoEstimado,
+                tiempoReal,
                 notas,
                 participantes: participantesSeleccionados,
                 agendado: false

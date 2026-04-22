@@ -303,6 +303,32 @@
         </div>
     </div>
 
+    <!-- MODAL: Calendario de subtareas del proyecto -->
+    <div class="modal-overlay" id="modal-calendario" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal modal-calendario">
+            <div class="modal-header">
+                <h2 id="calendario-titulo">Calendario de subtareas</h2>
+                <button class="modal-close" onclick="cerrarModal('modal-calendario')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="cal-nav">
+                    <button type="button" class="cal-nav-btn" id="cal-prev" onclick="_calMoverMes(-1)" aria-label="Mes anterior">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <div class="cal-mes-label" id="cal-mes-label">—</div>
+                    <button type="button" class="cal-nav-btn" id="cal-next" onclick="_calMoverMes(1)" aria-label="Mes siguiente">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+                <div class="cal-weekdays">
+                    <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+                </div>
+                <div class="cal-grid" id="cal-grid"></div>
+                <div class="cal-legend" id="cal-legend"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: Subtarea -->
     <div class="modal-overlay" id="modal-subtarea" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="modal">
@@ -328,6 +354,16 @@
                         <label>Tiempo estimado (min)</label>
                         <input type="number" id="subtarea-tiempo" class="form-control" placeholder="60" min="0">
                     </div>
+                </div>
+                <!-- Tiempo real invertido (min). Se rellena al terminar la
+                     subtarea. La cabecera del proyecto compara la suma
+                     teórico vs real para detectar desviaciones. -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tiempo real (min)</label>
+                        <input type="number" id="subtarea-tiempo-real" class="form-control" placeholder="Minutos que realmente llevó" min="0">
+                    </div>
+                    <div class="form-group"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">

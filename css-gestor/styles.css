@@ -979,6 +979,123 @@ body {
     flex-shrink: 0;
 }
 
+/* ──────────────────────────────────────────────────────────
+   Botón "Ver calendario" en la cabecera del proyecto
+   ────────────────────────────────────────────────────────── */
+.btn-calendario {
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Modal calendario + grid mensual de subtareas
+   ────────────────────────────────────────────────────────── */
+.modal-calendario {
+    width: 96%;
+    max-width: 980px;
+}
+.cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.cal-nav-btn {
+    width: 32px; height: 32px;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    border-radius: 8px;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: border-color .15s, color .15s;
+}
+.cal-nav-btn:hover:not(:disabled) { border-color: #6366f1; color: #6366f1; }
+.cal-nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+.cal-mes-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    min-width: 180px;
+    text-align: center;
+    text-transform: capitalize;
+}
+.cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+}
+.cal-weekdays div {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.cal-cell {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    min-height: 84px;
+    padding: 5px 6px;
+    display: flex; flex-direction: column;
+    gap: 3px;
+    overflow: hidden;
+}
+.cal-cell.cal-empty { background: transparent; border-color: transparent; }
+.cal-cell.cal-today { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.12); }
+.cal-cell-num {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    align-self: flex-start;
+}
+.cal-cell.cal-today .cal-cell-num { color: #6366f1; }
+.cal-sub {
+    font-size: 0.66rem;
+    line-height: 1.25;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: transform .1s;
+}
+.cal-sub:hover { transform: translateX(2px); }
+.cal-sub.completada { opacity: .55; text-decoration: line-through }
+.cal-legend {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+    display: flex; flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.74rem;
+}
+.cal-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+.cal-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
 /* Placeholder para pestañas nuevas aún sin contenido funcional
    (Proyecto, Hardware, Formularios). Se reemplazará cuando se definan
    los comportamientos de cada una. */
