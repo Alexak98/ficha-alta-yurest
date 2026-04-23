@@ -37,11 +37,20 @@
         }
         .search-input:focus { outline:none;border-color:#6366f1;background:#fff }
         .filter-label { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-right:4px }
+        /* Pill select — quitamos la apariencia nativa (que pinta una
+           flecha grande y rompe el look del resto de filtros en
+           Chrome/Safari) y dibujamos un caret SVG inline para mantener
+           la consistencia con los chips redondeados de al lado. */
         .filter-select {
-            padding:7px 12px;font-family:inherit;font-size:.83rem;color:#334155;
+            padding:7px 30px 7px 12px;font-family:inherit;font-size:.83rem;color:#334155;
             background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;cursor:pointer;
+            -webkit-appearance:none;-moz-appearance:none;appearance:none;
+            background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat:no-repeat;background-position:right 12px center;
+            line-height:1.2;
         }
-        .filter-select.active { background:#eef2ff;border-color:#6366f1;color:#4338ca }
+        .filter-select:focus { outline:none;border-color:#6366f1 }
+        .filter-select.active { background-color:#eef2ff;border-color:#6366f1;color:#4338ca }
         .filter-sep { width:1px;height:22px;background:#e2e8f0;margin:0 4px }
         .chip-filter {
             display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;
@@ -196,6 +205,7 @@
                 <option value="backoffice">Backoffice</option>
                 <option value="app_cliente">App cliente</option>
             </select>
+            <div class="filter-sep"></div>
             <span class="filter-label">Abona</span>
             <select class="filter-select" id="f-abona" onchange="setFiltroAbona(this)">
                 <option value="">Todos</option>
