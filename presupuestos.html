@@ -37,10 +37,19 @@
         }
         .search-input:focus { outline:none;border-color:#6366f1;background:#fff }
         .filter-label { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-right:4px }
+        /* Grupo label + select. Se comporta como un bloque atómico dentro
+           de la filter-bar (con flex-wrap): así cuando la línea no tiene
+           sitio, el label Y el select saltan juntos, en vez de dejar el
+           label arriba y el select solo en una línea nueva estirándose
+           al 100% (que era el bug que se veía en Chrome). */
+        .filter-group { display:inline-flex;align-items:center;gap:6px;flex:0 0 auto }
         /* Pill select — quitamos la apariencia nativa (que pinta una
            flecha grande y rompe el look del resto de filtros en
            Chrome/Safari) y dibujamos un caret SVG inline para mantener
-           la consistencia con los chips redondeados de al lado. */
+           la consistencia con los chips redondeados de al lado. El
+           width:auto + min/max-width evita que Chrome, al perder la
+           apariencia nativa, estire el select a todo el ancho de la
+           línea flex cuando queda solo en ella. */
         .filter-select {
             padding:7px 30px 7px 12px;font-family:inherit;font-size:.83rem;color:#334155;
             background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;cursor:pointer;
@@ -48,6 +57,7 @@
             background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
             background-repeat:no-repeat;background-position:right 12px center;
             line-height:1.2;
+            width:auto;min-width:120px;max-width:180px;flex:0 0 auto;
         }
         .filter-select:focus { outline:none;border-color:#6366f1 }
         .filter-select.active { background-color:#eef2ff;border-color:#6366f1;color:#4338ca }
@@ -199,19 +209,23 @@
             <span class="filter-label">Entrega</span>
             <div id="chips-entrega" style="display:flex;gap:6px"></div>
             <div class="filter-sep"></div>
-            <span class="filter-label">Entorno</span>
-            <select class="filter-select" id="f-entorno" onchange="setFiltroEntorno(this)">
-                <option value="">Todos</option>
-                <option value="backoffice">Backoffice</option>
-                <option value="app_cliente">App cliente</option>
-            </select>
+            <div class="filter-group">
+                <span class="filter-label">Entorno</span>
+                <select class="filter-select" id="f-entorno" onchange="setFiltroEntorno(this)">
+                    <option value="">Todos</option>
+                    <option value="backoffice">Backoffice</option>
+                    <option value="app_cliente">App cliente</option>
+                </select>
+            </div>
             <div class="filter-sep"></div>
-            <span class="filter-label">Abona</span>
-            <select class="filter-select" id="f-abona" onchange="setFiltroAbona(this)">
-                <option value="">Todos</option>
-                <option value="yurest">Yurest</option>
-                <option value="cliente">Cliente</option>
-            </select>
+            <div class="filter-group">
+                <span class="filter-label">Abona</span>
+                <select class="filter-select" id="f-abona" onchange="setFiltroAbona(this)">
+                    <option value="">Todos</option>
+                    <option value="yurest">Yurest</option>
+                    <option value="cliente">Cliente</option>
+                </select>
+            </div>
             <div class="filter-sep"></div>
             <button type="button" class="chip-filter" id="chip-archivadas" onclick="toggleArchivadas()">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
