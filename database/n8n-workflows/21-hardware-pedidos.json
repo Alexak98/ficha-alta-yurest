@@ -378,7 +378,7 @@
       "main": [
         [
           {
-            "node": "¿Error validación?",
+            "node": "¿Validación falló?",
             "type": "main",
             "index": 0
           }
