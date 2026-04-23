@@ -149,10 +149,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// NODO MONOLÍTICO: valida + hace HTTP Request a PostgREST + formatea respuesta.\n// Sin branching de n8n (IF/Switch misfiran en esta instancia).\n//\n// Usa $helpers.httpRequestWithAuthentication para llamar a Supabase\n// usando la credencial predefinida `supabaseApi` configurada en este node.\n\nconst prep = (() => {\n  try {\n// Validación + construcción de row (lógica original de Preparar Promoción)\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return { __error: true, errores: ['action inválida: ' + action], action };\n}\nconst errores = [];\nif (action === 'create' && (!p.nombre || !String(p.nombre).trim())) errores.push('nombre obligatorio');\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\nif (errores.length > 0) return { __error: true, errores, action };\n\nconst row = {};\nif (action === 'create') {\n  row.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   row.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          row.fecha_inicio  = p.fecha_inicio;\n  row.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  row.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  row.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) row.created_by = String(p.created_by);\n} else if (action === 'update') {\n  row.id = p.id;\n  if (p.nombre       !== undefined) row.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) row.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) row.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) row.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) row.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  row.plazas_tarde  = +p.plazas_tarde;\n  row.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  row.id = p.id; row.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  row.id = p.id; row.deleted_at = null;\n}\nreturn { __error: false, action, row };\n  } catch (e) {\n    return { __error: true, errores: [String(e && e.message || e)], action: 'unknown' };\n  }\n})();\n\nif (prep.__error) {\n  return [{ json: {\n    __skipHttp: true,\n    __isCreate: true,\n    __id: null,\n    __body: '{}',\n    success: false,\n    errores: prep.errores,\n    action: prep.action,\n    promocion: null\n  } }];\n}\n\nconst { action, row } = prep;\nconst isCreate = action === 'create';\n\n// Construir URL y método\nconst id = isCreate ? null : row.id;\nconst body = { ...row };\nif (!isCreate) delete body.id;\n\nconst supaHost = $credentials?.supabaseApi?.host;\n// No podemos leer credenciales en Code node — la HTTP Request se hace via\n// $helpers.httpRequestWithAuthentication que sí las resuelve. Usamos\n// expresión relativa (sin host) — requiere baseUrl en la credencial\n// O bien pasamos el host por variable de entorno.\n//\n// ALTERNATIVA más robusta: el Code node no puede hacer httpRequest con\n// credencial autenticada en todas las versiones de n8n. Mejor usar un\n// subworkflow o un HTTP Request node aparte. Aquí devolvemos __prep para\n// que el HTTP Request downstream lo consuma.\n\nreturn [{ json: {\n  __prep: true,\n  action,\n  row,\n  __isCreate: isCreate,\n  __id: id,\n  __body: JSON.stringify(body)\n} }];"
+        "jsCode": "// Validar y emitir el row APLANADO al raíz (para que Supabase upsert\n// lo consuma con autoMapInputData sin interferir con 'action' ni 'row').\n// Si hay error de validación, emitimos un item con bandera __error:true\n// que el Formatear final detecta y devuelve el mensaje.\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { __error: true, __errores: ['action inválida: ' + action], __action: action } }];\n}\nconst errores = [];\nif (action === 'create' && (!p.nombre || !String(p.nombre).trim())) errores.push('nombre obligatorio');\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\nif (errores.length > 0) return [{ json: { __error: true, __errores: errores, __action: action } }];\n\nconst out = {};\nif (action === 'create') {\n  out.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   out.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          out.fecha_inicio  = p.fecha_inicio;\n  out.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  out.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  out.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) out.created_by = String(p.created_by);\n} else if (action === 'update') {\n  out.id = p.id;\n  if (p.nombre       !== undefined) out.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) out.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) out.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) out.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) out.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  out.plazas_tarde  = +p.plazas_tarde;\n  out.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  out.id = p.id; out.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  out.id = p.id; out.deleted_at = null;\n}\nreturn [{ json: out }];"
       },
-      "id": "prep-linear-promociones",
-      "name": "Preparar (validar + body)",
+      "id": "prep-upsert-promociones",
+      "name": "Preparar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -162,39 +162,15 @@
     },
     {
       "parameters": {
-        "method": "={{ $json.__skipHttp ? 'GET' : ($json.__isCreate ? 'POST' : 'PATCH') }}",
-        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/promociones{{ $json.__skipHttp ? '?id=eq.00000000-0000-0000-0000-000000000000' : ($json.__isCreate ? '' : ('?id=eq.' + $json.__id)) }}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "supabaseApi",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "bodyContentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.__skipHttp ? '{}' : $json.__body }}",
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": false
-            }
-          }
-        }
+        "operation": "upsert",
+        "tableId": "promociones",
+        "dataToSend": "autoMapInputData",
+        "options": {}
       },
-      "id": "http-linear-promociones",
-      "name": "HTTP PostgREST",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "supa-upsert-promociones",
+      "name": "Supabase UPSERT",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
       "position": [
         640,
         460
@@ -210,9 +186,9 @@
     },
     {
       "parameters": {
-        "jsCode": "// Consolida respuesta del HTTP PostgREST. PostgREST devuelve array.\nconst items = $input.all() || [];\n// Si Preparar ya cortocircuitó con error, el primer item traerá success:false.\nconst first = items[0] && items[0].json;\nif (first && first.success === false && Array.isArray(first.errores)) return [{ json: first }];\n\nlet rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('HTTP respondió sin filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores\n} }];"
+        "jsCode": "// Si Preparar cortocircuitó con __error, devolvemos ese error.\n// Si no, consolidamos la salida de Supabase UPSERT.\nconst items = $input.all() || [];\n// Revisar si Supabase node devolvió error (continueOnFail)\nconst errores = [];\nlet rows = [];\nlet cortoPreparar = false;\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (j.__error) { cortoPreparar = true; (j.__errores||[]).forEach(e=>errores.push(e)); continue; }\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (cortoPreparar) {\n  return [{ json: { success: false, errores, promocion: null } }];\n}\nif (rows.length === 0 && errores.length === 0) errores.push('UPSERT devolvió 0 filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores\n} }];"
       },
-      "id": "fmt-linear-promociones",
+      "id": "fmt-upsert-promociones",
       "name": "Formatear respuesta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -260,25 +236,25 @@
       "main": [
         [
           {
-            "node": "Preparar (validar + body)",
+            "node": "Preparar",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Preparar (validar + body)": {
+    "Preparar": {
       "main": [
         [
           {
-            "node": "HTTP PostgREST",
+            "node": "Supabase UPSERT",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP PostgREST": {
+    "Supabase UPSERT": {
       "main": [
         [
           {
