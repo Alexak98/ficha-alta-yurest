@@ -6,13 +6,18 @@
         "httpMethod": "GET",
         "path": "promociones",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        }
       },
       "id": "wh-promo-get",
       "name": "Webhook GET Promociones",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 200],
+      "position": [
+        240,
+        200
+      ],
       "webhookId": "promociones-get"
     },
     {
@@ -26,7 +31,10 @@
       "name": "GET Promociones View",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [440, 200],
+      "position": [
+        440,
+        200
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -43,7 +51,10 @@
       "name": "Formatear Promociones",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 200]
+      "position": [
+        640,
+        200
+      ]
     },
     {
       "parameters": {
@@ -52,10 +63,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              {"name": "Access-Control-Allow-Origin",  "value": "*"},
-              {"name": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS"},
-              {"name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization"},
-              {"name": "Content-Type", "value": "application/json"}
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -64,21 +87,28 @@
       "name": "Respond GET Promociones",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [840, 200]
+      "position": [
+        840,
+        200
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "promociones",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        }
       },
       "id": "wh-promo-post",
       "name": "Webhook POST Promociones",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 460],
+      "position": [
+        240,
+        460
+      ],
       "webhookId": "promociones-post"
     },
     {
@@ -89,41 +119,66 @@
       "name": "Preparar Promoción",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 460]
+      "position": [
+        440,
+        460
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "typeValidation": "strict" },
-          "conditions": [{
-            "leftValue": "={{ ($json.errores || []).length }}",
-            "rightValue": 0,
-            "operator": { "type": "number", "operation": "gt" }
-          }]
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.errores || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
         }
       },
       "id": "if-promo-errors",
       "name": "¿Error validación?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [640, 460]
+      "position": [
+        640,
+        460
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "typeValidation": "strict" },
-          "conditions": [{
-            "leftValue": "={{ $json.action }}",
-            "rightValue": "create",
-            "operator": { "type": "string", "operation": "equals" }
-          }]
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "create",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
         }
       },
       "id": "if-promo-create",
       "name": "¿Es create?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [840, 560]
+      "position": [
+        840,
+        560
+      ]
     },
     {
       "parameters": {
@@ -136,7 +191,10 @@
       "name": "INSERT Promoción",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1040, 520],
+      "position": [
+        1040,
+        520
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -153,7 +211,10 @@
       "name": "Aplanar UPDATE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 620]
+      "position": [
+        1040,
+        620
+      ]
     },
     {
       "parameters": {
@@ -162,11 +223,13 @@
         "filterType": "manual",
         "matchType": "allFilters",
         "filters": {
-          "conditions": [{
-            "keyName": "id",
-            "condition": "eq",
-            "keyValue": "={{ $json.id }}"
-          }]
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
         },
         "dataToSend": "autoMapInputData",
         "options": {}
@@ -175,7 +238,10 @@
       "name": "UPDATE Promoción",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1240, 620],
+      "position": [
+        1240,
+        620
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -192,7 +258,10 @@
       "name": "Formatear resultado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1440, 560]
+      "position": [
+        1440,
+        560
+      ]
     },
     {
       "parameters": {
@@ -202,7 +271,10 @@
       "name": "Formatear error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [840, 360]
+      "position": [
+        840,
+        360
+      ]
     },
     {
       "parameters": {
@@ -211,10 +283,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              {"name": "Access-Control-Allow-Origin",  "value": "*"},
-              {"name": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS"},
-              {"name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization"},
-              {"name": "Content-Type", "value": "application/json"}
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -223,35 +307,187 @@
       "name": "Respond POST Promociones",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1640, 460]
+      "position": [
+        1640,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aplana igual que Aplanar UPDATE: el nodo Supabase INSERT usa\n// autoMapInputData y necesita el row como raíz, no {action,row,errores}.\nreturn [{ json: $json.row }];"
+      },
+      "id": "aplanar-insert-promo",
+      "name": "Aplanar INSERT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        520
+      ]
     }
   ],
   "connections": {
-    "Webhook GET Promociones": { "main": [[{ "node": "GET Promociones View", "type": "main", "index": 0 }]] },
-    "GET Promociones View":    { "main": [[{ "node": "Formatear Promociones", "type": "main", "index": 0 }]] },
-    "Formatear Promociones":   { "main": [[{ "node": "Respond GET Promociones", "type": "main", "index": 0 }]] },
-
-    "Webhook POST Promociones": { "main": [[{ "node": "Preparar Promoción", "type": "main", "index": 0 }]] },
-    "Preparar Promoción":       { "main": [[{ "node": "¿Error validación?", "type": "main", "index": 0 }]] },
+    "Webhook GET Promociones": {
+      "main": [
+        [
+          {
+            "node": "GET Promociones View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Promociones View": {
+      "main": [
+        [
+          {
+            "node": "Formatear Promociones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Promociones": {
+      "main": [
+        [
+          {
+            "node": "Respond GET Promociones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook POST Promociones": {
+      "main": [
+        [
+          {
+            "node": "Preparar Promoción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Promoción": {
+      "main": [
+        [
+          {
+            "node": "¿Error validación?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "¿Error validación?": {
       "main": [
-        [{ "node": "Formatear error", "type": "main", "index": 0 }],
-        [{ "node": "¿Es create?",     "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Formatear error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Es create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Formatear error":  { "main": [[{ "node": "Respond POST Promociones", "type": "main", "index": 0 }]] },
+    "Formatear error": {
+      "main": [
+        [
+          {
+            "node": "Respond POST Promociones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "¿Es create?": {
       "main": [
-        [{ "node": "INSERT Promoción", "type": "main", "index": 0 }],
-        [{ "node": "Aplanar UPDATE",   "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Aplanar INSERT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aplanar UPDATE",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "INSERT Promoción":   { "main": [[{ "node": "Formatear resultado", "type": "main", "index": 0 }]] },
-    "Aplanar UPDATE":     { "main": [[{ "node": "UPDATE Promoción",    "type": "main", "index": 0 }]] },
-    "UPDATE Promoción":   { "main": [[{ "node": "Formatear resultado", "type": "main", "index": 0 }]] },
-    "Formatear resultado":{ "main": [[{ "node": "Respond POST Promociones", "type": "main", "index": 0 }]] }
+    "INSERT Promoción": {
+      "main": [
+        [
+          {
+            "node": "Formatear resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplanar UPDATE": {
+      "main": [
+        [
+          {
+            "node": "UPDATE Promoción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE Promoción": {
+      "main": [
+        [
+          {
+            "node": "Formatear resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear resultado": {
+      "main": [
+        [
+          {
+            "node": "Respond POST Promociones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplanar INSERT": {
+      "main": [
+        [
+          {
+            "node": "INSERT Promoción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "staticData": null,
   "pinData": {},
   "active": false
