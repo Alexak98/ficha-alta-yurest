@@ -113,7 +113,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// CRUD unificado por verb en el body.action: create | update | delete | reactivar.\n// Devuelve el payload normalizado que va al nodo siguiente.\nconst b = $input.first().json.body || {};\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { errores: ['action inválida: ' + action], action } }];\n}\nconst errores = [];\nif (action === 'create') {\n  if (!p.nombre || !String(p.nombre).trim()) errores.push('nombre obligatorio');\n}\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nconst row = {};\nif (action === 'create') {\n  row.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   row.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          row.fecha_inicio  = p.fecha_inicio;\n  row.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  row.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  row.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) row.created_by = String(p.created_by);\n} else if (action === 'update') {\n  row.id = p.id;\n  if (p.nombre       !== undefined) row.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) row.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) row.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) row.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) row.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  row.plazas_tarde  = +p.plazas_tarde;\n  row.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  row.id = p.id;\n  row.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  row.id = p.id;\n  row.deleted_at = null;\n}\nreturn [{ json: { action, row, errores } }];"
+        "jsCode": "// CRUD unificado por verb en el body.action: create | update | delete | reactivar.\n// Devuelve el payload normalizado que va al nodo siguiente.\nconst b = $input.first().json.body || {};\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { errores: ['action inválida: ' + action], action, __error: true } }];\n}\nconst errores = [];\nif (action === 'create') {\n  if (!p.nombre || !String(p.nombre).trim()) errores.push('nombre obligatorio');\n}\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nconst row = {};\nif (action === 'create') {\n  row.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   row.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          row.fecha_inicio  = p.fecha_inicio;\n  row.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  row.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  row.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) row.created_by = String(p.created_by);\n} else if (action === 'update') {\n  row.id = p.id;\n  if (p.nombre       !== undefined) row.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) row.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) row.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) row.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) row.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  row.plazas_tarde  = +p.plazas_tarde;\n  row.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  row.id = p.id;\n  row.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  row.id = p.id;\n  row.deleted_at = null;\n}\nreturn [{ json: { action, row, errores, __error: errores.length > 0 } }];"
       },
       "id": "prep-promo",
       "name": "Preparar Promoción",
@@ -129,15 +129,15 @@
         "conditions": {
           "options": {
             "caseSensitive": true,
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "leftValue": "={{ ($json.errores || []).length }}",
-              "rightValue": 0,
+              "leftValue": "={{ $json.__error }}",
+              "rightValue": true,
               "operator": {
-                "type": "number",
-                "operation": "gt"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ]
