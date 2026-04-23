@@ -1019,10 +1019,14 @@
             ${PRESUPUESTO_CSS}
             .sheet { padding: 0; }
         `;
-        // Auto-print: esperamos a que las imágenes (logo) estén cargadas,
-        // pequeño setTimeout y window.print(); al terminar, cerramos el
-        // popup solo. Idéntico al patrón de contabilidad.html.
-        const autoprintScript = '<scr' + 'ipt>window.onload=function(){var imgs=document.images;var left=imgs.length+1;var fire=function(){if(--left<=0)setTimeout(function(){window.print();},80);};if(imgs.length===0){fire();}else{for(var i=0;i<imgs.length;i++){if(imgs[i].complete)fire();else{imgs[i].addEventListener("load",fire);imgs[i].addEventListener("error",fire);}}}};window.onafterprint=function(){window.close();};</scr' + 'ipt>';
+        // Auto-print: esperamos a que (a) imágenes del doc y (b) las fonts
+        // estén listas antes de llamar window.print(). Mismo patrón exacto
+        // que `imprimirSepa()` en contabilidad.html — incluye el +1 en
+        // `left` que se compensa con la rama `document.fonts.ready`.
+        // Fallback de 3 s: si algo se atasca (logo remoto no responde,
+        // fonts.ready nunca resuelve…) imprime igualmente. Sin ese
+        // fallback la pestaña se quedaba "about:blank" para siempre.
+        const autoprintScript = '<scr' + 'ipt>(function(){var printed=false;var go=function(){if(printed)return;printed=true;setTimeout(function(){window.print();},80);};var start=function(){var imgs=document.images;var left=imgs.length+1;var fire=function(){if(--left<=0)go();};if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fire);}else{fire();}if(imgs.length===0){/* ya cubierto por fonts */}else{for(var i=0;i<imgs.length;i++){if(imgs[i].complete)fire();else{imgs[i].addEventListener("load",fire);imgs[i].addEventListener("error",fire);}}}setTimeout(go,3000);};if(document.readyState==="complete")start();else window.addEventListener("load",start);window.onafterprint=function(){window.close();};})();</scr' + 'ipt>';
         const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title><style>${printCss}</style></head><body>${docHtml}${autoprintScript}</body></html>`;
         const w = window.open('', '_blank', 'width=900,height=1100');
         if (!w) {
