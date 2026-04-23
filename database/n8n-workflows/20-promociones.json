@@ -258,13 +258,60 @@
     },
     {
       "parameters": {
-        "jsCode": "// Router explicito. Reemplaza los dos IFs de n8n v2 que se comportaban\n// erraticamente con el patron __done/action.\n// Emite a 3 outputs (index 0/1/2):\n//   0 -> rama INSERT (create)\n//   1 -> rama UPDATE/DELETE/REACTIVAR (requiere row.id)\n//   2 -> rama error (item ya con forma de respuesta final)\nconst j = $input.first().json || {};\n\nif (j.__done === true) {\n  // Error: pasa tal cual a la rama 2 (Respond directo).\n  return [[], [], [{ json: j }]];\n}\n\nconst action = String(j.action || '').toLowerCase();\nif (action === 'create') {\n  return [[{ json: j }], [], []];\n}\n// update/delete/reactivar\nreturn [[], [{ json: j }], []];",
-        "numberOfOutputs": 3
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.__done === true }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "create",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "insert"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
       },
-      "id": "router-promo",
-      "name": "Router",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "switch-promo",
+      "name": "Router Promo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
       "position": [
         720,
         520
@@ -320,15 +367,22 @@
       "main": [
         [
           {
-            "node": "Router",
+            "node": "Router Promo",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Router": {
+    "Router Promo": {
       "main": [
+        [
+          {
+            "node": "Respond POST Promociones",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Aplanar INSERT",
@@ -339,13 +393,6 @@
         [
           {
             "node": "Aplanar UPDATE",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond POST Promociones",
             "type": "main",
             "index": 0
           }
