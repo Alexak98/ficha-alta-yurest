@@ -113,7 +113,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Actions disponibles:\n//   create | adjuntar_proforma | adjuntar_justificante |\n//   confirmar_pago | actualizar_items | delete\n//\n// Arquitectura nueva: si la validación detecta errores, el item\n// devuelto YA tiene la forma de la respuesta final\n//   { __done: true, success: false, errores, action }\n// Si es OK, el item lleva { action, row } para que INSERT/UPDATE\n// lo procesen aguas abajo. El IF downstream solo chequea __done.\n\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst errores = [];\nconst now = new Date().toISOString();\n\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nlet row = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  row = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  row = { id: p.id, proforma_pdf: p.proforma_pdf, estado: 'proforma_adjuntada', proforma_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  row = { id: p.id, justificante_pdf: p.justificante_pdf, estado: 'pendiente_confirmar', pagado_at: now };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'confirmar_pago') {\n  row = { id: p.id, estado: 'lista_envio', confirmado_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  row = { id: p.id, items: p.items || [] };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'delete') {\n  row = { id: p.id, deleted_at: now };\n}\n\n// Limpia undefined — si enviamos undefined al Supabase node, pisa\n// el valor existente con null.\nObject.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });\n\n// Si hay errores de validación, devolvemos DIRECTAMENTE la respuesta\n// final — el flujo salta por el IF a Respond sin tocar Supabase.\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action } }];\n}\nreturn [{ json: { action, row } }];"
+        "jsCode": "// Actions disponibles:\n//   create | adjuntar_proforma | adjuntar_justificante |\n//   confirmar_pago | actualizar_items | delete\n//\n// Arquitectura nueva: si la validación detecta errores, el item\n// devuelto YA tiene la forma de la respuesta final\n//   { __done: true, success: false, errores, action }\n// Si es OK, el item lleva { action, row } para que INSERT/UPDATE\n// lo procesen aguas abajo. El IF downstream solo chequea __done.\n\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst errores = [];\nconst now = new Date().toISOString();\n\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nlet row = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  row = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  row = { id: p.id, proforma_pdf: p.proforma_pdf, estado: 'proforma_adjuntada', proforma_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  row = { id: p.id, justificante_pdf: p.justificante_pdf, estado: 'pendiente_confirmar', pagado_at: now };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'confirmar_pago') {\n  row = { id: p.id, estado: 'lista_envio', confirmado_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  row = { id: p.id, items: p.items || [] };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'delete') {\n  row = { id: p.id, deleted_at: now };\n}\n\n// Limpia undefined — si enviamos undefined al Supabase node, pisa\n// el valor existente con null.\nObject.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });\n\n// Si hay errores de validación, devolvemos DIRECTAMENTE la respuesta\n// final — el flujo salta por el IF a Respond sin tocar Supabase.\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action, _route: 'error' } }];\n}\n// Añadir _route explícito para el Switch (string match)\nconst _route = (action === 'create') ? 'insert' : 'update';\nreturn [{ json: { action, row, _route } }];"
       },
       "id": "hw-prep",
       "name": "Preparar Acción",
@@ -122,174 +122,6 @@
       "position": [
         440,
         500
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.__done === true }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ]
-        }
-      },
-      "id": "hw-if-error",
-      "name": "¿Validación falló?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        640,
-        500
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "create",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ]
-        }
-      },
-      "id": "hw-if-create",
-      "name": "¿Es create?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        840,
-        600
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "return [{ json: $json.row }];"
-      },
-      "id": "hw-flatten-create",
-      "name": "Aplanar CREATE",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1040,
-        540
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "create",
-        "tableId": "hardware_pedidos",
-        "dataToSend": "autoMapInputData",
-        "options": {}
-      },
-      "id": "hw-insert",
-      "name": "INSERT Pedido",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        1240,
-        540
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIAL_ID",
-          "name": "Supabase Yurest"
-        }
-      },
-      "alwaysOutputData": true,
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "return [{ json: $json.row }];"
-      },
-      "id": "hw-flatten-update",
-      "name": "Aplanar UPDATE",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1040,
-        660
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "update",
-        "tableId": "hardware_pedidos",
-        "filterType": "manual",
-        "matchType": "allFilters",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "id",
-              "condition": "eq",
-              "keyValue": "={{ $json.id }}"
-            }
-          ]
-        },
-        "dataToSend": "autoMapInputData",
-        "options": {}
-      },
-      "id": "hw-update",
-      "name": "UPDATE Pedido",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        1240,
-        660
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIAL_ID",
-          "name": "Supabase Yurest"
-        }
-      },
-      "alwaysOutputData": true,
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Inspecciona cada item de entrada — si el INSERT/UPDATE falló,\n// el nodo Supabase habrá devuelto { error: { message, code, details } }\n// (gracias a continueOnFail). Capturamos el mensaje para que el\n// front pueda mostrarlo al usuario en vez de \"sin detalle\".\nconst items = $input.all() || [];\nconst rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) continue;\n  if (j.error) {\n    const e = j.error;\n    errores.push(String(e.message || e.code || JSON.stringify(e)) + (e.details ? ' (' + e.details + ')' : ''));\n    continue;\n  }\n  if (j.code && j.message && !j.id) {\n    // Algunos errores de Supabase vienen planos {code, message, details}\n    errores.push(String(j.message) + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (j.id) rows.push(j);\n}\nreturn [{ json: {\n  success: rows.length > 0 && errores.length === 0,\n  pedido: rows[0] || null,\n  errores\n}}];"
-      },
-      "id": "hw-format-ok",
-      "name": "Formatear OK",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1440,
-        600
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Pass-through: el item ya viene con forma de respuesta desde\n// Preparar Acción cuando hay error de validación.\nreturn [$input.first()];"
-      },
-      "id": "hw-format-err",
-      "name": "Formatear ERROR",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        840,
-        400
       ]
     },
     {
@@ -326,6 +158,232 @@
       "position": [
         1640,
         500
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._route }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._route }}",
+                    "rightValue": "insert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "insert"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._route }}",
+                    "rightValue": "update",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "update"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-hardware_pedidos",
+      "name": "Switch Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        640,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { __body: JSON.stringify($json.row || {}) } }];"
+      },
+      "id": "prep-ins-hardware_pedidos",
+      "name": "Body INSERT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/hardware_pedidos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.__body }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      },
+      "id": "http-ins-hardware_pedidos",
+      "name": "HTTP INSERT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $json.row || {};\nconst id = row.id;\nconst body = { ...row };\ndelete body.id;\nreturn [{ json: { id, __body: JSON.stringify(body) } }];"
+      },
+      "id": "prep-upd-hardware_pedidos",
+      "name": "Body UPDATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/hardware_pedidos?id=eq.{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.__body }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      },
+      "id": "http-upd-hardware_pedidos",
+      "name": "HTTP UPDATE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        560
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all() || [];\nlet rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('HTTP respondió sin filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  pedido: rows[0] || null,\n  errores\n} }];"
+      },
+      "id": "fmt-ok-hardware_pedidos",
+      "name": "Formatear OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [$input.first()];"
+      },
+      "id": "fmt-err-hardware_pedidos",
+      "name": "Formatear ERROR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        320
       ]
     }
   ],
@@ -378,7 +436,32 @@
       "main": [
         [
           {
-            "node": "¿Validación falló?",
+            "node": "Switch Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Router": {
+      "main": [
+        [
+          {
+            "node": "Formatear ERROR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Body INSERT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Body UPDATE",
             "type": "main",
             "index": 0
           }
@@ -396,47 +479,29 @@
         ]
       ]
     },
-    "¿Es create?": {
+    "Body INSERT": {
       "main": [
         [
           {
-            "node": "Aplanar CREATE",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Aplanar UPDATE",
+            "node": "HTTP INSERT",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Aplanar CREATE": {
+    "Body UPDATE": {
       "main": [
         [
           {
-            "node": "INSERT Pedido",
+            "node": "HTTP UPDATE",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Aplanar UPDATE": {
-      "main": [
-        [
-          {
-            "node": "UPDATE Pedido",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "INSERT Pedido": {
+    "HTTP INSERT": {
       "main": [
         [
           {
@@ -447,7 +512,7 @@
         ]
       ]
     },
-    "UPDATE Pedido": {
+    "HTTP UPDATE": {
       "main": [
         [
           {
@@ -463,24 +528,6 @@
         [
           {
             "node": "Respond POST",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Validación falló?": {
-      "main": [
-        [
-          {
-            "node": "Formatear ERROR",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "¿Es create?",
             "type": "main",
             "index": 0
           }

@@ -113,7 +113,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Arquitectura resiliente al bug de IF v2 (ver wf 21):\n//   - Si hay error: emite { __done: true, success: false, errores, action }\n//     (forma final de la respuesta). \"Formatear error\" hace pass-through.\n//   - Si OK: emite { action, row } y el IF encamina por __done (undefined\n//     para éxito → falso → happy path).\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\n\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { __done: true, success: false, errores: ['action inválida: ' + action], action } }];\n}\n\nconst errores = [];\nif (action === 'create' && (!p.nombre || !String(p.nombre).trim())) errores.push('nombre obligatorio');\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action } }];\n}\n\nconst row = {};\nif (action === 'create') {\n  row.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   row.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          row.fecha_inicio  = p.fecha_inicio;\n  row.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  row.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  row.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) row.created_by = String(p.created_by);\n} else if (action === 'update') {\n  row.id = p.id;\n  if (p.nombre       !== undefined) row.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) row.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) row.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) row.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) row.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  row.plazas_tarde  = +p.plazas_tarde;\n  row.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  row.id = p.id;\n  row.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  row.id = p.id;\n  row.deleted_at = null;\n}\nreturn [{ json: { action, row } }];"
+        "jsCode": "// Arquitectura resiliente al bug de IF v2 (ver wf 21):\n//   - Si hay error: emite { __done: true, success: false, errores, action }\n//     (forma final de la respuesta). \"Formatear error\" hace pass-through.\n//   - Si OK: emite { action, row } y el IF encamina por __done (undefined\n//     para éxito → falso → happy path).\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\n\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { __done: true, success: false, errores: ['action inválida: ' + action], action, _route: 'error' } }];\n}\n\nconst errores = [];\nif (action === 'create' && (!p.nombre || !String(p.nombre).trim())) errores.push('nombre obligatorio');\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action, _route: 'error' } }];\n}\n\nconst row = {};\nif (action === 'create') {\n  row.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   row.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          row.fecha_inicio  = p.fecha_inicio;\n  row.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  row.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  row.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) row.created_by = String(p.created_by);\n} else if (action === 'update') {\n  row.id = p.id;\n  if (p.nombre       !== undefined) row.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) row.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) row.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) row.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) row.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  row.plazas_tarde  = +p.plazas_tarde;\n  row.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  row.id = p.id;\n  row.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  row.id = p.id;\n  row.deleted_at = null;\n}\n// Añadir _route explícito para el Switch (string match)\nconst _route = (action === 'create') ? 'insert' : 'update';\nreturn [{ json: { action, row, _route } }];"
       },
       "id": "prep-promo",
       "name": "Preparar Promoción",
@@ -162,28 +162,77 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose"
-          },
-          "conditions": [
+        "mode": "rules",
+        "rules": {
+          "values": [
             {
-              "leftValue": "={{ $json.__done === true }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._route }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._route }}",
+                    "rightValue": "insert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "insert"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._route }}",
+                    "rightValue": "update",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "update"
             }
           ]
-        }
+        },
+        "options": {}
       },
-      "id": "if-val-promo",
-      "name": "¿Validación falló?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "id": "switch-promociones",
+      "name": "Switch Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
       "position": [
         640,
         460
@@ -191,43 +240,15 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "create",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ]
-        }
+        "jsCode": "return [{ json: { __body: JSON.stringify($json.row || {}) } }];"
       },
-      "id": "if-create-promo",
-      "name": "¿Es create?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        840,
-        540
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Serializa row para la HTTP Request POST a PostgREST.\nconst row = $json.row || {};\nreturn [{ json: { __body: JSON.stringify(row) } }];"
-      },
-      "id": "prep-insert-body",
-      "name": "Preparar body INSERT",
+      "id": "prep-ins-promociones",
+      "name": "Body INSERT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1040,
-        440
+        840,
+        400
       ]
     },
     {
@@ -261,13 +282,13 @@
           }
         }
       },
-      "id": "http-insert-promo",
-      "name": "HTTP INSERT Promoción",
+      "id": "http-ins-promociones",
+      "name": "HTTP INSERT",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1240,
-        440
+        1040,
+        400
       ],
       "credentials": {
         "supabaseApi": {
@@ -280,15 +301,15 @@
     },
     {
       "parameters": {
-        "jsCode": "// Separa id del body para construir la URL de PATCH.\nconst row = $json.row || {};\nconst id = row.id;\nconst body = { ...row };\ndelete body.id;\nreturn [{ json: { id, __body: JSON.stringify(body) } }];"
+        "jsCode": "const row = $json.row || {};\nconst id = row.id;\nconst body = { ...row };\ndelete body.id;\nreturn [{ json: { id, __body: JSON.stringify(body) } }];"
       },
-      "id": "prep-update-body",
-      "name": "Preparar body UPDATE",
+      "id": "prep-upd-promociones",
+      "name": "Body UPDATE",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1040,
-        640
+        840,
+        560
       ]
     },
     {
@@ -322,13 +343,13 @@
           }
         }
       },
-      "id": "http-update-promo",
-      "name": "HTTP UPDATE Promoción",
+      "id": "http-upd-promociones",
+      "name": "HTTP UPDATE",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1240,
-        640
+        1040,
+        560
       ],
       "credentials": {
         "supabaseApi": {
@@ -341,28 +362,28 @@
     },
     {
       "parameters": {
-        "jsCode": "// Pass-through: Preparar Promoción ya emitió el item final.\nreturn [$input.first()];"
+        "jsCode": "const items = $input.all() || [];\nlet rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('HTTP respondió sin filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores\n} }];"
       },
-      "id": "fmt-err-promo",
+      "id": "fmt-ok-promociones",
+      "name": "Formatear OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [$input.first()];"
+      },
+      "id": "fmt-err-promociones",
       "name": "Formatear ERROR",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         840,
-        340
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Consolida la respuesta del HTTP Request.\n// PostgREST PATCH/POST con Prefer: return=representation devuelve\n// un array con las filas persistidas.\nconst items = $input.all() || [];\nlet rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = it.json;\n  if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) {\n    errores.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (j.id) rows.push(j);\n}\nif (rows.length === 0 && errores.length === 0) {\n  errores.push('HTTP respondió sin filas (0 afectadas)');\n}\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores\n} }];"
-      },
-      "id": "fmt-ok-promo",
-      "name": "Formatear OK",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1440,
-        540
+        320
       ]
     }
   ],
@@ -415,14 +436,14 @@
       "main": [
         [
           {
-            "node": "¿Validación falló?",
+            "node": "Switch Router",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Validación falló?": {
+    "Switch Router": {
       "main": [
         [
           {
@@ -433,7 +454,14 @@
         ],
         [
           {
-            "node": "¿Es create?",
+            "node": "Body INSERT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Body UPDATE",
             "type": "main",
             "index": 0
           }
@@ -451,36 +479,29 @@
         ]
       ]
     },
-    "¿Es create?": {
+    "Body INSERT": {
       "main": [
         [
           {
-            "node": "Preparar body INSERT",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Preparar body UPDATE",
+            "node": "HTTP INSERT",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Preparar body INSERT": {
+    "Body UPDATE": {
       "main": [
         [
           {
-            "node": "HTTP INSERT Promoción",
+            "node": "HTTP UPDATE",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP INSERT Promoción": {
+    "HTTP INSERT": {
       "main": [
         [
           {
@@ -491,18 +512,7 @@
         ]
       ]
     },
-    "Preparar body UPDATE": {
-      "main": [
-        [
-          {
-            "node": "HTTP UPDATE Promoción",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP UPDATE Promoción": {
+    "HTTP UPDATE": {
       "main": [
         [
           {
