@@ -259,6 +259,15 @@ resp=$(req POST "$EP" '{"action":"update","presupuesto":{"id":"00000000-0000-000
 body=$(get_body "$resp")
 err=$(jqget "$body" '.errores | join(" ")')
 case "$err" in *"estado_entrega"*) ok "estado_entrega inválido → error";; *) fail "estado_entrega" "estado_entrega debe ser" "$err";; esac
+
+# coste fuera de NUMERIC(10,2) — cubre S2 del QA: antes del fix se
+# aceptaban hasta 1e9, pero la columna tope es 99 999 999,99.
+resp=$(req POST "$EP" '{"action":"create","presupuesto":{"cliente":"X","desarrollo":"Y","entorno":"backoffice","coste_yurest":500000000}}')
+body=$(get_body "$resp")
+success=$(jqget "$body" '.success')
+err=$(jqget "$body" '.errores | join(" ")')
+assert_eq "coste_yurest overflow → success=false" "$success" "false"
+case "$err" in *"coste_yurest"*) ok "error coste_yurest fuera de NUMERIC(10,2)";; *) fail "coste overflow" "coste_yurest fuera de rango" "$err";; esac
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -316,6 +325,14 @@ else
     body=$(get_body "$resp")
     found=$(jqget "$body" ".presupuestos[] | select(.id == \"$PID\") | .id" | head -n1)
     [ -z "$found" ] || [ "$found" = "null" ] && ok "GET sin flag no devuelve archivados" || fail "GET sin flag" "no devuelve $PID" "devolvió $found"
+
+    # GET con ?incluir_archivadas=1 → SÍ aparece (cubre B1 y S4 del QA:
+    # antes del fix el workflow filtraba deleted_at incondicionalmente y
+    # el toggle de la UI era código muerto).
+    resp=$(req GET "$EP?incluir_archivadas=1")
+    body=$(get_body "$resp")
+    found=$(jqget "$body" ".presupuestos[] | select(.id == \"$PID\") | .id" | head -n1)
+    assert_eq "GET ?incluir_archivadas=1 devuelve archivados" "$found" "$PID"
 
     # reactivar
     resp=$(req POST "$EP" "{\"action\":\"reactivar\",\"presupuesto\":{\"id\":\"$PID\"}}")

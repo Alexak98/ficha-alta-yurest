@@ -548,6 +548,13 @@
     }
 
     // ── Modal crear / editar ───────────────────────────────────────────
+    // Reset del flag dataset.manual que marca los costes que el usuario
+    // tocó a mano. Sin este reset, abrir un modal después de otro donde
+    // tocaste el coste deja el auto-cálculo desactivado (F1 del QA).
+    function _resetManualFlags() {
+        document.getElementById('mf-cy').dataset.manual = '';
+        document.getElementById('mf-cc').dataset.manual = '';
+    }
     function abrirModal() {
         document.getElementById('modal-title').textContent = 'Nuevo presupuesto';
         document.getElementById('f-id').value = '';
@@ -563,6 +570,7 @@
         document.getElementById('mf-cc').value = '0';
         document.getElementById('mf-enviado').checked = false;
         document.getElementById('mf-notas').value = '';
+        _resetManualFlags();
         _hideError();
         document.getElementById('modal-pre').classList.add('open');
         setTimeout(() => document.getElementById('mf-cliente').focus(), 50);
@@ -582,6 +590,15 @@
         document.getElementById('mf-cc').value = p.coste_cliente ?? 0;
         document.getElementById('mf-enviado').checked = !!p.enviado;
         document.getElementById('mf-notas').value = p.notas || '';
+        _resetManualFlags();
+        // Si el coste existente NO coincide con horas*tarifa, lo marcamos
+        // como manual para que cambiar las horas no lo pise (F2 del QA).
+        const hy = Number(p.horas_yurest)  || 0;
+        const cy = Number(p.coste_yurest)  || 0;
+        const hc = Number(p.horas_cliente) || 0;
+        const cc = Number(p.coste_cliente) || 0;
+        if (Math.abs(cy - hy * TARIFA_POR_HORA) > 0.01) document.getElementById('mf-cy').dataset.manual = '1';
+        if (Math.abs(cc - hc * TARIFA_POR_HORA) > 0.01) document.getElementById('mf-cc').dataset.manual = '1';
         _hideError();
         document.getElementById('modal-pre').classList.add('open');
     }
@@ -678,6 +695,12 @@
     window.autoCosteCliente = autoCosteCliente;
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+    // Cerrar el modal al clicar fuera de la caja (F4 del QA). Sólo cuando
+    // el target es el propio overlay — si es cualquier descendiente
+    // (input, label, botón…) el click es legítimo del formulario.
+    document.getElementById('modal-pre').addEventListener('click', e => {
+        if (e.target === e.currentTarget) cerrarModal();
+    });
     cargar();
     </script>
 </body>
