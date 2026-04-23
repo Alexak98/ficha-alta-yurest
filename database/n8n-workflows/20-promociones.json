@@ -113,7 +113,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Arquitectura resiliente al bug de IF v2 (ver wf 21):\n//   - Si hay error: emite { __done: true, success: false, errores, action }\n//     (forma final de la respuesta). \"Formatear error\" hace pass-through.\n//   - Si OK: emite { action, row } y el IF encamina por __done (undefined\n//     para éxito → falso → happy path).\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\n\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { __done: true, success: false, errores: ['action inválida: ' + action], action, __traceVersion: 'v1c3c92d-inv' } }];\n}\n\nconst errores = [];\nif (action === 'create' && (!p.nombre || !String(p.nombre).trim())) errores.push('nombre obligatorio');\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action, __traceVersion: 'v1c3c92d-err' } }];\n}\n\nconst row = {};\nif (action === 'create') {\n  row.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   row.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          row.fecha_inicio  = p.fecha_inicio;\n  row.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  row.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  row.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) row.created_by = String(p.created_by);\n} else if (action === 'update') {\n  row.id = p.id;\n  if (p.nombre       !== undefined) row.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) row.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) row.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) row.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) row.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  row.plazas_tarde  = +p.plazas_tarde;\n  row.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  row.id = p.id;\n  row.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  row.id = p.id;\n  row.deleted_at = null;\n}\nreturn [{ json: { action, row, __traceVersion: 'v1c3c92d-happy' } }];"
+        "jsCode": "// Arquitectura resiliente al bug de IF v2 (ver wf 21):\n//   - Si hay error: emite { __done: true, success: false, errores, action }\n//     (forma final de la respuesta). \"Formatear error\" hace pass-through.\n//   - Si OK: emite { action, row } y el IF encamina por __done (undefined\n//     para éxito → falso → happy path).\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\n\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { __done: true, success: false, errores: ['action inválida: ' + action], action } }];\n}\n\nconst errores = [];\nif (action === 'create' && (!p.nombre || !String(p.nombre).trim())) errores.push('nombre obligatorio');\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action } }];\n}\n\nconst row = {};\nif (action === 'create') {\n  row.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   row.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          row.fecha_inicio  = p.fecha_inicio;\n  row.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  row.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  row.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) row.created_by = String(p.created_by);\n} else if (action === 'update') {\n  row.id = p.id;\n  if (p.nombre       !== undefined) row.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) row.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) row.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) row.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) row.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  row.plazas_tarde  = +p.plazas_tarde;\n  row.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  row.id = p.id;\n  row.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  row.id = p.id;\n  row.deleted_at = null;\n}\nreturn [{ json: { action, row } }];"
       },
       "id": "prep-promo",
       "name": "Preparar Promoción",
@@ -122,63 +122,6 @@
       "position": [
         440,
         460
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.__done === true }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ]
-        }
-      },
-      "id": "if-promo-errors",
-      "name": "¿Error validación?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        640,
-        460
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "create",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ]
-        }
-      },
-      "id": "if-promo-create",
-      "name": "¿Es create?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        840,
-        560
       ]
     },
     {
@@ -206,7 +149,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// trace\nreturn [{ json: Object.assign({}, $json.row, { __trace: 'aplanar_update' }) }];"
+        "jsCode": "// Aplana row para que UPDATE Promoción (autoMapInputData) solo reciba\n// los campos de la tabla incluido id.\nreturn [{ json: $json.row }];"
       },
       "id": "flatten-promo-update",
       "name": "Aplanar UPDATE",
@@ -253,7 +196,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Respuesta consolidada con trace para diagnosticar por qué el webhook\n// respondía con la salida de Preparar en vez de esta.\nconst items = $input.all() || [];\nconst rows = items.map(i => i.json).filter(x => x && x.id);\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores: rows.length > 0 ? [] : ['INSERT/UPDATE devolvió 0 filas'],\n  _trace: {\n    node: 'formatear_resultado',\n    itemCount: items.length,\n    sampleKeys: items.slice(0,3).map(i => Object.keys(i.json||{}))\n  }\n} }];"
+        "jsCode": "// Respuesta consolidada tras INSERT o UPDATE.\nconst items = $input.all() || [];\nconst rows = items.map(i => i.json).filter(x => x && x.id);\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores: rows.length > 0 ? [] : ['INSERT/UPDATE devolvió 0 filas']\n} }];"
       },
       "id": "format-promo-result",
       "name": "Formatear resultado",
@@ -262,19 +205,6 @@
       "position": [
         1440,
         560
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Pass-through: Preparar Promoción ya emitió el item con forma de\n// respuesta {__done, success, errores, action}.\nreturn [$input.first()];"
-      },
-      "id": "format-promo-error",
-      "name": "Formatear error",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        840,
-        360
       ]
     },
     {
@@ -315,7 +245,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// trace\nreturn [{ json: Object.assign({}, $json.row, { __trace: 'aplanar_insert' }) }];"
+        "jsCode": "// Aplana row para que INSERT Promoción (autoMapInputData) solo reciba\n// los campos de la tabla.\nreturn [{ json: $json.row }];"
       },
       "id": "aplanar-insert-promo",
       "name": "Aplanar INSERT",
@@ -323,6 +253,20 @@
       "typeVersion": 2,
       "position": [
         860,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Router explicito. Reemplaza los dos IFs de n8n v2 que se comportaban\n// erraticamente con el patron __done/action.\n// Emite a 3 outputs (index 0/1/2):\n//   0 -> rama INSERT (create)\n//   1 -> rama UPDATE/DELETE/REACTIVAR (requiere row.id)\n//   2 -> rama error (item ya con forma de respuesta final)\nconst j = $input.first().json || {};\n\nif (j.__done === true) {\n  // Error: pasa tal cual a la rama 2 (Respond directo).\n  return [[], [], [{ json: j }]];\n}\n\nconst action = String(j.action || '').toLowerCase();\nif (action === 'create') {\n  return [[{ json: j }], [], []];\n}\n// update/delete/reactivar\nreturn [[], [{ json: j }], []];",
+        "numberOfOutputs": 3
+      },
+      "id": "router-promo",
+      "name": "Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
         520
       ]
     }
@@ -376,43 +320,14 @@
       "main": [
         [
           {
-            "node": "¿Error validación?",
+            "node": "Router",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Error validación?": {
-      "main": [
-        [
-          {
-            "node": "Formatear error",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "¿Es create?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Formatear error": {
-      "main": [
-        [
-          {
-            "node": "Respond POST Promociones",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Es create?": {
+    "Router": {
       "main": [
         [
           {
@@ -427,14 +342,21 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Respond POST Promociones",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "INSERT Promoción": {
+    "Aplanar INSERT": {
       "main": [
         [
           {
-            "node": "Formatear resultado",
+            "node": "INSERT Promoción",
             "type": "main",
             "index": 0
           }
@@ -446,6 +368,17 @@
         [
           {
             "node": "UPDATE Promoción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSERT Promoción": {
+      "main": [
+        [
+          {
+            "node": "Formatear resultado",
             "type": "main",
             "index": 0
           }
@@ -468,17 +401,6 @@
         [
           {
             "node": "Respond POST Promociones",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aplanar INSERT": {
-      "main": [
-        [
-          {
-            "node": "INSERT Promoción",
             "type": "main",
             "index": 0
           }
