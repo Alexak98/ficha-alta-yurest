@@ -265,7 +265,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Rama de error: devuelve lista de errores al front.\nreturn [{ json: { success: false, errores: $json.errores || ['Error desconocido'], action: $json.action } }];"
+        "jsCode": "// Debug activo: incluimos toda la info del input para saber por qué\n// aterrizamos aquí (nombre, errores reales, __error flag, etc.).\nconst j = $json || {};\nreturn [{ json: {\n  success: false,\n  errores: j.errores || ['Error desconocido'],\n  action:  j.action,\n  _debug:  { __error: j.__error, erroresLen: (j.errores||[]).length, tieneRow: !!j.row, keys: Object.keys(j) }\n} }];"
       },
       "id": "format-promo-error",
       "name": "Formatear error",
