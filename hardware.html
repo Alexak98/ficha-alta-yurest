@@ -23,15 +23,28 @@
         .page-toolbar h2 { font-size:1.3rem;font-weight:700;color:#0f172a;margin:0 }
         .page-toolbar p  { font-size:.85rem;color:#64748b;margin:3px 0 0 }
 
+        .tabs { display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap }
+        .tab {
+            padding:8px 16px;font-size:.84rem;font-weight:600;border-radius:999px;
+            border:1.5px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;font-family:inherit;
+            display:inline-flex;align-items:center;gap:8px;
+        }
+        .tab.active { background:#0ea5e9;border-color:#0ea5e9;color:#fff }
+        .tab .count { background:rgba(0,0,0,.08);padding:1px 7px;border-radius:9px;font-size:.7rem }
+        .tab.active .count { background:rgba(255,255,255,.25) }
+
         .hw-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px }
         .hw-card { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px }
         .hw-card-head { display:flex;align-items:flex-start;justify-content:space-between;gap:10px }
         .hw-cliente { font-size:1rem;font-weight:700;color:#0f172a;margin:0 }
         .hw-proyecto { font-size:.78rem;color:#64748b;margin-top:2px }
+        .hw-id { font-size:.66rem;color:#94a3b8;font-family:monospace;margin-top:4px }
         .hw-estado {
             font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
-            padding:4px 9px;border-radius:999px;background:#dcfce7;color:#15803d;flex-shrink:0;
+            padding:4px 9px;border-radius:999px;flex-shrink:0;
         }
+        .est-lista_envio { background:#dcfce7;color:#15803d }
+        .est-enviado     { background:#e0e7ff;color:#3730a3 }
 
         .hw-items { background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:.82rem;color:#334155 }
         .hw-item-row { display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted #e2e8f0 }
@@ -47,9 +60,21 @@
         .hw-btn:hover { border-color:#0ea5e9;color:#0ea5e9 }
         .hw-btn.primary { background:#0ea5e9;color:#fff;border-color:#0ea5e9 }
         .hw-btn.primary:hover { background:#0369a1 }
+        .hw-btn.success { background:#16a34a;color:#fff;border-color:#16a34a }
+        .hw-btn.success:hover { background:#15803d }
 
         .empty { text-align:center;padding:60px 20px;background:#fff;border:1.5px dashed #e2e8f0;border-radius:12px;color:#94a3b8 }
         .empty-icon { font-size:2.6rem;margin-bottom:8px }
+
+        /* Mini-modal inline para "Marcar como enviado" */
+        .hw-mini-modal {
+            background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;
+            padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:.8rem;
+        }
+        .hw-mini-modal input {
+            width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:6px;
+            font-size:.82rem;font-family:inherit;box-sizing:border-box;
+        }
     </style>
 </head>
 <body>
@@ -69,17 +94,27 @@
     <div class="page-content">
         <div class="page-toolbar">
             <div>
-                <h2>Pedidos listos para enviar</h2>
-                <p>Pedidos de hardware cuya proforma ya está confirmada por contabilidad. Abre el PDF para ver qué se pidió y qué factura corresponde.</p>
+                <h2>Pedidos de hardware</h2>
+                <p>Pedidos cuya proforma ya está confirmada por contabilidad. Abre el PDF para ver qué se pidió, prepara el envío físico y márcalo como enviado al terminar.</p>
             </div>
             <button class="hw-btn" onclick="cargar()">↻ Recargar</button>
         </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="lista_envio" onclick="setTab('lista_envio')">
+                Pendientes de envío <span class="count" id="count-lista">0</span>
+            </button>
+            <button class="tab" data-tab="enviado" onclick="setTab('enviado')">
+                Ya enviados <span class="count" id="count-enviados">0</span>
+            </button>
+        </div>
+
         <div id="loading" style="text-align:center;padding:40px;color:#94a3b8">Cargando…</div>
         <div id="grid" class="hw-grid" style="display:none"></div>
         <div id="empty" class="empty" style="display:none">
-            <div class="empty-icon">📦</div>
-            <p style="font-weight:700;color:#475569;margin:0 0 6px">Nada pendiente de envío</p>
-            <p style="margin:0">Cuando contabilidad confirme el pago de un pedido, aparecerá aquí listo para que organicéis su envío.</p>
+            <div class="empty-icon" id="empty-icon">📦</div>
+            <p id="empty-title" style="font-weight:700;color:#475569;margin:0 0 6px">Nada pendiente de envío</p>
+            <p id="empty-sub" style="margin:0">Cuando contabilidad confirme el pago de un pedido, aparecerá aquí listo para que organicéis su envío.</p>
         </div>
     </div>
 
@@ -91,93 +126,210 @@
     const EP = YurestConfig.ENDPOINTS.hardwarePedidos;
     const esc = YurestConfig.escHtml;
 
+    // Estado local: lista completa por tab (cache) + tab activo.
+    let _pedidosPorEstado = { lista_envio: [], enviado: [] };
+    let _tabActivo = 'lista_envio';
+
     async function cargar() {
         document.getElementById('loading').style.display = '';
         document.getElementById('grid').style.display = 'none';
         document.getElementById('empty').style.display = 'none';
         try {
-            const url = EP + (EP.includes('?') ? '&' : '?') + 'estado=lista_envio&_=' + Date.now();
-            const res = await YurestConfig.apiFetch(url, {
-                method: 'GET',
-                headers: { 'Cache-Control': 'no-cache' }
-            });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-            const pedidos = Array.isArray(data.pedidos) ? data.pedidos
-                          : Array.isArray(data) ? data : [];
-            render(pedidos);
+            // Pedimos los dos estados relevantes en paralelo. Cada petición
+            // filtra en backend (ver nodo "Formatear GET" del wf 21).
+            const [lista, enviados] = await Promise.all([
+                _fetchPorEstado('lista_envio'),
+                _fetchPorEstado('enviado')
+            ]);
+            _pedidosPorEstado.lista_envio = lista;
+            _pedidosPorEstado.enviado     = enviados;
+            document.getElementById('count-lista').textContent     = lista.length;
+            document.getElementById('count-enviados').textContent  = enviados.length;
+            // Badge sidebar = pedidos aún no enviados.
+            const badge = document.getElementById('badge-hardware');
+            if (badge) {
+                badge.textContent = lista.length > 0 ? String(lista.length) : '';
+                if (typeof window._actualizarSidebarBadgesGrupos === 'function') {
+                    window._actualizarSidebarBadgesGrupos();
+                }
+            }
+            render();
         } catch (err) {
             document.getElementById('loading').innerHTML = '<span style="color:#dc2626">Error al cargar: ' + esc(err.message) + '</span>';
         }
     }
 
-    function render(pedidos) {
+    async function _fetchPorEstado(estado) {
+        const url = EP + (EP.includes('?') ? '&' : '?') + 'estado=' + encodeURIComponent(estado) + '&_=' + Date.now();
+        const res = await YurestConfig.apiFetch(url, { method:'GET', headers:{ 'Cache-Control':'no-cache' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        return Array.isArray(data.pedidos) ? data.pedidos : (Array.isArray(data) ? data : []);
+    }
+
+    function setTab(tab) {
+        _tabActivo = tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+        render();
+    }
+    window.setTab = setTab;
+
+    function render() {
         document.getElementById('loading').style.display = 'none';
+        const pedidos = _pedidosPorEstado[_tabActivo] || [];
         if (pedidos.length === 0) {
-            document.getElementById('empty').style.display = '';
+            const grid = document.getElementById('grid');
+            grid.style.display = 'none';
+            const empty = document.getElementById('empty');
+            empty.style.display = '';
+            if (_tabActivo === 'enviado') {
+                document.getElementById('empty-icon').textContent  = '🚚';
+                document.getElementById('empty-title').textContent = 'Aún no hay envíos cerrados';
+                document.getElementById('empty-sub').textContent   = 'Los pedidos marcados como enviados aparecerán aquí.';
+            } else {
+                document.getElementById('empty-icon').textContent  = '📦';
+                document.getElementById('empty-title').textContent = 'Nada pendiente de envío';
+                document.getElementById('empty-sub').textContent   = 'Cuando contabilidad confirme el pago de un pedido, aparecerá aquí listo para que organicéis su envío.';
+            }
             return;
         }
         const grid = document.getElementById('grid');
-        grid.innerHTML = pedidos.map(p => {
-            const items = Array.isArray(p.items) ? p.items : [];
-            const fmtPrecio = v => {
-                const n = Number(v);
-                if (!Number.isFinite(n)) return '—';
-                return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-            };
-            let subtotal = 0, tienePrecios = false;
-            items.forEach(it => {
-                if (Number.isFinite(+it.precio_total))         { subtotal += +it.precio_total;    tienePrecios = true; }
-                else if (Number.isFinite(+it.precio_unitario)) { subtotal += (+it.precio_unitario) * (Number(it.cantidad) || 1); tienePrecios = true; }
-            });
-            const itemsHtml = items.length
-                ? items.map(it => {
-                    const cant = Number(it.cantidad) || 1;
-                    const unidad = esc(it.unidad || 'ud');
-                    const precioUnit = Number.isFinite(+it.precio_unitario) ? fmtPrecio(it.precio_unitario) : null;
-                    const precioTot  = Number.isFinite(+it.precio_total)    ? fmtPrecio(it.precio_total)
-                                     : (precioUnit ? fmtPrecio((+it.precio_unitario) * cant) : null);
-                    return `
-                        <div class="hw-item-row">
-                            <span class="hw-item-nombre">${esc(it.nombre || '—')}${it.formato ? ` <span style="color:#94a3b8;font-size:.74rem">· ${esc(it.formato)}</span>` : ''}${precioUnit ? ` <span style="color:#94a3b8;font-size:.72rem">· ${precioUnit}/${unidad}</span>` : ''}</span>
-                            <span class="hw-item-qty">${cant} ${unidad}${precioTot ? ` · ${precioTot}` : ''}</span>
-                        </div>`;
-                }).join('')
-                : '<span style="color:#94a3b8">Sin items</span>';
-            const subtotalLine = tienePrecios
-                ? `<div style="text-align:right;font-size:.84rem;color:#334155;padding:4px 2px 0"><strong>Total: ${fmtPrecio(subtotal)}</strong></div>`
-                : '';
-            const fmt = v => v ? new Date(v).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
-            const proforma = p.proforma_pdf && p.proforma_pdf.data
-                ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-btn primary">📄 Abrir proforma</a>`
-                : '<span style="color:#dc2626;font-size:.74rem">Sin proforma (estado inconsistente)</span>';
-            const justif = p.justificante_pdf && p.justificante_pdf.data
-                ? `<a href="${esc(p.justificante_pdf.data)}" download="${esc(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-btn">🧾 Justificante de pago</a>`
-                : '';
-            return `
-                <div class="hw-card">
-                    <div class="hw-card-head">
-                        <div>
-                            <p class="hw-cliente">${esc(p.cliente || '—')}</p>
-                            ${p.implementador ? `<div class="hw-proyecto">Implementador: ${esc(p.implementador)}</div>` : ''}
-                        </div>
-                        <span class="hw-estado">Lista envío</span>
-                    </div>
-                    <div class="hw-items">${itemsHtml}</div>
-                    ${subtotalLine}
-                    <div class="hw-fechas">
-                        <span><strong>Solicitada:</strong> ${fmt(p.solicitado_at)}</span>
-                        <span><strong>Pagada:</strong> ${fmt(p.pagado_at)}</span>
-                        <span><strong>Confirmada:</strong> ${fmt(p.confirmado_at)}</span>
-                    </div>
-                    <div class="hw-actions">
-                        ${proforma}
-                        ${justif}
-                    </div>
-                </div>`;
-        }).join('');
+        grid.innerHTML = pedidos.map(p => _renderCard(p)).join('');
         grid.style.display = '';
+        document.getElementById('empty').style.display = 'none';
     }
+
+    function _renderCard(p) {
+        const items = Array.isArray(p.items) ? p.items : [];
+        const fmtPrecio = v => {
+            const n = Number(v);
+            if (!Number.isFinite(n)) return '—';
+            return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+        };
+        let subtotal = 0, tienePrecios = false;
+        items.forEach(it => {
+            if (Number.isFinite(+it.precio_total))         { subtotal += +it.precio_total;    tienePrecios = true; }
+            else if (Number.isFinite(+it.precio_unitario)) { subtotal += (+it.precio_unitario) * (Number(it.cantidad) || 1); tienePrecios = true; }
+        });
+        const itemsHtml = items.length
+            ? items.map(it => {
+                const cant = Number(it.cantidad) || 1;
+                const unidad = esc(it.unidad || 'ud');
+                const precioUnit = Number.isFinite(+it.precio_unitario) ? fmtPrecio(it.precio_unitario) : null;
+                const precioTot  = Number.isFinite(+it.precio_total)    ? fmtPrecio(it.precio_total)
+                                 : (precioUnit ? fmtPrecio((+it.precio_unitario) * cant) : null);
+                return `
+                    <div class="hw-item-row">
+                        <span class="hw-item-nombre">${esc(it.nombre || '—')}${it.formato ? ` <span style="color:#94a3b8;font-size:.74rem">· ${esc(it.formato)}</span>` : ''}${precioUnit ? ` <span style="color:#94a3b8;font-size:.72rem">· ${precioUnit}/${unidad}</span>` : ''}</span>
+                        <span class="hw-item-qty">${cant} ${unidad}${precioTot ? ` · ${precioTot}` : ''}</span>
+                    </div>`;
+            }).join('')
+            : '<span style="color:#94a3b8">Sin items</span>';
+        const subtotalLine = tienePrecios
+            ? `<div style="text-align:right;font-size:.84rem;color:#334155;padding:4px 2px 0"><strong>Total: ${fmtPrecio(subtotal)}</strong></div>`
+            : '';
+        const fmt = v => v ? new Date(v).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const proforma = p.proforma_pdf && p.proforma_pdf.data
+            ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-btn primary">📄 Abrir proforma</a>`
+            : '<span style="color:#dc2626;font-size:.74rem">Sin proforma (estado inconsistente)</span>';
+        const justif = p.justificante_pdf && p.justificante_pdf.data
+            ? `<a href="${esc(p.justificante_pdf.data)}" download="${esc(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-btn">🧾 Justificante de pago</a>`
+            : '';
+
+        const esEnviado = p.estado === 'enviado';
+        const badgeLbl = esEnviado ? 'Enviado' : 'Lista envío';
+        const badgeCls = esEnviado ? 'est-enviado' : 'est-lista_envio';
+
+        // Acción "marcar enviado" solo en lista_envio. Al pulsarla abrimos
+        // un mini-form inline con tracking opcional (se persiste en la
+        // columna `tracking` de la tabla — ver migración 2026-04-23_01).
+        const accionEnvio = !esEnviado
+            ? `<button class="hw-btn success" onclick="abrirMarcarEnviado('${esc(p.id)}')" id="btn-env-${esc(p.id)}">✓ Marcar como enviado</button>
+               <div class="hw-mini-modal" id="form-env-${esc(p.id)}" style="display:none">
+                   <strong style="font-size:.8rem;color:#92400e">Confirmar envío físico</strong>
+                   <input type="text" id="tracking-${esc(p.id)}" placeholder="Tracking (opcional): número o URL">
+                   <div style="display:flex;gap:6px;justify-content:flex-end">
+                       <button class="hw-btn" onclick="cerrarMarcarEnviado('${esc(p.id)}')">Cancelar</button>
+                       <button class="hw-btn success" onclick="confirmarMarcarEnviado('${esc(p.id)}')">Confirmar</button>
+                   </div>
+               </div>`
+            : '';
+
+        // Datos de envío (solo en tab enviado): tracking + quién + cuándo.
+        const envioInfo = esEnviado
+            ? `<div style="font-size:.74rem;color:#3730a3;background:#eef2ff;border-left:3px solid #6366f1;padding:6px 10px;border-radius:4px">
+                   <strong>Enviado:</strong> ${fmt(p.enviado_at)}${p.enviado_por ? ' · por ' + esc(p.enviado_por) : ''}
+                   ${p.tracking ? `<br><strong>Tracking:</strong> ${/^https?:\/\//i.test(p.tracking) ? `<a href="${esc(p.tracking)}" target="_blank" rel="noopener">${esc(p.tracking)}</a>` : esc(p.tracking)}` : ''}
+               </div>`
+            : '';
+
+        return `
+            <div class="hw-card">
+                <div class="hw-card-head">
+                    <div>
+                        <p class="hw-cliente">${esc(p.cliente || '—')}</p>
+                        ${p.implementador ? `<div class="hw-proyecto">Implementador: ${esc(p.implementador)}</div>` : ''}
+                        <div class="hw-id">#${esc(String(p.id || '').slice(0,8))}${p.proyecto_id ? '' : ' <span style="color:#b45309">· proyecto eliminado</span>'}</div>
+                    </div>
+                    <span class="hw-estado ${badgeCls}">${badgeLbl}</span>
+                </div>
+                <div class="hw-items">${itemsHtml}</div>
+                ${subtotalLine}
+                <div class="hw-fechas">
+                    <span><strong>Solicitada:</strong> ${fmt(p.solicitado_at)}</span>
+                    <span><strong>Proforma:</strong> ${fmt(p.proforma_at)}</span>
+                    <span><strong>Pagada:</strong> ${fmt(p.pagado_at)}</span>
+                    <span><strong>Confirmada:</strong> ${fmt(p.confirmado_at)}</span>
+                </div>
+                ${envioInfo}
+                <div class="hw-actions">
+                    ${proforma}
+                    ${justif}
+                    ${accionEnvio}
+                </div>
+            </div>`;
+    }
+
+    function abrirMarcarEnviado(id) {
+        document.getElementById('btn-env-' + id).style.display  = 'none';
+        document.getElementById('form-env-' + id).style.display = '';
+        const inp = document.getElementById('tracking-' + id);
+        if (inp) inp.focus();
+    }
+    window.abrirMarcarEnviado = abrirMarcarEnviado;
+
+    function cerrarMarcarEnviado(id) {
+        const form = document.getElementById('form-env-' + id);
+        const btn  = document.getElementById('btn-env-' + id);
+        if (form) form.style.display = 'none';
+        if (btn)  btn.style.display  = '';
+    }
+    window.cerrarMarcarEnviado = cerrarMarcarEnviado;
+
+    async function confirmarMarcarEnviado(id) {
+        const tracking = (document.getElementById('tracking-' + id) || {}).value || '';
+        const usuario = (YurestConfig.getUsuario && YurestConfig.getUsuario() || {}).username || null;
+        try {
+            const res = await YurestConfig.apiFetch(EP, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'marcar_enviado',
+                    pedido: {
+                        id,
+                        enviado_por: usuario,
+                        tracking: tracking.trim() || null
+                    }
+                })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const body = await res.json().catch(() => ({}));
+            if (body && body.success === false) throw new Error((body.errores || ['Error']).join('; '));
+            await cargar();
+        } catch (err) {
+            alert('No se pudo marcar como enviado: ' + err.message);
+        }
+    }
+    window.confirmarMarcarEnviado = confirmarMarcarEnviado;
 
     window.cargar = cargar;
     cargar();

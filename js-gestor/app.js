@@ -1654,7 +1654,8 @@ function _hwRenderLista(proyecto) {
         solicitada:          { lbl: 'Esperando proforma',     cls: 'est-solicitada' },
         proforma_adjuntada:  { lbl: 'Proforma recibida',      cls: 'est-proforma_adjuntada' },
         pendiente_confirmar: { lbl: 'Pendiente confirmar pago', cls: 'est-pendiente_confirmar' },
-        lista_envio:         { lbl: 'Lista para envío',       cls: 'est-lista_envio' }
+        lista_envio:         { lbl: 'Lista para envío',       cls: 'est-lista_envio' },
+        enviado:             { lbl: 'Enviado',                cls: 'est-enviado' }
     };
     const fmt = v => v ? new Date(v).toLocaleString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
     wrap.innerHTML = _hwPedidos.map(p => {
@@ -1694,9 +1695,9 @@ function _hwRenderLista(proyecto) {
 
         // Acciones según estado (lado implementador):
         //   solicitada         → ver estado; esperar proforma
-        //   proforma_adjuntada → ver proforma + subir justificante de pago
+        //   proforma_adjuntada → ver proforma + subir justificante + rechazar proforma
         //   pendiente_confirmar→ ver proforma + ver justificante + esperar confirmación
-        //   lista_envio        → solo lectura
+        //   lista_envio / enviado → solo lectura
         let acciones = '';
         if (p.estado === 'proforma_adjuntada') {
             const prof = p.proforma_pdf && p.proforma_pdf.data
@@ -1706,7 +1707,8 @@ function _hwRenderLista(proyecto) {
                 <label class="hw-cta primary">
                     🧾 Subir justificante de pago
                     <input type="file" accept="application/pdf" onchange="hwSubirJustificante('${escapeHtml(p.id)}', '${escapeHtml(proyecto.id)}', this)">
-                </label>`;
+                </label>
+                <button class="hw-cta" onclick="hwRechazarProforma('${escapeHtml(p.id)}', '${escapeHtml(proyecto.id)}')" title="La proforma es incorrecta — pedir rehacer">↩ Rechazar proforma</button>`;
         } else if (p.estado === 'pendiente_confirmar') {
             const prof = p.proforma_pdf && p.proforma_pdf.data
                 ? `<a href="${escapeHtml(p.proforma_pdf.data)}" download="${escapeHtml(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
@@ -1720,9 +1722,29 @@ function _hwRenderLista(proyecto) {
                 ? `<a href="${escapeHtml(p.proforma_pdf.data)}" download="${escapeHtml(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
                 : '';
             acciones = `${prof}<span style="font-size:.72rem;color:#16a34a;align-self:center">✓ Enviado a Soporte</span>`;
+        } else if (p.estado === 'enviado') {
+            const prof = p.proforma_pdf && p.proforma_pdf.data
+                ? `<a href="${escapeHtml(p.proforma_pdf.data)}" download="${escapeHtml(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
+                : '';
+            const tracking = p.tracking
+                ? (/^https?:\/\//i.test(p.tracking)
+                    ? `<a href="${escapeHtml(p.tracking)}" target="_blank" rel="noopener" class="hw-cta">🚚 Tracking</a>`
+                    : `<span style="font-size:.72rem;color:#3730a3;align-self:center">🚚 ${escapeHtml(p.tracking)}</span>`)
+                : '';
+            acciones = `${prof}${tracking}<span style="font-size:.72rem;color:#3730a3;align-self:center">Enviado ${fmt(p.enviado_at)}${p.enviado_por ? ' · ' + escapeHtml(p.enviado_por) : ''}</span>`;
         } else {
             acciones = `<span style="font-size:.72rem;color:#64748b;align-self:center">Esperando a que contabilidad suba la proforma…</span>`;
         }
+
+        // Cabecera con ID corto y fechas clave para trazabilidad.
+        const fechas = [];
+        if (p.proforma_at)    fechas.push('proforma ' + fmt(p.proforma_at));
+        if (p.pagado_at)      fechas.push('pago ' + fmt(p.pagado_at));
+        if (p.confirmado_at)  fechas.push('confirmado ' + fmt(p.confirmado_at));
+        if (p.enviado_at)     fechas.push('enviado ' + fmt(p.enviado_at));
+        const fechasLine = fechas.length
+            ? `<div style="font-size:.7rem;color:#94a3b8;margin-top:2px">${fechas.join(' · ')}</div>`
+            : '';
 
         return `
             <div class="hw-pedido">
@@ -1730,6 +1752,8 @@ function _hwRenderLista(proyecto) {
                     <div>
                         <p class="hw-pedido-cliente">Pedido del ${fmt(p.solicitado_at)}</p>
                         ${p.implementador ? `<div class="hw-pedido-sub">Solicitó: ${escapeHtml(p.implementador)}</div>` : ''}
+                        <div style="font-size:.66rem;color:#94a3b8;font-family:monospace;margin-top:3px">#${escapeHtml(String(p.id || '').slice(0,8))}</div>
+                        ${fechasLine}
                     </div>
                     <span class="hw-pedido-estado ${info.cls}">${escapeHtml(info.lbl)}</span>
                 </div>
@@ -1741,6 +1765,34 @@ function _hwRenderLista(proyecto) {
             </div>`;
     }).join('');
 }
+
+// Lado implementador: rechazar la proforma que ha subido contabilidad. Motivo
+// obligatorio — se envía al WF y éste limpia proforma_at/proforma_pdf volviendo
+// el pedido a 'solicitada'.
+async function hwRechazarProforma(pedidoId, proyectoId) {
+    const motivo = prompt('Motivo por el que rechazas la proforma (obligatorio):\n\nEj: importe incorrecto, datos de facturación erróneos, faltan conceptos…');
+    if (motivo === null) return;
+    const m = (motivo || '').trim();
+    if (!m) { mostrarToast('El motivo es obligatorio', 'warning'); return; }
+    try {
+        const res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.hardwarePedidos, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'devolver_a_contabilidad',
+                pedido: { id: pedidoId, desde: 'proforma_adjuntada', motivo: m }
+            })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const r = await res.json();
+        if (r && r.success === false) throw new Error((r.errores || ['Error']).join('; '));
+        mostrarToast('Proforma devuelta a contabilidad', 'success');
+        const proyecto = proyectos.find(p => p.id === proyectoId);
+        if (proyecto) renderDetalleHardware(proyecto);
+    } catch (err) {
+        mostrarToast('Error al rechazar: ' + err.message, 'error', 5000);
+    }
+}
+window.hwRechazarProforma = hwRechazarProforma;
 
 // ── Modal nuevo pedido — catálogo con cantidades ─────────────────────────
 // Cantidades en memoria: { itemId: cantidad }. Se construye vacío al abrir

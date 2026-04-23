@@ -1121,6 +1121,7 @@ body {
 .est-proforma_adjuntada { background:#dbeafe; color:#1e40af; }
 .est-pendiente_confirmar{ background:#fee2e2; color:#991b1b; }
 .est-lista_envio        { background:#dcfce7; color:#15803d; }
+.est-enviado            { background:#e0e7ff; color:#3730a3; }
 .hw-pedido-items { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:.8rem; color:#334155; }
 .hw-pedido-item-row { display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px dotted #e2e8f0; }
 .hw-pedido-item-row:last-child { border-bottom:none; }

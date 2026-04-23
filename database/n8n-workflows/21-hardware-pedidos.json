@@ -6,6 +6,7 @@
         "httpMethod": "GET",
         "path": "hardware/pedidos",
         "responseMode": "responseNode",
+        "authentication": "basicAuth",
         "options": {
           "allowedOrigins": "*"
         }
@@ -18,7 +19,13 @@
         240,
         200
       ],
-      "webhookId": "hw-pedidos-get"
+      "webhookId": "hw-pedidos-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -45,7 +52,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Devuelve solo pedidos vivos (no soft-deleted). Si la URL trae\n// ?estado=solicitada|proforma_adjuntada|... filtramos; si trae\n// ?proyecto_id=<uuid> filtramos por proyecto. Sin filtro devolvemos todos.\nconst raw = ($input.all() || []).map(i => i.json).filter(x => x && x.id && !x.deleted_at);\nconst q = ($input.first().json && $input.first().json.query) || {};\nlet out = raw;\nif (q.estado) out = out.filter(p => p.estado === q.estado);\nif (q.proyecto_id) out = out.filter(p => p.proyecto_id === q.proyecto_id);\nreturn [{ json: { pedidos: out } }];"
+        "jsCode": "// Devuelve solo pedidos vivos (no soft-deleted). Si la URL trae\n// ?estado=solicitada|proforma_adjuntada|... filtramos; si trae\n// ?proyecto_id=<uuid> filtramos por proyecto. Sin filtro devolvemos todos.\n//\n// IMPORTANTE: no filtramos los adjuntos base64 aquí — podrían ser\n// grandes. La alternativa (enviar solo metadatos y resolver por pedido)\n// es un refactor pendiente; ver QA-HARDWARE-HALLAZGOS.md F4.\nconst raw = ($input.all() || []).map(i => i.json).filter(x => x && x.id && !x.deleted_at);\n// La query-string viene del webhook, no del Supabase node (que ya emite rows).\nconst wh = $('Webhook GET Pedidos').first().json || {};\nconst q = wh.query || wh.params || {};\nlet out = raw;\nif (q.estado) out = out.filter(p => p.estado === q.estado);\nif (q.proyecto_id) out = out.filter(p => p.proyecto_id === q.proyecto_id);\n// Orden descendente por solicitado_at — los más nuevos primero.\nout.sort((a, b) => {\n  const da = a.solicitado_at ? new Date(a.solicitado_at).getTime() : 0;\n  const db = b.solicitado_at ? new Date(b.solicitado_at).getTime() : 0;\n  return db - da;\n});\nreturn [{ json: { pedidos: out } }];"
       },
       "id": "hw-format-get",
       "name": "Formatear GET",
@@ -97,6 +104,7 @@
         "httpMethod": "POST",
         "path": "hardware/pedidos",
         "responseMode": "responseNode",
+        "authentication": "basicAuth",
         "options": {
           "allowedOrigins": "*"
         }
@@ -109,7 +117,13 @@
         240,
         500
       ],
-      "webhookId": "hw-pedidos-post"
+      "webhookId": "hw-pedidos-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -149,7 +163,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst now = new Date().toISOString();\nconst errores = [];\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\nlet out = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  out = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  out = { id: p.id, proforma_pdf: p.proforma_pdf, estado: 'proforma_adjuntada', proforma_at: now };\n  if (p.notas_contabilidad !== undefined) out.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  out = { id: p.id, justificante_pdf: p.justificante_pdf, estado: 'pendiente_confirmar', pagado_at: now };\n  if (p.notas_implementador !== undefined) out.notas_implementador = p.notas_implementador;\n} else if (action === 'confirmar_pago') {\n  out = { id: p.id, estado: 'lista_envio', confirmado_at: now };\n  if (p.notas_contabilidad !== undefined) out.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  out = { id: p.id, items: p.items || [] };\n  if (p.notas_implementador !== undefined) out.notas_implementador = p.notas_implementador;\n} else if (action === 'delete') {\n  out = { id: p.id, deleted_at: now };\n}\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\nif (errores.length > 0) return [{ json: { __error: true, __errores: errores, __action: action } }];\nreturn [{ json: out }];"
+        "jsCode": "// Acciones soportadas:\n//   create                → alta desde el implementador (estado=solicitada)\n//   adjuntar_proforma     → contabilidad sube PDF (estado=proforma_adjuntada)\n//   adjuntar_justificante → implementador sube pago (estado=pendiente_confirmar)\n//   confirmar_pago        → contabilidad confirma (estado=lista_envio)\n//   marcar_enviado        → soporte confirma envío físico (estado=enviado)\n//   devolver_a_contabilidad → implementador rechaza la proforma o contabilidad\n//                              devuelve un justificante incorrecto.\n//                              Vuelve al estado inmediatamente anterior.\n//   actualizar_items      → implementador edita el carrito (solo antes de\n//                              proforma_adjuntada)\n//\n// NO se exponen acciones destructivas por webhook público (antes existía\n// 'delete' con soft-delete por id; se ha retirado — ver B2 de\n// QA-HARDWARE-HALLAZGOS.md). El borrado se hace a mano en Supabase o en\n// una futura cola de admin con controles adicionales.\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst now = new Date().toISOString();\nconst errores = [];\nconst VALID = [\n  'create',\n  'adjuntar_proforma',\n  'adjuntar_justificante',\n  'confirmar_pago',\n  'marcar_enviado',\n  'devolver_a_contabilidad',\n  'actualizar_items'\n];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n// UUID v4 (laxo: cualquier UUID) — evita IDs basura que llegarían a Supabase\n// generando errores 22P02 confusos.\nif (p.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id)) {\n  errores.push('id no es un UUID válido');\n}\nlet out = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  if (Array.isArray(p.items) && p.items.some(it => !it || !it.nombre || !Number.isFinite(+it.cantidad) || +it.cantidad <= 0)) {\n    errores.push('items inválidos (nombre + cantidad > 0)');\n  }\n  // Generamos el id aquí (en vez de delegar al DEFAULT gen_random_uuid de Postgres) para\n  // que el nodo Supabase UPSERT tenga siempre una PK con la que resolver ON CONFLICT.\n  // Sin esto devuelve 0 filas (silencioso) porque upsert autoMap sin PK no ejecuta.\n  const _uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); });\n  out = {\n    id: _uuid,\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  out = { id: p.id, proforma_pdf: p.proforma_pdf, estado: 'proforma_adjuntada', proforma_at: now };\n  if (p.notas_contabilidad !== undefined) out.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  out = { id: p.id, justificante_pdf: p.justificante_pdf, estado: 'pendiente_confirmar', pagado_at: now };\n  if (p.notas_implementador !== undefined) out.notas_implementador = p.notas_implementador;\n} else if (action === 'confirmar_pago') {\n  out = { id: p.id, estado: 'lista_envio', confirmado_at: now };\n  if (p.notas_contabilidad !== undefined) out.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'marcar_enviado') {\n  // Soporte marca el envío físico realizado. tracking es opcional.\n  out = { id: p.id, estado: 'enviado', enviado_at: now };\n  if (p.enviado_por !== undefined) out.enviado_por = p.enviado_por;\n  if (p.tracking !== undefined) out.tracking = p.tracking;\n} else if (action === 'devolver_a_contabilidad') {\n  // Rollback controlado. Quien lo pide debe indicar desde qué estado y el\n  // motivo (queda registrado en notas_contabilidad con prefijo [DEVOLUCIÓN]).\n  //   proforma_adjuntada  → solicitada   (implementador rechaza la proforma)\n  //   pendiente_confirmar → proforma_adjuntada (contabilidad rechaza el\n  //                                              justificante)\n  const desde = String(p.desde || '').toLowerCase();\n  const motivo = String(p.motivo || '').trim();\n  if (!motivo) errores.push('motivo obligatorio para devolver');\n  let nuevo = null;\n  if (desde === 'proforma_adjuntada') nuevo = 'solicitada';\n  else if (desde === 'pendiente_confirmar') nuevo = 'proforma_adjuntada';\n  else errores.push('desde debe ser proforma_adjuntada o pendiente_confirmar');\n  if (nuevo) {\n    out = { id: p.id, estado: nuevo };\n    out.notas_contabilidad = '[DEVOLUCIÓN ' + now + '] ' + motivo;\n    // Limpia timestamps del estado abandonado para no dejar datos incoherentes.\n    if (desde === 'proforma_adjuntada') { out.proforma_at = null; out.proforma_pdf = null; }\n    if (desde === 'pendiente_confirmar') { out.pagado_at = null; out.justificante_pdf = null; }\n  }\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  out = { id: p.id, items: p.items || [] };\n  if (p.notas_implementador !== undefined) out.notas_implementador = p.notas_implementador;\n}\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\nif (errores.length > 0) return [{ json: { __error: true, __errores: errores, __action: action, __method: 'POST', __qs: 'on_conflict=id' } }];\n// POST para create (insert nuevo), PATCH para el resto (update por id).\n// Usamos PATCH en vez de UPSERT POST porque PostgREST UPSERT merge-duplicates\n// exige todos los NOT NULL en el body — con PATCH enviamos solo los campos a cambiar.\nconst _method = (action === 'create') ? 'POST' : 'PATCH';\nconst _qs = (action === 'create') ? 'on_conflict=id' : ('id=eq.' + encodeURIComponent(p.id || ''));\nreturn [{ json: Object.assign({}, out, { __method: _method, __qs: _qs }) }];"
       },
       "id": "prep-upsert-hardware_pedidos",
       "name": "Preparar",
@@ -162,15 +176,34 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "hardware_pedidos",
-        "dataToSend": "autoMapInputData",
-        "options": {}
+        "method": "={{ $json.__method || 'POST' }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/hardware_pedidos?{{ $json.__qs || 'on_conflict=id' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.fromEntries(Object.entries($json).filter(e => !e[0].startsWith('__')))) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "supa-upsert-hardware_pedidos",
       "name": "Supabase UPSERT",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         640,
         460
@@ -186,7 +219,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// DIAGNOSTIC: volcamos la salida de Supabase UPSERT tal cual.\nconst items = $input.all() || [];\nconst errores = [];\nlet rows = [];\nlet cortoPreparar = false;\nconst _trace = items.map(i => { try { return { keys: Object.keys(i.json||{}), json: i.json }; } catch (_) { return '?'; } });\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (j.__error) { cortoPreparar = true; (j.__errores||[]).forEach(e=>errores.push(e)); continue; }\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (cortoPreparar) return [{ json: { success: false, errores, pedido: null, _trace } }];\nif (rows.length === 0 && errores.length === 0) errores.push('UPSERT devolvió 0 filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  pedido: rows[0] || null,\n  errores,\n  _trace\n} }];"
+        "jsCode": "// Normaliza la salida del HTTP (PostgREST) al shape único del frontend:\n//   { success, pedido, errores }\n// Precedencia: errores de validación del nodo Preparar > errores HTTP > filas.\nconst prep = $('Preparar').first().json || {};\nif (prep.__error) {\n  return [{ json: { success: false, pedido: null, errores: prep.__errores || ['validación falló'] } }];\n}\nconst items = $input.all() || [];\nconst errores = [];\nlet rows = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  // PostgREST error shape: {code, message, details, hint}\n  if (j.code && j.message && !j.id) {\n    errores.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.id) rows.push(j);\n  // PostgREST devuelve un array; si j.data es array lo desglosa\n  if (Array.isArray(j.data)) rows = rows.concat(j.data);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('PostgREST devolvió 0 filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  pedido: rows[0] || null,\n  errores\n} }];"
       },
       "id": "fmt-upsert-hardware_pedidos",
       "name": "Formatear respuesta",

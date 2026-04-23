@@ -30,6 +30,7 @@
         .est-proforma_adjuntada { background:#dbeafe; color:#1e40af; }
         .est-pendiente_confirmar{ background:#fee2e2; color:#991b1b; }
         .est-lista_envio        { background:#dcfce7; color:#15803d; }
+        .est-enviado            { background:#e0e7ff; color:#3730a3; }
         .hw-pedido-items { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:.8rem; color:#334155; }
         .hw-pedido-item-row { display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px dotted #e2e8f0; }
         .hw-pedido-item-row:last-child { border-bottom:none; }
@@ -44,8 +45,31 @@
         .hw-cta.primary:hover { background:#e84848; }
         .hw-cta.success { background:#16a34a; color:#fff; border-color:#16a34a; }
         .hw-cta.success:hover { background:#15803d; }
+        .hw-cta.warning { background:#f59e0b; color:#fff; border-color:#f59e0b; }
+        .hw-cta.warning:hover { background:#d97706; }
         .hw-cta input[type="file"] { display:none; }
         .hw-empty { text-align:center; padding:40px 20px; color:#94a3b8; }
+        .hw-pedido-id { font-size:.66rem;color:#94a3b8;font-family:monospace;margin-top:2px; }
+        .hw-pedido-orphan { display:inline-block;font-size:.64rem;font-weight:700;color:#b45309;background:#fef3c7;padding:1px 6px;border-radius:4px;margin-left:6px }
+
+        /* Modal genérico para notas de contabilidad (subir proforma / confirmar / rollback) */
+        .hw-note-overlay {
+            position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);
+            z-index:800;display:flex;align-items:center;justify-content:center;padding:20px;
+            opacity:0;pointer-events:none;transition:opacity .2s;
+        }
+        .hw-note-overlay.open { opacity:1;pointer-events:auto }
+        .hw-note-modal {
+            background:#fff;border-radius:14px;max-width:480px;width:100%;
+            box-shadow:0 12px 48px rgba(0,0,0,.25);padding:20px 22px;
+        }
+        .hw-note-modal h3 { margin:0 0 8px;font-size:1rem;color:#1e293b }
+        .hw-note-modal p  { margin:0 0 12px;font-size:.82rem;color:#64748b }
+        .hw-note-modal textarea {
+            width:100%;min-height:80px;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+            font-family:inherit;font-size:.86rem;resize:vertical;box-sizing:border-box;
+        }
+        .hw-note-actions { display:flex;justify-content:flex-end;gap:8px;margin-top:12px }
 
         .v-loading { padding:48px 16px; text-align:center; color:#64748b; font-size:.9rem; }
         .v-loading.hidden { display:none; }
@@ -88,10 +112,13 @@
 
 <div class="cont-wrap">
 
-    <div class="page-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fc5858" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-        <span>Solicitud de proformas</span>
-        <span class="muted" id="cont-subtitle">Cargando…</span>
+    <div class="page-title" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fc5858" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+            <span>Solicitud de proformas</span>
+            <span class="muted" id="cont-subtitle">Cargando…</span>
+        </div>
+        <button class="hw-cta" onclick="recargarProformas()" title="Recargar listado">↻ Recargar</button>
     </div>
 
     <div id="cont-error" class="v-error hidden"></div>
@@ -287,9 +314,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                 : '';
 
             // Acciones disponibles según estado:
-            //   solicitada         → subir proforma PDF
-            //   pendiente_confirmar → ver proforma + justificante + confirmar pago
-            //   proforma_adjuntada / lista_envio → ver adjuntos (solo lectura)
+            //   solicitada         → subir proforma PDF (opcional: nota)
+            //   proforma_adjuntada → ver PDF, esperar justificante
+            //   pendiente_confirmar → ver proforma + justificante + confirmar o devolver
+            //   lista_envio         → ver adjuntos (solo lectura)
             let acciones = '';
             if (p.estado === 'solicitada') {
                 acciones = `
@@ -305,7 +333,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                     ? `<a href="${esc(p.justificante_pdf.data)}" download="${esc(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-cta">🧾 Justificante</a>`
                     : '';
                 acciones = `${prof}${just}
-                    <button class="hw-cta success" onclick="confirmarPago('${esc(p.id)}')">✓ Confirmar pago</button>`;
+                    <button class="hw-cta success" onclick="confirmarPago('${esc(p.id)}')">✓ Confirmar pago</button>
+                    <button class="hw-cta warning" onclick="devolverJustificante('${esc(p.id)}')" title="Justificante incorrecto — devolver al implementador">↩ Devolver justificante</button>`;
             } else if (p.estado === 'proforma_adjuntada') {
                 const prof = p.proforma_pdf && p.proforma_pdf.data
                     ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Ver proforma enviada</a>`
@@ -319,20 +348,23 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             }
 
             const fmt = v => v ? new Date(v).toLocaleString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+            const orphan = p.proyecto_id ? '' : '<span class="hw-pedido-orphan">proyecto eliminado</span>';
             return `
                 <div class="hw-pedido">
                     <div class="hw-pedido-head">
                         <div>
-                            <p class="hw-pedido-cliente">${esc(p.cliente || '—')}</p>
+                            <p class="hw-pedido-cliente">${esc(p.cliente || '—')}${orphan}</p>
                             <div class="hw-pedido-sub">
                                 ${p.implementador ? 'Solicita: ' + esc(p.implementador) + ' · ' : ''}${fmt(p.solicitado_at)}
                             </div>
+                            <div class="hw-pedido-id">#${esc(String(p.id || '').slice(0,8))}${p.proforma_at ? ' · proforma ' + fmt(p.proforma_at) : ''}${p.pagado_at ? ' · pago ' + fmt(p.pagado_at) : ''}</div>
                         </div>
                         <span class="hw-pedido-estado est-${esc(p.estado)}">${esc(ESTADO_LBL[p.estado] || p.estado)}</span>
                     </div>
                     <div class="hw-pedido-items">${itemsHtml}</div>
                     ${subtotalHtml}
                     ${p.notas_implementador ? `<div style="font-size:.78rem;color:#475569;background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 10px;border-radius:4px"><strong>Nota del implementador:</strong> ${esc(p.notas_implementador)}</div>` : ''}
+                    ${p.notas_contabilidad ? `<div style="font-size:.78rem;color:#475569;background:#eff6ff;border-left:3px solid #3b82f6;padding:6px 10px;border-radius:4px"><strong>Nota contabilidad:</strong> ${esc(p.notas_contabilidad)}</div>` : ''}
                     <div class="hw-pedido-actions">${acciones}</div>
                 </div>`;
         }).join('');
@@ -355,6 +387,52 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         });
     }
 
+    // Pedimos la nota opcional en un modal (no bloqueante, devuelve Promise).
+    // `obligatoria=true` → no deja continuar con nota vacía (se usa en la
+    // acción de "Devolver justificante" porque el WF exige motivo).
+    function pedirNota({ titulo, descripcion, placeholder, submitLabel, obligatoria = false }) {
+        return new Promise(resolve => {
+            let overlay = document.getElementById('hw-note-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'hw-note-overlay';
+                overlay.className = 'hw-note-overlay';
+                overlay.innerHTML = `
+                    <div class="hw-note-modal">
+                        <h3 id="hw-note-title"></h3>
+                        <p id="hw-note-desc"></p>
+                        <textarea id="hw-note-ta" placeholder=""></textarea>
+                        <div class="hw-note-actions">
+                            <button class="hw-cta" id="hw-note-cancel">Cancelar</button>
+                            <button class="hw-cta primary" id="hw-note-ok"></button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                overlay.addEventListener('click', e => { if (e.target === overlay) _cerrarNota(null); });
+            }
+            document.getElementById('hw-note-title').textContent = titulo;
+            document.getElementById('hw-note-desc').textContent  = descripcion;
+            const ta = document.getElementById('hw-note-ta');
+            ta.value = ''; ta.placeholder = placeholder || '';
+            document.getElementById('hw-note-ok').textContent = submitLabel || 'Aceptar';
+            overlay.classList.add('open');
+            setTimeout(() => ta.focus(), 50);
+
+            function _cerrarNota(valor) {
+                overlay.classList.remove('open');
+                document.getElementById('hw-note-ok').onclick     = null;
+                document.getElementById('hw-note-cancel').onclick = null;
+                resolve(valor);
+            }
+            document.getElementById('hw-note-ok').onclick = () => {
+                const v = ta.value.trim();
+                if (obligatoria && !v) { mostrarToast('La nota es obligatoria', 'warning'); return; }
+                _cerrarNota(v);
+            };
+            document.getElementById('hw-note-cancel').onclick = () => _cerrarNota(null);
+        });
+    }
+
     async function subirProforma(pedidoId, input) {
         const file = input.files && input.files[0];
         if (!file) return;
@@ -368,13 +446,22 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             input.value = '';
             return;
         }
+        // Nota opcional — se guarda en notas_contabilidad y el implementador
+        // la verá al lado del PDF en su tab Hardware del proyecto.
+        const nota = await pedirNota({
+            titulo: 'Adjuntar proforma',
+            descripcion: 'Puedes añadir una nota opcional para el implementador (nº proforma, instrucciones de pago, etc.).',
+            placeholder: 'Proforma #1234 emitida a 30 días. Cuenta BBVA ES12…',
+            submitLabel: '📎 Enviar proforma'
+        });
+        if (nota === null) { input.value = ''; return; } // cancelado
         try {
             const proforma_pdf = await _fileToObj(file);
             const res = await YurestConfig.apiFetch(EP_HW, {
                 method: 'POST',
                 body: JSON.stringify({
                     action: 'adjuntar_proforma',
-                    pedido: { id: pedidoId, proforma_pdf }
+                    pedido: { id: pedidoId, proforma_pdf, notas_contabilidad: nota || undefined }
                 })
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -390,16 +477,24 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
     window.subirProforma = subirProforma;
 
     async function confirmarPago(pedidoId) {
-        if (!confirm('¿Confirmar el pago? El pedido pasará a Soporte · Hardware envíos.')) return;
+        const nota = await pedirNota({
+            titulo: 'Confirmar pago',
+            descripcion: 'Confirma que el pago está recibido. Puedes añadir una nota opcional (nº asiento, referencia, etc.). El pedido pasará a Soporte · Hardware envíos.',
+            placeholder: 'Recibido en cuenta BBVA · asiento 2026-04-23-005',
+            submitLabel: '✓ Confirmar pago'
+        });
+        if (nota === null) return; // cancelado
         try {
             const res = await YurestConfig.apiFetch(EP_HW, {
                 method: 'POST',
                 body: JSON.stringify({
                     action: 'confirmar_pago',
-                    pedido: { id: pedidoId }
+                    pedido: { id: pedidoId, notas_contabilidad: nota || undefined }
                 })
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
+            const r = await res.json();
+            if (r && r.success === false) throw new Error((r.errores || ['Error']).join('; '));
             mostrarToast('Pago confirmado. Pedido disponible en Soporte.', 'success');
             await cargarPedidos();
         } catch (err) {
@@ -407,6 +502,39 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
         }
     }
     window.confirmarPago = confirmarPago;
+
+    // Devuelve el pedido al implementador (desde pendiente_confirmar vuelve
+    // a proforma_adjuntada). Motivo obligatorio — queda en notas_contabilidad
+    // con prefijo [DEVOLUCIÓN <ts>].
+    async function devolverJustificante(pedidoId) {
+        const motivo = await pedirNota({
+            titulo: 'Devolver justificante al implementador',
+            descripcion: 'El pedido volverá al paso anterior. Indica el motivo (obligatorio) para que el implementador sepa qué corregir.',
+            placeholder: 'Justificante ilegible / importe no coincide con la proforma / falta sello del banco…',
+            submitLabel: '↩ Devolver',
+            obligatoria: true
+        });
+        if (motivo === null) return;
+        try {
+            const res = await YurestConfig.apiFetch(EP_HW, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'devolver_a_contabilidad',
+                    pedido: { id: pedidoId, desde: 'pendiente_confirmar', motivo }
+                })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const r = await res.json();
+            if (r && r.success === false) throw new Error((r.errores || ['Error']).join('; '));
+            mostrarToast('Pedido devuelto al implementador', 'success');
+            await cargarPedidos();
+        } catch (err) {
+            mostrarToast('Error al devolver: ' + err.message, 'error', 5000);
+        }
+    }
+    window.devolverJustificante = devolverJustificante;
+
+    window.recargarProformas = cargarPedidos;
 
     cargarPedidos();
 })();

@@ -93,7 +93,7 @@
             icon: 'soporte',
             items: [
                 { id: 'integraciones', href: 'integraciones.html', label: 'Integraciones',   icon: 'integraciones' },
-                { id: 'hardware',      href: 'hardware.html',      label: 'Hardware envíos', icon: 'hardware'      }
+                { id: 'hardware',      href: 'hardware.html',      label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' }
             ]
         },
         {
