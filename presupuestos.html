@@ -354,9 +354,43 @@
                         <input type="number" id="mf-cc" min="0" step="0.01" value="0">
                     </div>
                 </div>
+                <!-- Secciones estructuradas del presupuesto. Todas
+                     opcionales — si quedan vacías no aparecen en el PDF. -->
+                <div style="margin:18px 0 10px;padding-top:12px;border-top:1px dashed #e2e8f0">
+                    <div style="font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Contenido del presupuesto</div>
+                    <div style="font-size:.78rem;color:#94a3b8;margin-top:2px">Los campos vacíos no se imprimen en el PDF.</div>
+                </div>
                 <div class="form-group">
-                    <label for="mf-notas">Notas</label>
-                    <textarea id="mf-notas" rows="2" placeholder="Comentarios internos…"></textarea>
+                    <label for="mf-contexto">Contexto</label>
+                    <textarea id="mf-contexto" rows="3" placeholder="Antecedentes: por qué se plantea el desarrollo…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mf-objetivo">Objetivo del desarrollo</label>
+                    <textarea id="mf-objetivo" rows="3" placeholder="Qué se quiere conseguir con el desarrollo…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mf-alcance">Alcance del desarrollo</label>
+                    <textarea id="mf-alcance" rows="3" placeholder="Qué entra y qué queda fuera del desarrollo…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mf-funcionamiento">Funcionamiento esperado</label>
+                    <textarea id="mf-funcionamiento" rows="3" placeholder="Cómo debe comportarse una vez desplegado…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mf-entregables">Entregables</label>
+                    <textarea id="mf-entregables" rows="3" placeholder="Qué se entrega: código, documentación, accesos…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mf-presupuesto">Presupuesto</label>
+                    <textarea id="mf-presupuesto" rows="3" placeholder="Desglose / condiciones económicas extendidas…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mf-aprobacion">Aprobación</label>
+                    <textarea id="mf-aprobacion" rows="3" placeholder="Cláusula de aceptación / firma del cliente…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mf-notas">Notas internas</label>
+                    <textarea id="mf-notas" rows="2" placeholder="Comentarios internos, no aparecen en el PDF…"></textarea>
                 </div>
                 <div id="f-error" style="display:none;color:#dc2626;font-size:.82rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px"></div>
             </div>
@@ -585,6 +619,18 @@
     function _resetManualFlags() {
         document.getElementById('mf-cc').dataset.manual = '';
     }
+    // Mapa campo BD → id de textarea para las secciones estructuradas del
+    // presupuesto. Se usa tanto en abrirModal (reset) como en editar
+    // (carga) y en guardar (payload).
+    const SECCIONES_TEXTO = {
+        contexto:                'mf-contexto',
+        objetivo:                'mf-objetivo',
+        alcance:                 'mf-alcance',
+        funcionamiento_esperado: 'mf-funcionamiento',
+        entregables:             'mf-entregables',
+        presupuesto_detalle:     'mf-presupuesto',
+        aprobacion:              'mf-aprobacion'
+    };
     function abrirModal() {
         document.getElementById('modal-title').textContent = 'Nuevo presupuesto';
         document.getElementById('f-id').value = '';
@@ -599,6 +645,8 @@
         document.getElementById('mf-hc').value = '0';
         document.getElementById('mf-cc').value = '0';
         document.getElementById('mf-notas').value = '';
+        // Secciones del presupuesto vacías al crear.
+        Object.values(SECCIONES_TEXTO).forEach(id => { document.getElementById(id).value = ''; });
         _resetManualFlags();
         _hideError();
         document.getElementById('modal-pre').classList.add('open');
@@ -620,6 +668,10 @@
         document.getElementById('mf-hc').value = p.horas_cliente ?? 0;
         document.getElementById('mf-cc').value = p.coste_cliente ?? 0;
         document.getElementById('mf-notas').value = p.notas || '';
+        // Carga de las secciones estructuradas (si vienen null se deja vacío).
+        Object.entries(SECCIONES_TEXTO).forEach(([col, id]) => {
+            document.getElementById(id).value = p[col] || '';
+        });
         _resetManualFlags();
         // Si el coste cliente existente NO coincide con horas*tarifa, lo
         // marcamos como manual para que cambiar las horas no lo pise.
@@ -680,6 +732,12 @@
             coste_cliente:  parseFloat(document.getElementById('mf-cc').value) || 0,
             notas:          document.getElementById('mf-notas').value.trim() || null
         };
+        // Secciones estructuradas — null si el usuario las dejó vacías
+        // para que la BD las guarde como NULL (y el PDF no las imprima).
+        Object.entries(SECCIONES_TEXTO).forEach(([col, inputId]) => {
+            const v = document.getElementById(inputId).value.trim();
+            payload[col] = v || null;
+        });
         if (id) payload.id = id;
         const btn = document.getElementById('btn-save');
         btn.disabled = true; btn.textContent = 'Guardando…';
@@ -786,6 +844,16 @@
             margin-top: 28px; padding: 14px 16px; background: #fef3c7; border-left: 3px solid #d97706;
             border-radius: 6px; font-size: 11.5px; color: #78350f; white-space: pre-wrap;
         }
+        .doc-section { margin: 22px 0; page-break-inside: avoid }
+        .doc-section h2 {
+            font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+            color: #dc2626; margin: 0 0 6px 0; padding-bottom: 4px;
+            border-bottom: 1.5px solid #fecaca;
+        }
+        .doc-section .body {
+            font-size: 12px; color: #334155; line-height: 1.55;
+            white-space: pre-wrap; word-wrap: break-word;
+        }
         footer.doc-foot {
             margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0;
             font-size: 10.5px; color: #64748b; text-align: center; line-height: 1.6;
@@ -828,6 +896,28 @@
         const esc = YurestConfig.escHtml;
         const E = EMPRESA_EMISOR;
         const entornoLbl = p.entorno === 'app_cliente' ? 'App cliente' : 'Backoffice';
+
+        // Secciones estructuradas del presupuesto — las que vengan con
+        // contenido se renderizan como bloques titulados en el PDF. Las
+        // vacías no aparecen, así que el documento sólo muestra lo que
+        // el usuario ha rellenado.
+        const SECCIONES_PDF = [
+            ['contexto',                'Contexto'],
+            ['objetivo',                'Objetivo del desarrollo'],
+            ['alcance',                 'Alcance del desarrollo'],
+            ['funcionamiento_esperado', 'Funcionamiento esperado'],
+            ['entregables',             'Entregables'],
+            ['presupuesto_detalle',     'Presupuesto'],
+            ['aprobacion',              'Aprobación']
+        ];
+        const seccionesHtml = SECCIONES_PDF.map(([col, titulo]) => {
+            const v = p[col];
+            if (!v || !String(v).trim()) return '';
+            return `<section class="doc-section">
+                <h2>${esc(titulo)}</h2>
+                <div class="body">${esc(String(v).trim())}</div>
+            </section>`;
+        }).join('');
 
         return {
             num,
@@ -887,7 +977,7 @@
         <div class="row"><span class="lbl">IVA (${IVA_PCT}%)</span><span>${fmtE(iva)}</span></div>
         <div class="row total"><span>TOTAL</span><span>${fmtE(total)}</span></div>
     </div>
-    ${p.notas ? `<div class="doc-notas"><strong>Notas:</strong>\n${esc(p.notas)}</div>` : ''}
+    ${seccionesHtml ? `<div style="clear:both;margin-top:30px;padding-top:18px;border-top:1px solid #e2e8f0">${seccionesHtml}</div>` : ''}
     ${p.estado === 'aceptado' ? `<div style="text-align:center"><span class="stamp">Aceptado</span></div>` : ''}
     <footer class="doc-foot">
         ${esc(E.nombre)} · NIF ${esc(E.nif)} · ${esc(E.direccion)}, ${esc(E.cp)} ${esc(E.poblacion)} (${esc(E.pais)})<br>
