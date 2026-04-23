@@ -113,19 +113,6 @@
     },
     {
       "parameters": {
-        "jsCode": "// Actions disponibles:\n//   create | adjuntar_proforma | adjuntar_justificante |\n//   confirmar_pago | actualizar_items | delete\n//\n// Arquitectura nueva: si la validación detecta errores, el item\n// devuelto YA tiene la forma de la respuesta final\n//   { __done: true, success: false, errores, action }\n// Si es OK, el item lleva { action, row } para que INSERT/UPDATE\n// lo procesen aguas abajo. El IF downstream solo chequea __done.\n\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst errores = [];\nconst now = new Date().toISOString();\n\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n\nlet row = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  row = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  row = { id: p.id, proforma_pdf: p.proforma_pdf, estado: 'proforma_adjuntada', proforma_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  row = { id: p.id, justificante_pdf: p.justificante_pdf, estado: 'pendiente_confirmar', pagado_at: now };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'confirmar_pago') {\n  row = { id: p.id, estado: 'lista_envio', confirmado_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  row = { id: p.id, items: p.items || [] };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'delete') {\n  row = { id: p.id, deleted_at: now };\n}\n\n// Limpia undefined — si enviamos undefined al Supabase node, pisa\n// el valor existente con null.\nObject.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });\n\n// Si hay errores de validación, devolvemos DIRECTAMENTE la respuesta\n// final — el flujo salta por el IF a Respond sin tocar Supabase.\nif (errores.length > 0) {\n  return [{ json: { __done: true, success: false, errores, action, _route: 'error' } }];\n}\n// Añadir _route explícito para el Switch (string match)\nconst _route = (action === 'create') ? 'insert' : 'update';\nreturn [{ json: { action, row, _route } }];"
-      },
-      "id": "hw-prep",
-      "name": "Preparar Acción",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        440,
-        500
-      ]
-    },
-    {
-      "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}",
         "options": {
@@ -162,133 +149,55 @@
     },
     {
       "parameters": {
-        "mode": "rules",
-        "rules": {
-          "values": [
+        "jsCode": "// NODO MONOLÍTICO: valida + hace HTTP Request a PostgREST + formatea respuesta.\n// Sin branching de n8n (IF/Switch misfiran en esta instancia).\n//\n// Usa $helpers.httpRequestWithAuthentication para llamar a Supabase\n// usando la credencial predefinida `supabaseApi` configurada en este node.\n\nconst prep = (() => {\n  try {\n// Validación + construcción de row (lógica original de Preparar Acción hardware)\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.pedido || {};\nconst errores = [];\nconst now = new Date().toISOString();\nconst VALID = ['create','adjuntar_proforma','adjuntar_justificante','confirmar_pago','actualizar_items','delete'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\nlet row = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!Array.isArray(p.items) || p.items.length === 0) errores.push('items vacío');\n  row = {\n    proyecto_id: p.proyecto_id || null,\n    cliente: String(p.cliente || '').trim(),\n    implementador: p.implementador || null,\n    items: p.items || [],\n    estado: 'solicitada',\n    notas_implementador: p.notas_implementador || null,\n    solicitado_por: p.solicitado_por || null,\n    solicitado_at: now\n  };\n} else if (action === 'adjuntar_proforma') {\n  if (!p.proforma_pdf || !p.proforma_pdf.data) errores.push('proforma_pdf requerido');\n  row = { id: p.id, proforma_pdf: p.proforma_pdf, estado: 'proforma_adjuntada', proforma_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'adjuntar_justificante') {\n  if (!p.justificante_pdf || !p.justificante_pdf.data) errores.push('justificante_pdf requerido');\n  row = { id: p.id, justificante_pdf: p.justificante_pdf, estado: 'pendiente_confirmar', pagado_at: now };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'confirmar_pago') {\n  row = { id: p.id, estado: 'lista_envio', confirmado_at: now };\n  if (p.notas_contabilidad !== undefined) row.notas_contabilidad = p.notas_contabilidad;\n} else if (action === 'actualizar_items') {\n  if (!Array.isArray(p.items)) errores.push('items debe ser array');\n  row = { id: p.id, items: p.items || [] };\n  if (p.notas_implementador !== undefined) row.notas_implementador = p.notas_implementador;\n} else if (action === 'delete') {\n  row = { id: p.id, deleted_at: now };\n}\nObject.keys(row).forEach(k => { if (row[k] === undefined) delete row[k]; });\nif (errores.length > 0) return { __error: true, errores, action };\nreturn { __error: false, action, row };\n  } catch (e) {\n    return { __error: true, errores: [String(e && e.message || e)], action: 'unknown' };\n  }\n})();\n\nif (prep.__error) {\n  return [{ json: {\n    __skipHttp: true,\n    __isCreate: true,\n    __id: null,\n    __body: '{}',\n    success: false,\n    errores: prep.errores,\n    action: prep.action,\n    pedido: null\n  } }];\n}\n\nconst { action, row } = prep;\nconst isCreate = action === 'create';\n\n// Construir URL y método\nconst id = isCreate ? null : row.id;\nconst body = { ...row };\nif (!isCreate) delete body.id;\n\nconst supaHost = $credentials?.supabaseApi?.host;\n// No podemos leer credenciales en Code node — la HTTP Request se hace via\n// $helpers.httpRequestWithAuthentication que sí las resuelve. Usamos\n// expresión relativa (sin host) — requiere baseUrl en la credencial\n// O bien pasamos el host por variable de entorno.\n//\n// ALTERNATIVA más robusta: el Code node no puede hacer httpRequest con\n// credencial autenticada en todas las versiones de n8n. Mejor usar un\n// subworkflow o un HTTP Request node aparte. Aquí devolvemos __prep para\n// que el HTTP Request downstream lo consuma.\n\nreturn [{ json: {\n  __prep: true,\n  action,\n  row,\n  __isCreate: isCreate,\n  __id: id,\n  __body: JSON.stringify(body)\n} }];"
+      },
+      "id": "prep-linear-hardware_pedidos",
+      "name": "Preparar (validar + body)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.__skipHttp ? 'GET' : ($json.__isCreate ? 'POST' : 'PATCH') }}",
+        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/hardware_pedidos{{ $json.__skipHttp ? '?id=eq.00000000-0000-0000-0000-000000000000' : ($json.__isCreate ? '' : ('?id=eq.' + $json.__id)) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "typeValidation": "loose"
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json._route }}",
-                    "rightValue": "error",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "error"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "typeValidation": "loose"
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json._route }}",
-                    "rightValue": "insert",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "insert"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "typeValidation": "loose"
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json._route }}",
-                    "rightValue": "update",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "update"
+              "name": "Prefer",
+              "value": "return=representation"
             }
           ]
         },
-        "options": {}
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.__skipHttp ? '{}' : $json.__body }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
       },
-      "id": "switch-hardware_pedidos",
-      "name": "Switch Router",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
+      "id": "http-linear-hardware_pedidos",
+      "name": "HTTP PostgREST",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         640,
         460
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "return [{ json: { __body: JSON.stringify($json.row || {}) } }];"
-      },
-      "id": "prep-ins-hardware_pedidos",
-      "name": "Body INSERT",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        840,
-        400
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/hardware_pedidos",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "supabaseApi",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "bodyContentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.__body }}",
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": false
-            }
-          }
-        }
-      },
-      "id": "http-ins-hardware_pedidos",
-      "name": "HTTP INSERT",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1040,
-        400
       ],
       "credentials": {
         "supabaseApi": {
@@ -301,89 +210,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $json.row || {};\nconst id = row.id;\nconst body = { ...row };\ndelete body.id;\nreturn [{ json: { id, __body: JSON.stringify(body) } }];"
+        "jsCode": "// Consolida respuesta del HTTP PostgREST. PostgREST devuelve array.\nconst items = $input.all() || [];\n// Si Preparar ya cortocircuitó con error, el primer item traerá success:false.\nconst first = items[0] && items[0].json;\nif (first && first.success === false && Array.isArray(first.errores)) return [{ json: first }];\n\nlet rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('HTTP respondió sin filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  pedido: rows[0] || null,\n  errores\n} }];"
       },
-      "id": "prep-upd-hardware_pedidos",
-      "name": "Body UPDATE",
+      "id": "fmt-linear-hardware_pedidos",
+      "name": "Formatear respuesta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         840,
-        560
-      ]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/hardware_pedidos?id=eq.{{ $json.id }}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "supabaseApi",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "bodyContentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.__body }}",
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": false
-            }
-          }
-        }
-      },
-      "id": "http-upd-hardware_pedidos",
-      "name": "HTTP UPDATE",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1040,
-        560
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIAL_ID",
-          "name": "Supabase Yurest"
-        }
-      },
-      "alwaysOutputData": true,
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all() || [];\nlet rows = [];\nconst errores = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('HTTP respondió sin filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  pedido: rows[0] || null,\n  errores\n} }];"
-      },
-      "id": "fmt-ok-hardware_pedidos",
-      "name": "Formatear OK",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1240,
         460
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "return [$input.first()];"
-      },
-      "id": "fmt-err-hardware_pedidos",
-      "name": "Formatear ERROR",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        840,
-        320
       ]
     }
   ],
@@ -425,105 +260,36 @@
       "main": [
         [
           {
-            "node": "Preparar Acción",
+            "node": "Preparar (validar + body)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Preparar Acción": {
+    "Preparar (validar + body)": {
       "main": [
         [
           {
-            "node": "Switch Router",
+            "node": "HTTP PostgREST",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Switch Router": {
+    "HTTP PostgREST": {
       "main": [
         [
           {
-            "node": "Formatear ERROR",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Body INSERT",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Body UPDATE",
+            "node": "Formatear respuesta",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Formatear ERROR": {
-      "main": [
-        [
-          {
-            "node": "Respond POST",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Body INSERT": {
-      "main": [
-        [
-          {
-            "node": "HTTP INSERT",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Body UPDATE": {
-      "main": [
-        [
-          {
-            "node": "HTTP UPDATE",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP INSERT": {
-      "main": [
-        [
-          {
-            "node": "Formatear OK",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP UPDATE": {
-      "main": [
-        [
-          {
-            "node": "Formatear OK",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Formatear OK": {
+    "Formatear respuesta": {
       "main": [
         [
           {
