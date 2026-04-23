@@ -15,7 +15,10 @@
       "name": "Webhook GET Stock",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 200],
+      "position": [
+        240,
+        200
+      ],
       "webhookId": "hardware-stock-get",
       "credentials": {
         "httpBasicAuth": {
@@ -35,7 +38,10 @@
       "name": "GET Stock Supabase",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [440, 200],
+      "position": [
+        440,
+        200
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -55,7 +61,10 @@
       "name": "GET Movimientos Supabase",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [440, 360],
+      "position": [
+        440,
+        360
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -72,7 +81,10 @@
       "name": "Formatear GET",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [640, 280]
+      "position": [
+        640,
+        280
+      ]
     },
     {
       "parameters": {
@@ -81,10 +93,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin",  "value": "*" },
-              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
-              { "name": "Content-Type",                 "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -93,7 +117,10 @@
       "name": "Respond GET",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [840, 280]
+      "position": [
+        840,
+        280
+      ]
     },
     {
       "parameters": {
@@ -109,7 +136,10 @@
       "name": "Webhook POST Stock",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 560],
+      "position": [
+        240,
+        560
+      ],
       "webhookId": "hardware-stock-post",
       "credentials": {
         "httpBasicAuth": {
@@ -125,10 +155,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin",  "value": "*" },
-              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
-              { "name": "Content-Type",                 "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -137,17 +179,23 @@
       "name": "Respond POST",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1640, 560]
+      "position": [
+        1640,
+        560
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Acciones soportadas:\n//   create      → alta de artículo (opcional stock_inicial > 0 genera movimiento 'entrada')\n//   update      → edición de campos del catálogo (no toca stock_actual directamente — se hace vía movimiento)\n//   archivar    → soft-delete (deleted_at=now)\n//   reactivar   → deshace archivar\n//   movimiento  → inserta en hardware_stock_movimientos (trigger actualiza stock_actual)\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst a = b.articulo || {};\nconst m = b.movimiento || {};\nconst now = new Date().toISOString();\nconst errores = [];\nconst VALID = ['create', 'update', 'archivar', 'reactivar', 'movimiento'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (['update','archivar','reactivar'].includes(action) && !a.id) errores.push('id obligatorio para ' + action);\nif (action === 'movimiento' && !m.articulo_id) errores.push('articulo_id obligatorio para movimiento');\n\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (a.id && !UUID_RE.test(a.id))              errores.push('articulo.id no es un UUID válido');\nif (m.articulo_id && !UUID_RE.test(m.articulo_id)) errores.push('movimiento.articulo_id no es un UUID válido');\n\nconst CATEGORIAS = ['tablet','soporte','cargador','cable','impresora','cajon','balanza','lector','router','otro'];\nconst TIPOS_MOV  = ['entrada','salida','ajuste'];\n\nfunction validaNumero(v, nombre, min, max, entero) {\n  if (v === undefined || v === null || v === '') return undefined;\n  const n = +v;\n  if (!Number.isFinite(n)) { errores.push(nombre + ' debe ser número'); return undefined; }\n  if (entero && !Number.isInteger(n)) { errores.push(nombre + ' debe ser entero'); return undefined; }\n  if (n < min || n > max)  { errores.push(nombre + ' fuera de rango (' + min + '..' + max + ')'); return undefined; }\n  return n;\n}\nfunction genUuid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); }); }\n\nlet out = {};\nlet path = 'hardware_stock';\nlet extra = null; // para movimiento derivado de create con stock_inicial > 0\n\nif (action === 'create') {\n  if (!a.nombre || !String(a.nombre).trim()) errores.push('nombre obligatorio');\n  if (a.categoria && !CATEGORIAS.includes(a.categoria)) errores.push('categoria inválida');\n  const stock_inicial = validaNumero(a.stock_inicial, 'stock_inicial', 0, 1000000, true);\n  const stock_minimo  = validaNumero(a.stock_minimo,  'stock_minimo',  0, 1000000, true);\n  const pc = validaNumero(a.precio_compra, 'precio_compra', 0, 99999999.99, false);\n  const pv = validaNumero(a.precio_venta,  'precio_venta',  0, 99999999.99, false);\n  const _uuid = genUuid();\n  out = {\n    id: _uuid,\n    nombre: String(a.nombre || '').trim(),\n    sku: a.sku != null ? String(a.sku).trim() || null : null,\n    categoria: a.categoria || 'otro',\n    descripcion: a.descripcion != null ? String(a.descripcion) : null,\n    unidad: a.unidad != null ? String(a.unidad).trim() || 'ud' : 'ud',\n    // stock_actual arranca a 0; si viene stock_inicial>0 generamos un\n    // movimiento 'entrada' aparte (así queda trazado en el historial).\n    stock_actual: 0,\n    stock_minimo: stock_minimo !== undefined ? stock_minimo : 0,\n    precio_compra: pc !== undefined ? pc : 0,\n    precio_venta:  pv !== undefined ? pv : 0,\n    proveedor: a.proveedor != null ? String(a.proveedor).trim() || null : null,\n    ubicacion: a.ubicacion != null ? String(a.ubicacion).trim() || null : null,\n    notas: a.notas != null ? String(a.notas) : null,\n    created_by: a.created_by ? String(a.created_by) : null,\n    created_at: now,\n    updated_at: now\n  };\n  if (stock_inicial && stock_inicial > 0) {\n    extra = {\n      __extra: true,\n      __path: 'hardware_stock_movimientos',\n      articulo_id: _uuid,\n      tipo: 'entrada',\n      cantidad: stock_inicial,\n      motivo: 'Stock inicial',\n      created_by: a.created_by ? String(a.created_by) : null,\n      created_at: now\n    };\n  }\n} else if (action === 'update') {\n  out.id = a.id;\n  if (a.nombre !== undefined) {\n    const v = a.nombre == null ? '' : String(a.nombre).trim();\n    if (!v) errores.push('nombre no puede ser vacío');\n    else out.nombre = v;\n  }\n  if (a.sku !== undefined)         out.sku         = a.sku != null && String(a.sku).trim() ? String(a.sku).trim() : null;\n  if (a.categoria !== undefined) {\n    if (!CATEGORIAS.includes(a.categoria)) errores.push('categoria inválida');\n    else out.categoria = a.categoria;\n  }\n  if (a.descripcion !== undefined) out.descripcion = a.descripcion != null ? String(a.descripcion) : null;\n  if (a.unidad !== undefined)      out.unidad      = a.unidad != null && String(a.unidad).trim() ? String(a.unidad).trim() : 'ud';\n  if (a.stock_minimo !== undefined){ const n = validaNumero(a.stock_minimo, 'stock_minimo', 0, 1000000, true); if (n !== undefined) out.stock_minimo = n; }\n  if (a.precio_compra !== undefined){ const n = validaNumero(a.precio_compra, 'precio_compra', 0, 99999999.99, false); if (n !== undefined) out.precio_compra = n; }\n  if (a.precio_venta  !== undefined){ const n = validaNumero(a.precio_venta,  'precio_venta',  0, 99999999.99, false); if (n !== undefined) out.precio_venta  = n; }\n  if (a.proveedor !== undefined)   out.proveedor   = a.proveedor != null && String(a.proveedor).trim() ? String(a.proveedor).trim() : null;\n  if (a.ubicacion !== undefined)   out.ubicacion   = a.ubicacion != null && String(a.ubicacion).trim() ? String(a.ubicacion).trim() : null;\n  if (a.notas !== undefined)       out.notas       = a.notas != null ? String(a.notas) : null;\n  out.updated_at = now;\n} else if (action === 'archivar') {\n  out = { id: a.id, deleted_at: now, updated_at: now };\n} else if (action === 'reactivar') {\n  out = { id: a.id, deleted_at: null, updated_at: now };\n} else if (action === 'movimiento') {\n  path = 'hardware_stock_movimientos';\n  if (m.tipo && !TIPOS_MOV.includes(m.tipo)) errores.push('tipo debe ser entrada|salida|ajuste');\n  const cantidad = validaNumero(m.cantidad, 'cantidad', 1, 1000000, true);\n  if (cantidad === undefined) errores.push('cantidad obligatoria (> 0)');\n  out = {\n    id: genUuid(),\n    articulo_id: m.articulo_id,\n    tipo: m.tipo,\n    cantidad: cantidad,\n    delta_ajuste: (m.tipo === 'ajuste' && m.delta_ajuste !== undefined) ? +m.delta_ajuste : null,\n    motivo: m.motivo != null ? String(m.motivo) : null,\n    pedido_id: m.pedido_id && UUID_RE.test(m.pedido_id) ? m.pedido_id : null,\n    created_by: m.created_by ? String(m.created_by) : null,\n    created_at: now\n  };\n}\n\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\n\nif (errores.length > 0) {\n  return [{ json: { __error: true, __errores: errores, __action: action } }];\n}\n\n// Para create: si hay extra (stock_inicial), emitimos 2 items — el\n// segundo se rutea por el mismo httpRequest con path distinto.\nconst _method = (action === 'create' || action === 'movimiento') ? 'POST' : 'PATCH';\nconst _qs = (action === 'create' || action === 'movimiento') ? 'on_conflict=id' : ('id=eq.' + encodeURIComponent(a.id || ''));\nconst primary = Object.assign({}, out, { __method: _method, __qs: _qs, __path: path, __action: action });\nif (extra) {\n  const extraOut = Object.assign({}, extra);\n  delete extraOut.__extra;\n  extraOut.__method = 'POST';\n  extraOut.__qs     = 'on_conflict=id';\n  // id para el movimiento\n  extraOut.id = genUuid();\n  return [{ json: primary }, { json: extraOut }];\n}\nreturn [{ json: primary }];"
+        "jsCode": "// Acciones soportadas:\n//   create      → alta de artículo (opcional stock_inicial > 0 genera movimiento 'entrada')\n//   update      → edición de campos del catálogo (no toca stock_actual directamente — se hace vía movimiento)\n//   archivar    → soft-delete (deleted_at=now)\n//   reactivar   → deshace archivar\n//   movimiento  → inserta en hardware_stock_movimientos (trigger actualiza stock_actual)\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst a = b.articulo || {};\nconst m = b.movimiento || {};\nconst now = new Date().toISOString();\nconst errores = [];\nconst VALID = ['create', 'update', 'archivar', 'reactivar', 'movimiento'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (['update','archivar','reactivar'].includes(action) && !a.id) errores.push('id obligatorio para ' + action);\nif (action === 'movimiento' && !m.articulo_id) errores.push('articulo_id obligatorio para movimiento');\n\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (a.id && !UUID_RE.test(a.id))              errores.push('articulo.id no es un UUID válido');\nif (m.articulo_id && !UUID_RE.test(m.articulo_id)) errores.push('movimiento.articulo_id no es un UUID válido');\n\nconst CATEGORIAS = ['tablet','soporte','cargador','cable','impresora','cajon','balanza','lector','router','etiqueta','pantalla','sensor','funda','otro'];\nconst TIPOS_MOV  = ['entrada','salida','ajuste'];\n\nfunction validaNumero(v, nombre, min, max, entero) {\n  if (v === undefined || v === null || v === '') return undefined;\n  const n = +v;\n  if (!Number.isFinite(n)) { errores.push(nombre + ' debe ser número'); return undefined; }\n  if (entero && !Number.isInteger(n)) { errores.push(nombre + ' debe ser entero'); return undefined; }\n  if (n < min || n > max)  { errores.push(nombre + ' fuera de rango (' + min + '..' + max + ')'); return undefined; }\n  return n;\n}\nfunction genUuid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); }); }\n\nlet out = {};\nlet path = 'hardware_stock';\nlet extra = null; // para movimiento derivado de create con stock_inicial > 0\n\nif (action === 'create') {\n  if (!a.nombre || !String(a.nombre).trim()) errores.push('nombre obligatorio');\n  if (a.categoria && !CATEGORIAS.includes(a.categoria)) errores.push('categoria inválida');\n  const stock_inicial = validaNumero(a.stock_inicial, 'stock_inicial', 0, 1000000, true);\n  const stock_minimo  = validaNumero(a.stock_minimo,  'stock_minimo',  0, 1000000, true);\n  const pc = validaNumero(a.precio_compra, 'precio_compra', 0, 99999999.99, false);\n  const pv = validaNumero(a.precio_venta,  'precio_venta',  0, 99999999.99, false);\n  const _uuid = genUuid();\n  out = {\n    id: _uuid,\n    nombre: String(a.nombre || '').trim(),\n    sku: a.sku != null ? String(a.sku).trim() || null : null,\n    categoria: a.categoria || 'otro',\n    descripcion: a.descripcion != null ? String(a.descripcion) : null,\n    unidad: a.unidad != null ? String(a.unidad).trim() || 'ud' : 'ud',\n    // stock_actual arranca a 0; si viene stock_inicial>0 generamos un\n    // movimiento 'entrada' aparte (así queda trazado en el historial).\n    stock_actual: 0,\n    stock_minimo: stock_minimo !== undefined ? stock_minimo : 0,\n    precio_compra: pc !== undefined ? pc : 0,\n    precio_venta:  pv !== undefined ? pv : 0,\n    proveedor: a.proveedor != null ? String(a.proveedor).trim() || null : null,\n    ubicacion: a.ubicacion != null ? String(a.ubicacion).trim() || null : null,\n    notas: a.notas != null ? String(a.notas) : null,\n    created_by: a.created_by ? String(a.created_by) : null,\n    created_at: now,\n    updated_at: now\n  };\n  if (stock_inicial && stock_inicial > 0) {\n    extra = {\n      __extra: true,\n      __path: 'hardware_stock_movimientos',\n      articulo_id: _uuid,\n      tipo: 'entrada',\n      cantidad: stock_inicial,\n      motivo: 'Stock inicial',\n      created_by: a.created_by ? String(a.created_by) : null,\n      created_at: now\n    };\n  }\n} else if (action === 'update') {\n  out.id = a.id;\n  if (a.nombre !== undefined) {\n    const v = a.nombre == null ? '' : String(a.nombre).trim();\n    if (!v) errores.push('nombre no puede ser vacío');\n    else out.nombre = v;\n  }\n  if (a.sku !== undefined)         out.sku         = a.sku != null && String(a.sku).trim() ? String(a.sku).trim() : null;\n  if (a.categoria !== undefined) {\n    if (!CATEGORIAS.includes(a.categoria)) errores.push('categoria inválida');\n    else out.categoria = a.categoria;\n  }\n  if (a.descripcion !== undefined) out.descripcion = a.descripcion != null ? String(a.descripcion) : null;\n  if (a.unidad !== undefined)      out.unidad      = a.unidad != null && String(a.unidad).trim() ? String(a.unidad).trim() : 'ud';\n  if (a.stock_minimo !== undefined){ const n = validaNumero(a.stock_minimo, 'stock_minimo', 0, 1000000, true); if (n !== undefined) out.stock_minimo = n; }\n  if (a.precio_compra !== undefined){ const n = validaNumero(a.precio_compra, 'precio_compra', 0, 99999999.99, false); if (n !== undefined) out.precio_compra = n; }\n  if (a.precio_venta  !== undefined){ const n = validaNumero(a.precio_venta,  'precio_venta',  0, 99999999.99, false); if (n !== undefined) out.precio_venta  = n; }\n  if (a.proveedor !== undefined)   out.proveedor   = a.proveedor != null && String(a.proveedor).trim() ? String(a.proveedor).trim() : null;\n  if (a.ubicacion !== undefined)   out.ubicacion   = a.ubicacion != null && String(a.ubicacion).trim() ? String(a.ubicacion).trim() : null;\n  if (a.notas !== undefined)       out.notas       = a.notas != null ? String(a.notas) : null;\n  out.updated_at = now;\n} else if (action === 'archivar') {\n  out = { id: a.id, deleted_at: now, updated_at: now };\n} else if (action === 'reactivar') {\n  out = { id: a.id, deleted_at: null, updated_at: now };\n} else if (action === 'movimiento') {\n  path = 'hardware_stock_movimientos';\n  if (m.tipo && !TIPOS_MOV.includes(m.tipo)) errores.push('tipo debe ser entrada|salida|ajuste');\n  const cantidad = validaNumero(m.cantidad, 'cantidad', 1, 1000000, true);\n  if (cantidad === undefined) errores.push('cantidad obligatoria (> 0)');\n  out = {\n    id: genUuid(),\n    articulo_id: m.articulo_id,\n    tipo: m.tipo,\n    cantidad: cantidad,\n    delta_ajuste: (m.tipo === 'ajuste' && m.delta_ajuste !== undefined) ? +m.delta_ajuste : null,\n    motivo: m.motivo != null ? String(m.motivo) : null,\n    pedido_id: m.pedido_id && UUID_RE.test(m.pedido_id) ? m.pedido_id : null,\n    created_by: m.created_by ? String(m.created_by) : null,\n    created_at: now\n  };\n}\n\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\n\nif (errores.length > 0) {\n  return [{ json: { __error: true, __errores: errores, __action: action } }];\n}\n\n// Para create: si hay extra (stock_inicial), emitimos 2 items — el\n// segundo se rutea por el mismo httpRequest con path distinto.\nconst _method = (action === 'create' || action === 'movimiento') ? 'POST' : 'PATCH';\nconst _qs = (action === 'create' || action === 'movimiento') ? 'on_conflict=id' : ('id=eq.' + encodeURIComponent(a.id || ''));\nconst primary = Object.assign({}, out, { __method: _method, __qs: _qs, __path: path, __action: action });\nif (extra) {\n  const extraOut = Object.assign({}, extra);\n  delete extraOut.__extra;\n  extraOut.__method = 'POST';\n  extraOut.__qs     = 'on_conflict=id';\n  // id para el movimiento\n  extraOut.id = genUuid();\n  return [{ json: primary }, { json: extraOut }];\n}\nreturn [{ json: primary }];"
       },
       "id": "prep-stock",
       "name": "Preparar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 560]
+      "position": [
+        440,
+        560
+      ]
     },
     {
       "parameters": {
@@ -158,8 +206,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=representation" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
           ]
         },
         "sendBody": true,
@@ -179,7 +233,10 @@
       "name": "Supabase UPSERT",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [640, 560],
+      "position": [
+        640,
+        560
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -197,20 +254,105 @@
       "name": "Formatear respuesta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [840, 560]
+      "position": [
+        840,
+        560
+      ]
     }
   ],
   "connections": {
-    "Webhook GET Stock":         { "main": [[{ "node": "GET Stock Supabase",         "type": "main", "index": 0 }]] },
-    "GET Stock Supabase":        { "main": [[{ "node": "GET Movimientos Supabase",  "type": "main", "index": 0 }]] },
-    "GET Movimientos Supabase":  { "main": [[{ "node": "Formatear GET",             "type": "main", "index": 0 }]] },
-    "Formatear GET":             { "main": [[{ "node": "Respond GET",               "type": "main", "index": 0 }]] },
-    "Webhook POST Stock":        { "main": [[{ "node": "Preparar",                  "type": "main", "index": 0 }]] },
-    "Preparar":                  { "main": [[{ "node": "Supabase UPSERT",           "type": "main", "index": 0 }]] },
-    "Supabase UPSERT":           { "main": [[{ "node": "Formatear respuesta",       "type": "main", "index": 0 }]] },
-    "Formatear respuesta":       { "main": [[{ "node": "Respond POST",              "type": "main", "index": 0 }]] }
+    "Webhook GET Stock": {
+      "main": [
+        [
+          {
+            "node": "GET Stock Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Stock Supabase": {
+      "main": [
+        [
+          {
+            "node": "GET Movimientos Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Movimientos Supabase": {
+      "main": [
+        [
+          {
+            "node": "Formatear GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear GET": {
+      "main": [
+        [
+          {
+            "node": "Respond GET",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook POST Stock": {
+      "main": [
+        [
+          {
+            "node": "Preparar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar": {
+      "main": [
+        [
+          {
+            "node": "Supabase UPSERT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase UPSERT": {
+      "main": [
+        [
+          {
+            "node": "Formatear respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear respuesta": {
+      "main": [
+        [
+          {
+            "node": "Respond POST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "staticData": null,
   "pinData": {},
   "active": false

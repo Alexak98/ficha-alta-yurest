@@ -102,6 +102,10 @@
         .chip.cat-balanza   { background:#cffafe;color:#0e7490 }
         .chip.cat-lector    { background:#fce7f3;color:#9d174d }
         .chip.cat-router    { background:#dcfce7;color:#15803d }
+        .chip.cat-etiqueta  { background:#fef9c3;color:#854d0e }
+        .chip.cat-pantalla  { background:#ccfbf1;color:#115e59 }
+        .chip.cat-sensor    { background:#e9d5ff;color:#6b21a8 }
+        .chip.cat-funda     { background:#ffe4e6;color:#9f1239 }
         .chip.cat-otro      { background:#f1f5f9;color:#475569 }
 
         .acts { display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap }
@@ -203,14 +207,18 @@
                 <span class="filter-label">Categoría</span>
                 <select class="filter-select" id="f-cat" onchange="setFiltroCat(this)">
                     <option value="">Todas</option>
+                    <option value="etiqueta">Etiqueta</option>
                     <option value="tablet">Tablet</option>
+                    <option value="pantalla">Pantalla</option>
+                    <option value="impresora">Impresora</option>
+                    <option value="lector">Lector</option>
+                    <option value="balanza">Balanza</option>
+                    <option value="sensor">Sensor</option>
                     <option value="soporte">Soporte</option>
+                    <option value="funda">Funda</option>
+                    <option value="cajon">Cajón</option>
                     <option value="cargador">Cargador</option>
                     <option value="cable">Cable</option>
-                    <option value="impresora">Impresora</option>
-                    <option value="cajon">Cajón</option>
-                    <option value="balanza">Balanza</option>
-                    <option value="lector">Lector</option>
                     <option value="router">Router</option>
                     <option value="otro">Otro</option>
                 </select>
@@ -300,14 +308,18 @@
                     <div class="form-group">
                         <label for="mf-cat">Categoría</label>
                         <select id="mf-cat">
+                            <option value="etiqueta">Etiqueta</option>
                             <option value="tablet">Tablet</option>
+                            <option value="pantalla">Pantalla</option>
+                            <option value="impresora">Impresora</option>
+                            <option value="lector">Lector</option>
+                            <option value="balanza">Balanza</option>
+                            <option value="sensor">Sensor</option>
                             <option value="soporte">Soporte</option>
+                            <option value="funda">Funda</option>
+                            <option value="cajon">Cajón</option>
                             <option value="cargador">Cargador</option>
                             <option value="cable">Cable</option>
-                            <option value="impresora">Impresora</option>
-                            <option value="cajon">Cajón</option>
-                            <option value="balanza">Balanza</option>
-                            <option value="lector">Lector</option>
                             <option value="router">Router</option>
                             <option value="otro" selected>Otro</option>
                         </select>
@@ -433,7 +445,8 @@
     const CAT_LBL = {
         tablet:'Tablet', soporte:'Soporte', cargador:'Cargador', cable:'Cable',
         impresora:'Impresora', cajon:'Cajón', balanza:'Balanza',
-        lector:'Lector', router:'Router', otro:'Otro'
+        lector:'Lector', router:'Router', etiqueta:'Etiqueta',
+        pantalla:'Pantalla', sensor:'Sensor', funda:'Funda', otro:'Otro'
     };
 
     // ─────────────────────────────────────────────────────────────────────
