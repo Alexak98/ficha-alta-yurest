@@ -1,0 +1,196 @@
+{
+  "name": "Yurest - Presupuestos CRUD",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "presupuestos",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-pre-get",
+      "name": "Webhook GET Presupuestos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "presupuestos-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "presupuestos",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-pre-get",
+      "name": "GET Presupuestos Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [440, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve solo presupuestos vivos (no soft-deleted). Filtros opcionales\n// por query-string:\n//   ?cliente=<texto>           (contains, case-insensitive)\n//   ?estado=aceptado|en_espera\n//   ?estado_entrega=pendiente|en_progreso|entregado\n//   ?entorno=backoffice|app_cliente\n//   ?quien_abona=yurest|cliente\nconst raw = ($input.all() || []).map(i => i.json).filter(x => x && x.id && !x.deleted_at);\nconst wh = $('Webhook GET Presupuestos').first().json || {};\nconst q = wh.query || wh.params || {};\nlet out = raw;\nif (q.cliente) {\n  const needle = String(q.cliente).toLowerCase();\n  out = out.filter(p => String(p.cliente||'').toLowerCase().includes(needle));\n}\nif (q.estado)          out = out.filter(p => p.estado === q.estado);\nif (q.estado_entrega)  out = out.filter(p => p.estado_entrega === q.estado_entrega);\nif (q.entorno)         out = out.filter(p => p.entorno === q.entorno);\nif (q.quien_abona)     out = out.filter(p => p.quien_abona === q.quien_abona);\n// Orden: aceptados primero, luego en_espera; dentro por created_at desc.\nout.sort((a, b) => {\n  if (a.estado !== b.estado) return a.estado === 'aceptado' ? -1 : 1;\n  const da = a.created_at ? new Date(a.created_at).getTime() : 0;\n  const db = b.created_at ? new Date(b.created_at).getTime() : 0;\n  return db - da;\n});\n// Totales agregados (útil para la UI sin recalcular).\nconst totales = out.reduce((acc, p) => {\n  acc.horas_yurest  += Number(p.horas_yurest)  || 0;\n  acc.horas_cliente += Number(p.horas_cliente) || 0;\n  acc.coste_yurest  += Number(p.coste_yurest)  || 0;\n  acc.coste_cliente += Number(p.coste_cliente) || 0;\n  return acc;\n}, { horas_yurest: 0, horas_cliente: 0, coste_yurest: 0, coste_cliente: 0 });\nreturn [{ json: { presupuestos: out, totales } }];"
+      },
+      "id": "pre-format-get",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "pre-respond-get",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "presupuestos",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-pre-post",
+      "name": "Webhook POST Presupuestos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "webhookId": "presupuestos-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "pre-respond-post",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1640, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Acciones soportadas:\n//   create         → alta de presupuesto\n//   update         → edición de cualquier campo\n//   archivar       → soft-delete (deleted_at=now)\n//   reactivar      → deshace archivar\n//   marcar_enviado → flip del flag enviado (true/false opcional, default true)\n//   aceptar        → atajo: estado='aceptado'\n//   entregar       → atajo: estado_entrega='entregado'\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.presupuesto || {};\nconst now = new Date().toISOString();\nconst errores = [];\nconst VALID = ['create', 'update', 'archivar', 'reactivar', 'marcar_enviado', 'aceptar', 'entregar'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\nif (p.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id)) {\n  errores.push('id no es un UUID válido');\n}\n\nconst ENTORNOS = ['backoffice', 'app_cliente'];\nconst QUIENES  = ['yurest', 'cliente'];\nconst ESTADOS  = ['aceptado', 'en_espera'];\nconst ENTREGAS = ['pendiente', 'en_progreso', 'entregado'];\n\nfunction validaNumero(v, nombre, min, max) {\n  if (v === undefined) return undefined;\n  const n = +v;\n  if (!Number.isFinite(n)) { errores.push(nombre + ' debe ser número'); return undefined; }\n  if (n < min || n > max)  { errores.push(nombre + ' fuera de rango (' + min + '..' + max + ')'); return undefined; }\n  return n;\n}\n\nlet out = {};\nif (action === 'create') {\n  if (!p.cliente || !String(p.cliente).trim()) errores.push('cliente obligatorio');\n  if (!p.desarrollo || !String(p.desarrollo).trim()) errores.push('desarrollo obligatorio');\n  if (p.entorno && !ENTORNOS.includes(p.entorno)) errores.push('entorno debe ser backoffice|app_cliente');\n  if (p.quien_abona && !QUIENES.includes(p.quien_abona)) errores.push('quien_abona debe ser yurest|cliente');\n  if (p.estado && !ESTADOS.includes(p.estado)) errores.push('estado debe ser aceptado|en_espera');\n  if (p.estado_entrega && !ENTREGAS.includes(p.estado_entrega)) errores.push('estado_entrega debe ser pendiente|en_progreso|entregado');\n  const hy = validaNumero(p.horas_yurest,  'horas_yurest',  0, 10000);\n  const hc = validaNumero(p.horas_cliente, 'horas_cliente', 0, 10000);\n  const cy = validaNumero(p.coste_yurest,  'coste_yurest',  0, 1e9);\n  const cc = validaNumero(p.coste_cliente, 'coste_cliente', 0, 1e9);\n  // UUID aquí (igual que hardware/promociones) para que PostgREST tenga PK explícita.\n  const _uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); });\n  out = {\n    id: _uuid,\n    cliente: String(p.cliente || '').trim(),\n    entorno: p.entorno || 'backoffice',\n    desarrollo: String(p.desarrollo || '').trim(),\n    enviado: p.enviado === true,\n    quien_abona: p.quien_abona || 'cliente',\n    estado: p.estado || 'en_espera',\n    horas_yurest:  hy !== undefined ? hy : 0,\n    horas_cliente: hc !== undefined ? hc : 0,\n    coste_yurest:  cy !== undefined ? cy : 0,\n    coste_cliente: cc !== undefined ? cc : 0,\n    estado_entrega: p.estado_entrega || 'pendiente',\n    notas: p.notas != null ? String(p.notas) : null,\n    created_by: p.created_by ? String(p.created_by) : null,\n    created_at: now,\n    updated_at: now\n  };\n} else if (action === 'update') {\n  out.id = p.id;\n  if (p.cliente !== undefined) {\n    if (!String(p.cliente).trim()) errores.push('cliente no puede ser vacío');\n    else out.cliente = String(p.cliente).trim();\n  }\n  if (p.desarrollo !== undefined) {\n    if (!String(p.desarrollo).trim()) errores.push('desarrollo no puede ser vacío');\n    else out.desarrollo = String(p.desarrollo).trim();\n  }\n  if (p.entorno !== undefined) {\n    if (!ENTORNOS.includes(p.entorno)) errores.push('entorno debe ser backoffice|app_cliente');\n    else out.entorno = p.entorno;\n  }\n  if (p.quien_abona !== undefined) {\n    if (!QUIENES.includes(p.quien_abona)) errores.push('quien_abona debe ser yurest|cliente');\n    else out.quien_abona = p.quien_abona;\n  }\n  if (p.estado !== undefined) {\n    if (!ESTADOS.includes(p.estado)) errores.push('estado debe ser aceptado|en_espera');\n    else out.estado = p.estado;\n  }\n  if (p.estado_entrega !== undefined) {\n    if (!ENTREGAS.includes(p.estado_entrega)) errores.push('estado_entrega inválido');\n    else out.estado_entrega = p.estado_entrega;\n  }\n  if (p.enviado !== undefined)       out.enviado       = !!p.enviado;\n  if (p.horas_yurest  !== undefined) { const n = validaNumero(p.horas_yurest,  'horas_yurest',  0, 10000); if (n !== undefined) out.horas_yurest  = n; }\n  if (p.horas_cliente !== undefined) { const n = validaNumero(p.horas_cliente, 'horas_cliente', 0, 10000); if (n !== undefined) out.horas_cliente = n; }\n  if (p.coste_yurest  !== undefined) { const n = validaNumero(p.coste_yurest,  'coste_yurest',  0, 1e9);    if (n !== undefined) out.coste_yurest  = n; }\n  if (p.coste_cliente !== undefined) { const n = validaNumero(p.coste_cliente, 'coste_cliente', 0, 1e9);    if (n !== undefined) out.coste_cliente = n; }\n  if (p.notas !== undefined) out.notas = p.notas != null ? String(p.notas) : null;\n  out.updated_at = now;\n} else if (action === 'archivar') {\n  out = { id: p.id, deleted_at: now, updated_at: now };\n} else if (action === 'reactivar') {\n  out = { id: p.id, deleted_at: null, updated_at: now };\n} else if (action === 'marcar_enviado') {\n  out = { id: p.id, enviado: p.enviado === false ? false : true, updated_at: now };\n} else if (action === 'aceptar') {\n  out = { id: p.id, estado: 'aceptado', updated_at: now };\n} else if (action === 'entregar') {\n  out = { id: p.id, estado_entrega: 'entregado', updated_at: now };\n}\n\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\n\nif (errores.length > 0) {\n  return [{ json: { __error: true, __errores: errores, __action: action, __method: 'POST', __qs: 'on_conflict=id' } }];\n}\nconst _method = (action === 'create') ? 'POST' : 'PATCH';\nconst _qs = (action === 'create') ? 'on_conflict=id' : ('id=eq.' + encodeURIComponent(p.id || ''));\nreturn [{ json: Object.assign({}, out, { __method: _method, __qs: _qs }) }];"
+      },
+      "id": "prep-upsert-presupuestos",
+      "name": "Preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 460]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.__method || 'POST' }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/presupuestos?{{ $json.__qs || 'on_conflict=id' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.fromEntries(Object.entries($json).filter(e => !e[0].startsWith('__')))) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-upsert-presupuestos",
+      "name": "Supabase UPSERT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [640, 460],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la salida PostgREST al shape único del frontend:\n//   { success, presupuesto, errores }\nconst prep = $('Preparar').first().json || {};\nif (prep.__error) {\n  return [{ json: { success: false, presupuesto: null, errores: prep.__errores || ['validación falló'] } }];\n}\nconst items = $input.all() || [];\nconst errores = [];\nlet rows = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.code && j.message && !j.id) {\n    errores.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.id) rows.push(j);\n  if (Array.isArray(j.data)) rows = rows.concat(j.data);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('PostgREST devolvió 0 filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  presupuesto: rows[0] || null,\n  errores\n} }];"
+      },
+      "id": "fmt-upsert-presupuestos",
+      "name": "Formatear respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 460]
+    }
+  ],
+  "connections": {
+    "Webhook GET Presupuestos": { "main": [[{ "node": "GET Presupuestos Supabase", "type": "main", "index": 0 }]] },
+    "GET Presupuestos Supabase": { "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]] },
+    "Formatear GET": { "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]] },
+    "Webhook POST Presupuestos": { "main": [[{ "node": "Preparar", "type": "main", "index": 0 }]] },
+    "Preparar": { "main": [[{ "node": "Supabase UPSERT", "type": "main", "index": 0 }]] },
+    "Supabase UPSERT": { "main": [[{ "node": "Formatear respuesta", "type": "main", "index": 0 }]] },
+    "Formatear respuesta": { "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

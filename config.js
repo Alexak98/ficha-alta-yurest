@@ -76,6 +76,11 @@
         // Hardware envíos (ver proforma lista).
         hardwarePedidos:      `${WEBHOOK_BASE}/hardware/pedidos`,
 
+        // Presupuestos (departamento Producto): desarrollos a medida por
+        // cliente, con quién paga, estado de aprobación y de entrega.
+        // Reemplaza el Excel que usaba Producto.
+        presupuestos:         `${WEBHOOK_BASE}/presupuestos`,
+
         // Contabilidad
         grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`,
 
@@ -109,6 +114,7 @@
         { id: 'clientes',      label: 'Clientes',             grupo: 'Customer Success' },
         { id: 'bajas',         label: 'Bajas',                grupo: 'Customer Success' },
         { id: 'promociones',   label: 'Promociones',          grupo: 'Customer Success' },
+        { id: 'presupuestos',  label: 'Presupuestos',         grupo: 'Producto'         },
         { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
         { id: 'hardware',      label: 'Hardware envíos',      grupo: 'Soporte'          },
         { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
