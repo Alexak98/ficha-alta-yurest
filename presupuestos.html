@@ -266,6 +266,24 @@
         </div>
     </div>
 
+    <!-- Modal previsualización presupuesto (mismo patrón que el mandato SEPA
+         en contabilidad.html: se ve el documento tal cual saldrá el PDF
+         y desde ahí se lanza la descarga con auto-print). -->
+    <div class="modal-overlay" id="modal-presupuesto-doc">
+        <div class="modal" style="max-width:860px;max-height:92vh;display:flex;flex-direction:column">
+            <div class="modal-header">
+                <h3>Presupuesto</h3>
+                <div style="display:flex;gap:8px">
+                    <button class="btn-secondary" onclick="cerrarPresupuestoDoc()">Cerrar</button>
+                    <button class="btn-primary" onclick="descargarPresupuestoPDF()">📄 Descargar PDF</button>
+                </div>
+            </div>
+            <div class="modal-body" style="flex:1;overflow-y:auto;background:#f8fafc;padding:20px">
+                <div id="presupuesto-doc" style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;box-shadow:0 2px 8px rgba(15,23,42,.04)"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal crear / editar -->
     <div class="modal-overlay" id="modal-pre">
         <div class="modal">
@@ -697,23 +715,104 @@
     }
     async function reactivar(id) { try { await _post('reactivar', id); await cargar(); } catch (e) { alert('Error: ' + e.message); } }
 
-    // ── Generar presupuesto PDF (HTML printable en pestaña nueva) ─────
-    // Abre una ventana nueva con una plantilla de presupuesto lista para
-    // imprimir / guardar como PDF (Ctrl+P → "Guardar como PDF"). La
-    // cantidad a facturar se toma de `horas_cliente` (lo que se cobra
+    // ── Generar presupuesto PDF (modal preview + auto-print) ──────────
+    // Mismo patrón que el mandato SEPA en contabilidad.html: primero se
+    // previsualiza el documento en un modal del portal, y desde ahí el
+    // botón "Descargar PDF" abre una ventana popup con auto-print que
+    // dispara el diálogo de impresión / guardar como PDF del navegador.
+    //
+    // La cantidad a facturar se toma de `horas_cliente` (lo que se cobra
     // al cliente); si es 0 se usa `horas_yurest` como fallback. La
-    // tarifa unitaria es 85 €/h (sin IVA); el IVA 21% va como línea
-    // aparte y se suma al total.
-    function generarPresupuestoPDF(p) {
+    // tarifa unitaria por defecto es 85 €/h (sin IVA); si hay un
+    // `coste_cliente` manual (tarifa pactada), el subtotal respeta ese
+    // valor. El IVA 21% va siempre como línea aparte y se suma al total.
+    const PRESUPUESTO_CSS = `
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #0f172a; background: #fff; margin: 0; padding: 0;
+            font-size: 12.5px; line-height: 1.5;
+        }
+        .sheet { max-width: 780px; margin: 0 auto; padding: 28px 30px; }
+        header.doc-head {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding-bottom: 18px; border-bottom: 3px solid #dc2626;
+        }
+        header.doc-head img { height: 48px }
+        header.doc-head .meta { text-align: right; font-size: 11px; color: #475569 }
+        header.doc-head .meta .num { font-size: 18px; font-weight: 800; color: #dc2626; letter-spacing: .02em }
+        h1.doc-title { font-size: 22px; font-weight: 800; margin: 22px 0 4px; color: #0f172a }
+        h1.doc-title span { color: #dc2626 }
+        .doc-subtitle { color: #64748b; font-size: 12px; margin-bottom: 22px }
+        .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px }
+        .party {
+            border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; background: #f8fafc;
+        }
+        .party h3 {
+            font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+            color: #64748b; margin: 0 0 8px 0;
+        }
+        .party .name { font-weight: 700; font-size: 13.5px; color: #0f172a; margin-bottom: 4px }
+        .party .row { font-size: 11.5px; color: #334155 }
+        table.concepto {
+            width: 100%; border-collapse: collapse; margin: 8px 0 18px;
+            font-size: 12px;
+        }
+        table.concepto thead th {
+            background: #0f172a; color: #fff; font-size: 10.5px; font-weight: 700;
+            letter-spacing: .06em; text-transform: uppercase; padding: 10px 12px;
+            text-align: left;
+        }
+        table.concepto thead th.num { text-align: right }
+        table.concepto tbody td {
+            padding: 14px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top;
+        }
+        table.concepto tbody td.num { text-align: right; font-variant-numeric: tabular-nums }
+        table.concepto .desc-title { font-weight: 700; color: #0f172a; margin-bottom: 2px }
+        table.concepto .desc-meta { font-size: 11px; color: #64748b }
+        .totales {
+            margin-left: auto; width: 280px; border-top: 2px solid #0f172a;
+        }
+        .totales .row {
+            display: flex; justify-content: space-between; padding: 7px 4px;
+            font-size: 12.5px;
+        }
+        .totales .row .lbl { color: #475569 }
+        .totales .row.total {
+            border-top: 1.5px solid #0f172a; margin-top: 4px; padding-top: 10px;
+            font-weight: 800; font-size: 15px; color: #dc2626;
+        }
+        .doc-notas {
+            margin-top: 28px; padding: 14px 16px; background: #fef3c7; border-left: 3px solid #d97706;
+            border-radius: 6px; font-size: 11.5px; color: #78350f; white-space: pre-wrap;
+        }
+        footer.doc-foot {
+            margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0;
+            font-size: 10.5px; color: #64748b; text-align: center; line-height: 1.6;
+        }
+        .stamp {
+            position: relative; display: inline-block; margin-top: 18px; padding: 6px 14px;
+            border: 2px solid #dc2626; color: #dc2626; font-weight: 800; font-size: 11px;
+            letter-spacing: .1em; text-transform: uppercase; border-radius: 6px;
+            transform: rotate(-4deg);
+        }
+    `;
+
+    // Estado del presupuesto actualmente previsualizado, para que
+    // `descargarPresupuestoPDF` sepa qué imprimir. Null si no hay modal
+    // abierto.
+    let _presupuestoActual = null;
+
+    // Construye la HTML del cuerpo del presupuesto (sin <html>/<body>).
+    // Se reutiliza en dos sitios: en el modal de previsualización y en
+    // el popup de impresión.
+    function _renderPresupuestoDoc(p) {
         const horasFacturables = Number(p.horas_cliente) || Number(p.horas_yurest) || 0;
-        // Si el usuario fijó un `coste_cliente` manual (tarifa pactada),
-        // respetamos ese subtotal; si no, usamos horas · 85 €/h.
         const ccManual = Number(p.coste_cliente) || 0;
         const tarifaBase = horasFacturables > 0 ? TARIFA_POR_HORA : 0;
         const subtotal = ccManual > 0
             ? ccManual
             : +(horasFacturables * tarifaBase).toFixed(2);
-        // Precio unitario efectivo (puede diferir de 85 si hubo tarifa pactada).
         const precioUnit = horasFacturables > 0
             ? +(subtotal / horasFacturables).toFixed(2)
             : subtotal;
@@ -723,113 +822,18 @@
 
         const hoy = new Date();
         const fechaStr = hoy.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-        // Numeración legible del presupuesto: PYYYY-<8 primeros hex del uuid en mayúsculas>
         const num = 'P' + hoy.getFullYear() + '-' + String(p.id || '').replace(/-/g, '').slice(0, 6).toUpperCase();
-        // Validez típica: 30 días desde hoy.
         const validez = new Date(hoy.getTime() + 30 * 86400000).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
 
         const esc = YurestConfig.escHtml;
         const E = EMPRESA_EMISOR;
         const entornoLbl = p.entorno === 'app_cliente' ? 'App cliente' : 'Backoffice';
 
-        const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Presupuesto ${esc(num)} — ${esc(p.cliente || '')}</title>
-<style>
-  @page { size: A4; margin: 18mm 16mm; }
-  * { box-sizing: border-box; }
-  body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      color: #0f172a; background: #fff; margin: 0; padding: 24px;
-      font-size: 12.5px; line-height: 1.5;
-  }
-  .sheet { max-width: 780px; margin: 0 auto; }
-  header.doc-head {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      padding-bottom: 18px; border-bottom: 3px solid #dc2626;
-  }
-  header.doc-head img { height: 48px }
-  header.doc-head .meta { text-align: right; font-size: 11px; color: #475569 }
-  header.doc-head .meta .num { font-size: 18px; font-weight: 800; color: #dc2626; letter-spacing: .02em }
-  h1 { font-size: 22px; font-weight: 800; margin: 22px 0 4px; color: #0f172a }
-  h1 span { color: #dc2626 }
-  .subtitle { color: #64748b; font-size: 12px; margin-bottom: 22px }
-  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px }
-  .party {
-      border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; background: #f8fafc;
-  }
-  .party h3 {
-      font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
-      color: #64748b; margin: 0 0 8px 0;
-  }
-  .party .name { font-weight: 700; font-size: 13.5px; color: #0f172a; margin-bottom: 4px }
-  .party div { font-size: 11.5px; color: #334155 }
-  table.concepto {
-      width: 100%; border-collapse: collapse; margin: 8px 0 18px;
-      font-size: 12px;
-  }
-  table.concepto thead th {
-      background: #0f172a; color: #fff; font-size: 10.5px; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase; padding: 10px 12px;
-      text-align: left;
-  }
-  table.concepto thead th.num { text-align: right }
-  table.concepto tbody td {
-      padding: 14px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top;
-  }
-  table.concepto tbody td.num { text-align: right; font-variant-numeric: tabular-nums }
-  table.concepto .desc-title { font-weight: 700; color: #0f172a; margin-bottom: 2px }
-  table.concepto .desc-meta { font-size: 11px; color: #64748b }
-  .totales {
-      margin-left: auto; width: 280px; border-top: 2px solid #0f172a;
-  }
-  .totales .row {
-      display: flex; justify-content: space-between; padding: 7px 4px;
-      font-size: 12.5px;
-  }
-  .totales .row .lbl { color: #475569 }
-  .totales .row.total {
-      border-top: 1.5px solid #0f172a; margin-top: 4px; padding-top: 10px;
-      font-weight: 800; font-size: 15px; color: #dc2626;
-  }
-  .notas {
-      margin-top: 28px; padding: 14px 16px; background: #fef3c7; border-left: 3px solid #d97706;
-      border-radius: 6px; font-size: 11.5px; color: #78350f; white-space: pre-wrap;
-  }
-  footer.doc-foot {
-      margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0;
-      font-size: 10.5px; color: #64748b; text-align: center; line-height: 1.6;
-  }
-  .stamp {
-      position: relative; display: inline-block; margin-top: 18px; padding: 6px 14px;
-      border: 2px solid #dc2626; color: #dc2626; font-weight: 800; font-size: 11px;
-      letter-spacing: .1em; text-transform: uppercase; border-radius: 6px;
-      transform: rotate(-4deg);
-  }
-  .noprint {
-      position: fixed; top: 12px; right: 12px; z-index: 9999;
-      display: flex; gap: 8px;
-  }
-  .noprint button {
-      padding: 8px 14px; border-radius: 8px; border: 1.5px solid #e2e8f0;
-      background: #fff; color: #334155; font-weight: 600; cursor: pointer;
-      font-family: inherit; font-size: 12px;
-  }
-  .noprint button.primary { background: #dc2626; color: #fff; border-color: #dc2626 }
-  @media print {
-      .noprint { display: none !important; }
-      body { padding: 0; }
-  }
-</style>
-</head>
-<body>
-  <div class="noprint">
-      <button class="primary" onclick="window.print()">🖨️  Imprimir / PDF</button>
-      <button onclick="window.close()">Cerrar</button>
-  </div>
-  <div class="sheet">
+        return {
+            num,
+            fechaStr,
+            html: `
+<div class="sheet">
     <header class="doc-head">
         <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
         <div class="meta">
@@ -838,28 +842,25 @@
             <div>Válido hasta: <strong>${esc(validez)}</strong></div>
         </div>
     </header>
-
-    <h1>Presupuesto de <span>desarrollo</span></h1>
-    <p class="subtitle">${esc(p.desarrollo || '—')}</p>
-
+    <h1 class="doc-title">Presupuesto de <span>desarrollo</span></h1>
+    <p class="doc-subtitle">${esc(p.desarrollo || '—')}</p>
     <div class="parties">
         <div class="party">
             <h3>Emisor</h3>
             <div class="name">${esc(E.nombre)}</div>
-            <div>NIF: <strong>${esc(E.nif)}</strong></div>
-            <div>${esc(E.direccion)}</div>
-            <div>${esc(E.cp)} ${esc(E.poblacion)} · ${esc(E.provincia)}</div>
-            <div>${esc(E.pais)}</div>
-            <div style="margin-top:6px">${esc(E.email)} · ${esc(E.web)}</div>
+            <div class="row">NIF: <strong>${esc(E.nif)}</strong></div>
+            <div class="row">${esc(E.direccion)}</div>
+            <div class="row">${esc(E.cp)} ${esc(E.poblacion)} · ${esc(E.provincia)}</div>
+            <div class="row">${esc(E.pais)}</div>
+            <div class="row" style="margin-top:6px">${esc(E.email)} · ${esc(E.web)}</div>
         </div>
         <div class="party">
             <h3>Cliente</h3>
             <div class="name">${esc(p.cliente || '—')}</div>
-            <div>Entorno: <strong>${esc(entornoLbl)}</strong></div>
-            <div>Quien abona: <strong>${p.quien_abona === 'yurest' ? 'Yurest' : 'Cliente'}</strong></div>
+            <div class="row">Entorno: <strong>${esc(entornoLbl)}</strong></div>
+            <div class="row">Quien abona: <strong>${p.quien_abona === 'yurest' ? 'Yurest' : 'Cliente'}</strong></div>
         </div>
     </div>
-
     <table class="concepto">
         <thead>
             <tr>
@@ -881,35 +882,66 @@
             </tr>
         </tbody>
     </table>
-
     <div class="totales">
         <div class="row"><span class="lbl">Base imponible</span><span>${fmtE(subtotal)}</span></div>
         <div class="row"><span class="lbl">IVA (${IVA_PCT}%)</span><span>${fmtE(iva)}</span></div>
         <div class="row total"><span>TOTAL</span><span>${fmtE(total)}</span></div>
     </div>
-
-    ${p.notas ? `<div class="notas"><strong>Notas:</strong>\n${esc(p.notas)}</div>` : ''}
-
+    ${p.notas ? `<div class="doc-notas"><strong>Notas:</strong>\n${esc(p.notas)}</div>` : ''}
     ${p.estado === 'aceptado' ? `<div style="text-align:center"><span class="stamp">Aceptado</span></div>` : ''}
-
     <footer class="doc-foot">
         ${esc(E.nombre)} · NIF ${esc(E.nif)} · ${esc(E.direccion)}, ${esc(E.cp)} ${esc(E.poblacion)} (${esc(E.pais)})<br>
         Presupuesto ${esc(num)} generado el ${esc(fechaStr)}. Precios en euros, IVA desglosado aparte.<br>
         Validez 30 días desde la fecha de emisión salvo acuerdo distinto entre las partes.
     </footer>
-  </div>
-</body>
-</html>`;
+</div>`
+        };
+    }
 
-        const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1100');
+    // Abre el modal con la previsualización del presupuesto. Desde el
+    // propio modal el usuario decide si imprimir / guardar como PDF.
+    function generarPresupuestoPDF(p) {
+        _presupuestoActual = p;
+        const { html } = _renderPresupuestoDoc(p);
+        // Inyectamos el CSS del documento como <style> scoped al
+        // contenedor para que el preview se vea igual que el PDF final.
+        const host = document.getElementById('presupuesto-doc');
+        host.innerHTML = `<style>${PRESUPUESTO_CSS}</style>${html}`;
+        document.getElementById('modal-presupuesto-doc').classList.add('open');
+    }
+
+    function cerrarPresupuestoDoc() {
+        document.getElementById('modal-presupuesto-doc').classList.remove('open');
+        _presupuestoActual = null;
+    }
+
+    // Popup aislado con auto-print — mismo patrón exacto que
+    // `imprimirSepa()` en contabilidad.html. Espera a cargar imágenes
+    // antes de llamar window.print() para que el logo salga en el PDF.
+    function descargarPresupuestoPDF() {
+        if (!_presupuestoActual) return;
+        const p = _presupuestoActual;
+        const { num, html: docHtml } = _renderPresupuestoDoc(p);
+        const cliente = (p.cliente || 'cliente').replace(/[^\w\s\-.áéíóúüñÁÉÍÓÚÜÑ]/g, '').trim() || 'cliente';
+        const titulo = `Presupuesto ${num} — ${cliente}`;
+        const printCss = `
+            @page { size: A4 portrait; margin: 12mm 10mm; }
+            ${PRESUPUESTO_CSS}
+            .sheet { padding: 0; }
+        `;
+        // Auto-print: esperamos a que las imágenes (logo) estén cargadas,
+        // pequeño setTimeout y window.print(); al terminar, cerramos el
+        // popup solo. Idéntico al patrón de contabilidad.html.
+        const autoprintScript = '<scr' + 'ipt>window.onload=function(){var imgs=document.images;var left=imgs.length+1;var fire=function(){if(--left<=0)setTimeout(function(){window.print();},80);};if(imgs.length===0){fire();}else{for(var i=0;i<imgs.length;i++){if(imgs[i].complete)fire();else{imgs[i].addEventListener("load",fire);imgs[i].addEventListener("error",fire);}}}};window.onafterprint=function(){window.close();};</scr' + 'ipt>';
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title><style>${printCss}</style></head><body>${docHtml}${autoprintScript}</body></html>`;
+        const w = window.open('', '_blank', 'width=900,height=1100');
         if (!w) {
-            alert('No se pudo abrir la ventana del presupuesto. Revisa el bloqueador de pop-ups.');
+            alert('El navegador bloqueó el popup. Permite ventanas emergentes para descargar el PDF.');
             return;
         }
         w.document.open();
         w.document.write(html);
         w.document.close();
-        try { w.document.title = 'Presupuesto ' + num + ' — ' + (p.cliente || ''); } catch (_) { /* ignore */ }
     }
 
     window.openSidebar  = openSidebar;
@@ -928,13 +960,26 @@
     window.autoCosteYurest = autoCosteYurest;
     window.autoCosteCliente = autoCosteCliente;
     window.generarPresupuestoPDF = generarPresupuestoPDF;
+    window.cerrarPresupuestoDoc = cerrarPresupuestoDoc;
+    window.descargarPresupuestoPDF = descargarPresupuestoPDF;
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        // Si hay modal de previsualización de presupuesto abierto, lo
+        // cerramos primero (no puede haber los dos a la vez pero por si
+        // acaso priorizamos el que está encima).
+        const modalDoc = document.getElementById('modal-presupuesto-doc');
+        if (modalDoc.classList.contains('open')) cerrarPresupuestoDoc();
+        else cerrarModal();
+    });
     // Cerrar el modal al clicar fuera de la caja (F4 del QA). Sólo cuando
     // el target es el propio overlay — si es cualquier descendiente
     // (input, label, botón…) el click es legítimo del formulario.
     document.getElementById('modal-pre').addEventListener('click', e => {
         if (e.target === e.currentTarget) cerrarModal();
+    });
+    document.getElementById('modal-presupuesto-doc').addEventListener('click', e => {
+        if (e.target === e.currentTarget) cerrarPresupuestoDoc();
     });
     cargar();
     </script>
