@@ -23,17 +23,54 @@
         .page-toolbar h2 { font-size:1.35rem;font-weight:700;color:#0f172a;margin:0 }
         .page-toolbar p  { font-size:.85rem;color:#64748b;margin:3px 0 0 0 }
 
-        /* Filtros */
-        .filters { display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px }
-        .filters input[type=search], .filters select {
-            padding:7px 11px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;
-            font-size:.82rem;color:#475569;font-family:inherit;
+        /* ── Filtros (patrón compartido: filter-bar / chip-filter / filter-select) ── */
+        .filter-bar {
+            display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+            padding:12px 0;margin-bottom:4px;
         }
-        .filters input[type=search] { min-width: 220px }
-        .filters .tot {
-            margin-left:auto;display:flex;gap:18px;align-items:center;font-size:.78rem;color:#334155;
+        .search-wrap { position:relative;flex:1;max-width:340px }
+        .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+        .search-input {
+            width:100%;padding:8px 36px;font-family:inherit;font-size:.85rem;color:#1e293b;
+            background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;
+            transition:border-color .15s,background .15s;
         }
-        .filters .tot strong { color:#0f172a;font-weight:700 }
+        .search-input:focus { outline:none;border-color:#6366f1;background:#fff }
+        .filter-label { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-right:4px }
+        .filter-select {
+            padding:7px 12px;font-family:inherit;font-size:.83rem;color:#334155;
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;cursor:pointer;
+        }
+        .filter-select.active { background:#eef2ff;border-color:#6366f1;color:#4338ca }
+        .filter-sep { width:1px;height:22px;background:#e2e8f0;margin:0 4px }
+        .chip-filter {
+            display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;
+            font-size:.82rem;font-weight:600;color:#475569;background:#fff;border:1.5px solid #e2e8f0;
+            cursor:pointer;user-select:none;transition:all .15s;font-family:inherit;
+        }
+        .chip-filter:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .chip-filter.active { background:#eef2ff;border-color:#6366f1;color:#4338ca }
+        .chip-filter.chip-all { background:#0f172a;border-color:#0f172a;color:#fff }
+        .chip-filter.chip-all.active { background:#6366f1;border-color:#6366f1;color:#fff }
+        .chip-filter .chip-count {
+            font-size:.7rem;font-weight:700;background:#f1f5f9;color:#64748b;
+            padding:1px 7px;border-radius:999px;
+        }
+        .chip-filter.active .chip-count { background:#6366f1;color:#fff }
+        .chip-filter.chip-all .chip-count { background:rgba(255,255,255,.2);color:#fff }
+
+        /* KPI strip (totales) — estilo consistente con clientes.html */
+        .kpi-strip {
+            display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;
+        }
+        .kpi {
+            flex:1;min-width:140px;padding:12px 14px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+        }
+        .kpi-label { font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:4px }
+        .kpi-value { font-size:1.15rem;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums }
+        .kpi-value.indigo { color:#6366f1 }
+        .kpi-value.amber  { color:#b45309 }
+        .kpi-value.green  { color:#15803d }
 
         /* Tabla */
         .wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden }
@@ -141,33 +178,63 @@
             <button class="btn-primary" onclick="abrirModal()">+ Nuevo presupuesto</button>
         </div>
 
-        <div class="filters">
-            <input type="search" id="f-q" placeholder="Buscar cliente o desarrollo…" oninput="render()">
-            <select id="f-entorno" onchange="render()">
-                <option value="">Todos entornos</option>
+        <div class="filter-bar" id="filter-bar">
+            <div class="search-wrap">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="f-q" class="search-input" type="search" placeholder="Buscar cliente o desarrollo…" oninput="render()">
+            </div>
+            <div class="filter-sep"></div>
+            <span class="filter-label">Estado</span>
+            <div id="chips-estado" style="display:flex;gap:6px"></div>
+            <div class="filter-sep"></div>
+            <span class="filter-label">Entrega</span>
+            <div id="chips-entrega" style="display:flex;gap:6px"></div>
+            <div class="filter-sep"></div>
+            <span class="filter-label">Entorno</span>
+            <select class="filter-select" id="f-entorno" onchange="setFiltroEntorno(this)">
+                <option value="">Todos</option>
                 <option value="backoffice">Backoffice</option>
                 <option value="app_cliente">App cliente</option>
             </select>
-            <select id="f-abona" onchange="render()">
-                <option value="">Quién abona (todos)</option>
+            <span class="filter-label">Abona</span>
+            <select class="filter-select" id="f-abona" onchange="setFiltroAbona(this)">
+                <option value="">Todos</option>
                 <option value="yurest">Yurest</option>
                 <option value="cliente">Cliente</option>
             </select>
-            <select id="f-estado" onchange="render()">
-                <option value="">Todos estados</option>
-                <option value="aceptado">Aceptado</option>
-                <option value="en_espera">En espera</option>
-            </select>
-            <select id="f-entrega" onchange="render()">
-                <option value="">Todas entregas</option>
-                <option value="pendiente">Pendiente</option>
-                <option value="en_progreso">En progreso</option>
-                <option value="entregado">Entregado</option>
-            </select>
-            <label style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:#475569">
-                <input type="checkbox" id="f-archivadas" onchange="cargar()"> Archivadas
-            </label>
-            <div class="tot" id="tot"></div>
+            <div class="filter-sep"></div>
+            <button type="button" class="chip-filter" id="chip-archivadas" onclick="toggleArchivadas()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                Mostrar archivadas
+            </button>
+        </div>
+
+        <!-- KPI strip: totales agregados sobre el listado filtrado -->
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="kpi-label">Mostrados</div>
+                <div class="kpi-value" id="k-count">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Horas Yurest</div>
+                <div class="kpi-value amber" id="k-hy">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">€ Yurest</div>
+                <div class="kpi-value amber" id="k-cy">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Horas Cliente</div>
+                <div class="kpi-value indigo" id="k-hc">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">€ Cliente</div>
+                <div class="kpi-value indigo" id="k-cc">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Pdte. entregar</div>
+                <div class="kpi-value green" id="k-pdte">—</div>
+            </div>
         </div>
 
         <div id="loading" style="text-align:center;padding:40px;color:#94a3b8">Cargando…</div>
@@ -297,14 +364,23 @@
     const TARIFA_POR_HORA = 85;
     let presupuestos = [];
     let totales = { horas_yurest: 0, horas_cliente: 0, coste_yurest: 0, coste_cliente: 0 };
+    // Estado de filtros — mantenido fuera del DOM para que repintar los chips
+    // no pierda la selección (patrón de clientes.html / promociones).
+    let filtroEstado  = '';   // '' | 'en_espera' | 'aceptado'
+    let filtroEntrega = '';   // '' | 'pendiente' | 'en_progreso' | 'entregado'
+    let filtroEntorno = '';
+    let filtroAbona   = '';
+    let verArchivadas = false;
 
     async function cargar() {
         document.getElementById('loading').style.display = '';
         document.getElementById('wrap').style.display = 'none';
         document.getElementById('empty-state').style.display = 'none';
         try {
-            const incluirArch = document.getElementById('f-archivadas').checked;
-            const url = EP + (incluirArch ? '?_t=' + Date.now() + '&all=1' : '');
+            const params = new URLSearchParams();
+            params.set('_t', Date.now());
+            if (verArchivadas) params.set('incluir_archivadas', '1');
+            const url = EP + '?' + params.toString();
             const res = await YurestConfig.apiFetch(url, { method: 'GET' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
@@ -312,6 +388,7 @@
                          : Array.isArray(data.presupuestos) ? data.presupuestos
                          : Array.isArray(data.data) ? data.data : [];
             totales = data.totales || { horas_yurest: 0, horas_cliente: 0, coste_yurest: 0, coste_cliente: 0 };
+            poblarChips();
             render();
         } catch (err) {
             console.warn('[presupuestos] cargar', err);
@@ -319,20 +396,73 @@
         }
     }
 
+    // Rellena los chips con contadores en vivo (mismo patrón que clientes.html).
+    function poblarChips() {
+        const vivos = presupuestos.filter(p => !p.deleted_at);
+        const cEstado  = { en_espera: 0, aceptado: 0 };
+        const cEntrega = { pendiente: 0, en_progreso: 0, entregado: 0 };
+        vivos.forEach(p => {
+            if (cEstado[p.estado]   !== undefined) cEstado[p.estado]++;
+            if (cEntrega[p.estado_entrega] !== undefined) cEntrega[p.estado_entrega]++;
+        });
+
+        const chipEstado = document.getElementById('chips-estado');
+        chipEstado.innerHTML = `
+            <button class="chip-filter chip-all ${filtroEstado === '' ? 'active' : ''}" onclick="setFiltroEstado('')">
+                Todos <span class="chip-count">${vivos.length}</span>
+            </button>
+            <button class="chip-filter ${filtroEstado === 'en_espera' ? 'active' : ''}" data-v="en_espera" onclick="setFiltroEstado('en_espera')">
+                En espera <span class="chip-count">${cEstado.en_espera}</span>
+            </button>
+            <button class="chip-filter ${filtroEstado === 'aceptado' ? 'active' : ''}" data-v="aceptado" onclick="setFiltroEstado('aceptado')">
+                Aceptado <span class="chip-count">${cEstado.aceptado}</span>
+            </button>`;
+
+        const chipEntrega = document.getElementById('chips-entrega');
+        chipEntrega.innerHTML = `
+            <button class="chip-filter chip-all ${filtroEntrega === '' ? 'active' : ''}" onclick="setFiltroEntrega('')">
+                Todas <span class="chip-count">${vivos.length}</span>
+            </button>
+            <button class="chip-filter ${filtroEntrega === 'pendiente' ? 'active' : ''}" data-v="pendiente" onclick="setFiltroEntrega('pendiente')">
+                Pendiente <span class="chip-count">${cEntrega.pendiente}</span>
+            </button>
+            <button class="chip-filter ${filtroEntrega === 'en_progreso' ? 'active' : ''}" data-v="en_progreso" onclick="setFiltroEntrega('en_progreso')">
+                En progreso <span class="chip-count">${cEntrega.en_progreso}</span>
+            </button>
+            <button class="chip-filter ${filtroEntrega === 'entregado' ? 'active' : ''}" data-v="entregado" onclick="setFiltroEntrega('entregado')">
+                Entregado <span class="chip-count">${cEntrega.entregado}</span>
+            </button>`;
+
+        // Reflejar selección en selects / chip archivadas
+        const selEnt = document.getElementById('f-entorno');
+        selEnt.value = filtroEntorno;
+        selEnt.classList.toggle('active', !!filtroEntorno);
+        const selAb = document.getElementById('f-abona');
+        selAb.value = filtroAbona;
+        selAb.classList.toggle('active', !!filtroAbona);
+        document.getElementById('chip-archivadas').classList.toggle('active', verArchivadas);
+    }
+
+    function setFiltroEstado(v)  { filtroEstado  = v; poblarChips(); render(); }
+    function setFiltroEntrega(v) { filtroEntrega = v; poblarChips(); render(); }
+    function setFiltroEntorno(sel) { filtroEntorno = sel.value; sel.classList.toggle('active', !!sel.value); render(); }
+    function setFiltroAbona(sel)   { filtroAbona   = sel.value; sel.classList.toggle('active', !!sel.value); render(); }
+    function toggleArchivadas() {
+        verArchivadas = !verArchivadas;
+        document.getElementById('chip-archivadas').classList.toggle('active', verArchivadas);
+        cargar();
+    }
+
     function render() {
         document.getElementById('loading').style.display = 'none';
         const q = document.getElementById('f-q').value.trim().toLowerCase();
-        const fEnt = document.getElementById('f-entorno').value;
-        const fAb  = document.getElementById('f-abona').value;
-        const fEs  = document.getElementById('f-estado').value;
-        const fEg  = document.getElementById('f-entrega').value;
 
         const lista = presupuestos.filter(p => {
             if (q && !(String(p.cliente||'').toLowerCase().includes(q) || String(p.desarrollo||'').toLowerCase().includes(q))) return false;
-            if (fEnt && p.entorno !== fEnt) return false;
-            if (fAb  && p.quien_abona !== fAb)  return false;
-            if (fEs  && p.estado !== fEs)  return false;
-            if (fEg  && p.estado_entrega !== fEg) return false;
+            if (filtroEntorno && p.entorno !== filtroEntorno) return false;
+            if (filtroAbona   && p.quien_abona !== filtroAbona) return false;
+            if (filtroEstado  && p.estado !== filtroEstado) return false;
+            if (filtroEntrega && p.estado_entrega !== filtroEntrega) return false;
             return true;
         });
 
@@ -344,13 +474,14 @@
             acc.coste_cliente += Number(p.coste_cliente) || 0;
             return acc;
         }, { horas_yurest: 0, horas_cliente: 0, coste_yurest: 0, coste_cliente: 0 });
+        const pdte = lista.filter(p => !p.deleted_at && p.estado === 'aceptado' && p.estado_entrega !== 'entregado').length;
 
-        document.getElementById('tot').innerHTML =
-            `<span>Mostrados: <strong>${lista.length}</strong> / ${presupuestos.length}</span>` +
-            `<span>H. Yurest: <strong>${sum.horas_yurest}</strong></span>` +
-            `<span>€ Yurest: <strong>${fmtEur(sum.coste_yurest)}</strong></span>` +
-            `<span>H. Cliente: <strong>${sum.horas_cliente}</strong></span>` +
-            `<span>€ Cliente: <strong>${fmtEur(sum.coste_cliente)}</strong></span>`;
+        document.getElementById('k-count').textContent = lista.length + (presupuestos.length !== lista.length ? ' / ' + presupuestos.length : '');
+        document.getElementById('k-hy').textContent    = fmtHoras(sum.horas_yurest);
+        document.getElementById('k-cy').textContent    = fmtEur(sum.coste_yurest);
+        document.getElementById('k-hc').textContent    = fmtHoras(sum.horas_cliente);
+        document.getElementById('k-cc').textContent    = fmtEur(sum.coste_cliente);
+        document.getElementById('k-pdte').textContent  = pdte;
 
         actualizarBadge();
 
