@@ -206,7 +206,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// La rama de UPDATE/DELETE/REACTIVAR aplana el payload: pasa row tal cual\n// al nodo Supabase que usa autoMapInputData.\nreturn [{ json: $json.row }];"
+        "jsCode": "// trace\nreturn [{ json: Object.assign({}, $json.row, { __trace: 'aplanar_update' }) }];"
       },
       "id": "flatten-promo-update",
       "name": "Aplanar UPDATE",
@@ -253,7 +253,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Respuesta unificada — devuelve el registro persistido + action.\nconst rows = ($input.all() || []).map(i => i.json).filter(x => x && x.id);\nreturn [{ json: { success: rows.length > 0, promocion: rows[0] || null, errores: [] } }];"
+        "jsCode": "// Respuesta consolidada con trace para diagnosticar por qué el webhook\n// respondía con la salida de Preparar en vez de esta.\nconst items = $input.all() || [];\nconst rows = items.map(i => i.json).filter(x => x && x.id);\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores: rows.length > 0 ? [] : ['INSERT/UPDATE devolvió 0 filas'],\n  _trace: {\n    node: 'formatear_resultado',\n    itemCount: items.length,\n    sampleKeys: items.slice(0,3).map(i => Object.keys(i.json||{}))\n  }\n} }];"
       },
       "id": "format-promo-result",
       "name": "Formatear resultado",
@@ -315,7 +315,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Aplana igual que Aplanar UPDATE: el nodo Supabase INSERT usa\n// autoMapInputData y necesita el row como raíz, no {action,row,errores}.\nreturn [{ json: $json.row }];"
+        "jsCode": "// trace\nreturn [{ json: Object.assign({}, $json.row, { __trace: 'aplanar_insert' }) }];"
       },
       "id": "aplanar-insert-promo",
       "name": "Aplanar INSERT",
