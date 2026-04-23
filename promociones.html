@@ -67,6 +67,18 @@
         }
         .promo-actions button:hover { border-color:#ec4899;color:#ec4899 }
         .promo-actions .danger:hover { border-color:#dc2626;color:#dc2626;background:#fef2f2 }
+        .promo-actions .ok:hover     { border-color:#15803d;color:#15803d;background:#f0fdf4 }
+        .promo-card.archivada { opacity:.6;border-style:dashed }
+        .promo-badge.archivada { background:#fee2e2;color:#991b1b }
+
+        /* ── Toolbar de filtros ──────────────────────────────────── */
+        .filters { display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px }
+        .filters select, .filters label.toggle {
+            padding:7px 11px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;
+            font-size:.82rem;color:#475569;font-family:inherit;cursor:pointer;
+        }
+        .filters label.toggle { display:inline-flex;align-items:center;gap:6px;user-select:none }
+        .filters label.toggle input { margin:0 }
 
         /* ── Modal ─────────────────────────────────────────────── */
         .modal-overlay {
@@ -135,6 +147,19 @@
             <button class="btn-primary" onclick="abrirModal()">+ Nueva promoción</button>
         </div>
 
+        <div class="filters">
+            <select id="filter-estado" onchange="render()">
+                <option value="">Todos los estados</option>
+                <option value="activa">Solo activas</option>
+                <option value="cerrada">Solo cerradas</option>
+            </select>
+            <label class="toggle">
+                <input type="checkbox" id="filter-archivadas" onchange="cargar()">
+                Mostrar archivadas
+            </label>
+            <span id="resumen" style="margin-left:auto;font-size:.78rem;color:#64748b"></span>
+        </div>
+
         <div id="loading" style="text-align:center;padding:40px;color:#94a3b8">Cargando…</div>
         <div id="promo-grid" class="promo-grid" style="display:none"></div>
         <div id="empty-state" class="empty" style="display:none">
@@ -177,11 +202,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="f-plazas-m">Plazas mañana</label>
-                        <input type="number" id="f-plazas-m" min="0" max="50" value="8">
+                        <input type="number" id="f-plazas-m" min="0" max="100" value="8">
                     </div>
                     <div class="form-group">
                         <label for="f-plazas-t">Plazas tarde</label>
-                        <input type="number" id="f-plazas-t" min="0" max="50" value="8">
+                        <input type="number" id="f-plazas-t" min="0" max="100" value="8">
                     </div>
                 </div>
                 <div id="f-error" style="display:none;color:#dc2626;font-size:.82rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;margin-top:8px"></div>
@@ -205,7 +230,9 @@
         document.getElementById('promo-grid').style.display = 'none';
         document.getElementById('empty-state').style.display = 'none';
         try {
-            const res = await YurestConfig.apiFetch(EP, { method: 'GET' });
+            const incluirArch = document.getElementById('filter-archivadas').checked;
+            const url = EP + (incluirArch ? '?incluir_archivadas=1' : '');
+            const res = await YurestConfig.apiFetch(url, { method: 'GET' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             promociones = Array.isArray(data) ? data
@@ -218,15 +245,35 @@
         }
     }
 
+    // Actualiza el badge del sidebar con el número de promociones activas y con plazas.
+    function actualizarBadge(list) {
+        const activas = list.filter(p => !p.deleted_at && p.estado === 'activa' && !p.full).length;
+        const el = document.getElementById('badge-promociones');
+        if (!el) return;
+        if (activas > 0) { el.textContent = String(activas); el.style.display = ''; }
+        else { el.textContent = ''; el.style.display = 'none'; }
+    }
+
     function render() {
         document.getElementById('loading').style.display = 'none';
         const grid = document.getElementById('promo-grid');
-        if (promociones.length === 0) {
+        const estadoFiltro = document.getElementById('filter-estado').value;
+        const lista = estadoFiltro ? promociones.filter(p => p.estado === estadoFiltro) : promociones;
+
+        actualizarBadge(promociones);
+        const resumen = document.getElementById('resumen');
+        const nActivas = promociones.filter(p => !p.deleted_at && p.estado === 'activa').length;
+        const nArch    = promociones.filter(p => p.deleted_at).length;
+        resumen.textContent = `${nActivas} activas${nArch ? ` · ${nArch} archivadas` : ''}`;
+
+        if (lista.length === 0) {
             document.getElementById('empty-state').style.display = '';
+            grid.style.display = 'none';
             return;
         }
+        document.getElementById('empty-state').style.display = 'none';
         const esc = YurestConfig.escHtml;
-        grid.innerHTML = promociones.map(p => {
+        grid.innerHTML = lista.map(p => {
             const occM = Number(p.ocupadas_manana) || 0;
             const occT = Number(p.ocupadas_tarde)  || 0;
             const capM = Number(p.plazas_manana)   || 0;
@@ -234,12 +281,20 @@
             const occTotal = occM + occT;
             const capTotal = capM + capT;
             const full = capTotal > 0 && occTotal >= capTotal;
+            const archivada = !!p.deleted_at;
             const pct = capTotal > 0 ? Math.round((occTotal / capTotal) * 100) : 0;
-            const estadoCls = p.estado === 'cerrada' ? 'cerrada' : (full ? 'full' : 'activa');
-            const estadoLbl = p.estado === 'cerrada' ? 'Cerrada' : (full ? 'Completa' : 'Activa');
+            const estadoCls = archivada ? 'archivada' : (p.estado === 'cerrada' ? 'cerrada' : (full ? 'full' : 'activa'));
+            const estadoLbl = archivada ? 'Archivada' : (p.estado === 'cerrada' ? 'Cerrada' : (full ? 'Completa' : 'Activa'));
             const fecha = p.fecha_inicio ? new Date(p.fecha_inicio).toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) : '';
+            const acciones = archivada
+                ? `<button class="ok" onclick="reactivar('${esc(p.id)}', '${esc(p.nombre).replace(/'/g,"&#39;")}')">♻️ Reactivar</button>`
+                : `
+                    <button onclick='editar(${JSON.stringify(p).replace(/'/g,"&#39;")})'>✏️ Editar</button>
+                    ${p.estado !== 'cerrada' ? `<button onclick="cerrar('${esc(p.id)}', '${esc(p.nombre).replace(/'/g,"&#39;")}')">🔒 Cerrar</button>` : ''}
+                    <button class="danger" onclick="archivar('${esc(p.id)}', '${esc(p.nombre).replace(/'/g,"&#39;")}')">🗑️ Archivar</button>
+                `;
             return `
-                <div class="promo-card ${full ? 'full' : ''} ${p.estado === 'cerrada' ? 'cerrada' : ''}">
+                <div class="promo-card ${full ? 'full' : ''} ${p.estado === 'cerrada' ? 'cerrada' : ''} ${archivada ? 'archivada' : ''}">
                     <div class="promo-head">
                         <div>
                             <h3 class="promo-name">${esc(p.nombre)}</h3>
@@ -270,10 +325,7 @@
                         <div class="promo-bar"><div class="promo-bar-fill ${full ? 'full' : ''}" style="width:${pct}%"></div></div>
                     </div>
 
-                    <div class="promo-actions">
-                        <button onclick='editar(${JSON.stringify(p).replace(/'/g,"&#39;")})'>✏️ Editar</button>
-                        <button class="danger" onclick="borrar('${esc(p.id)}', '${esc(p.nombre).replace(/'/g,"&#39;")}')">🗑️ Archivar</button>
-                    </div>
+                    <div class="promo-actions">${acciones}</div>
                 </div>`;
         }).join('');
         grid.style.display = '';
@@ -349,18 +401,31 @@
         }
     }
 
-    async function borrar(id, nombre) {
-        if (!confirm(`¿Archivar la promoción "${nombre}"?\nNo se borra de BD — se marca como eliminada. Los proyectos ya asignados a ella se mantienen.`)) return;
-        try {
-            const res = await YurestConfig.apiFetch(EP, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'delete', promocion: { id } })
-            });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            await cargar();
-        } catch (err) {
-            alert('Error al archivar: ' + err.message);
-        }
+    async function _postAction(action, id, promocion) {
+        const body = { action, promocion: Object.assign({ id }, promocion || {}) };
+        const res = await YurestConfig.apiFetch(EP, { method: 'POST', body: JSON.stringify(body) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const r = await res.json();
+        if (r && r.success === false) throw new Error((r.errores || ['Error desconocido']).join('; '));
+        return r;
+    }
+
+    async function archivar(id, nombre) {
+        if (!confirm(`¿Archivar la promoción "${nombre}"?\nNo se borra de BD — se marca como eliminada. Los proyectos ya asignados a ella se mantienen.\n\nPuedes reactivarla desde "Mostrar archivadas".`)) return;
+        try { await _postAction('archivar', id); await cargar(); }
+        catch (err) { alert('Error al archivar: ' + err.message); }
+    }
+
+    async function reactivar(id, nombre) {
+        if (!confirm(`¿Reactivar la promoción "${nombre}"?`)) return;
+        try { await _postAction('reactivar', id); await cargar(); }
+        catch (err) { alert('Error al reactivar: ' + err.message); }
+    }
+
+    async function cerrar(id, nombre) {
+        if (!confirm(`¿Cerrar la promoción "${nombre}"?\nSeguirá siendo visible pero no aparecerá para nuevas asignaciones.`)) return;
+        try { await _postAction('cerrar', id); await cargar(); }
+        catch (err) { alert('Error al cerrar: ' + err.message); }
     }
 
     // Exponer globals para onclick inline
@@ -370,7 +435,11 @@
     window.cerrarModal = cerrarModal;
     window.guardar = guardar;
     window.editar  = editar;
-    window.borrar  = borrar;
+    window.archivar  = archivar;
+    window.reactivar = reactivar;
+    window.cerrar    = cerrar;
+    window.render    = render;
+    window.cargar    = cargar;
 
     // Escape cierra el modal
     document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });

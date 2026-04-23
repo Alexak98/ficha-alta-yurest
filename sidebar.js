@@ -84,7 +84,7 @@
             items: [
                 { id: 'clientes',    href: 'clientes.html',    label: 'Clientes',    icon: 'clientes'    },
                 { id: 'bajas',       href: 'bajas.html',       label: 'Bajas',       icon: 'bajas'       },
-                { id: 'promociones', href: 'promociones.html', label: 'Promociones', icon: 'promociones' }
+                { id: 'promociones', href: 'promociones.html', label: 'Promociones', icon: 'promociones', badgeId: 'badge-promociones' }
             ]
         },
         {

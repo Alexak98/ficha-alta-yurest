@@ -6,6 +6,7 @@
         "httpMethod": "GET",
         "path": "promociones",
         "responseMode": "responseNode",
+        "authentication": "basicAuth",
         "options": {
           "allowedOrigins": "*"
         }
@@ -18,7 +19,13 @@
         240,
         200
       ],
-      "webhookId": "promociones-get"
+      "webhookId": "promociones-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -45,7 +52,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Devuelve la lista plana + añade flags útiles para el selector:\n//   full              → promoción 100% llena (no se puede asignar)\n//   manana_disponible → turno mañana con plazas libres\n//   tarde_disponible  → turno tarde con plazas libres\nconst items = ($input.all() || []).map(i => i.json).filter(x => x && x.id);\nconst out = items.map(p => ({\n  ...p,\n  full: (p.libres_total || 0) <= 0,\n  manana_disponible: (p.libres_manana || 0) > 0,\n  tarde_disponible:  (p.libres_tarde  || 0) > 0\n}));\nreturn [{ json: { promociones: out } }];"
+        "jsCode": "// Filtros y flags de disponibilidad.\n//   ?estado=activa|cerrada     → filtra por estado\n//   ?incluir_archivadas=1      → incluye las soft-deleted (por defecto NO)\n// La vista devuelve TODAS las promociones (incl. archivadas) desde la\n// migración 2026-04-23_02; filtramos aquí para permitir reactivar desde la UI.\nconst wh = $('Webhook GET Promociones').first().json || {};\nconst q = wh.query || wh.params || {};\nconst incluirArch = q.incluir_archivadas === '1' || q.incluir_archivadas === 'true' || q.incluir_archivadas === 1 || q.incluir_archivadas === true;\n\nconst raw = ($input.all() || []).map(i => i.json).filter(x => x && x.id);\nlet out = incluirArch ? raw : raw.filter(x => !x.deleted_at);\nif (q.estado) out = out.filter(p => p.estado === q.estado);\n\nout = out.map(p => ({\n  ...p,\n  full: (p.libres_total || 0) <= 0,\n  manana_disponible: (p.libres_manana || 0) > 0,\n  tarde_disponible:  (p.libres_tarde  || 0) > 0,\n  archivada: !!p.deleted_at\n}));\n\n// Orden: vivas primero (por fecha_inicio desc), luego archivadas.\nout.sort((a, b) => {\n  if (!!a.deleted_at !== !!b.deleted_at) return a.deleted_at ? 1 : -1;\n  const da = a.fecha_inicio ? new Date(a.fecha_inicio).getTime() : 0;\n  const db = b.fecha_inicio ? new Date(b.fecha_inicio).getTime() : 0;\n  return db - da;\n});\n\nreturn [{ json: { promociones: out } }];"
       },
       "id": "format-promo",
       "name": "Formatear Promociones",
@@ -69,7 +76,7 @@
               },
               {
                 "name": "Access-Control-Allow-Methods",
-                "value": "GET, POST, PUT, DELETE, OPTIONS"
+                "value": "GET, POST, OPTIONS"
               },
               {
                 "name": "Access-Control-Allow-Headers",
@@ -97,6 +104,7 @@
         "httpMethod": "POST",
         "path": "promociones",
         "responseMode": "responseNode",
+        "authentication": "basicAuth",
         "options": {
           "allowedOrigins": "*"
         }
@@ -109,7 +117,13 @@
         240,
         460
       ],
-      "webhookId": "promociones-post"
+      "webhookId": "promociones-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -124,7 +138,7 @@
               },
               {
                 "name": "Access-Control-Allow-Methods",
-                "value": "GET, POST, PUT, DELETE, OPTIONS"
+                "value": "GET, POST, OPTIONS"
               },
               {
                 "name": "Access-Control-Allow-Headers",
@@ -149,7 +163,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Validar y emitir el row APLANADO al raíz (para que Supabase upsert\n// lo consuma con autoMapInputData sin interferir con 'action' ni 'row').\n// Si hay error de validación, emitimos un item con bandera __error:true\n// que el Formatear final detecta y devuelve el mensaje.\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || 'create').toLowerCase();\nconst p = b.promocion || {};\nif (!['create','update','delete','reactivar'].includes(action)) {\n  return [{ json: { __error: true, __errores: ['action inválida: ' + action], __action: action } }];\n}\nconst errores = [];\nif (action === 'create' && (!p.nombre || !String(p.nombre).trim())) errores.push('nombre obligatorio');\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\nif (errores.length > 0) return [{ json: { __error: true, __errores: errores, __action: action } }];\n\nconst out = {};\nif (action === 'create') {\n  out.nombre = String(p.nombre).trim();\n  if (p.descripcion != null)   out.descripcion   = String(p.descripcion);\n  if (p.fecha_inicio)          out.fecha_inicio  = p.fecha_inicio;\n  out.estado        = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  out.plazas_manana = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  out.plazas_tarde  = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (p.created_by) out.created_by = String(p.created_by);\n} else if (action === 'update') {\n  out.id = p.id;\n  if (p.nombre       !== undefined) out.nombre       = String(p.nombre).trim();\n  if (p.descripcion  !== undefined) out.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) out.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) out.estado       = p.estado === 'cerrada' ? 'cerrada' : 'activa';\n  if (p.plazas_manana !== undefined && Number.isFinite(+p.plazas_manana)) out.plazas_manana = +p.plazas_manana;\n  if (p.plazas_tarde  !== undefined && Number.isFinite(+p.plazas_tarde))  out.plazas_tarde  = +p.plazas_tarde;\n  out.updated_at = new Date().toISOString();\n} else if (action === 'delete') {\n  out.id = p.id; out.deleted_at = new Date().toISOString();\n} else if (action === 'reactivar') {\n  out.id = p.id; out.deleted_at = null;\n}\nreturn [{ json: out }];"
+        "jsCode": "// Acciones soportadas:\n//   create     → alta con nombre + plazas (estado=activa)\n//   update     → edita nombre/descripcion/fecha/plazas/estado\n//   archivar   → soft-delete (deleted_at=now). Antes era 'delete' — renombrado\n//                por claridad y para que el verbo sugiera reversibilidad.\n//   reactivar  → deshace archivar (deleted_at=null)\n//   cerrar     → estado='cerrada' (NO archivar; la promoción sigue visible)\n//\n// Hemos RETIRADO 'delete' (hard delete) del webhook público — igual que en\n// 21-hardware-pedidos. El borrado definitivo, si alguna vez hace falta, se\n// hace en Supabase a mano con salvaguardas adicionales.\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst p = b.promocion || {};\nconst now = new Date().toISOString();\nconst errores = [];\nconst VALID = ['create', 'update', 'archivar', 'reactivar', 'cerrar'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !p.id) errores.push('id obligatorio para ' + action);\n// UUID v4 laxo — evita IDs basura que generarían errores 22P02 confusos.\nif (p.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id)) {\n  errores.push('id no es un UUID válido');\n}\n\nlet out = {};\nif (action === 'create') {\n  if (!p.nombre || !String(p.nombre).trim()) errores.push('nombre obligatorio');\n  const pm = Number.isFinite(+p.plazas_manana) ? +p.plazas_manana : 8;\n  const pt = Number.isFinite(+p.plazas_tarde)  ? +p.plazas_tarde  : 8;\n  if (pm < 0 || pm > 100) errores.push('plazas_manana fuera de rango (0..100)');\n  if (pt < 0 || pt > 100) errores.push('plazas_tarde fuera de rango (0..100)');\n  // Generamos el id aquí (igual que en 21-hardware-pedidos) para que el\n  // HTTP POST a PostgREST tenga PK explícita y no dependa de defaults.\n  const _uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); });\n  out = {\n    id: _uuid,\n    nombre: String(p.nombre || '').trim(),\n    descripcion: p.descripcion != null ? String(p.descripcion) : null,\n    fecha_inicio: p.fecha_inicio || null,\n    estado: p.estado === 'cerrada' ? 'cerrada' : 'activa',\n    plazas_manana: pm,\n    plazas_tarde: pt,\n    created_by: p.created_by ? String(p.created_by) : null,\n    created_at: now,\n    updated_at: now\n  };\n} else if (action === 'update') {\n  out.id = p.id;\n  if (p.nombre       !== undefined) {\n    if (!String(p.nombre).trim()) errores.push('nombre no puede ser vacío');\n    else out.nombre = String(p.nombre).trim();\n  }\n  if (p.descripcion  !== undefined) out.descripcion  = p.descripcion ? String(p.descripcion) : null;\n  if (p.fecha_inicio !== undefined) out.fecha_inicio = p.fecha_inicio || null;\n  if (p.estado       !== undefined) {\n    if (!['activa','cerrada'].includes(p.estado)) errores.push('estado debe ser activa|cerrada');\n    else out.estado = p.estado;\n  }\n  if (p.plazas_manana !== undefined) {\n    const pm = +p.plazas_manana;\n    if (!Number.isFinite(pm) || pm < 0 || pm > 100) errores.push('plazas_manana fuera de rango (0..100)');\n    else out.plazas_manana = pm;\n  }\n  if (p.plazas_tarde !== undefined) {\n    const pt = +p.plazas_tarde;\n    if (!Number.isFinite(pt) || pt < 0 || pt > 100) errores.push('plazas_tarde fuera de rango (0..100)');\n    else out.plazas_tarde = pt;\n  }\n  out.updated_at = now;\n} else if (action === 'archivar') {\n  out = { id: p.id, deleted_at: now, updated_at: now };\n} else if (action === 'reactivar') {\n  out = { id: p.id, deleted_at: null, updated_at: now };\n} else if (action === 'cerrar') {\n  out = { id: p.id, estado: 'cerrada', updated_at: now };\n}\n\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\n\nif (errores.length > 0) {\n  return [{ json: { __error: true, __errores: errores, __action: action, __method: 'POST', __qs: 'on_conflict=id' } }];\n}\n// POST para create, PATCH por id para el resto.\nconst _method = (action === 'create') ? 'POST' : 'PATCH';\nconst _qs = (action === 'create') ? 'on_conflict=id' : ('id=eq.' + encodeURIComponent(p.id || ''));\nreturn [{ json: Object.assign({}, out, { __method: _method, __qs: _qs }) }];"
       },
       "id": "prep-upsert-promociones",
       "name": "Preparar",
@@ -162,15 +176,34 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "promociones",
-        "dataToSend": "autoMapInputData",
-        "options": {}
+        "method": "={{ $json.__method || 'POST' }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/promociones?{{ $json.__qs || 'on_conflict=id' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.fromEntries(Object.entries($json).filter(e => !e[0].startsWith('__')))) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "supa-upsert-promociones",
       "name": "Supabase UPSERT",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         640,
         460
@@ -186,7 +219,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// DIAGNOSTIC: volcamos la salida de Supabase UPSERT tal cual.\nconst items = $input.all() || [];\nconst errores = [];\nlet rows = [];\nlet cortoPreparar = false;\nconst _trace = items.map(i => { try { return { keys: Object.keys(i.json||{}), json: i.json }; } catch (_) { return '?'; } });\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (j.__error) { cortoPreparar = true; (j.__errores||[]).forEach(e=>errores.push(e)); continue; }\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details?' ('+j.details+')':'')); continue; }\n  if (j.id) rows.push(j);\n}\nif (cortoPreparar) return [{ json: { success: false, errores, promocion: null, _trace } }];\nif (rows.length === 0 && errores.length === 0) errores.push('UPSERT devolvió 0 filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores,\n  _trace\n} }];"
+        "jsCode": "// Normaliza la salida PostgREST al shape único del frontend:\n//   { success, promocion, errores }\n// Precedencia: errores de validación del nodo Preparar > errores HTTP > filas.\nconst prep = $('Preparar').first().json || {};\nif (prep.__error) {\n  return [{ json: { success: false, promocion: null, errores: prep.__errores || ['validación falló'] } }];\n}\nconst items = $input.all() || [];\nconst errores = [];\nlet rows = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  // PostgREST error shape: {code, message, details, hint}\n  if (j.code && j.message && !j.id) {\n    errores.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.id) rows.push(j);\n  if (Array.isArray(j.data)) rows = rows.concat(j.data);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('PostgREST devolvió 0 filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  promocion: rows[0] || null,\n  errores\n} }];"
       },
       "id": "fmt-upsert-promociones",
       "name": "Formatear respuesta",
