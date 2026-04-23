@@ -348,6 +348,7 @@
         clientes:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
         promociones:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
         hardware:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+        stock:          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
         arrowRight:     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
     };
 
@@ -413,12 +414,13 @@
         {
             id: 'soporte',
             nombre: 'Soporte',
-            descripcion: 'Integraciones TPV y envíos de hardware.',
+            descripcion: 'Integraciones TPV, envíos de hardware y stock de almacén.',
             icon: 'soporte',
             colorA: '#0ea5e9', colorB: '#0369a1',
             paginas: [
                 { id: 'integraciones', href: 'integraciones.html', label: 'Integraciones',   sub: 'Tareas Asana + avisos semanales',          icon: 'integraciones' },
-                { id: 'hardware',      href: 'hardware.html',      label: 'Hardware envíos', sub: 'Pedidos listos para envío al cliente',     icon: 'hardware'      }
+                { id: 'hardware',      href: 'hardware.html',      label: 'Hardware envíos', sub: 'Pedidos listos para envío al cliente',     icon: 'hardware'      },
+                { id: 'stock',         href: 'stock.html',         label: 'Stock',           sub: 'Catálogo de artículos y movimientos',      icon: 'stock'         }
             ]
         },
         {

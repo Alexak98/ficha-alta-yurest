@@ -76,6 +76,12 @@
         // Hardware envíos (ver proforma lista).
         hardwarePedidos:      `${WEBHOOK_BASE}/hardware/pedidos`,
 
+        // Stock de hardware (departamento Soporte): catálogo de artículos
+        // con stock actual, mínimo para alertas, precios y movimientos
+        // (entradas / salidas / ajustes). Acciones: create, update,
+        // archivar, reactivar, movimiento.
+        hardwareStock:        `${WEBHOOK_BASE}/hardware/stock`,
+
         // Presupuestos (departamento Producto): desarrollos a medida por
         // cliente, con quién paga, estado de aprobación y de entrega.
         // Reemplaza el Excel que usaba Producto.
@@ -117,6 +123,7 @@
         { id: 'presupuestos',  label: 'Presupuestos',         grupo: 'Producto'         },
         { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
         { id: 'hardware',      label: 'Hardware envíos',      grupo: 'Soporte'          },
+        { id: 'stock',         label: 'Stock hardware',       grupo: 'Soporte'          },
         { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
         { id: 'docs',          label: 'Documentación',        grupo: 'Otros'            }
     ];

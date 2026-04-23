@@ -33,6 +33,8 @@
         // Promociones → rejilla 4×4 (las 16 plazas) con un par destacadas.
         promociones:   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
         hardware:      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+        // Stock → cajas apiladas (inventario / almacén)
+        stock:         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
         // Producto → bombilla (ideas/desarrollo)
         producto:      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>',
         // Presupuestos → documento con € (presupuesto financiero)
@@ -105,7 +107,8 @@
             icon: 'soporte',
             items: [
                 { id: 'integraciones', href: 'integraciones.html', label: 'Integraciones',   icon: 'integraciones' },
-                { id: 'hardware',      href: 'hardware.html',      label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' }
+                { id: 'hardware',      href: 'hardware.html',      label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
+                { id: 'stock',         href: 'stock.html',         label: 'Stock',           icon: 'stock' }
             ]
         },
         {

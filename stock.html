@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Stock hardware — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('stock');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f8fafc; }
+        .page-header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#fff;
+            position:sticky;top:0;z-index:100;
+        }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.2rem;font-weight:800;color:#0f172a;margin:0 }
+
+        .page-content { padding: 24px; max-width: 1400px; margin: 0 auto }
+        .page-toolbar { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:14px;flex-wrap:wrap }
+        .page-toolbar h2 { font-size:1.35rem;font-weight:700;color:#0f172a;margin:0 }
+        .page-toolbar p  { font-size:.85rem;color:#64748b;margin:3px 0 0 0 }
+
+        /* ── Filtros — patrón compartido con presupuestos ─────────────── */
+        .filter-bar { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;margin-bottom:4px }
+        .search-wrap { position:relative;flex:1;max-width:340px }
+        .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+        .search-input {
+            width:100%;padding:8px 36px;font-family:inherit;font-size:.85rem;color:#1e293b;
+            background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;
+            transition:border-color .15s,background .15s;
+        }
+        .search-input:focus { outline:none;border-color:#6366f1;background:#fff }
+        .filter-label { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-right:4px }
+        .filter-group { display:inline-flex;align-items:center;gap:6px;flex:0 0 auto }
+        .filter-select {
+            padding:7px 30px 7px 12px;font-family:inherit;font-size:.83rem;color:#334155;
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;cursor:pointer;
+            -webkit-appearance:none;-moz-appearance:none;appearance:none;
+            background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat:no-repeat;background-position:right 12px center;
+            line-height:1.2;
+            width:auto;min-width:120px;max-width:200px;flex:0 0 auto;
+        }
+        .filter-select:focus { outline:none;border-color:#6366f1 }
+        .filter-select.active { background-color:#eef2ff;border-color:#6366f1;color:#4338ca }
+        .filter-sep { width:1px;height:22px;background:#e2e8f0;margin:0 4px }
+        .chip-filter {
+            display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;
+            font-size:.82rem;font-weight:600;color:#475569;background:#fff;border:1.5px solid #e2e8f0;
+            cursor:pointer;user-select:none;transition:all .15s;font-family:inherit;
+        }
+        .chip-filter:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .chip-filter.active { background:#eef2ff;border-color:#6366f1;color:#4338ca }
+        .chip-filter.chip-all { background:#0f172a;border-color:#0f172a;color:#fff }
+        .chip-filter.chip-all.active { background:#6366f1;border-color:#6366f1;color:#fff }
+        .chip-filter .chip-count {
+            font-size:.7rem;font-weight:700;background:#f1f5f9;color:#64748b;
+            padding:1px 7px;border-radius:999px;
+        }
+        .chip-filter.active .chip-count { background:#6366f1;color:#fff }
+        .chip-filter.chip-all .chip-count { background:rgba(255,255,255,.2);color:#fff }
+
+        /* KPI strip */
+        .kpi-strip { display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px }
+        .kpi { flex:1;min-width:140px;padding:12px 14px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px }
+        .kpi-label { font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:4px }
+        .kpi-value { font-size:1.15rem;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums }
+        .kpi-value.indigo { color:#6366f1 }
+        .kpi-value.amber  { color:#b45309 }
+        .kpi-value.green  { color:#15803d }
+        .kpi-value.red    { color:#dc2626 }
+
+        /* Tabla */
+        .wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden }
+        table.stock { width:100%;border-collapse:collapse;font-size:.84rem }
+        table.stock thead th {
+            background:#f1f5f9;color:#334155;font-weight:700;font-size:.74rem;
+            text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:10px 12px;
+            border-bottom:1px solid #e2e8f0;white-space:nowrap;
+        }
+        table.stock tbody td {
+            padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;
+        }
+        table.stock tbody tr:last-child td { border-bottom:0 }
+        table.stock tbody tr:hover { background:#fafafa }
+        table.stock td.num { text-align:right;font-variant-numeric:tabular-nums }
+
+        /* Chips / badges */
+        .chip { display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap }
+        .chip.ok        { background:#dcfce7;color:#15803d }
+        .chip.bajo      { background:#fef3c7;color:#b45309 }
+        .chip.agotado   { background:#fee2e2;color:#991b1b }
+        .chip.cat-tablet    { background:#dbeafe;color:#1e3a8a }
+        .chip.cat-soporte   { background:#e0e7ff;color:#4338ca }
+        .chip.cat-cargador  { background:#fef3c7;color:#b45309 }
+        .chip.cat-cable     { background:#f1f5f9;color:#475569 }
+        .chip.cat-impresora { background:#fde68a;color:#92400e }
+        .chip.cat-cajon     { background:#ede9fe;color:#5b21b6 }
+        .chip.cat-balanza   { background:#cffafe;color:#0e7490 }
+        .chip.cat-lector    { background:#fce7f3;color:#9d174d }
+        .chip.cat-router    { background:#dcfce7;color:#15803d }
+        .chip.cat-otro      { background:#f1f5f9;color:#475569 }
+
+        .acts { display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap }
+        .acts button {
+            padding:5px 9px;font-size:.72rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;
+            border:1.5px solid #e2e8f0;background:#fff;color:#475569;white-space:nowrap;
+        }
+        .acts button:hover { border-color:#6366f1;color:#4338ca }
+        .acts .danger:hover { border-color:#dc2626;color:#dc2626;background:#fef2f2 }
+        .acts .ok:hover { border-color:#15803d;color:#15803d;background:#f0fdf4 }
+
+        /* Modal */
+        .modal-overlay {
+            position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:800;
+            display:none;align-items:center;justify-content:center;padding:20px;
+        }
+        .modal-overlay.open { display:flex }
+        .modal {
+            background:#fff;border-radius:14px;width:100%;max-width:720px;
+            max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);
+        }
+        .modal-header { padding:18px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between }
+        .modal-header h3 { margin:0;font-size:1.1rem;font-weight:700;color:#0f172a }
+        .modal-close { width:32px;height:32px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;font-size:1.2rem;font-family:inherit }
+        .modal-body { padding:20px 24px }
+        .modal-footer { padding:14px 24px 18px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px }
+
+        .form-group { margin-bottom:14px }
+        .form-group label { display:block;font-size:.78rem;font-weight:600;color:#334155;margin-bottom:6px }
+        .form-group input, .form-group textarea, .form-group select {
+            width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;
+            font-size:.88rem;font-family:inherit;transition:border-color .15s;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline:none;border-color:#6366f1 }
+        .form-row { display:grid;grid-template-columns:1fr 1fr;gap:12px }
+        .form-row-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px }
+
+        .btn-primary {
+            background:#6366f1;color:#fff;border:none;padding:9px 18px;border-radius:9px;
+            font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;
+        }
+        .btn-primary:hover { background:#4338ca }
+        .btn-primary:disabled { opacity:.5;cursor:not-allowed }
+        .btn-secondary {
+            background:#fff;color:#475569;border:1.5px solid #e2e8f0;padding:9px 18px;border-radius:9px;
+            font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;
+        }
+
+        .empty {
+            text-align:center;padding:60px 20px;color:#94a3b8;
+            background:#fff;border:1.5px dashed #e2e8f0;border-radius:14px;
+        }
+        .empty-icon { font-size:3rem;margin-bottom:12px }
+        .row-archivada td { opacity:.55 }
+
+        /* Tabla movimientos (modal) */
+        table.movs { width:100%;border-collapse:collapse;font-size:.82rem }
+        table.movs th, table.movs td { padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:left;vertical-align:middle }
+        table.movs thead th { background:#f8fafc;color:#475569;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em }
+        table.movs td.num { text-align:right;font-variant-numeric:tabular-nums }
+        .chip.tipo-entrada { background:#dcfce7;color:#15803d }
+        .chip.tipo-salida  { background:#fee2e2;color:#991b1b }
+        .chip.tipo-ajuste  { background:#e0e7ff;color:#4338ca }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <nav class="sidebar" id="sidebar"></nav>
+    <script src="sidebar.js"></script>
+    <script>YurestSidebar.render('stock');</script>
+
+    <div class="page-header">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <h1>Stock hardware</h1>
+    </div>
+
+    <div class="page-content">
+        <div class="page-toolbar">
+            <div>
+                <h2>Inventario de hardware</h2>
+                <p>Catálogo de artículos disponibles para envío/venta, con stock actual, mínimo de alerta y movimientos.</p>
+            </div>
+            <button class="btn-primary" onclick="abrirModal()">+ Nuevo artículo</button>
+        </div>
+
+        <div class="filter-bar" id="filter-bar">
+            <div class="search-wrap">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="f-q" class="search-input" type="search" placeholder="Buscar nombre, SKU o categoría…" oninput="render()">
+            </div>
+            <div class="filter-sep"></div>
+            <span class="filter-label">Stock</span>
+            <div id="chips-estado" style="display:flex;gap:6px"></div>
+            <div class="filter-sep"></div>
+            <div class="filter-group">
+                <span class="filter-label">Categoría</span>
+                <select class="filter-select" id="f-cat" onchange="setFiltroCat(this)">
+                    <option value="">Todas</option>
+                    <option value="tablet">Tablet</option>
+                    <option value="soporte">Soporte</option>
+                    <option value="cargador">Cargador</option>
+                    <option value="cable">Cable</option>
+                    <option value="impresora">Impresora</option>
+                    <option value="cajon">Cajón</option>
+                    <option value="balanza">Balanza</option>
+                    <option value="lector">Lector</option>
+                    <option value="router">Router</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+            <div class="filter-sep"></div>
+            <button type="button" class="chip-filter" id="chip-archivadas" onclick="toggleArchivadas()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                Mostrar archivados
+            </button>
+        </div>
+
+        <!-- KPI strip -->
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="kpi-label">Artículos</div>
+                <div class="kpi-value" id="k-count">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Unidades totales</div>
+                <div class="kpi-value indigo" id="k-unid">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Valor compra</div>
+                <div class="kpi-value amber" id="k-vc">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Valor venta</div>
+                <div class="kpi-value green" id="k-vv">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Stock bajo</div>
+                <div class="kpi-value amber" id="k-bajo">—</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Agotados</div>
+                <div class="kpi-value red" id="k-agot">—</div>
+            </div>
+        </div>
+
+        <div id="loading" style="text-align:center;padding:40px;color:#94a3b8">Cargando…</div>
+        <div id="wrap" class="wrap" style="display:none">
+            <table class="stock">
+                <thead>
+                    <tr>
+                        <th>Artículo</th>
+                        <th>SKU</th>
+                        <th>Categoría</th>
+                        <th>Ubicación</th>
+                        <th class="num">Stock</th>
+                        <th class="num">Mín.</th>
+                        <th>Estado</th>
+                        <th class="num">€ Compra</th>
+                        <th class="num">€ Venta</th>
+                        <th style="text-align:right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+        <div id="empty-state" class="empty" style="display:none">
+            <div class="empty-icon">📦</div>
+            <p style="font-weight:700;color:#475569;margin:0 0 6px">Sin artículos en stock</p>
+            <p style="margin:0">Añade un artículo para empezar a controlar el inventario.</p>
+        </div>
+    </div>
+
+    <!-- Modal: crear / editar artículo -->
+    <div class="modal-overlay" id="modal-art">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Nuevo artículo</h3>
+                <button class="modal-close" onclick="cerrarModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="f-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mf-nombre">Nombre *</label>
+                        <input type="text" id="mf-nombre" placeholder="Ej: Tablet Samsung 10.1&quot;" maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-sku">SKU / Código</label>
+                        <input type="text" id="mf-sku" placeholder="Ej: TAB-SAM-101" maxlength="80">
+                    </div>
+                </div>
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label for="mf-cat">Categoría</label>
+                        <select id="mf-cat">
+                            <option value="tablet">Tablet</option>
+                            <option value="soporte">Soporte</option>
+                            <option value="cargador">Cargador</option>
+                            <option value="cable">Cable</option>
+                            <option value="impresora">Impresora</option>
+                            <option value="cajon">Cajón</option>
+                            <option value="balanza">Balanza</option>
+                            <option value="lector">Lector</option>
+                            <option value="router">Router</option>
+                            <option value="otro" selected>Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-unidad">Unidad</label>
+                        <input type="text" id="mf-unidad" value="ud" maxlength="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-ubic">Ubicación</label>
+                        <input type="text" id="mf-ubic" placeholder="Ej: Estante A-3" maxlength="80">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="mf-desc">Descripción</label>
+                    <input type="text" id="mf-desc" placeholder="Descripción breve…" maxlength="200">
+                </div>
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label for="mf-stock-ini">Stock inicial <span style="color:#94a3b8;font-weight:500">· solo alta</span></label>
+                        <input type="number" id="mf-stock-ini" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-stock-min">Stock mínimo (alerta)</label>
+                        <input type="number" id="mf-stock-min" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-prov">Proveedor</label>
+                        <input type="text" id="mf-prov" placeholder="Ej: Amazon Business" maxlength="80">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mf-pc">€ Compra (unidad)</label>
+                        <input type="number" id="mf-pc" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-pv">€ Venta (unidad)</label>
+                        <input type="number" id="mf-pv" min="0" step="0.01" value="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="mf-notas">Notas</label>
+                    <textarea id="mf-notas" rows="2" placeholder="Comentarios internos…"></textarea>
+                </div>
+                <div id="f-error" style="display:none;color:#dc2626;font-size:.82rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                <button class="btn-primary" id="btn-save" onclick="guardar()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: registrar movimiento (entrada / salida / ajuste) -->
+    <div class="modal-overlay" id="modal-mov">
+        <div class="modal" style="max-width:480px">
+            <div class="modal-header">
+                <h3 id="mov-title">Movimiento de stock</h3>
+                <button class="modal-close" onclick="cerrarMov()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="mov-articulo-id">
+                <div id="mov-art-info" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:.85rem;color:#334155"></div>
+                <div class="form-group">
+                    <label for="mov-tipo">Tipo *</label>
+                    <select id="mov-tipo" onchange="_movTipoChanged()">
+                        <option value="entrada">Entrada (+)</option>
+                        <option value="salida">Salida (−)</option>
+                        <option value="ajuste">Ajuste manual</option>
+                    </select>
+                </div>
+                <div class="form-group" id="mov-cantidad-wrap">
+                    <label for="mov-cantidad">Cantidad *</label>
+                    <input type="number" id="mov-cantidad" min="1" value="1">
+                </div>
+                <div class="form-group" id="mov-delta-wrap" style="display:none">
+                    <label for="mov-delta">Delta ajuste <span style="color:#94a3b8;font-weight:500">· + suma, − resta</span></label>
+                    <input type="number" id="mov-delta" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="mov-motivo">Motivo</label>
+                    <input type="text" id="mov-motivo" placeholder="Ej: recepción proveedor, envío cliente Jocarn, recuento anual…" maxlength="200">
+                </div>
+                <div id="mov-error" style="display:none;color:#dc2626;font-size:.82rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarMov()">Cancelar</button>
+                <button class="btn-primary" id="btn-mov-save" onclick="guardarMov()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: historial de movimientos -->
+    <div class="modal-overlay" id="modal-hist">
+        <div class="modal" style="max-width:780px">
+            <div class="modal-header">
+                <h3 id="hist-title">Historial de movimientos</h3>
+                <button class="modal-close" onclick="cerrarHist()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="hist-body">—</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarHist()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+    const EP = YurestConfig.ENDPOINTS.hardwareStock;
+
+    // Estado — filtros + datos cargados
+    let articulos      = [];
+    let totales        = { articulos:0, unidades:0, valor_compra:0, valor_venta:0, bajos:0, agotados:0 };
+    let filtroEstado   = '';   // ok | bajo | agotado | ''
+    let filtroCat      = '';
+    let verArchivadas  = false;
+
+    const CAT_LBL = {
+        tablet:'Tablet', soporte:'Soporte', cargador:'Cargador', cable:'Cable',
+        impresora:'Impresora', cajon:'Cajón', balanza:'Balanza',
+        lector:'Lector', router:'Router', otro:'Otro'
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  CARGA
+    // ─────────────────────────────────────────────────────────────────────
+    async function cargar() {
+        document.getElementById('loading').style.display = '';
+        document.getElementById('wrap').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'none';
+        try {
+            const params = new URLSearchParams();
+            params.set('_t', Date.now());
+            if (verArchivadas) params.set('incluir_archivadas', '1');
+            const url = EP + '?' + params.toString();
+            const res = await YurestConfig.apiFetch(url, { method: 'GET' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            articulos = Array.isArray(data) ? data
+                      : Array.isArray(data.articulos) ? data.articulos
+                      : Array.isArray(data.data) ? data.data : [];
+            totales = data.totales || { articulos:0, unidades:0, valor_compra:0, valor_venta:0, bajos:0, agotados:0 };
+            poblarChips();
+            render();
+        } catch (err) {
+            console.warn('[stock] cargar', err);
+            document.getElementById('loading').innerHTML = '<span style="color:#dc2626">Error al cargar: ' + YurestConfig.escHtml(err.message) + '</span>';
+        }
+    }
+
+    function poblarChips() {
+        const vivos = articulos.filter(a => !a.deleted_at);
+        const c = { ok: 0, bajo: 0, agotado: 0 };
+        vivos.forEach(a => { if (c[a.estado_stock] !== undefined) c[a.estado_stock]++; });
+
+        const chipEl = document.getElementById('chips-estado');
+        chipEl.innerHTML = `
+            <button class="chip-filter chip-all ${filtroEstado === '' ? 'active' : ''}" onclick="setFiltroEstado('')">
+                Todos <span class="chip-count">${vivos.length}</span>
+            </button>
+            <button class="chip-filter ${filtroEstado === 'ok' ? 'active' : ''}" onclick="setFiltroEstado('ok')">
+                OK <span class="chip-count">${c.ok}</span>
+            </button>
+            <button class="chip-filter ${filtroEstado === 'bajo' ? 'active' : ''}" onclick="setFiltroEstado('bajo')">
+                Bajo <span class="chip-count">${c.bajo}</span>
+            </button>
+            <button class="chip-filter ${filtroEstado === 'agotado' ? 'active' : ''}" onclick="setFiltroEstado('agotado')">
+                Agotado <span class="chip-count">${c.agotado}</span>
+            </button>`;
+
+        const selCat = document.getElementById('f-cat');
+        selCat.value = filtroCat;
+        selCat.classList.toggle('active', !!filtroCat);
+        document.getElementById('chip-archivadas').classList.toggle('active', verArchivadas);
+    }
+
+    function setFiltroEstado(v) { filtroEstado = v; poblarChips(); render(); }
+    function setFiltroCat(sel)  { filtroCat = sel.value; sel.classList.toggle('active', !!sel.value); render(); }
+    function toggleArchivadas() {
+        verArchivadas = !verArchivadas;
+        document.getElementById('chip-archivadas').classList.toggle('active', verArchivadas);
+        cargar();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  RENDER
+    // ─────────────────────────────────────────────────────────────────────
+    const esc = YurestConfig.escHtml;
+    const fmtE = n => (Number(n) || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function filtrar() {
+        const q = (document.getElementById('f-q').value || '').trim().toLowerCase();
+        return articulos.filter(a => {
+            if (!verArchivadas && a.deleted_at) return false;
+            if (filtroEstado && a.estado_stock !== filtroEstado) return false;
+            if (filtroCat && a.categoria !== filtroCat) return false;
+            if (q) {
+                const hay = String(a.nombre||'').toLowerCase().includes(q)
+                         || String(a.sku||'').toLowerCase().includes(q)
+                         || String(a.categoria||'').toLowerCase().includes(q)
+                         || String(a.ubicacion||'').toLowerCase().includes(q);
+                if (!hay) return false;
+            }
+            return true;
+        });
+    }
+
+    function render() {
+        const rows = filtrar();
+        document.getElementById('loading').style.display = 'none';
+        if (rows.length === 0) {
+            document.getElementById('wrap').style.display = 'none';
+            document.getElementById('empty-state').style.display = '';
+        } else {
+            document.getElementById('wrap').style.display = '';
+            document.getElementById('empty-state').style.display = 'none';
+        }
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = rows.map(a => {
+            const arch = a.deleted_at ? ' row-archivada' : '';
+            const estado = a.estado_stock || 'ok';
+            const catCls = 'cat-' + (a.categoria || 'otro');
+            const catLbl = CAT_LBL[a.categoria] || 'Otro';
+            const estadoTxt = estado === 'ok' ? 'OK' : estado === 'bajo' ? 'Bajo' : 'Agotado';
+            const acts = a.deleted_at
+                ? `<button class="ok" onclick="reactivar('${a.id}')">↺ Reactivar</button>`
+                : `
+                    <button title="Entrada (+)" onclick="abrirMov('${a.id}','entrada')">➕</button>
+                    <button title="Salida (−)" onclick="abrirMov('${a.id}','salida')">➖</button>
+                    <button title="Historial" onclick="verHistorial('${a.id}')">📜</button>
+                    <button title="Editar" onclick="editar('${a.id}')">✏️</button>
+                    <button class="danger" title="Archivar" onclick="archivar('${a.id}')">🗑</button>
+                `;
+            return `
+                <tr class="${arch}">
+                    <td><strong>${esc(a.nombre || '—')}</strong>${a.descripcion ? `<br><span style="color:#94a3b8;font-size:.75rem">${esc(a.descripcion)}</span>` : ''}</td>
+                    <td>${a.sku ? `<code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.75rem">${esc(a.sku)}</code>` : '<span style="color:#cbd5e1">—</span>'}</td>
+                    <td><span class="chip ${catCls}">${esc(catLbl)}</span></td>
+                    <td><span style="color:#64748b;font-size:.8rem">${esc(a.ubicacion || '—')}</span></td>
+                    <td class="num"><strong>${a.stock_actual} ${esc(a.unidad || 'ud')}</strong></td>
+                    <td class="num" style="color:#94a3b8">${a.stock_minimo}</td>
+                    <td><span class="chip ${estado}">${estadoTxt}</span></td>
+                    <td class="num">${fmtE(a.precio_compra)}</td>
+                    <td class="num">${fmtE(a.precio_venta)}</td>
+                    <td><div class="acts">${acts}</div></td>
+                </tr>`;
+        }).join('');
+        // KPIs sobre todo el conjunto (no sobre el filtro) — más útil
+        // para tomar decisiones de reposición global.
+        document.getElementById('k-count').textContent = rows.length;
+        document.getElementById('k-unid').textContent  = totales.unidades;
+        document.getElementById('k-vc').textContent    = fmtE(totales.valor_compra);
+        document.getElementById('k-vv').textContent    = fmtE(totales.valor_venta);
+        document.getElementById('k-bajo').textContent  = totales.bajos;
+        document.getElementById('k-agot').textContent  = totales.agotados;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  MODAL — alta / edición
+    // ─────────────────────────────────────────────────────────────────────
+    function abrirModal() {
+        document.getElementById('modal-title').textContent = 'Nuevo artículo';
+        document.getElementById('f-id').value = '';
+        document.getElementById('mf-nombre').value = '';
+        document.getElementById('mf-sku').value = '';
+        document.getElementById('mf-cat').value = 'otro';
+        document.getElementById('mf-unidad').value = 'ud';
+        document.getElementById('mf-ubic').value = '';
+        document.getElementById('mf-desc').value = '';
+        document.getElementById('mf-stock-ini').value = 0;
+        document.getElementById('mf-stock-ini').disabled = false;
+        document.getElementById('mf-stock-min').value = 0;
+        document.getElementById('mf-prov').value = '';
+        document.getElementById('mf-pc').value = 0;
+        document.getElementById('mf-pv').value = 0;
+        document.getElementById('mf-notas').value = '';
+        document.getElementById('f-error').style.display = 'none';
+        document.getElementById('modal-art').classList.add('open');
+        setTimeout(() => document.getElementById('mf-nombre').focus(), 50);
+    }
+
+    function editar(id) {
+        const a = articulos.find(x => x.id === id);
+        if (!a) return;
+        document.getElementById('modal-title').textContent = 'Editar artículo';
+        document.getElementById('f-id').value = a.id;
+        document.getElementById('mf-nombre').value = a.nombre || '';
+        document.getElementById('mf-sku').value    = a.sku || '';
+        document.getElementById('mf-cat').value    = a.categoria || 'otro';
+        document.getElementById('mf-unidad').value = a.unidad || 'ud';
+        document.getElementById('mf-ubic').value   = a.ubicacion || '';
+        document.getElementById('mf-desc').value   = a.descripcion || '';
+        // En edición, stock inicial NO se toca — se ajusta vía movimientos.
+        document.getElementById('mf-stock-ini').value = a.stock_actual;
+        document.getElementById('mf-stock-ini').disabled = true;
+        document.getElementById('mf-stock-min').value = a.stock_minimo || 0;
+        document.getElementById('mf-prov').value = a.proveedor || '';
+        document.getElementById('mf-pc').value   = a.precio_compra || 0;
+        document.getElementById('mf-pv').value   = a.precio_venta || 0;
+        document.getElementById('mf-notas').value = a.notas || '';
+        document.getElementById('f-error').style.display = 'none';
+        document.getElementById('modal-art').classList.add('open');
+        setTimeout(() => document.getElementById('mf-nombre').focus(), 50);
+    }
+
+    function cerrarModal() { document.getElementById('modal-art').classList.remove('open'); }
+
+    async function guardar() {
+        const id = document.getElementById('f-id').value.trim();
+        const nombre = document.getElementById('mf-nombre').value.trim();
+        if (!nombre) return _flashErr('f-error', 'El nombre es obligatorio');
+        const articulo = {
+            nombre,
+            sku: document.getElementById('mf-sku').value.trim() || null,
+            categoria: document.getElementById('mf-cat').value,
+            unidad: document.getElementById('mf-unidad').value.trim() || 'ud',
+            ubicacion: document.getElementById('mf-ubic').value.trim() || null,
+            descripcion: document.getElementById('mf-desc').value.trim() || null,
+            stock_minimo: +document.getElementById('mf-stock-min').value || 0,
+            precio_compra: +document.getElementById('mf-pc').value || 0,
+            precio_venta:  +document.getElementById('mf-pv').value || 0,
+            proveedor: document.getElementById('mf-prov').value.trim() || null,
+            notas: document.getElementById('mf-notas').value.trim() || null,
+            created_by: (YurestConfig.getSesion() || {}).email || null
+        };
+        const action = id ? 'update' : 'create';
+        if (id) articulo.id = id;
+        if (!id) articulo.stock_inicial = +document.getElementById('mf-stock-ini').value || 0;
+
+        const btn = document.getElementById('btn-save');
+        btn.disabled = true; btn.textContent = 'Guardando…';
+        try {
+            const res = await _post(action, { articulo });
+            if (!res.success) throw new Error((res.errores || ['Error al guardar']).join('; '));
+            cerrarModal();
+            await cargar();
+        } catch (e) {
+            _flashErr('f-error', e.message);
+        } finally {
+            btn.disabled = false; btn.textContent = 'Guardar';
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  MOVIMIENTOS — entrada / salida / ajuste
+    // ─────────────────────────────────────────────────────────────────────
+    function abrirMov(id, tipo) {
+        const a = articulos.find(x => x.id === id);
+        if (!a) return;
+        document.getElementById('mov-articulo-id').value = id;
+        document.getElementById('mov-art-info').innerHTML =
+            `<strong>${esc(a.nombre)}</strong> · stock actual <strong>${a.stock_actual} ${esc(a.unidad || 'ud')}</strong>` +
+            (a.stock_minimo > 0 ? ` · mínimo ${a.stock_minimo}` : '');
+        document.getElementById('mov-tipo').value = tipo || 'entrada';
+        document.getElementById('mov-cantidad').value = 1;
+        document.getElementById('mov-delta').value = 0;
+        document.getElementById('mov-motivo').value = '';
+        document.getElementById('mov-error').style.display = 'none';
+        _movTipoChanged();
+        document.getElementById('modal-mov').classList.add('open');
+        setTimeout(() => document.getElementById('mov-cantidad').focus(), 50);
+    }
+
+    function cerrarMov() { document.getElementById('modal-mov').classList.remove('open'); }
+
+    function _movTipoChanged() {
+        const tipo = document.getElementById('mov-tipo').value;
+        document.getElementById('mov-delta-wrap').style.display    = tipo === 'ajuste' ? '' : 'none';
+        document.getElementById('mov-cantidad-wrap').style.display = tipo === 'ajuste' ? 'none' : '';
+    }
+
+    async function guardarMov() {
+        const articulo_id = document.getElementById('mov-articulo-id').value;
+        const tipo = document.getElementById('mov-tipo').value;
+        let cantidad = 1, delta_ajuste = null;
+        if (tipo === 'ajuste') {
+            delta_ajuste = +document.getElementById('mov-delta').value || 0;
+            if (delta_ajuste === 0) return _flashErr('mov-error', 'El delta no puede ser 0');
+            cantidad = Math.abs(delta_ajuste);
+        } else {
+            cantidad = +document.getElementById('mov-cantidad').value || 0;
+            if (cantidad <= 0) return _flashErr('mov-error', 'La cantidad debe ser mayor que 0');
+        }
+        const motivo = document.getElementById('mov-motivo').value.trim() || null;
+        const btn = document.getElementById('btn-mov-save');
+        btn.disabled = true; btn.textContent = 'Registrando…';
+        try {
+            const res = await _post('movimiento', {
+                movimiento: {
+                    articulo_id, tipo, cantidad, delta_ajuste, motivo,
+                    created_by: (YurestConfig.getSesion() || {}).email || null
+                }
+            });
+            if (!res.success) throw new Error((res.errores || ['Error al registrar']).join('; '));
+            cerrarMov();
+            await cargar();
+        } catch (e) {
+            _flashErr('mov-error', e.message);
+        } finally {
+            btn.disabled = false; btn.textContent = 'Registrar';
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  HISTORIAL
+    // ─────────────────────────────────────────────────────────────────────
+    function verHistorial(id) {
+        const a = articulos.find(x => x.id === id);
+        if (!a) return;
+        document.getElementById('hist-title').textContent = 'Historial · ' + (a.nombre || '');
+        const movs = a.movimientos || [];
+        const body = document.getElementById('hist-body');
+        if (movs.length === 0) {
+            body.innerHTML = '<div class="empty" style="padding:30px"><div class="empty-icon">📭</div><p style="margin:0">Sin movimientos todavía</p></div>';
+        } else {
+            body.innerHTML = `
+                <table class="movs">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th class="num">Δ</th>
+                            <th>Motivo</th>
+                            <th>Por</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${movs.map(m => {
+                            const f = m.created_at ? new Date(m.created_at).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+                            const delta = m.tipo === 'entrada' ? `+${m.cantidad}`
+                                        : m.tipo === 'salida'  ? `−${m.cantidad}`
+                                        : (m.delta_ajuste != null ? (m.delta_ajuste >= 0 ? `+${m.delta_ajuste}` : `${m.delta_ajuste}`) : `±${m.cantidad}`);
+                            return `<tr>
+                                <td style="color:#64748b">${esc(f)}</td>
+                                <td><span class="chip tipo-${m.tipo}">${esc(m.tipo)}</span></td>
+                                <td class="num"><strong>${esc(delta)}</strong></td>
+                                <td>${esc(m.motivo || '—')}</td>
+                                <td style="color:#94a3b8;font-size:.8rem">${esc(m.created_by || '—')}</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>`;
+        }
+        document.getElementById('modal-hist').classList.add('open');
+    }
+
+    function cerrarHist() { document.getElementById('modal-hist').classList.remove('open'); }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  ACCIONES SIMPLES (archivar / reactivar)
+    // ─────────────────────────────────────────────────────────────────────
+    async function archivar(id) {
+        if (!confirm('¿Archivar este artículo? Podrás reactivarlo después.')) return;
+        try { await _post('archivar', { articulo: { id } }); await cargar(); }
+        catch (e) { alert('Error: ' + e.message); }
+    }
+    async function reactivar(id) {
+        try { await _post('reactivar', { articulo: { id } }); await cargar(); }
+        catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Helpers
+    // ─────────────────────────────────────────────────────────────────────
+    async function _post(action, body) {
+        const res = await YurestConfig.apiFetch(EP, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({ action }, body || {}))
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json();
+    }
+    function _flashErr(elId, msg) {
+        const el = document.getElementById(elId);
+        el.textContent = msg;
+        el.style.display = '';
+    }
+
+    // Expuestos al HTML (onclick)
+    window.openSidebar = openSidebar;
+    window.closeSidebar = closeSidebar;
+    window.abrirModal = abrirModal;
+    window.cerrarModal = cerrarModal;
+    window.guardar = guardar;
+    window.editar = editar;
+    window.archivar = archivar;
+    window.reactivar = reactivar;
+    window.setFiltroEstado = setFiltroEstado;
+    window.setFiltroCat = setFiltroCat;
+    window.toggleArchivadas = toggleArchivadas;
+    window.render = render;
+    window.cargar = cargar;
+    window.abrirMov = abrirMov;
+    window.cerrarMov = cerrarMov;
+    window.guardarMov = guardarMov;
+    window._movTipoChanged = _movTipoChanged;
+    window.verHistorial = verHistorial;
+    window.cerrarHist = cerrarHist;
+
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('modal-hist').classList.contains('open'))      cerrarHist();
+        else if (document.getElementById('modal-mov').classList.contains('open'))  cerrarMov();
+        else if (document.getElementById('modal-art').classList.contains('open'))  cerrarModal();
+    });
+    ['modal-art','modal-mov','modal-hist'].forEach(id => {
+        const m = document.getElementById(id);
+        m.addEventListener('click', e => {
+            if (e.target === e.currentTarget) m.classList.remove('open');
+        });
+    });
+    cargar();
+    </script>
+</body>
+</html>
