@@ -280,6 +280,75 @@ body {
   color: var(--primary);
 }
 
+/* Card top actions: nivel de churn + link a Zendesk */
+.card-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Badge circular de nivel de churn en el card (0-10) */
+.churn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+.churn-badge.churn-na     { background:#f1f5f9; color:#64748b; border-color:#e2e8f0; }
+.churn-badge.churn-zero   { background:#f1f5f9; color:#475569; border-color:#cbd5e1; }
+.churn-badge.churn-low    { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+.churn-badge.churn-medium { background:#fef3c7; color:#b45309; border-color:#fde68a; }
+.churn-badge.churn-high   { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
+
+/* Bloque prominente de nivel de churn en el modal */
+.churn-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  margin-bottom: 1.25rem;
+}
+.churn-summary.churn-na     { background:#f8fafc; border-color:#e2e8f0; }
+.churn-summary.churn-zero   { background:#f8fafc; border-color:#cbd5e1; }
+.churn-summary.churn-low    { background:#f0fdf4; border-color:#bbf7d0; }
+.churn-summary.churn-medium { background:#fffbeb; border-color:#fde68a; }
+.churn-summary.churn-high   { background:#fef2f2; border-color:#fecaca; }
+
+.churn-summary-number {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  min-width: 44px;
+  text-align: center;
+}
+.churn-summary.churn-na     .churn-summary-number { color:#64748b; }
+.churn-summary.churn-zero   .churn-summary-number { color:#475569; }
+.churn-summary.churn-low    .churn-summary-number { color:#15803d; }
+.churn-summary.churn-medium .churn-summary-number { color:#b45309; }
+.churn-summary.churn-high   .churn-summary-number { color:#b91c1c; }
+
+.churn-summary-meta { display:flex; flex-direction:column; gap:0.15rem; }
+.churn-summary-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.churn-summary-sub { font-size: 0.85rem; color: var(--text); font-weight: 500; }
+
 /* Status badge */
 .status-badge {
   display: inline-flex;

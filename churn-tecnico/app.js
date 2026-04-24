@@ -2,6 +2,7 @@
 
 const API_URL = 'https://n8n-soporte.data.yurest.dev/webhook/9e0fc21e-f895-42ce-ac92-b710aaa45b25';
 const SUMMARY_URL = 'https://n8n-soporte.data.yurest.dev/webhook/2c62e049-ff93-49de-8095-d64db239104f';
+const CHURN_LEVELS_URL = 'https://n8n-soporte.data.yurest.dev/webhook/6c6b655b-98c4-4c0a-afae-73ea4cd3964f';
 
 let clients = [];
 let selectedTags = new Set();
@@ -80,21 +81,78 @@ async function fetchClients() {
       name: item.name || `Cliente ${index + 1}`,
       tags: Array.isArray(item.tags) ? item.tags : [],
       zendeskUrl,
+      nivel: null,           // 0-10 desde Supabase; null si no se ha procesado aún
+      fechaResumen: null,    // ISO timestamp del último upsert
       _raw: item
     };
   });
+}
+
+// Mapa id_organizacion → { nivel, fecha_resumen } desde la tabla churn_tecnico.
+async function fetchChurnLevels() {
+  try {
+    const res = await fetch(CHURN_LEVELS_URL, { credentials: 'omit', cache: 'no-store' });
+    if (!res.ok) return new Map();
+    const rows = await res.json();
+    const list = Array.isArray(rows) ? rows : (rows.data || []);
+    const map = new Map();
+    for (const r of list) {
+      // id_organizacion puede venir como number o string; normalizamos a string
+      map.set(String(r.id_organizacion), {
+        nivel: typeof r.nivel === 'number' ? r.nivel : (r.nivel != null ? Number(r.nivel) : null),
+        fechaResumen: r.fecha_resumen || null
+      });
+    }
+    return map;
+  } catch (e) {
+    console.warn('No se pudo cargar churn levels:', e);
+    return new Map();
+  }
 }
 
 async function initApp() {
   const grid = document.getElementById('clientsGrid');
   grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1"><div class="spinner" style="margin-bottom:12px"></div><p>Cargando clientes…</p></div>`;
   try {
-    clients = await fetchClients();
+    // Lanzamos Zendesk y Supabase en paralelo — el listado no depende
+    // de churn levels; si Supabase falla el grid se muestra sin nivel.
+    const [list, churnMap] = await Promise.all([fetchClients(), fetchChurnLevels()]);
+    for (const c of list) {
+      const data = churnMap.get(String(c.id));
+      if (data) {
+        c.nivel = data.nivel;
+        c.fechaResumen = data.fechaResumen;
+      }
+    }
+    clients = list;
     renderTagFilters();
     applyFilters();
   } catch (err) {
     grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1"><p style="color:#dc2626">Error al cargar clientes: ${escapeHtml(err.message)}</p></div>`;
   }
+}
+
+// ── Churn level helpers ────────────────────────────────────
+// Escala 1-10 de Zendesk tickets. 0 se usa como sentinel para "No hay tickets".
+function churnBucket(nivel) {
+  if (nivel == null || Number.isNaN(nivel)) return { label: '—', cls: 'churn-na', title: 'Sin análisis todavía' };
+  if (nivel === 0)            return { label: '0',  cls: 'churn-zero',   title: 'Sin tickets' };
+  if (nivel >= 1 && nivel <= 3) return { label: String(nivel), cls: 'churn-low',    title: 'Riesgo bajo' };
+  if (nivel >= 4 && nivel <= 6) return { label: String(nivel), cls: 'churn-medium', title: 'Riesgo medio' };
+  if (nivel >= 7)             return { label: String(nivel), cls: 'churn-high',   title: 'Riesgo alto' };
+  return { label: '—', cls: 'churn-na', title: 'Sin análisis todavía' };
+}
+
+function renderChurnBadge(nivel) {
+  const b = churnBucket(nivel);
+  return `<span class="churn-badge ${b.cls}" title="${b.title}">${b.label}</span>`;
+}
+
+function formatFecha(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 // ── Tag Filters ────────────────────────────────────────────
@@ -188,9 +246,12 @@ function createClientCard(client, index) {
           <div class="client-name" title="${escapeHtml(client.name)}">${escapeHtml(client.name)}</div>
           <span class="client-org">ID: ${escapeHtml(String(client.id))}</span>
         </div>
-        ${client.zendeskUrl ? `<a class="link-zendesk" href="${escapeHtml(client.zendeskUrl)}" target="_blank" rel="noopener noreferrer" title="Ver en Zendesk" onclick="event.stopPropagation()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        </a>` : ''}
+        <div class="card-top-actions">
+          ${renderChurnBadge(client.nivel)}
+          ${client.zendeskUrl ? `<a class="link-zendesk" href="${escapeHtml(client.zendeskUrl)}" target="_blank" rel="noopener noreferrer" title="Ver en Zendesk" onclick="event.stopPropagation()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>` : ''}
+        </div>
       </div>
       ${renderTagBadges(client.tags)}
     </div>
@@ -333,9 +394,22 @@ function showClientModal(client) {
       `;
     }).join('');
 
+  const bucket = churnBucket(client.nivel);
+  const fechaTxt = formatFecha(client.fechaResumen);
+  const churnBlock = `
+    <div class="churn-summary ${bucket.cls}">
+      <div class="churn-summary-number">${bucket.label}</div>
+      <div class="churn-summary-meta">
+        <div class="churn-summary-label">Nivel de churn</div>
+        <div class="churn-summary-sub">${bucket.title}${fechaTxt ? ` · ${escapeHtml(fechaTxt)}` : ''}</div>
+      </div>
+    </div>
+  `;
+
   body.innerHTML = `
     <div class="modal-columns">
       <div class="modal-col-left">
+        ${churnBlock}
         <div class="section-label">Información de la organización</div>
         <div class="info-table">
           ${infoRows}
