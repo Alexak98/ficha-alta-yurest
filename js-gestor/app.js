@@ -3418,6 +3418,7 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         document.getElementById('subtarea-tiempo').value = subtarea.tiempoEstimado || '';
         document.getElementById('subtarea-tiempo-real').value = subtarea.tiempoReal || '';
         document.getElementById('subtarea-completada').value = subtarea.completada ? 'true' : 'false';
+        document.getElementById('subtarea-show').value = subtarea.show || '';
         document.getElementById('subtarea-notas').value = subtarea.notas || '';
         // Check participantes
         const subPart = subtarea.participantes || [];
@@ -3444,6 +3445,7 @@ function abrirModalSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         document.getElementById('subtarea-tiempo').value = '';
         document.getElementById('subtarea-tiempo-real').value = '';
         document.getElementById('subtarea-completada').value = 'false';
+        document.getElementById('subtarea-show').value = '';
         document.getElementById('subtarea-notas').value = '';
         partContainer.querySelectorAll('.sub-part-cb').forEach(cb => { cb.checked = false; });
         document.getElementById('subtarea-agendar').checked = false;
@@ -3467,6 +3469,7 @@ async function guardarSubtarea() {
     const _tReal = document.getElementById('subtarea-tiempo-real').value;
     const tiempoReal = _tReal === '' ? null : (parseInt(_tReal) || null);
     const completada = document.getElementById('subtarea-completada').value === 'true';
+    const showValor = document.getElementById('subtarea-show').value || null;
     const notas = document.getElementById('subtarea-notas').value.trim();
     const participantesSeleccionados = [...document.querySelectorAll('.sub-part-cb:checked')].map(cb => cb.value);
     const agendar = document.getElementById('subtarea-agendar').checked;
@@ -3495,6 +3498,7 @@ async function guardarSubtarea() {
                 subtareaObj.tiempoEstimado = tiempoEstimado;
                 subtareaObj.tiempoReal = tiempoReal;
                 subtareaObj.completada = completada;
+                subtareaObj.show = showValor;
                 subtareaObj.notas = notas;
                 subtareaObj.participantes = participantesSeleccionados;
             }
@@ -3503,6 +3507,7 @@ async function guardarSubtarea() {
                 id: generarId(),
                 nombre,
                 completada,
+                show: showValor,
                 fechaEntrega,
                 tiempoEstimado,
                 tiempoReal,
