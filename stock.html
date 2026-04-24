@@ -649,7 +649,7 @@
             precio_venta:  +document.getElementById('mf-pv').value || 0,
             proveedor: document.getElementById('mf-prov').value.trim() || null,
             notas: document.getElementById('mf-notas').value.trim() || null,
-            created_by: (YurestConfig.getSesion() || {}).email || null
+            created_by: (YurestConfig.getSession() || {}).email || null
         };
         const action = id ? 'update' : 'create';
         if (id) articulo.id = id;
@@ -716,7 +716,7 @@
             const res = await _post('movimiento', {
                 movimiento: {
                     articulo_id, tipo, cantidad, delta_ajuste, motivo,
-                    created_by: (YurestConfig.getSesion() || {}).email || null
+                    created_by: (YurestConfig.getSession() || {}).email || null
                 }
             });
             if (!res.success) throw new Error((res.errores || ['Error al registrar']).join('; '));

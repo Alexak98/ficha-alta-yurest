@@ -419,6 +419,31 @@ async function apiRequest(url, method = 'GET', body = null) {
     try { return await res.json(); } catch (_) { return {}; }
 }
 
+// Variante con timeout — para webhooks externos (Asana, GPT) que pueden
+// quedarse colgados. Si el timeout salta, lanza un error con mensaje
+// claro para que la UI muestre algo útil en vez de un spinner infinito.
+async function _apiRequestConTimeout(url, method = 'GET', body = null, timeoutMs = 15000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+        const opts = { method, headers: getAuthHeaders(), signal: ctrl.signal };
+        if (body !== null) opts.body = JSON.stringify(body);
+        const res = _YC ? await _YC.apiFetch(url, opts) : await fetch(url, opts);
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`Error ${res.status}${text ? ': ' + text : ''}`);
+        }
+        try { return await res.json(); } catch (_) { return {}; }
+    } catch (err) {
+        if (err && err.name === 'AbortError') {
+            throw new Error(`Tiempo de espera agotado tras ${Math.round(timeoutMs/1000)}s`);
+        }
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 // ==========================================
 // STORAGE / API FUNCTIONS
 // ==========================================
@@ -592,7 +617,9 @@ async function obtenerTareasAsana(asanaProjectId) {
     if (!asanaProjectId) return { tasks: [], error: null, errorKind: null, raw: null };
     try {
         const url = `${WEBHOOK_ASANA_PROXY}?projectId=${encodeURIComponent(asanaProjectId)}`;
-        const data = await apiRequest(url, 'GET');
+        // Timeout de 15s — el proxy n8n a veces se queda colgado y dejaba
+        // el spinner girando para siempre. Mejor mostrar error claro.
+        const data = await _apiRequestConTimeout(url, 'GET', null, 15000);
         console.info('[asana] respuesta del proxy', { url, data });
         let tasks = [];
         if (Array.isArray(data)) tasks = data;

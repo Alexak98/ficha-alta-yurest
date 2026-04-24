@@ -505,13 +505,29 @@ async function fetchCachedSummary(orgId) {
 // resumen ya guardado — el endpoint responde JSON con respuesta_ia, nivel
 // y fecha_resumen tras persistir en Supabase.
 async function generateSummary(orgId) {
-  const res = await fetch(SUMMARY_URL, {
-    method: 'POST',
-    credentials: 'omit',
-    cache: 'no-store',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id_org: orgId })
-  });
+  // Timeout de 60s — el webhook ejecuta GPT y suele tardar 20-40s, pero
+  // si se cuelga (rate limit / timeout API) NO queremos dejar al usuario
+  // mirando un spinner indefinido. 60s es generoso.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  let res;
+  try {
+    res = await fetch(SUMMARY_URL, {
+      method: 'POST',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_org: orgId }),
+      signal: ctrl.signal
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err && err.name === 'AbortError') {
+      throw new Error('Tiempo de espera agotado al generar el resumen (60s). Vuelve a intentarlo.');
+    }
+    throw err;
+  }
+  clearTimeout(timer);
   if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
   const text = await res.text();
   try {
