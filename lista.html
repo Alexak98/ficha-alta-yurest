@@ -697,22 +697,7 @@
         .chip.active-planes    .chip-count,
         .chip.active-corporate .chip-count,
         .chip.active-pendiente .chip-count,
-        .chip.active-rellenado .chip-count,
-        .chip.active-docs-si   .chip-count,
-        .chip.active-docs-no   .chip-count { background: rgba(255,255,255,0.25); }
-        .chip.active-docs-si { background: #16a34a; border-color: #16a34a; color: #fff; }
-        .chip.active-docs-no { background: #d97706; border-color: #d97706; color: #fff; }
-
-        /* ── Toggle docs subidos ── */
-        .docs-toggle { display:inline-flex; border-radius:6px; overflow:hidden; border:1.5px solid #e2e8f0; }
-        .docs-toggle button {
-            padding:3px 9px; font-size:0.75rem; font-weight:600; border:none;
-            background:#f8fafc; color:#94a3b8; cursor:pointer; transition:all 0.15s;
-        }
-        .docs-toggle button:first-child { border-right:1px solid #e2e8f0; }
-        .docs-toggle button.docs-on.active  { background:#dcfce7; color:#16a34a; }
-        .docs-toggle button.docs-off.active { background:#fef9c3; color:#d97706; }
-        .docs-toggle button:hover:not(.active) { background:#f1f5f9; color:#475569; }
+        .chip.active-rellenado .chip-count { background: rgba(255,255,255,0.25); }
 
         .filter-sep { width: 1px; height: 24px; background: #e2e8f0; margin: 0 4px; }
 
@@ -1067,13 +1052,6 @@
                 <option value="">Todos</option>
             </select>
         </div>
-        <div class="filter-sep"></div>
-        <span class="filter-label">Documentos</span>
-        <div class="filter-chips filter-chips--docs">
-            <button class="chip active" data-docs="" onclick="setFiltroDocumentos(this, '')">Todos</button>
-            <button class="chip" data-docs="si" onclick="setFiltroDocumentos(this, 'si')">✓ Completos</button>
-            <button class="chip" data-docs="no" onclick="setFiltroDocumentos(this, 'no')">✗ Pendientes</button>
-        </div>
     </div>
 
     <div id="loading-state" class="loading-state">
@@ -1092,7 +1070,6 @@
                         <th>Comercial</th>
                         <th class="th-center">Tipo</th>
                         <th class="th-center">Estado</th>
-                        <th class="th-center">Docs subidos</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -1499,10 +1476,6 @@
     // ── Estado de filtros ─────────────────────────────────────────────────────
     let filtroTipo       = '';
     let filtroComercial  = '';
-    let filtroDocumentos = '';
-
-    // ── Webhook docs subidos ───────────────────────────────────────────────────
-    const WEBHOOK_DOCS_SUBIDOS = YurestConfig.ENDPOINTS.docsSubidos;
 
     // ── Badge tipo cliente ────────────────────────────────────────────────────
     function tipoBadge(f) {
@@ -1557,7 +1530,6 @@
                 <td>${esc(getComercial(f) || '—')}</td>
                 <td class="td-center">${tipoBadge(f)}</td>
                 <td class="td-center">${estadoBadge(f)}</td>
-                <td class="td-center" onclick="event.stopPropagation()">${docsToggleHtml(f, idx)}</td>
                 <td class="td-actions">
                     <button class="btn-ver" onclick="event.stopPropagation();abrirDrive(${idx})" title="Abrir carpeta de Drive">📁 Drive</button>
                     <button class="btn-edit" onclick="event.stopPropagation();editarFicha(${idx})">Editar</button>
@@ -1605,10 +1577,6 @@
             if (filtroComercial) {
                 if (getComercial(f) !== filtroComercial) return false;
             }
-            // Filtro documentos
-            if (filtroDocumentos) {
-                if (getDocsVal(f) !== filtroDocumentos) return false;
-            }
             return true;
         });
 
@@ -1633,76 +1601,6 @@
         filtroComercial = sel.value;
         sel.classList.toggle('active', !!sel.value);
         aplicarFiltros();
-    }
-
-    // ── Filtro documentos ─────────────────────────────────────────────────────
-    function setFiltroDocumentos(btn, val) {
-        filtroDocumentos = val;
-        document.querySelectorAll('.filter-chips--docs .chip').forEach(c => {
-            c.className = 'chip';
-            if (c.dataset.docs === val) {
-                c.classList.add(val === 'si' ? 'active-docs-si' : val === 'no' ? 'active-docs-no' : 'active');
-            }
-        });
-        aplicarFiltros();
-    }
-
-    // ── Helper: normaliza el valor de documentos subidos ─────────────────────
-    function getDocsVal(f) {
-        const raw = f['Documentos subidos'] ?? f['documentos_subidos'] ?? f['Documentos Subidos'] ?? f['DOCUMENTOS SUBIDOS'] ?? '';
-        const v = raw.toString().toLowerCase().trim();
-        if (v === 'true' || v === 'sí' || v === 'si' || v === '1') return 'si';
-        // Sin valor o false → No por defecto
-        return 'no';
-    }
-
-    // ── Render del toggle de docs en la tabla ─────────────────────────────────
-    function docsToggleHtml(f, idx) {
-        const val = getDocsVal(f);
-        return `<div class="docs-toggle">
-            <button class="docs-on${val === 'si' ? ' active' : ''}"  onclick="event.stopPropagation();toggleDocumentos(${idx},'si')">✓ Sí</button>
-            <button class="docs-off${val === 'no' ? ' active' : ''}" onclick="event.stopPropagation();toggleDocumentos(${idx},'no')">✗ No</button>
-        </div>`;
-    }
-
-    // ── Toggle documentos: guarda en memoria y llama webhook ──────────────────
-    async function toggleDocumentos(idx, val) {
-        const ficha = fichasFiltradas[idx];
-        if (!ficha) return;
-
-        const anterior = getDocsVal(ficha);
-        if (anterior === val) return; // sin cambio
-
-        // Actualizar en memoria
-        ficha['Documentos subidos'] = val === 'si' ? 'true' : 'false';
-
-        // Actualizar también en todasFichas
-        const idxGlobal = todasFichas.findIndex(f => f === ficha || f['row_number'] === ficha['row_number']);
-        if (idxGlobal !== -1) todasFichas[idxGlobal]['Documentos subidos'] = ficha['Documentos subidos'];
-
-        // Re-renderizar la fila (solo el toggle)
-        const rows = document.querySelectorAll('#tabla-body tr');
-        const fichasRellenadas = fichasFiltradas.filter(f => { const e = (f['Estado']||'').trim(); return e==='Rellenado'||e===''; });
-        const rowIdx = fichasRellenadas.indexOf(ficha);
-        if (rows[rowIdx]) {
-            const cell = rows[rowIdx].querySelectorAll('td')[6]; // columna Docs
-            if (cell) cell.innerHTML = docsToggleHtml(ficha, idx);
-        }
-
-        // Llamar al webhook si está configurado y el valor es "si"
-        if (WEBHOOK_DOCS_SUBIDOS && val === 'si') {
-            const fichaId         = ficha['ID'] || ficha['Id'] || ficha['id'] || ficha['row_number'] || '';
-            const nombreComercial = ficha['Nombre comercial'] || ficha['nombre_comercial'] || ficha['Nombre Comercial'] || '';
-            const tipoCliente     = ficha['Tipo de cliente'] || ficha['tipo_de_cliente'] || ficha['Tipo cliente'] || ficha['tipo_cliente'] || '';
-            try {
-                await YurestConfig.apiFetch(WEBHOOK_DOCS_SUBIDOS, {
-                    method: 'POST',
-                    body: JSON.stringify({ id: fichaId, nombre_comercial: nombreComercial, tipo_cliente: tipoCliente, documentos_subidos: true })
-                });
-            } catch (err) {
-                console.warn('[docs] Error llamando webhook:', err.message);
-            }
-        }
     }
 
     // ── Poblar selector de comerciales ───────────────────────────────────────
