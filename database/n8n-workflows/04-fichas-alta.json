@@ -75,7 +75,32 @@
     },
     {
       "parameters": {
-        "jsCode": "// Fichas activas (sin soft-delete)\nconst fichas = $('GET Fichas').all().map(i => i.json).filter(f => f && f.id && !f.deleted_at);\n\n// Cuenta locales por ficha (tolerante a errores: si la tabla locales\n// fallara, simplemente quedan a 0).\nconst locales = ($('GET Locales').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(l => l && l.ficha_id);\n\nconst conteo = {};\nfor (const l of locales) {\n  conteo[l.ficha_id] = (conteo[l.ficha_id] || 0) + 1;\n}\n\nfor (const f of fichas) {\n  f.locales_count = conteo[f.id] || 0;\n}\n\nreturn [{ json: { clientes: fichas } }];"
+        "operation": "getAll",
+        "tableId": "distribucion",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-get-distribucion",
+      "name": "GET Distribución",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        480,
+        520
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fichas activas (sin soft-delete)\nconst fichas = $('GET Fichas').all().map(i => i.json).filter(f => f && f.id && !f.deleted_at);\n\n// Cuenta locales por ficha (tolerante a errores: si la tabla locales\n// fallara, simplemente quedan a 0).\nconst locales = ($('GET Locales').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(l => l && l.ficha_id);\n\nconst conteo = {};\nfor (const l of locales) {\n  conteo[l.ficha_id] = (conteo[l.ficha_id] || 0) + 1;\n}\n\n// Enriquecer implementador desde la tabla distribucion. El workflow 06\n// actualiza fichas_alta.implementador al asignar, pero clientes legacy\n// pueden tener el campo vacío mientras su registro en distribucion sí\n// está correcto. Para cada ficha sin implementador, usamos el registro\n// activo más reciente de distribucion.\nconst distri = ($('GET Distribución').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(d => d && d.ficha_id && !d.deleted_at && d.implementador);\n// Último por ficha (mayor created_at gana).\nconst ultimoImplPorFicha = {};\nfor (const d of distri) {\n  const prev = ultimoImplPorFicha[d.ficha_id];\n  const dts  = d.created_at ? new Date(d.created_at).getTime() : 0;\n  if (!prev || dts >= prev.ts) ultimoImplPorFicha[d.ficha_id] = { impl: d.implementador, ts: dts };\n}\n\nfor (const f of fichas) {\n  f.locales_count = conteo[f.id] || 0;\n  if (!f.implementador || !String(f.implementador).trim()) {\n    const hit = ultimoImplPorFicha[f.id];\n    if (hit) f.implementador = hit.impl;\n  }\n}\n\nreturn [{ json: { clientes: fichas } }];"
       },
       "id": "format-get-altas",
       "name": "Formatear GET",
@@ -445,6 +470,17 @@
       ]
     },
     "GET Locales": {
+      "main": [
+        [
+          {
+            "node": "GET Distribución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Distribución": {
       "main": [
         [
           {
