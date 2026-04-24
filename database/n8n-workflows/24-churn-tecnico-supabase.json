@@ -55,8 +55,8 @@
     },
     {
       "parameters": {
-        "respondWith": "text",
-        "responseBody": "={{ $('Message a model2').item.json.output[0].content[0].text }}",
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({id_organizacion: $('Get an organization').item.json.id,nombre: $('Get an organization').item.json.name,respuesta_ia: $('Message a model2').item.json.output[0].content[0].text,nivel: $('Limpiar nivel churn de la respuesta ia').item.json.churn_score,fecha_resumen: $now.toISO()}) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",

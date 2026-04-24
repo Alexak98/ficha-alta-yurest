@@ -333,6 +333,12 @@ body {
   min-width: 44px;
   text-align: center;
 }
+.churn-summary-scale {
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0.55;
+  margin-left: 2px;
+}
 .churn-summary.churn-na     .churn-summary-number { color:#64748b; }
 .churn-summary.churn-zero   .churn-summary-number { color:#475569; }
 .churn-summary.churn-low    .churn-summary-number { color:#15803d; }

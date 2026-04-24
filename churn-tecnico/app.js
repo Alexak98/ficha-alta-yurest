@@ -3,6 +3,7 @@
 const API_URL = 'https://n8n-soporte.data.yurest.dev/webhook/9e0fc21e-f895-42ce-ac92-b710aaa45b25';
 const SUMMARY_URL = 'https://n8n-soporte.data.yurest.dev/webhook/2c62e049-ff93-49de-8095-d64db239104f';
 const CHURN_LEVELS_URL = 'https://n8n-soporte.data.yurest.dev/webhook/6c6b655b-98c4-4c0a-afae-73ea4cd3964f';
+const CHURN_LOOKUP_URL = 'https://n8n-soporte.data.yurest.dev/webhook/buscar-resumen';
 
 let clients = [];
 let selectedTags = new Set();
@@ -146,6 +147,48 @@ function churnBucket(nivel) {
 function renderChurnBadge(nivel) {
   const b = churnBucket(nivel);
   return `<span class="churn-badge ${b.cls}" title="${b.title}">${b.label}</span>`;
+}
+
+// Bloque grande para el modal. Incluye el sufijo "/10" para dejar la escala
+// explícita (reporte del usuario: vio "5" y leyó "10" en el texto del resumen).
+function renderChurnSummaryBlock(client) {
+  const bucket = churnBucket(client.nivel);
+  const fechaTxt = formatFecha(client.fechaResumen);
+  const showScale = typeof client.nivel === 'number' && client.nivel > 0;
+  return `
+    <div class="churn-summary ${bucket.cls}" id="modalChurnBlock">
+      <div class="churn-summary-number">${bucket.label}${showScale ? '<span class="churn-summary-scale">/10</span>' : ''}</div>
+      <div class="churn-summary-meta">
+        <div class="churn-summary-label">Nivel de churn</div>
+        <div class="churn-summary-sub">${bucket.title}${fechaTxt ? ` · ${escapeHtml(fechaTxt)}` : ''}</div>
+      </div>
+    </div>
+  `;
+}
+
+// Tras un generate o cache hit, reflejar nivel/fecha en el state, el modal
+// y el card en el grid (si sigue visible). Idempotente si los campos son null.
+function applySummaryToClient(client, result) {
+  if (result.nivel != null && !Number.isNaN(result.nivel)) client.nivel = result.nivel;
+  if (result.fechaResumen) client.fechaResumen = result.fechaResumen;
+  // Refleja en la lista maestra (clients) para que futuros renders del grid
+  // mantengan el valor aunque se vuelvan a aplicar filtros.
+  const master = clients.find(c => c.id === client.id);
+  if (master && master !== client) {
+    master.nivel = client.nivel;
+    master.fechaResumen = client.fechaResumen;
+  }
+  // Re-pinta el bloque del modal
+  const churnEl = document.getElementById('modalChurnBlock');
+  if (churnEl) churnEl.outerHTML = renderChurnSummaryBlock(client);
+  // Re-pinta el badge del card en el grid
+  const idx = lastRenderedList.indexOf(client);
+  if (idx >= 0) {
+    const cards = document.querySelectorAll('.client-card');
+    const card = cards[idx];
+    const badge = card && card.querySelector('.churn-badge');
+    if (badge) badge.outerHTML = renderChurnBadge(client.nivel);
+  }
 }
 
 function formatFecha(iso) {
@@ -296,7 +339,43 @@ function formatValue(key, val) {
   return String(val);
 }
 
-async function fetchSummary(orgId) {
+// Normaliza el cuerpo de respuesta de /buscar-resumen o /generar-resumen a
+// { summary, nivel, fechaResumen }. Acepta string, object, o array de 1.
+function normalizeSummaryResponse(data) {
+  if (typeof data === 'string') return { summary: data, nivel: null, fechaResumen: null };
+  const row = Array.isArray(data) ? (data[0] || null) : data;
+  if (!row || typeof row !== 'object') return { summary: '', nivel: null, fechaResumen: null };
+  const summary = row.respuesta_ia || row.summary || row.resumen || row.output || row.result || '';
+  const nivel = row.nivel != null && row.nivel !== '' ? Number(row.nivel) : null;
+  const fechaResumen = row.fecha_resumen || null;
+  return { summary: typeof summary === 'string' ? summary : JSON.stringify(summary, null, 2), nivel, fechaResumen };
+}
+
+// Intenta leer el resumen ya guardado en Supabase. Devuelve el objeto
+// normalizado si la fila existe y tiene respuesta_ia, o null si 404 o vacío.
+async function fetchCachedSummary(orgId) {
+  try {
+    const res = await fetch(CHURN_LOOKUP_URL, {
+      method: 'POST',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ org_id: orgId })
+    });
+    if (!res.ok) return null;                     // 404 → no hay fila
+    const text = await res.text();
+    if (!text.trim()) return null;                // body vacío
+    const parsed = normalizeSummaryResponse(JSON.parse(text));
+    return parsed.summary ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// Dispara el pipeline completo (Zendesk + GPT + upsert). Devuelve el
+// resumen ya guardado — el endpoint responde JSON con respuesta_ia, nivel
+// y fecha_resumen tras persistir en Supabase.
+async function generateSummary(orgId) {
   const res = await fetch(SUMMARY_URL, {
     method: 'POST',
     credentials: 'omit',
@@ -304,15 +383,12 @@ async function fetchSummary(orgId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id_org: orgId })
   });
-
   if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-
   const text = await res.text();
   try {
-    const data = JSON.parse(text);
-    return data.summary || data.resumen || data.output || data.result || (typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+    return normalizeSummaryResponse(JSON.parse(text));
   } catch {
-    return text;
+    return { summary: text, nivel: null, fechaResumen: null };
   }
 }
 
@@ -394,22 +470,10 @@ function showClientModal(client) {
       `;
     }).join('');
 
-  const bucket = churnBucket(client.nivel);
-  const fechaTxt = formatFecha(client.fechaResumen);
-  const churnBlock = `
-    <div class="churn-summary ${bucket.cls}">
-      <div class="churn-summary-number">${bucket.label}</div>
-      <div class="churn-summary-meta">
-        <div class="churn-summary-label">Nivel de churn</div>
-        <div class="churn-summary-sub">${bucket.title}${fechaTxt ? ` · ${escapeHtml(fechaTxt)}` : ''}</div>
-      </div>
-    </div>
-  `;
-
   body.innerHTML = `
     <div class="modal-columns">
       <div class="modal-col-left">
-        ${churnBlock}
+        ${renderChurnSummaryBlock(client)}
         <div class="section-label">Información de la organización</div>
         <div class="info-table">
           ${infoRows}
@@ -439,24 +503,44 @@ function showClientModal(client) {
   `;
 
   overlay.classList.add('active');
-  startProgress();
 
-  fetchSummary(client.id).then(summary => {
-    finishProgress();
+  // Estrategia en dos pasos:
+  //  1. Lookup a Supabase (/buscar-resumen). Si hay fila con respuesta_ia
+  //     la pintamos inmediatamente, sin progress bar. Evita regenerar GPT
+  //     cada vez que el usuario abre una ficha ya analizada.
+  //  2. Si no hay cache → startProgress() + /generar-resumen (pipeline
+  //     completo que a su vez hace upsert en Supabase y responde con el
+  //     nivel + fecha nuevos). Actualizamos el state y re-pintamos.
+  const renderResult = (result) => {
     const el = document.getElementById('summaryContent');
     const btn = document.getElementById('btnCopySummary');
-    if (el) {
-      el.innerHTML = marked.parse(summary);
-      btn.setAttribute('data-summary', summary);
+    if (el) el.innerHTML = marked.parse(result.summary);
+    if (btn) {
+      btn.setAttribute('data-summary', result.summary);
       btn.classList.remove('hidden');
     }
-  }).catch(err => {
-    finishProgress();
+    applySummaryToClient(client, result);
+  };
+
+  const renderError = (err) => {
     const el = document.getElementById('summaryContent');
     if (el) {
       el.innerHTML = `<span style="color: #dc2626;">Error al obtener el resumen: ${escapeHtml(err.message)}</span>`;
     }
-  });
+  };
+
+  fetchCachedSummary(client.id).then(cached => {
+    if (cached) {
+      // Cache hit: instantáneo, sin progress bar.
+      renderResult(cached);
+      return;
+    }
+    // Cache miss: generar en vivo.
+    startProgress();
+    return generateSummary(client.id)
+      .then(result => { finishProgress(); renderResult(result); })
+      .catch(err => { finishProgress(); renderError(err); });
+  }).catch(renderError);
 }
 
 function escapeHtml(str) {
