@@ -559,6 +559,9 @@
                 }
             }
 
+            // Capturamos el flag ANTES de cerrar el editor porque cerrarEditor
+            // resetea editandoId a null y perderíamos la rama "actualizado".
+            const fueEdicion = !!editandoId;
             await refrescar();
             cerrarEditor();
             // Si editamos un usuario existente y cambiaron rol/permisos/activo/
@@ -566,11 +569,12 @@
             // admin de que el usuario tendrá que volver a iniciar sesión para
             // ver los cambios (o lo hará de forma forzada la próxima vez que
             // su navegador contacte con /auth/verify).
-            if (editandoId) {
-                toast('Usuario actualizado — sus cambios se aplican al próximo login', 'success');
-            } else {
-                toast('Usuario creado', 'success');
-            }
+            toast(
+                fueEdicion
+                    ? 'Usuario actualizado — sus cambios se aplican al próximo login'
+                    : 'Usuario creado',
+                'success'
+            );
         } catch (err) {
             toast('Error: ' + err.message, 'error');
             release();
