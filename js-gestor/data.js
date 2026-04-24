@@ -790,6 +790,24 @@ function normalizarAlta(f) {
             firmado_at: s.firmado_at || null
         }));
 
+    // Locales del cliente. Vienen como array (Supabase) o como string JSON
+    // (workflow legacy). Exponemos el mínimo necesario para que el gestor
+    // de proyectos pueda mostrar la dirección del local cocina central.
+    let rawLocales = f.locales ?? f['Locales'] ?? [];
+    if (typeof rawLocales === 'string') {
+        try { rawLocales = JSON.parse(rawLocales); } catch (_) { rawLocales = []; }
+    }
+    const locales = (Array.isArray(rawLocales) ? rawLocales : []).map(l => ({
+        id:         l.id || null,
+        nombre:     l.nombre || '',
+        calle:      l.calle || '',
+        numero:     l.numero || '',
+        cp:         l.cp || '',
+        municipio:  l.municipio || '',
+        provincia:  l.provincia || '',
+        es_cocina_central: l.es_cocina_central === true || l.es_cocina_central === 'true'
+    }));
+
     return {
         altaId: id,
         nombre: nombre || comercial,
@@ -817,7 +835,9 @@ function normalizarAlta(f) {
         intFinEmail,
         // Mandatos SEPA firmados del cliente — 0 o más sociedades contra las
         // que se puede facturar. Ver comentario arriba para el formato.
-        sepaMandatos
+        sepaMandatos,
+        // Locales del cliente (id + dirección + flag de cocina central).
+        locales
     };
 }
 

@@ -968,6 +968,18 @@
                 <input type="email" data-field="email" placeholder="local@ejemplo.com">
             </div>
 
+            <!-- Marca de "cocina central". Solo visible cuando el tipo de
+                 cliente es corp_cocina. La exclusividad (máx. 1 local por
+                 ficha) se aplica en JS al marcar, y además la BD la protege
+                 con un UNIQUE parcial en la migración 2026-04-24_03. -->
+            <div class="form-group col-12 local-cocina-row" style="display:none">
+                <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
+                    <input type="checkbox" data-field="es_cocina_central" onchange="onMarcarCocinaCentral(this)">
+                    <span>🍳 Este local es la cocina central / producción</span>
+                </label>
+                <small class="form-hint">Solo uno por cliente. Su dirección aparecerá en el gestor de proyectos.</small>
+            </div>
+
             <div class="form-group col-8">
                 <label>Calle</label>
                 <input type="text" data-field="calle">
@@ -1054,8 +1066,29 @@
         // SEPA que ya haya en la ficha (para que el comercial pueda asignar
         // la cuenta de facturación al nuevo local inmediatamente).
         if (typeof _repoblarLocalesSepaSelects === 'function') _repoblarLocalesSepaSelects();
+        // Si el tipo de cliente ya es corp_cocina, la fila de "cocina central"
+        // del nuevo local debe ser visible; en otro caso queda oculta por CSS
+        // inline del template.
+        const tipoSel = document.querySelector('input[name="tipo"]:checked');
+        if (tipoSel && tipoSel.value === 'corp_cocina') {
+            const nuevaCard = container.lastElementChild;
+            const row = nuevaCard && nuevaCard.querySelector('.local-cocina-row');
+            if (row) row.style.display = '';
+        }
         if (typeof actualizarEstadoNavSecciones === 'function') actualizarEstadoNavSecciones();
     }
+
+    // Exclusividad mutua del flag "cocina central": al marcar uno,
+    // desmarcamos los checks de los demás locales. La BD lo protege con
+    // UNIQUE parcial, pero en el cliente lo aplicamos primero para evitar
+    // rechazos al guardar.
+    function onMarcarCocinaCentral(cb) {
+        if (!cb.checked) return;
+        document.querySelectorAll('[data-field="es_cocina_central"]').forEach(otro => {
+            if (otro !== cb) otro.checked = false;
+        });
+    }
+    window.onMarcarCocinaCentral = onMarcarCocinaCentral;
 
     function eliminarLocal(btn) {
         const card = btn.closest('.local-card');
@@ -1347,6 +1380,17 @@
         // la checkbox grid confundía al comercial, que creía tener que
         // re-seleccionar los módulos a mano.
         document.getElementById('modulos-section').classList.add('hidden');
+        // Fila "Cocina central" por local: sólo aplica a corp_cocina.
+        // En cualquier otro tipo la ocultamos y borramos marcas previas
+        // para no persistir un estado incoherente (p. ej. si el comercial
+        // marcó cocina central y luego cambió de tipo).
+        const esCorpCocina = tipo === 'corp_cocina';
+        document.querySelectorAll('.local-cocina-row').forEach(row => {
+            row.style.display = esCorpCocina ? '' : 'none';
+        });
+        if (!esCorpCocina) {
+            document.querySelectorAll('[data-field="es_cocina_central"]').forEach(cb => { cb.checked = false; });
+        }
         renderCarrito(tipo);
         // Sincroniza el toggle "Cliente LITE": se oculta si el tipo ya
         // está fijado a planes o corporate (ninguna variante acepta Lite).
@@ -2760,6 +2804,22 @@
                 return false;
             }
         }
+        // corp_cocina: exactamente un local debe estar marcado como cocina
+        // central. El gestor de proyectos usa esa dirección para mostrarla
+        // en la cabecera, así que sin marca no habría de dónde tirar.
+        if (data['Tipo Cliente'] === 'corp_cocina') {
+            const marcados = data.locales.filter(l => l.es_cocina_central === true).length;
+            if (marcados === 0) {
+                showStatus('Para "Corporate + Cocina Producción" marca cuál de los locales es la cocina central.', 'error');
+                const primerLocal = document.querySelector('.local-card');
+                if (primerLocal) primerLocal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+            if (marcados > 1) {
+                showStatus('Solo un local puede ser la cocina central. Desmarca los demás.', 'error');
+                return false;
+            }
+        }
         return true;
     }
 
@@ -3321,7 +3381,15 @@
                 const card  = cards[cards.length - 1];
                 Object.keys(l).forEach(field => {
                     const input = card.querySelector(`[data-field="${field}"]`);
-                    if (input) input.value = l[field] === true ? '' : (l[field] || '');
+                    if (!input) return;
+                    // Checkboxes (p. ej. es_cocina_central) se restauran en
+                    // .checked, no en .value — el patrón anterior borraba el
+                    // booleano al asignarlo como value.
+                    if (input.type === 'checkbox') {
+                        input.checked = l[field] === true || l[field] === 'true';
+                    } else {
+                        input.value = l[field] === true ? '' : (l[field] || '');
+                    }
                 });
             });
         } catch (_) {}

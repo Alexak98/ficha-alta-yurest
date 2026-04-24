@@ -960,6 +960,16 @@ function _renderCabeceraProyecto(proyecto) {
                     <span style="color:var(--text-muted)">Cargando…</span>
                 </span>
             </div>
+            <!-- Dirección de la cocina central. Solo se muestra si el cliente
+                 es de tipo "CORP. Cocina Producción"; para los demás la fila
+                 se oculta en el helper async (display:none). El local se
+                 identifica con el flag es_cocina_central en la ficha. -->
+            <div class="detail-field det-cocina-row" data-proyecto-id="${proyecto.id}" style="display:none">
+                <span class="detail-label">Dirección cocina central</span>
+                <span class="detail-value det-cocina" data-proyecto-id="${proyecto.id}">
+                    <span style="color:var(--text-muted)">Cargando…</span>
+                </span>
+            </div>
             <!-- Tiempo teórico vs real: suma tiempoEstimado y tiempoReal
                  de todas las subtareas. El helper _sumaTiemposProyecto()
                  devuelve ambos totales + % de desviación. -->
@@ -1060,6 +1070,41 @@ async function _poblarIntegracionFinanciera(proyecto) {
         if (s.dataset.proyectoId !== String(proyecto.id)) return;
         s.innerHTML = htmlTpv;
     });
+
+    // ── Dirección cocina central (solo CORP. Cocina Producción) ─────
+    // Solo pintamos la fila cuando el tipo del proyecto matchea. Para el
+    // resto de tipos dejamos la fila oculta (display:none del inline).
+    const esCorpCocina = (proyecto.tipo === 'CORP. Cocina Producción')
+                      || (ficha && ficha.tipoOriginal && ficha.tipoOriginal.toLowerCase() === 'corp_cocina');
+    const rowsCocina  = document.querySelectorAll('.det-cocina-row');
+    const spansCocina = document.querySelectorAll('.det-cocina');
+    rowsCocina.forEach(r => {
+        if (!r.isConnected) return;
+        if (r.dataset.proyectoId !== String(proyecto.id)) return;
+        r.style.display = esCorpCocina ? '' : 'none';
+    });
+    if (esCorpCocina) {
+        const cocina = ficha && Array.isArray(ficha.locales)
+            ? ficha.locales.find(l => l.es_cocina_central) : null;
+        let htmlCocina;
+        if (!cocina) {
+            htmlCocina = '<span style="color:#b45309;font-size:.78rem">⚠ Sin marcar en la ficha — pide al comercial que la indique</span>';
+        } else {
+            const partesDir = [
+                [cocina.calle, cocina.numero].filter(Boolean).join(' '),
+                cocina.cp,
+                cocina.municipio,
+                cocina.provincia
+            ].filter(Boolean).join(', ');
+            const dir = partesDir || '<span style="color:var(--text-muted)">dirección sin rellenar</span>';
+            htmlCocina = `<strong>${escapeHtml(cocina.nombre || 'Cocina central')}</strong>${partesDir ? ' — ' + escapeHtml(partesDir) : ' — ' + dir}`;
+        }
+        spansCocina.forEach(s => {
+            if (!s.isConnected) return;
+            if (s.dataset.proyectoId !== String(proyecto.id)) return;
+            s.innerHTML = htmlCocina;
+        });
+    }
 }
 
 // ──────────────────────────────────────────────────────────
