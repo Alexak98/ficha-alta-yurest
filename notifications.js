@@ -176,7 +176,7 @@
             .notif-popover {
                 position: absolute;
                 top: calc(100% + 8px);
-                left: 0;
+                right: 0;
                 width: 340px;
                 max-width: calc(100vw - 24px);
                 background: #fff;
@@ -329,14 +329,15 @@
         injectStyles();
 
         const header = document.querySelector('.page-header');
-        const btnMenu = header ? header.querySelector('.btn-menu') : null;
-        if (!header || !btnMenu) return;
+        if (!header) return;
         if (header.querySelector('.notif-bell')) return;  // ya montado
 
         // Wrapper posicionado para anclar el popover.
         const wrap = document.createElement('div');
         wrap.style.position = 'relative';
         wrap.style.display = 'inline-flex';
+        // Empuja el wrapper a la derecha del header (top-right).
+        wrap.style.marginLeft = 'auto';
 
         const bell = document.createElement('button');
         bell.className = 'notif-bell';
@@ -358,8 +359,9 @@
 
         wrap.appendChild(bell);
         wrap.appendChild(pop);
-        // Justo después del botón de menú (top-left del header)
-        btnMenu.insertAdjacentElement('afterend', wrap);
+        // Apéndice al final del header → queda en la esquina superior derecha
+        // (margin-left:auto del wrap empuja a la derecha en flex).
+        header.appendChild(wrap);
 
         let loaded = false;
         let lastItems = [];
