@@ -520,7 +520,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -729,7 +729,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -883,7 +883,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -1085,7 +1085,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -1248,7 +1248,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -1450,7 +1450,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -1604,7 +1604,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
