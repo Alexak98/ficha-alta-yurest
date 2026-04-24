@@ -820,7 +820,7 @@ async function guardarProyecto() {
 
         cerrarModal('modal-proyecto');
         refrescarTodo();
-        mostrarToast('Proyecto guardado correctamente', 'success');
+        mostrarToast('Proyecto guardado', 'success');
     } catch (err) {
         mostrarToast('Error al guardar proyecto: ' + err.message, 'error');
     } finally {
