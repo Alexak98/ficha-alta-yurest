@@ -58,8 +58,11 @@ const FIELD_LABELS = {
 // ── Fetch clientes ─────────────────────────────────────────
 
 async function fetchClients() {
-  const res = await fetch(API_URL, { method: 'GET' });
+  const res = await fetch(API_URL, { method: 'GET', credentials: 'omit', cache: 'no-store' });
 
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('El webhook requiere autenticación (deshabilita Basic Auth en n8n).');
+  }
   if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
 
   const data = await res.json();
@@ -235,6 +238,8 @@ function formatValue(key, val) {
 async function fetchSummary(orgId) {
   const res = await fetch(SUMMARY_URL, {
     method: 'POST',
+    credentials: 'omit',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id_org: orgId })
   });
