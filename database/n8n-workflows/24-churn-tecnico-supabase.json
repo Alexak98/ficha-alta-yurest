@@ -1639,6 +1639,63 @@
           "name": "Supabase account"
         }
       }
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        2080
+      ],
+      "id": "a1c6d7e8-0001-4001-9001-000000000001",
+      "name": "Zendesk orgs (schedule)",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "id",
+              "field2": "id_organizacion"
+            }
+          ]
+        },
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        160,
+        2080
+      ],
+      "id": "a1c6d7e8-0002-4001-9001-000000000002",
+      "name": "Merge orgs + churn"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Entrada: items combinados por Merge — cada item tiene los campos\n// de Zendesk (id, name, ...) y opcionalmente los de churn_tecnico\n// (id_organizacion, nivel, fecha_resumen) si había match.\n//\n// Dejamos pasar las orgs que NO tienen nivel asignado aún: ni fila\n// en la tabla, o fila con nivel null. Éstas son las que el resto\n// del pipeline procesará hasta upsertear un resumen nuevo.\nconst out = [];\nfor (const it of $input.all()) {\n  const j = it.json;\n  const zendeskId = j.id;                           // Zendesk org id\n  if (zendeskId == null) continue;                  // sólo filas sin org Zendesk\n  const hasRow = j.id_organizacion != null;\n  const hasNivel = j.nivel != null && j.nivel !== '';\n  if (hasRow && hasNivel) continue;                 // ya tiene churn, skip\n  out.push({ json: {\n    id_organizacion: String(zendeskId),\n    nombre: j.name || null\n  }});\n}\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        2080
+      ],
+      "id": "a1c6d7e8-0003-4001-9001-000000000003",
+      "name": "Orgs sin nivel"
     }
   ],
   "pinData": {},
@@ -1950,9 +2007,9 @@
       "main": [
         [
           {
-            "node": "Filter",
+            "node": "Merge orgs + churn",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -2132,7 +2189,18 @@
     },
     "Schedule Trigger": {
       "main": [
-        []
+        [
+          {
+            "node": "Zendesk orgs (schedule)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Schedule Trigger1": {
@@ -2262,6 +2330,39 @@
         [
           {
             "node": "Update row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zendesk orgs (schedule)": {
+      "main": [
+        [
+          {
+            "node": "Merge orgs + churn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge orgs + churn": {
+      "main": [
+        [
+          {
+            "node": "Orgs sin nivel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orgs sin nivel": {
+      "main": [
+        [
+          {
+            "node": "Limit",
             "type": "main",
             "index": 0
           }
