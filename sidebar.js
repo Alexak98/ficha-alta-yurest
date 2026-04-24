@@ -251,6 +251,32 @@
         if (window.YurestConfig && window.YurestConfig.actualizarBadgeA3) {
             window.YurestConfig.actualizarBadgeA3();
         }
+
+        // Cargar notifications.js bajo demanda (misma carpeta que sidebar.js)
+        // y montar la campana en la cabecera. Evita editar las 15+ páginas.
+        ensureNotificationsLoaded();
+    }
+
+    function ensureNotificationsLoaded() {
+        if (window.YurestNotifications) {
+            if (typeof window.YurestNotifications.mountHeaderBell === 'function') {
+                window.YurestNotifications.mountHeaderBell();
+            }
+            return;
+        }
+        if (document.getElementById('yurest-notifications-script')) return;
+        const s = document.createElement('script');
+        s.id = 'yurest-notifications-script';
+        // Todas las páginas viven en la raíz, usamos path relativo simple.
+        s.src = 'notifications.js';
+        s.async = true;
+        s.onload = () => {
+            if (window.YurestNotifications && window.YurestNotifications.mountHeaderBell) {
+                window.YurestNotifications.mountHeaderBell();
+            }
+        };
+        s.onerror = () => console.error('[sidebar] no pude cargar notifications.js');
+        document.head.appendChild(s);
     }
 
     global.YurestSidebar = { render, GROUPS };
