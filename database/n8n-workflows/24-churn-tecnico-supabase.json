@@ -519,39 +519,30 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "churn_tecnico",
-        "matchingColumns": [
-          "id_organizacion"
-        ],
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "id_organizacion",
-              "fieldValue": "={{ $('Get an organization').item.json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "nombre",
-              "fieldValue": "={{ $('Get an organization').item.json.name }}"
-            },
-            {
-              "fieldId": "respuesta_ia",
-              "fieldValue": "={{ $('Message a model2').item.json.output[0].content[0].text }}"
-            },
-            {
-              "fieldId": "nivel",
-              "fieldValue": "={{ $json.churn_score }}"
-            },
-            {
-              "fieldId": "fecha_resumen",
-              "fieldValue": "={{ $now.toISO() }}"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id_organizacion: $('Get an organization').item.json.id,\n  nombre: $('Get an organization').item.json.name,\n  respuesta_ia: $('Message a model2').item.json.output[0].content[0].text,\n  nivel: $json.churn_score,\n  fecha_resumen: $now.toISO()\n}) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1760,
         848
@@ -737,39 +728,30 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "churn_tecnico",
-        "matchingColumns": [
-          "id_organizacion"
-        ],
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "id_organizacion",
-              "fieldValue": "={{ $('Get an organization1').item.json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "nombre",
-              "fieldValue": "={{ $('Get an organization1').item.json.name }}"
-            },
-            {
-              "fieldId": "respuesta_ia",
-              "fieldValue": "={{ $('Message a model').item.json.output[0].content[0].text }}"
-            },
-            {
-              "fieldId": "nivel",
-              "fieldValue": "={{ $json.churn_score }}"
-            },
-            {
-              "fieldId": "fecha_resumen",
-              "fieldValue": "={{ $now.toISO() }}"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id_organizacion: $('Get an organization1').item.json.id,\n  nombre: $('Get an organization1').item.json.name,\n  respuesta_ia: $('Message a model').item.json.output[0].content[0].text,\n  nivel: $json.churn_score,\n  fecha_resumen: $now.toISO()\n}) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         2448,
         2192
@@ -900,35 +882,30 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "churn_tecnico",
-        "matchingColumns": [
-          "id_organizacion"
-        ],
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "id_organizacion",
-              "fieldValue": "={{ $('Get an organization1').item.json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "respuesta_ia",
-              "fieldValue": "No hay tickets"
-            },
-            {
-              "fieldId": "nivel",
-              "fieldValue": "0"
-            },
-            {
-              "fieldId": "fecha_resumen",
-              "fieldValue": "={{ $now.toISO() }}"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id_organizacion: $('Get an organization1').item.json.id,\n  respuesta_ia: \"No hay tickets\",\n  nivel: 0,\n  fecha_resumen: $now.toISO()\n}) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1360,
         2416
@@ -1107,39 +1084,30 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "churn_tecnico",
-        "matchingColumns": [
-          "id_organizacion"
-        ],
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "id_organizacion",
-              "fieldValue": "={{ $('Get an organization2').item.json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "nombre",
-              "fieldValue": "={{ $('Get an organization2').item.json.name }}"
-            },
-            {
-              "fieldId": "respuesta_ia",
-              "fieldValue": "={{ $('Message a model1').item.json.output[0].content[0].text }}"
-            },
-            {
-              "fieldId": "nivel",
-              "fieldValue": "={{ $json.churn_score }}"
-            },
-            {
-              "fieldId": "fecha_resumen",
-              "fieldValue": "={{ $now.toISO() }}"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id_organizacion: $('Get an organization2').item.json.id,\n  nombre: $('Get an organization2').item.json.name,\n  respuesta_ia: $('Message a model1').item.json.output[0].content[0].text,\n  nivel: $json.churn_score,\n  fecha_resumen: $now.toISO()\n}) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         2512,
         2672
@@ -1279,35 +1247,30 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "churn_tecnico",
-        "matchingColumns": [
-          "id_organizacion"
-        ],
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "id_organizacion",
-              "fieldValue": "={{ $('Get an organization2').item.json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "respuesta_ia",
-              "fieldValue": "No hay tickets"
-            },
-            {
-              "fieldId": "nivel",
-              "fieldValue": "0"
-            },
-            {
-              "fieldId": "fecha_resumen",
-              "fieldValue": "={{ $now.toISO() }}"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id_organizacion: $('Get an organization2').item.json.id,\n  respuesta_ia: \"No hay tickets\",\n  nivel: 0,\n  fecha_resumen: $now.toISO()\n}) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1424,
         2896
@@ -1486,39 +1449,30 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "churn_tecnico",
-        "matchingColumns": [
-          "id_organizacion"
-        ],
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "id_organizacion",
-              "fieldValue": "={{ $('Get an organization3').item.json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "nombre",
-              "fieldValue": "={{ $('Get an organization3').item.json.name }}"
-            },
-            {
-              "fieldId": "respuesta_ia",
-              "fieldValue": "={{ $('Message a model3').item.json.output[0].content[0].text }}"
-            },
-            {
-              "fieldId": "nivel",
-              "fieldValue": "={{ $json.churn_score }}"
-            },
-            {
-              "fieldId": "fecha_resumen",
-              "fieldValue": "={{ $now.toISO() }}"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id_organizacion: $('Get an organization3').item.json.id,\n  nombre: $('Get an organization3').item.json.name,\n  respuesta_ia: $('Message a model3').item.json.output[0].content[0].text,\n  nivel: $json.churn_score,\n  fecha_resumen: $now.toISO()\n}) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         2496,
         3280
@@ -1649,35 +1603,30 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "tableId": "churn_tecnico",
-        "matchingColumns": [
-          "id_organizacion"
-        ],
-        "dataToSend": "defineBelow",
-        "fieldsUi": {
-          "fieldValues": [
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/churn_tecnico",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "fieldId": "id_organizacion",
-              "fieldValue": "={{ $('Get an organization3').item.json.id }}"
+              "name": "Content-Type",
+              "value": "application/json"
             },
             {
-              "fieldId": "respuesta_ia",
-              "fieldValue": "No hay tickets"
-            },
-            {
-              "fieldId": "nivel",
-              "fieldValue": "0"
-            },
-            {
-              "fieldId": "fecha_resumen",
-              "fieldValue": "={{ $now.toISO() }}"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id_organizacion: $('Get an organization3').item.json.id,\n  respuesta_ia: \"No hay tickets\",\n  nivel: 0,\n  fecha_resumen: $now.toISO()\n}) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1408,
         3504
