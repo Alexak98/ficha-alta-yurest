@@ -2475,6 +2475,38 @@ async function eliminarContactoDetalle(idx) {
 }
 
 // Extrae el projectId numérico de una URL de Asana o devuelve el valor si ya es un ID.
+// Saca el nombre de sección de una tarea Asana. Acepta:
+//   - t.section_name      (si Formatear Asana ya lo aplana)
+//   - t.section.name
+//   - t.memberships[i].section.name (formato Asana raw, opt_fields)
+// Devuelve null si la tarea no trae info de sección.
+function _seccionDeTarea(t) {
+    if (!t) return null;
+    if (t.section_name) return t.section_name;
+    if (t.section && t.section.name) return t.section.name;
+    if (Array.isArray(t.memberships)) {
+        const m = t.memberships.find(x => x && x.section && x.section.name);
+        if (m) return m.section.name;
+    }
+    return null;
+}
+
+// Agrupa tareas por sección preservando el orden de aparición. Devuelve
+// { grupos: Map<seccion, tarea[]>, conSeccion: bool } — si conSeccion es
+// false significa que ninguna tarea trajo info de sección (workflow legacy).
+function _agruparTareasPorSeccion(tasks) {
+    const grupos = new Map();
+    let conSeccion = false;
+    tasks.forEach(t => {
+        const s = _seccionDeTarea(t);
+        if (s) conSeccion = true;
+        const key = s || '— Sin sección —';
+        if (!grupos.has(key)) grupos.set(key, []);
+        grupos.get(key).push(t);
+    });
+    return { grupos, conSeccion };
+}
+
 function _parseAsanaInput(raw) {
     const v = String(raw || '').trim();
     if (!v) return { id: '', url: '' };
@@ -2515,13 +2547,40 @@ async function renderDetalleDesarrollos(proyecto) {
     // flex-wrap dejaba el botón "Vincular" flotando en el centro del
     // modal cuando la ventana era ancha — queda mucho mejor con el
     // input a ancho completo y los botones alineados debajo.
-    container.innerHTML = `
-        <div class="desarrollos-wrap">
+    // Dos vistas según el estado:
+    //   - Sin URL → formulario de vinculación (input + Vincular).
+    //   - Con URL → tarjeta compacta sin input, con Abrir / Editar / Desvincular.
+    //     La edición se hace en un modal aparte (editarUrlAsana()).
+    const cardHtml = asanaId
+        ? `
+            <div class="desarrollos-card desarrollos-card-linked">
+                <div class="desarrollos-linked-info">
+                    <div class="desarrollos-linked-pill">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Asana vinculado
+                    </div>
+                    <div class="desarrollos-linked-id">ID del proyecto: <code>${escapeHtml(asanaId)}</code></div>
+                </div>
+                <div class="desarrollos-actions">
+                    <a class="btn btn-secondary btn-sm" href="${escapeHtml(asanaUrl)}" target="_blank" rel="noopener">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Abrir en Asana
+                    </a>
+                    <button class="btn btn-secondary btn-sm" onclick="editarUrlAsana()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                        Editar URL Asana
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="desvincularAsana()" title="Desvincular">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Desvincular
+                    </button>
+                </div>
+            </div>`
+        : `
             <div class="desarrollos-card">
                 <label class="desarrollos-label" for="asana-project-url">URL del proyecto en Asana</label>
                 <input type="url" id="asana-project-url" class="form-control desarrollos-input"
-                       placeholder="https://app.asana.com/0/1234567890/list"
-                       value="${escapeHtml(asanaUrl)}">
+                       placeholder="https://app.asana.com/0/1234567890/list" value="">
                 <small class="desarrollos-hint">
                     Pega la URL completa del proyecto desde Asana. Se guardará en el proyecto
                     y se usará para listar sus tareas aquí.
@@ -2529,20 +2588,14 @@ async function renderDetalleDesarrollos(proyecto) {
                 <div class="desarrollos-actions">
                     <button class="btn btn-primary btn-sm" onclick="vincularAsana()">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                        ${asanaId ? 'Actualizar' : 'Vincular'}
+                        Vincular
                     </button>
-                    ${asanaId ? `
-                        <a class="btn btn-secondary btn-sm" href="${escapeHtml(asanaUrl)}" target="_blank" rel="noopener">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                            Abrir en Asana
-                        </a>
-                        <button class="btn btn-secondary btn-sm" onclick="desvincularAsana()" title="Desvincular">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            Desvincular
-                        </button>
-                    ` : ''}
                 </div>
-            </div>
+            </div>`;
+
+    container.innerHTML = `
+        <div class="desarrollos-wrap">
+            ${cardHtml}
             <div id="asana-tasks-list" class="desarrollos-list">
                 ${asanaId
                     ? '<div class="loading-inline"><div class="spinner"></div> Cargando tareas de Asana…</div>'
@@ -2584,18 +2637,106 @@ async function renderDetalleDesarrollos(proyecto) {
                 <span style="color:#7f1d1d;font-size:.8rem">${escapeHtml(error)}</span>
             </div>`;
         } else if (tasks.length > 0) {
-            listEl.innerHTML = tasks.map(t => `
+            const renderTask = (t) => `
                 <div class="asana-task-row ${t.completed ? 'completed' : ''}">
                     <div class="task-check ${t.completed ? 'checked' : ''}"></div>
                     <span class="task-name ${t.completed ? 'completed' : ''}">${escapeHtml(t.name || t.nombre || '')}</span>
                     <span class="task-date">${t.due_on ? formatearFechaCorta(t.due_on) : '—'}</span>
                 </div>
-            `).join('');
+            `;
+            const { grupos, conSeccion } = _agruparTareasPorSeccion(tasks);
+            if (!conSeccion) {
+                // El workflow Asana aún no devuelve sección (memberships.section.name).
+                // Listamos plano hasta que esté disponible.
+                listEl.innerHTML = tasks.map(renderTask).join('');
+            } else {
+                listEl.innerHTML = [...grupos.entries()].map(([nombre, items]) => `
+                    <div class="asana-section-block">
+                        <div class="asana-section-header">
+                            <span class="asana-section-name">${escapeHtml(nombre)}</span>
+                            <span class="asana-section-count">${items.length}</span>
+                        </div>
+                        <div class="asana-section-tasks">
+                            ${items.map(renderTask).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
         } else {
             listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">El proyecto Asana no tiene tareas todavía</div>';
         }
     }
 }
+
+// Modal para editar la URL de un proyecto Asana ya vinculado. Se monta
+// bajo demanda en <body> y se reusa en sucesivos clicks.
+function editarUrlAsana() {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    const actual = proyecto.asanaProjectUrl || (proyecto.asanaProjectId ? `https://app.asana.com/0/${proyecto.asanaProjectId}/list` : '');
+
+    let modal = document.getElementById('modal-asana-url');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'modal-asana-url';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="modal" style="max-width:520px">
+                <div class="modal-header">
+                    <h2>Editar URL Asana</h2>
+                    <button class="modal-close" onclick="cerrarModal('modal-asana-url')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="modal-asana-url-input">URL del proyecto en Asana</label>
+                        <input type="url" id="modal-asana-url-input" class="form-control"
+                               placeholder="https://app.asana.com/0/1234567890/list">
+                        <small style="display:block;margin-top:6px;color:#94a3b8;font-size:12px">
+                            Pega la URL completa del proyecto desde Asana.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px">
+                    <button class="btn btn-secondary" onclick="cerrarModal('modal-asana-url')">Cancelar</button>
+                    <button class="btn btn-primary" onclick="guardarUrlAsana()">Guardar</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) cerrarModal('modal-asana-url');
+        });
+    }
+
+    document.getElementById('modal-asana-url-input').value = actual;
+    abrirModal('modal-asana-url');
+    setTimeout(() => {
+        const inp = document.getElementById('modal-asana-url-input');
+        if (inp) { inp.focus(); inp.select(); }
+    }, 80);
+}
+window.editarUrlAsana = editarUrlAsana;
+
+async function guardarUrlAsana() {
+    const proyecto = proyectos.find(p => p.id === detalleProyectoId);
+    if (!proyecto) return;
+    const input = document.getElementById('modal-asana-url-input').value;
+    const parsed = _parseAsanaInput(input);
+    if (input.trim() && !parsed.id) {
+        mostrarToast(parsed.error || 'No se pudo identificar el proyecto Asana', 'warning');
+        return;
+    }
+    proyecto.asanaProjectId = parsed.id;
+    proyecto.asanaProjectUrl = parsed.id ? parsed.url : '';
+    guardarProyectosLocal(proyectos);
+    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+    cerrarModal('modal-asana-url');
+    renderDetalleDesarrollos(proyecto);
+    mostrarToast(parsed.id ? 'URL actualizada' : 'Vinculación eliminada', 'success');
+}
+window.guardarUrlAsana = guardarUrlAsana;
 
 async function vincularAsana() {
     const input = document.getElementById('asana-project-url').value;
