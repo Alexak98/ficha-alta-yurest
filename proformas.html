@@ -349,6 +349,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
 
             const fmt = v => v ? new Date(v).toLocaleString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
             const orphan = p.proyecto_id ? '' : '<span class="hw-pedido-orphan">proyecto eliminado</span>';
+            // Sociedad a facturar: snapshot congelado al crear el pedido. Si falta
+            // (pedidos legacy o clientes sin SEPA), no pintamos el bloque.
+            const sepa = p.sepa_snapshot || null;
+            const sociedadHtml = sepa ? `
+                <div style="font-size:.78rem;color:#334155;background:#f1f5f9;border-left:3px solid #6366f1;padding:6px 10px;border-radius:4px;margin-top:6px">
+                    <strong>Facturar a:</strong> ${esc(sepa.acreedor || '(sin acreedor)')}${sepa.referencia ? ' · Ref. ' + esc(sepa.referencia) : ''}${sepa.iban ? ' · ' + esc(sepa.iban) : ''}
+                </div>` : '';
             return `
                 <div class="hw-pedido">
                     <div class="hw-pedido-head">
@@ -363,6 +370,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                     </div>
                     <div class="hw-pedido-items">${itemsHtml}</div>
                     ${subtotalHtml}
+                    ${sociedadHtml}
                     ${p.notas_implementador ? `<div style="font-size:.78rem;color:#475569;background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 10px;border-radius:4px"><strong>Nota del implementador:</strong> ${esc(p.notas_implementador)}</div>` : ''}
                     ${p.notas_contabilidad ? `<div style="font-size:.78rem;color:#475569;background:#eff6ff;border-left:3px solid #3b82f6;padding:6px 10px;border-radius:4px"><strong>Nota contabilidad:</strong> ${esc(p.notas_contabilidad)}</div>` : ''}
                     <div class="hw-pedido-actions">${acciones}</div>

@@ -765,6 +765,31 @@ function normalizarAlta(f) {
     const intFinPersona = get(['Int Fin Persona', 'int_fin_persona']);
     const intFinEmail   = get(['Int Fin Email',   'int_fin_email']).toLowerCase();
 
+    // SEPAs (mandatos) del cliente. fichas_alta.sepa_mandato puede ser:
+    //   - null / objeto vacío: sin SEPA firmado (cliente legacy o en curso)
+    //   - objeto único legacy: { id?, referencia, acreedor, iban, localidad,
+    //     firma_base64, ... } — lo envolvemos en array para uniformar
+    //   - array (multi-sociedad, migración 10): [{id, referencia, ...}, ...]
+    // Normalizamos a array y filtramos a los que tienen firma_base64, porque
+    // son los únicos con los que se puede emitir proforma/factura.
+    let rawSepa = f.sepa_mandato ?? f['SEPA'] ?? null;
+    if (typeof rawSepa === 'string') {
+        try { rawSepa = JSON.parse(rawSepa); } catch (_) { rawSepa = null; }
+    }
+    const sepaArr = Array.isArray(rawSepa) ? rawSepa
+        : (rawSepa && typeof rawSepa === 'object' ? [rawSepa] : []);
+    const sepaMandatos = sepaArr
+        .filter(s => s && s.firma_base64)
+        .map(s => ({
+            id:         s.id || null,
+            referencia: s.referencia || '',
+            acreedor:   s.acreedor || '',
+            iban:       s.iban || '',
+            localidad:  s.localidad || '',
+            firma_base64: s.firma_base64 || null,
+            firmado_at: s.firmado_at || null
+        }));
+
     return {
         altaId: id,
         nombre: nombre || comercial,
@@ -789,7 +814,10 @@ function normalizarAlta(f) {
         // Integración financiera del cliente (Sage / A3 / no_aplica / '').
         integracionFinanciera,
         intFinPersona,
-        intFinEmail
+        intFinEmail,
+        // Mandatos SEPA firmados del cliente — 0 o más sociedades contra las
+        // que se puede facturar. Ver comentario arriba para el formato.
+        sepaMandatos
     };
 }
 

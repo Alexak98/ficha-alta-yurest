@@ -1798,6 +1798,9 @@ window.hwRechazarProforma = hwRechazarProforma;
 // Cantidades en memoria: { itemId: cantidad }. Se construye vacío al abrir
 // el modal y se persiste sólo al enviar (no se auto-guarda).
 let _hwCart = {};
+// Cache de SEPAs del cliente actualmente seleccionado en el modal (para que
+// hwCrearPedido pueda adjuntar el snapshot sin volver a cargar la ficha).
+let _hwSepaMandatos = [];
 
 function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
     let modal = document.getElementById('modal-hw-nuevo');
@@ -1817,6 +1820,13 @@ function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
                     <input type="hidden" id="hw-new-implementador">
                     <div style="font-size:.82rem;color:#475569;margin-bottom:10px">
                         Cliente: <strong id="hw-new-cliente-lbl">—</strong>
+                    </div>
+                    <div class="form-group" id="hw-new-sociedad-row" style="margin-bottom:14px">
+                        <label>Sociedad / SEPA a facturar</label>
+                        <select id="hw-new-sociedad" class="form-control">
+                            <option value="">Cargando…</option>
+                        </select>
+                        <small id="hw-new-sociedad-hint" style="display:block;margin-top:4px;color:#94a3b8;font-size:11px"></small>
                     </div>
                     <div id="hw-cat-container"></div>
                     <div class="form-group" style="margin-top:14px">
@@ -1844,11 +1854,57 @@ function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
     document.getElementById('hw-new-cliente-lbl').textContent = cliente || '—';
     document.getElementById('hw-new-notas').value = '';
     _hwCart = {};
+    _hwSepaMandatos = [];
     _hwRenderCatalogo();
     _hwActualizarTotal();
+    _hwCargarSociedades(cliente);
     abrirModal('modal-hw-nuevo');
 }
 window.hwAbrirModalNuevo = hwAbrirModalNuevo;
+
+// Rellena el select de sociedades con los SEPAs firmados del cliente.
+// Casos:
+//   - Cliente con varios SEPAs: obligatorio elegir uno (sin preselección).
+//   - Cliente con un único SEPA: auto-selección y selector deshabilitado.
+//   - Cliente sin SEPA firmado: opción "Sin SEPA (legacy)" + hint avisando.
+async function _hwCargarSociedades(cliente) {
+    const sel  = document.getElementById('hw-new-sociedad');
+    const hint = document.getElementById('hw-new-sociedad-hint');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Cargando…</option>';
+    sel.disabled = true;
+    if (hint) hint.textContent = '';
+
+    let mandatos = [];
+    try {
+        const ficha = await obtenerFichaPorCliente(cliente);
+        mandatos = (ficha && Array.isArray(ficha.sepaMandatos)) ? ficha.sepaMandatos : [];
+    } catch (_) { mandatos = []; }
+    _hwSepaMandatos = mandatos;
+
+    if (mandatos.length === 0) {
+        sel.innerHTML = '<option value="">— sin SEPA firmado —</option>';
+        sel.disabled = false;
+        if (hint) hint.textContent = 'Cliente sin SEPA firmado: el pedido se creará sin sociedad asociada (legacy).';
+        return;
+    }
+
+    const opcionesHtml = mandatos.map(s => {
+        const label = [s.acreedor || '(sin acreedor)', s.referencia, s.iban].filter(Boolean).join(' · ');
+        return `<option value="${escapeAttr(s.id || '')}">${escapeHtml(label)}</option>`;
+    }).join('');
+
+    if (mandatos.length === 1) {
+        sel.innerHTML = opcionesHtml;
+        sel.disabled = false;
+        sel.value = mandatos[0].id || '';
+        if (hint) hint.textContent = 'Única sociedad del cliente — se factura aquí.';
+    } else {
+        sel.innerHTML = '<option value="">— selecciona sociedad —</option>' + opcionesHtml;
+        sel.disabled = false;
+        if (hint) hint.textContent = 'Para mezclar items de sociedades distintas, crea un pedido por cada una.';
+    }
+}
 
 function _hwRenderCatalogo() {
     const cont = document.getElementById('hw-cat-container');
@@ -1944,6 +2000,33 @@ async function hwCrearPedido() {
         return;
     }
 
+    // Sociedad/SEPA a facturar. Obligatorio si el cliente tiene SEPAs firmados;
+    // opcional (null) si es un cliente legacy sin SEPA. El snapshot se congela
+    // con el pedido para que la proforma histórica sobreviva a futuras ediciones
+    // del mandato en la ficha.
+    const sepaId = (document.getElementById('hw-new-sociedad').value || '').trim();
+    let sepa_mandato_id = null, sepa_snapshot = null;
+    if (_hwSepaMandatos.length > 0) {
+        if (!sepaId) {
+            mostrarToast('Selecciona la sociedad contra la que se factura', 'error');
+            return;
+        }
+        const mandato = _hwSepaMandatos.find(s => s.id === sepaId);
+        if (!mandato) {
+            mostrarToast('La sociedad seleccionada ya no es válida — recarga la ficha', 'error');
+            return;
+        }
+        sepa_mandato_id = mandato.id;
+        sepa_snapshot = {
+            id:         mandato.id,
+            referencia: mandato.referencia || '',
+            acreedor:   mandato.acreedor   || '',
+            iban:       mandato.iban       || '',
+            localidad:  mandato.localidad  || '',
+            firmado_at: mandato.firmado_at || null
+        };
+    }
+
     try {
         const payload = {
             action: 'create',
@@ -1953,6 +2036,8 @@ async function hwCrearPedido() {
                 implementador,
                 items,
                 notas_implementador: notas,
+                sepa_mandato_id,
+                sepa_snapshot,
                 solicitado_por: (YurestConfig.getUsuario && YurestConfig.getUsuario() || {}).username || null
             }
         };
