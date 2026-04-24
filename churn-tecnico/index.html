@@ -12,6 +12,14 @@
 </head>
 <body>
   <div class="app" id="appContainer">
+    <aside class="top-churn" id="topChurnPanel" aria-label="Top clientes por churn">
+      <div class="top-churn-header">
+        <h3>Top churn</h3>
+        <span class="top-churn-sub">Hasta 15 clientes</span>
+      </div>
+      <ol class="top-churn-list" id="topChurnList"></ol>
+      <div class="top-churn-empty" id="topChurnEmpty" hidden>Sin datos todavía</div>
+    </aside>
     <main class="main">
       <div class="toolbar">
         <div class="search-box">

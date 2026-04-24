@@ -4,6 +4,19 @@ const API_URL = 'https://n8n-soporte.data.yurest.dev/webhook/9e0fc21e-f895-42ce-
 const SUMMARY_URL = 'https://n8n-soporte.data.yurest.dev/webhook/2c62e049-ff93-49de-8095-d64db239104f';
 const CHURN_LEVELS_URL = 'https://n8n-soporte.data.yurest.dev/webhook/6c6b655b-98c4-4c0a-afae-73ea4cd3964f';
 const CHURN_LOOKUP_URL = 'https://n8n-soporte.data.yurest.dev/webhook/buscar-resumen';
+const TICKETS_URL = 'https://n8n-soporte.data.yurest.dev/webhook/042f57e0-4391-4d80-a158-b6b8e9fa1084';
+
+// IDs de custom_fields de Zendesk que usamos como filtros en el modal.
+const TICKET_FIELD_IDS = {
+  tipo:    26672700540829,  // consulta_técnica / incidencia_dev / integracion_tpv / formacion …
+  entorno: 27376906089629,  // backoffice_cliente / admin …
+  modulo:  27243772817053,  // array: [tpv, cocina, compras, …]
+};
+
+const STATUS_LABELS = {
+  new: 'Nuevo', open: 'Abierto', pending: 'Pendiente',
+  hold: 'En espera', solved: 'Resuelto', closed: 'Cerrado'
+};
 
 let clients = [];
 let selectedTags = new Set();
@@ -133,6 +146,7 @@ async function initApp() {
     }
     clients = list;
     renderTagFilters();
+    renderTopChurn();
     applyFilters();
   } catch (err) {
     grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1"><p style="color:#dc2626">Error al cargar clientes: ${escapeHtml(err.message)}</p></div>`;
@@ -195,6 +209,60 @@ function applySummaryToClient(client, result) {
     const badge = card && card.querySelector('.churn-badge');
     if (badge) badge.outerHTML = renderChurnBadge(client.nivel);
   }
+  // El top churn puede haber cambiado de orden al actualizarse el nivel
+  renderTopChurn();
+}
+
+// ── Top churn panel ────────────────────────────────────────
+// Top 15 clientes con mayor nivel de churn (solo nivel numérico > 0).
+function renderTopChurn() {
+  const listEl = document.getElementById('topChurnList');
+  const emptyEl = document.getElementById('topChurnEmpty');
+  if (!listEl || !emptyEl) return;
+
+  const ranked = clients
+    .filter(c => typeof c.nivel === 'number' && !Number.isNaN(c.nivel) && c.nivel > 0)
+    .sort((a, b) => {
+      if (b.nivel !== a.nivel) return b.nivel - a.nivel;
+      // Desempate: el resumen más reciente primero
+      const ta = a.fechaResumen ? Date.parse(a.fechaResumen) || 0 : 0;
+      const tb = b.fechaResumen ? Date.parse(b.fechaResumen) || 0 : 0;
+      return tb - ta;
+    })
+    .slice(0, 15);
+
+  if (ranked.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.hidden = false;
+    return;
+  }
+  emptyEl.hidden = true;
+
+  listEl.innerHTML = ranked.map((c, i) => {
+    const fecha = formatFechaShort(c.fechaResumen);
+    return `
+      <li class="top-churn-item" onclick="openClientById('${escapeAttr(String(c.id))}')" title="${escapeAttr(c.name)}">
+        <span class="top-churn-rank">${i + 1}</span>
+        <div class="top-churn-main">
+          <span class="top-churn-name">${escapeHtml(c.name)}</span>
+          <span class="top-churn-date">${fecha ? escapeHtml(fecha) : 'Sin fecha'}</span>
+        </div>
+        ${renderChurnBadge(c.nivel)}
+      </li>
+    `;
+  }).join('');
+}
+
+function formatFechaShort(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function openClientById(id) {
+  const client = clients.find(c => String(c.id) === String(id));
+  if (client) showClientModal(client);
 }
 
 function formatFecha(iso) {
@@ -453,6 +521,162 @@ async function generateSummary(orgId) {
   }
 }
 
+// ── Tickets ────────────────────────────────────────────────
+
+async function fetchTickets(orgId) {
+  const res = await fetch(TICKETS_URL, {
+    method: 'POST',
+    credentials: 'omit',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id_org: orgId })
+  });
+  if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+  const text = await res.text();
+  if (!text.trim()) return [];
+  const data = JSON.parse(text);
+  return Array.isArray(data) ? data : (data.tickets || []);
+}
+
+// Lee el valor de un custom_field (busca en `custom_fields` y, si no, en `fields`).
+function readCustomField(ticket, fieldId) {
+  const arr = ticket.custom_fields || ticket.fields || [];
+  const found = arr.find(f => f && Number(f.id) === Number(fieldId));
+  return found ? found.value : null;
+}
+
+function ticketFacets(ticket) {
+  const modulo = readCustomField(ticket, TICKET_FIELD_IDS.modulo);
+  return {
+    estado: ticket.status || null,
+    tipo: readCustomField(ticket, TICKET_FIELD_IDS.tipo),
+    entorno: readCustomField(ticket, TICKET_FIELD_IDS.entorno),
+    modulos: Array.isArray(modulo) ? modulo.filter(Boolean) : (modulo ? [modulo] : []),
+  };
+}
+
+// State vivo del panel de tickets — se resetea cada vez que se abre un modal.
+let currentTickets = [];
+let currentTicketFilters = { estado: '', tipo: '', entorno: '', modulo: '' };
+
+function renderTicketsSection() {
+  const container = document.getElementById('ticketsSection');
+  if (!container) return;
+  const facets = currentTickets.map(ticketFacets);
+
+  // Opciones únicas por facet, conservando orden de aparición.
+  const uniq = (arr) => [...new Set(arr.filter(v => v != null && v !== ''))];
+  const estados  = uniq(facets.map(f => f.estado));
+  const tipos    = uniq(facets.map(f => f.tipo));
+  const entornos = uniq(facets.map(f => f.entorno));
+  const modulos  = uniq(facets.flatMap(f => f.modulos));
+
+  const optHtml = (list, selected, labelMap) => {
+    return ['<option value="">Todos</option>']
+      .concat(list.map(v => {
+        const label = labelMap ? (labelMap[v] || v) : v;
+        const sel = v === selected ? ' selected' : '';
+        return `<option value="${escapeAttr(String(v))}"${sel}>${escapeHtml(String(label))}</option>`;
+      }))
+      .join('');
+  };
+
+  container.innerHTML = `
+    <div class="tickets-header">
+      <div class="section-label">Tickets <span class="tickets-count" id="ticketsCount"></span></div>
+    </div>
+    <div class="tickets-filters">
+      <label>Estado
+        <select id="ticketFilterEstado">${optHtml(estados, currentTicketFilters.estado, STATUS_LABELS)}</select>
+      </label>
+      <label>Tipo
+        <select id="ticketFilterTipo">${optHtml(tipos, currentTicketFilters.tipo)}</select>
+      </label>
+      <label>Entorno
+        <select id="ticketFilterEntorno">${optHtml(entornos, currentTicketFilters.entorno)}</select>
+      </label>
+      <label>Módulo
+        <select id="ticketFilterModulo">${optHtml(modulos, currentTicketFilters.modulo)}</select>
+      </label>
+    </div>
+    <ul class="tickets-list" id="ticketsList"></ul>
+  `;
+
+  const bind = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => {
+      currentTicketFilters[key] = el.value;
+      renderTicketsList();
+    });
+  };
+  bind('ticketFilterEstado', 'estado');
+  bind('ticketFilterTipo', 'tipo');
+  bind('ticketFilterEntorno', 'entorno');
+  bind('ticketFilterModulo', 'modulo');
+
+  renderTicketsList();
+}
+
+function renderTicketsList() {
+  const listEl = document.getElementById('ticketsList');
+  const countEl = document.getElementById('ticketsCount');
+  if (!listEl) return;
+  const f = currentTicketFilters;
+  const filtered = currentTickets.filter(t => {
+    const fc = ticketFacets(t);
+    if (f.estado  && fc.estado  !== f.estado)  return false;
+    if (f.tipo    && fc.tipo    !== f.tipo)    return false;
+    if (f.entorno && fc.entorno !== f.entorno) return false;
+    if (f.modulo  && !fc.modulos.includes(f.modulo)) return false;
+    return true;
+  });
+
+  if (countEl) countEl.textContent = `(${filtered.length}${filtered.length !== currentTickets.length ? ` de ${currentTickets.length}` : ''})`;
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<li class="tickets-empty">Sin tickets con estos filtros</li>`;
+    return;
+  }
+
+  // Orden: más recientes primero (por updated_at o created_at).
+  const sorted = [...filtered].sort((a, b) => {
+    const ta = Date.parse(a.updated_at || a.created_at || 0) || 0;
+    const tb = Date.parse(b.updated_at || b.created_at || 0) || 0;
+    return tb - ta;
+  });
+
+  listEl.innerHTML = sorted.map(t => {
+    const fc = ticketFacets(t);
+    const estadoLabel = STATUS_LABELS[fc.estado] || fc.estado || '—';
+    const fecha = formatFechaShort(t.updated_at || t.created_at);
+    const subject = t.subject || t.raw_subject || `Ticket #${t.id}`;
+    const zdUrl = ticketZendeskUrl(t);
+    const chips = [
+      fc.tipo && `<span class="ticket-chip chip-tipo">${escapeHtml(fc.tipo)}</span>`,
+      fc.entorno && `<span class="ticket-chip chip-entorno">${escapeHtml(fc.entorno)}</span>`,
+      ...fc.modulos.map(m => `<span class="ticket-chip chip-modulo">${escapeHtml(m)}</span>`),
+    ].filter(Boolean).join('');
+    return `
+      <li class="ticket-item">
+        <div class="ticket-row-top">
+          <span class="ticket-status ticket-status-${escapeAttr(fc.estado || 'na')}">${escapeHtml(estadoLabel)}</span>
+          <a class="ticket-subject" href="${escapeAttr(zdUrl)}" target="_blank" rel="noopener noreferrer" title="Abrir en Zendesk">#${escapeHtml(String(t.id))} · ${escapeHtml(subject)}</a>
+        </div>
+        ${chips ? `<div class="ticket-chips">${chips}</div>` : ''}
+        ${fecha ? `<div class="ticket-date">${escapeHtml(fecha)}</div>` : ''}
+      </li>
+    `;
+  }).join('');
+}
+
+function ticketZendeskUrl(t) {
+  if (t.url) {
+    const m = t.url.match(/^(https?:\/\/[^/]+)\/api\/v2\/tickets\/(\d+)\.json$/);
+    if (m) return `${m[1]}/agent/tickets/${m[2]}`;
+  }
+  return '#';
+}
+
 // ── Handlers ───────────────────────────────────────────────
 
 function handleClientClick(index) {
@@ -535,6 +759,10 @@ function showClientModal(client) {
     <div class="modal-columns">
       <div class="modal-col-left">
         ${renderChurnSummaryBlock(client)}
+        <section class="tickets-section" id="ticketsSection">
+          <div class="section-label">Tickets</div>
+          <div class="tickets-loading"><div class="spinner-summary"></div> Cargando tickets…</div>
+        </section>
         <div class="section-label">Información de la organización</div>
         <div class="info-table">
           ${infoRows}
@@ -564,6 +792,16 @@ function showClientModal(client) {
   `;
 
   overlay.classList.add('active');
+
+  // Reset de filtros y carga de tickets en paralelo al lookup del resumen.
+  currentTickets = [];
+  currentTicketFilters = { estado: '', tipo: '', entorno: '', modulo: '' };
+  fetchTickets(client.id)
+    .then(list => { currentTickets = list; renderTicketsSection(); })
+    .catch(err => {
+      const el = document.getElementById('ticketsSection');
+      if (el) el.innerHTML = `<div class="section-label">Tickets</div><div class="tickets-error">Error: ${escapeHtml(err.message)}</div>`;
+    });
 
   // Estrategia en dos pasos:
   //  1. Lookup a Supabase (/buscar-resumen). Si hay fila con respuesta_ia
