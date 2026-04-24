@@ -3,7 +3,6 @@
 const API_URL = 'https://n8n-soporte.data.yurest.dev/webhook/9e0fc21e-f895-42ce-ac92-b710aaa45b25';
 const SUMMARY_URL = 'https://n8n-soporte.data.yurest.dev/webhook/2c62e049-ff93-49de-8095-d64db239104f';
 
-let authToken = null;
 let clients = [];
 let selectedTags = new Set();
 
@@ -56,15 +55,11 @@ const FIELD_LABELS = {
   organization_fields: 'Campos personalizados'
 };
 
-// ── Auth / Login ───────────────────────────────────────────
+// ── Fetch clientes ─────────────────────────────────────────
 
 async function fetchClients() {
-  const res = await fetch(API_URL, {
-    method: 'GET',
-    headers: { 'Authorization': 'Basic ' + authToken }
-  });
+  const res = await fetch(API_URL, { method: 'GET' });
 
-  if (res.status === 401 || res.status === 403) throw new Error('Credenciales incorrectas');
   if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
 
   const data = await res.json();
@@ -87,53 +82,17 @@ async function fetchClients() {
   });
 }
 
-function showApp() {
-  document.getElementById('loginOverlay').classList.add('hidden');
-  document.getElementById('appContainer').classList.remove('hidden');
-  renderTagFilters();
-  applyFilters();
-}
-
-function showLogin() {
-  authToken = null;
-  clients = [];
-  selectedTags.clear();
-  document.getElementById('appContainer').classList.add('hidden');
-  document.getElementById('loginOverlay').classList.remove('hidden');
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
-  document.getElementById('loginError').textContent = '';
-}
-
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const user = document.getElementById('loginUser').value.trim();
-  const pass = document.getElementById('loginPass').value;
-  const errorEl = document.getElementById('loginError');
-  const btn = document.getElementById('btnLogin');
-
-  if (!user || !pass) { errorEl.textContent = 'Introduce usuario y contraseña'; return; }
-
-  errorEl.textContent = '';
-  btn.classList.add('loading');
-  btn.disabled = true;
-  authToken = btoa(user + ':' + pass);
-
+async function initApp() {
+  const grid = document.getElementById('clientsGrid');
+  grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1"><div class="spinner" style="margin-bottom:12px"></div><p>Cargando clientes…</p></div>`;
   try {
     clients = await fetchClients();
-    showApp();
+    renderTagFilters();
+    applyFilters();
   } catch (err) {
-    authToken = null;
-    errorEl.textContent = err.message === 'Credenciales incorrectas'
-      ? 'Usuario o contraseña incorrectos'
-      : 'Error al conectar con el servidor: ' + err.message;
-  } finally {
-    btn.classList.remove('loading');
-    btn.disabled = false;
+    grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1"><p style="color:#dc2626">Error al cargar clientes: ${escapeHtml(err.message)}</p></div>`;
   }
-});
-
-document.getElementById('btnLogout').addEventListener('click', showLogin);
+}
 
 // ── Tag Filters ────────────────────────────────────────────
 
@@ -276,14 +235,10 @@ function formatValue(key, val) {
 async function fetchSummary(orgId) {
   const res = await fetch(SUMMARY_URL, {
     method: 'POST',
-    headers: {
-      'Authorization': 'Basic ' + authToken,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id_org: orgId })
   });
 
-  if (res.status === 401 || res.status === 403) throw new Error('Sesión expirada');
   if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
 
   const text = await res.text();
@@ -480,3 +435,5 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.getElementById('searchInput').addEventListener('input', () => applyFilters());
+
+initApp();

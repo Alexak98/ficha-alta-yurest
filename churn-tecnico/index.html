@@ -10,46 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Login Screen -->
-  <div class="login-overlay" id="loginOverlay">
-    <div class="login-card">
-      <div class="login-logo">
-        <div class="login-logo-icon">Y</div>
-        <h1>Soporte Yurest</h1>
-        <p>Introduce tus credenciales para continuar</p>
-      </div>
-      <form id="loginForm" autocomplete="off">
-        <div class="form-group">
-          <label for="loginUser">Usuario</label>
-          <input type="text" id="loginUser" placeholder="usuario" required autofocus />
-        </div>
-        <div class="form-group">
-          <label for="loginPass">Contraseña</label>
-          <input type="password" id="loginPass" placeholder="contraseña" required />
-        </div>
-        <div class="login-error" id="loginError"></div>
-        <button type="submit" class="btn-login" id="btnLogin">
-          <span class="btn-text">Entrar</span>
-          <div class="spinner"></div>
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <div class="app hidden" id="appContainer">
-    <header class="header">
-      <div class="header-content">
-        <div class="logo">
-          <div class="logo-icon">Y</div>
-          <h1>Soporte Yurest</h1>
-        </div>
-        <div class="header-right">
-          <p class="subtitle">Panel de clientes</p>
-          <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
-        </div>
-      </div>
-    </header>
-
+  <div class="app" id="appContainer">
     <main class="main">
       <div class="toolbar">
         <div class="search-box">
