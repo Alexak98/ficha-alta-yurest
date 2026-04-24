@@ -1907,6 +1907,16 @@ function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
 }
 window.hwAbrirModalNuevo = hwAbrirModalNuevo;
 
+// Devuelve el nombre del acreedor como string. Acepta tanto el formato
+// legacy (string plano) como el formato nuevo — objeto { nombre,
+// identificador, direccion, ... } tal y como lo guarda solicitud.html.
+function _hwAcreedorNombre(a) {
+    if (!a) return '';
+    if (typeof a === 'string') return a;
+    if (typeof a === 'object') return a.nombre || a.razon_social || '';
+    return String(a);
+}
+
 // Rellena el select de sociedades con los SEPAs firmados del cliente.
 // Casos:
 //   - Cliente con varios SEPAs: obligatorio elegir uno (sin preselección).
@@ -1935,7 +1945,7 @@ async function _hwCargarSociedades(cliente) {
     }
 
     const opcionesHtml = mandatos.map(s => {
-        const label = [s.acreedor || '(sin acreedor)', s.referencia, s.iban].filter(Boolean).join(' · ');
+        const label = [_hwAcreedorNombre(s.acreedor) || '(sin acreedor)', s.referencia, s.iban].filter(Boolean).join(' · ');
         return `<option value="${escapeAttr(s.id || '')}">${escapeHtml(label)}</option>`;
     }).join('');
 
@@ -2065,7 +2075,7 @@ async function hwCrearPedido() {
         sepa_snapshot = {
             id:         mandato.id,
             referencia: mandato.referencia || '',
-            acreedor:   mandato.acreedor   || '',
+            acreedor:   _hwAcreedorNombre(mandato.acreedor) || '',
             iban:       mandato.iban       || '',
             localidad:  mandato.localidad  || '',
             firmado_at: mandato.firmado_at || null
@@ -2474,9 +2484,23 @@ function _parseAsanaInput(raw) {
     try {
         const u = new URL(v);
         if (!/asana\.com$/i.test(u.hostname)) return { id: '', url: v, error: 'La URL debe ser de app.asana.com' };
-        const m = u.pathname.match(/\/(\d{6,})/);
-        if (!m) return { id: '', url: v, error: 'No se pudo extraer el ID del proyecto desde la URL' };
-        return { id: m[1], url: v };
+        // Soporta dos formatos:
+        //   Legacy: /0/{project_id}/list  → primer número
+        //   Nuevo:  /1/{workspace}/project/{project_id}/list/{section}
+        //           → el número que va justo después de /project/
+        const path = u.pathname;
+        let m = path.match(/\/project\/(\d{6,})/);
+        if (m) return { id: m[1], url: v };
+        m = path.match(/^\/0\/(\d{6,})/);
+        if (m) return { id: m[1], url: v };
+        // Fallback: primer número largo (compat retro). Avisamos en consola
+        // por si el caller necesita afinar.
+        m = path.match(/\/(\d{6,})/);
+        if (m) {
+            console.warn('[asana] URL de formato no reconocido, usando primer número como projectId:', v);
+            return { id: m[1], url: v };
+        }
+        return { id: '', url: v, error: 'No se pudo extraer el ID del proyecto desde la URL' };
     } catch (_) {
         return { id: '', url: v, error: 'URL no válida' };
     }
@@ -2534,10 +2558,32 @@ async function renderDetalleDesarrollos(proyecto) {
         </div>`;
 
     if (asanaId) {
-        const tasks = await obtenerTareasAsana(asanaId);
+        const { tasks, error, errorKind } = await obtenerTareasAsana(asanaId);
         const listEl = document.getElementById('asana-tasks-list');
         if (!listEl) return;
-        if (tasks.length > 0) {
+        if (errorKind === 'forbidden') {
+            listEl.innerHTML = `<div style="padding:18px 20px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;font-size:.85rem;line-height:1.5">
+                <strong style="display:block;margin-bottom:6px;color:#78350f">El proyecto Asana no es público</strong>
+                Las credenciales del proxy no tienen acceso a este proyecto.
+                Para que aparezcan aquí las tareas, en Asana:
+                <ol style="margin:8px 0 0 18px;padding:0">
+                    <li>Abre el proyecto → <em>Share</em> / <em>Compartir</em>.</li>
+                    <li>Cambia <em>Project privacy</em> a <strong>Public to organization</strong> o invita al usuario del integrador.</li>
+                </ol>
+            </div>`;
+        } else if (errorKind === 'not_found') {
+            listEl.innerHTML = `<div style="padding:18px 20px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:.85rem;line-height:1.5">
+                <strong style="display:block;margin-bottom:6px;color:#7c2d12">Proyecto Asana no encontrado</strong>
+                El ID <code style="background:#ffedd5;padding:1px 6px;border-radius:4px">${escapeHtml(asanaId)}</code> no existe en Asana o pertenece a otra organización.
+                Comprueba que la URL es la del <strong>proyecto</strong> (no la de una tarea o sección):
+                <code style="display:block;margin-top:6px;background:#fff;border:1px solid #fed7aa;padding:6px 8px;border-radius:6px;font-size:.78rem;color:#7c2d12">https://app.asana.com/0/<strong>ID_DEL_PROYECTO</strong>/list</code>
+            </div>`;
+        } else if (error) {
+            listEl.innerHTML = `<div style="text-align:center;padding:24px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:.85rem">
+                <strong>No se pudieron cargar las tareas de Asana</strong><br>
+                <span style="color:#7f1d1d;font-size:.8rem">${escapeHtml(error)}</span>
+            </div>`;
+        } else if (tasks.length > 0) {
             listEl.innerHTML = tasks.map(t => `
                 <div class="asana-task-row ${t.completed ? 'completed' : ''}">
                     <div class="task-check ${t.completed ? 'checked' : ''}"></div>
@@ -2546,7 +2592,7 @@ async function renderDetalleDesarrollos(proyecto) {
                 </div>
             `).join('');
         } else {
-            listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">No se encontraron tareas o no se pudo conectar con Asana</div>';
+            listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">El proyecto Asana no tiene tareas todavía</div>';
         }
     }
 }

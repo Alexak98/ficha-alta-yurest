@@ -354,7 +354,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             const sepa = p.sepa_snapshot || null;
             const sociedadHtml = sepa ? `
                 <div style="font-size:.78rem;color:#334155;background:#f1f5f9;border-left:3px solid #6366f1;padding:6px 10px;border-radius:4px;margin-top:6px">
-                    <strong>Facturar a:</strong> ${esc(sepa.acreedor || '(sin acreedor)')}${sepa.referencia ? ' · Ref. ' + esc(sepa.referencia) : ''}${sepa.iban ? ' · ' + esc(sepa.iban) : ''}
+                    <strong>Facturar a:</strong> ${esc((sepa.acreedor && typeof sepa.acreedor === 'object' ? (sepa.acreedor.nombre || sepa.acreedor.razon_social) : sepa.acreedor) || '(sin acreedor)')}${sepa.referencia ? ' · Ref. ' + esc(sepa.referencia) : ''}${sepa.iban ? ' · ' + esc(sepa.iban) : ''}
                 </div>` : '';
             return `
                 <div class="hw-pedido">

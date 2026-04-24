@@ -531,7 +531,15 @@ async function crearProyectoAPI(proyecto) {
 }
 
 async function actualizarProyectoAPI(proyecto) {
-    const result = await apiRequest(WEBHOOK_PROYECTOS, 'PUT', { proyecto });
+    // El backend guarda los campos Asana en snake_case; la UI los usa en
+    // camelCase. Duplicamos antes del PUT para que el workflow vea ambos
+    // nombres y persista el valor en la columna asana_project_id/url.
+    const payload = {
+        ...proyecto,
+        asana_project_id:  proyecto.asanaProjectId  || '',
+        asana_project_url: proyecto.asanaProjectUrl || ''
+    };
+    const result = await apiRequest(WEBHOOK_PROYECTOS, 'PUT', { proyecto: payload });
     return result;
 }
 
@@ -581,13 +589,34 @@ async function resetearDatosAPI() {
 // ==========================================
 
 async function obtenerTareasAsana(asanaProjectId) {
-    if (!asanaProjectId) return [];
+    if (!asanaProjectId) return { tasks: [], error: null, errorKind: null, raw: null };
     try {
-        const data = await apiRequest(`${WEBHOOK_ASANA_PROXY}?projectId=${encodeURIComponent(asanaProjectId)}`, 'GET');
-        return Array.isArray(data) ? data : Array.isArray(data.tasks) ? data.tasks : [];
+        const url = `${WEBHOOK_ASANA_PROXY}?projectId=${encodeURIComponent(asanaProjectId)}`;
+        const data = await apiRequest(url, 'GET');
+        console.info('[asana] respuesta del proxy', { url, data });
+        let tasks = [];
+        if (Array.isArray(data)) tasks = data;
+        else if (data && Array.isArray(data.tasks)) tasks = data.tasks;
+        else if (data && Array.isArray(data.data)) tasks = data.data;
+        else if (data && Array.isArray(data.results)) tasks = data.results;
+        return { tasks, error: null, errorKind: null, raw: data };
     } catch (err) {
-        console.warn('Error obteniendo tareas Asana:', err.message);
-        return [];
+        const msg = err && err.message ? err.message : '';
+        console.warn('Error obteniendo tareas Asana:', msg);
+        // Asana devuelve 403 "Forbidden - perhaps check your credentials"
+        // cuando el proyecto no es público o la cuenta del PAT no tiene acceso.
+        // Lo distinguimos para que la UI pueda mostrar instrucciones útiles.
+        const isForbidden = /\b403\b|forbidden|do not have access/i.test(msg);
+        const isNotFound  = /\b404\b|not.+found|not a recognized id|recognized id/i.test(msg);
+        let kind = 'other';
+        if (isForbidden) kind = 'forbidden';
+        else if (isNotFound) kind = 'not_found';
+        return {
+            tasks: [],
+            error: msg || 'Error al consultar Asana',
+            errorKind: kind,
+            raw: null
+        };
     }
 }
 
