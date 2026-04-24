@@ -813,7 +813,13 @@ function showClientModal(client) {
   const renderResult = (result) => {
     const el = document.getElementById('summaryContent');
     const btn = document.getElementById('btnCopySummary');
-    if (el) el.innerHTML = marked.parse(result.summary);
+    if (el) {
+      // El summary viene del webhook IA (n8n). Aunque el contenido se
+      // genera por GPT, no lo tratamos como confiable: lo pasamos por
+      // DOMPurify para neutralizar cualquier <img onerror>, <script>, etc.
+      const rawHtml = marked.parse(result.summary);
+      el.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml);
+    }
     if (btn) {
       btn.setAttribute('data-summary', result.summary);
       btn.classList.remove('hidden');

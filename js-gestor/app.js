@@ -2,6 +2,39 @@
 // APP - Gestor de Proyectos
 // ==========================================
 
+// Wrapper para persistir cambios contra el backend mostrando un toast si
+// falla — antes silenciábamos el error con `.catch(() => {})` y el usuario
+// no se enteraba de que sus cambios sólo vivían en localStorage.
+async function _sincronizar(promesa, accion) {
+    try {
+        return await promesa;
+    } catch (err) {
+        const msg = (err && err.message) ? err.message : 'error desconocido';
+        const detalle = accion ? ` (${accion})` : '';
+        mostrarToast(`No se pudo guardar en el servidor${detalle}: ${msg}`, 'error');
+        return null;
+    }
+}
+
+// Bloquea un botón mientras ejecuta una función async, evitando dobles
+// envíos por click repetido. Usado en los modales de Guardar.
+async function _lockYRun(btn, fn) {
+    if (!btn || btn.disabled) return;
+    const labelOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.dataset.busy = '1';
+    try {
+        await fn();
+    } finally {
+        btn.disabled = false;
+        delete btn.dataset.busy;
+        if (btn.innerHTML !== labelOriginal && btn.dataset.preserveLabel !== '1') {
+            btn.innerHTML = labelOriginal;
+        }
+    }
+}
+window._lockYRun = _lockYRun;
+
 let proyectos = [];
 let vistaActual = 'dashboard';
 let dashboardFiltroActivo = null; // null, 'pausados', 'avanzando', 'terminados', 'inicio'
@@ -1572,7 +1605,7 @@ async function guardarDatosPausa() {
     proyecto.motivoPausa = document.getElementById('motivo-pausa').value;
     proyecto.planAccion = document.getElementById('plan-accion').value;
     guardarProyectosLocal(proyectos);
-    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+    await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
     mostrarToast('Datos de pausa guardados', 'success');
 }
 
@@ -2456,7 +2489,7 @@ async function guardarContactoDetalle() {
     proyecto.participantes = proyecto.contactos.map(c => c.email);
 
     guardarProyectosLocal(proyectos);
-    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+    await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
     renderDetalleContactos(proyecto);
     mostrarToast('Contacto guardado', 'success');
 }
@@ -2468,7 +2501,7 @@ async function eliminarContactoDetalle(idx) {
         proyecto.contactos.splice(idx, 1);
         proyecto.participantes = proyecto.contactos.map(c => c.email);
         guardarProyectosLocal(proyectos);
-        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+        await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
         renderDetalleContactos(proyecto);
         mostrarToast('Contacto eliminado', 'success');
     });
@@ -2722,7 +2755,12 @@ window.editarUrlAsana = editarUrlAsana;
 async function guardarUrlAsana() {
     const proyecto = proyectos.find(p => p.id === detalleProyectoId);
     if (!proyecto) return;
-    const input = document.getElementById('modal-asana-url-input').value;
+    const inputEl = document.getElementById('modal-asana-url-input');
+    if (!inputEl) {
+        mostrarToast('No se pudo leer la URL — recarga la página', 'error');
+        return;
+    }
+    const input = inputEl.value;
     const parsed = _parseAsanaInput(input);
     if (input.trim() && !parsed.id) {
         mostrarToast(parsed.error || 'No se pudo identificar el proyecto Asana', 'warning');
@@ -2731,7 +2769,7 @@ async function guardarUrlAsana() {
     proyecto.asanaProjectId = parsed.id;
     proyecto.asanaProjectUrl = parsed.id ? parsed.url : '';
     guardarProyectosLocal(proyectos);
-    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+    await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
     cerrarModal('modal-asana-url');
     renderDetalleDesarrollos(proyecto);
     mostrarToast(parsed.id ? 'URL actualizada' : 'Vinculación eliminada', 'success');
@@ -2739,7 +2777,9 @@ async function guardarUrlAsana() {
 window.guardarUrlAsana = guardarUrlAsana;
 
 async function vincularAsana() {
-    const input = document.getElementById('asana-project-url').value;
+    const inputEl = document.getElementById('asana-project-url');
+    if (!inputEl) return;  // estado vinculado: no hay input, vincular no aplica
+    const input = inputEl.value;
     const parsed = _parseAsanaInput(input);
     const proyecto = proyectos.find(p => p.id === detalleProyectoId);
     if (!proyecto) return;
@@ -2752,7 +2792,7 @@ async function vincularAsana() {
     proyecto.asanaProjectId = parsed.id;
     proyecto.asanaProjectUrl = parsed.id ? parsed.url : '';
     guardarProyectosLocal(proyectos);
-    try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+    await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
 
     renderDetalleDesarrollos(proyecto);
     mostrarToast(parsed.id ? 'Proyecto Asana vinculado' : 'Vinculación eliminada', 'success');
@@ -2765,7 +2805,7 @@ async function desvincularAsana() {
         proyecto.asanaProjectId = '';
         proyecto.asanaProjectUrl = '';
         guardarProyectosLocal(proyectos);
-        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+        await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
         renderDetalleDesarrollos(proyecto);
         mostrarToast('Vinculación eliminada', 'success');
     });
@@ -3034,7 +3074,7 @@ function agregarAdjuntos(event) {
             procesados++;
             if (procesados === total) {
                 guardarProyectosLocal(proyectos);
-                try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+                await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
                 renderDetalleAnotaciones(proyecto);
                 mostrarToast(`${proyecto.adjuntos.length} adjunto(s) en total`, 'success');
             }
@@ -3052,7 +3092,7 @@ function eliminarAdjunto(index) {
     mostrarConfirmacion('¿Eliminar este adjunto?', async () => {
         proyecto.adjuntos.splice(index, 1);
         guardarProyectosLocal(proyectos);
-        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+        await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
         renderDetalleAnotaciones(proyecto);
         mostrarToast('Adjunto eliminado', 'success');
     });
@@ -3255,7 +3295,7 @@ function eliminarTarea(proyectoId, seccionNombre, tareaId) {
         if (!seccion) return;
         seccion.tareas = seccion.tareas.filter(t => t.id !== tareaId);
         guardarProyectosLocal(proyectos);
-        try { await actualizarProyectoAPI(proyecto).catch(() => {}); } catch (_) {}
+        await _sincronizar(actualizarProyectoAPI(proyecto), 'actualizar proyecto');
         abrirDetalle(proyectoId);
         refrescarTodo();
         mostrarToast('Tarea eliminada', 'success');
@@ -3274,7 +3314,7 @@ function eliminarSubtarea(proyectoId, seccionNombre, tareaId, subtareaId) {
         // Recalcular estado padre
         tarea.completada = tarea.subtareas.length > 0 && tarea.subtareas.every(s => s.completada);
         guardarProyectosLocal(proyectos);
-        try { await actualizarTareaAPI(proyectoId, seccionNombre, tarea).catch(() => {}); } catch (_) {}
+        await _sincronizar(actualizarTareaAPI(proyectoId, seccionNombre, tarea), 'actualizar tarea');
         abrirDetalle(proyectoId);
         refrescarTodo();
         mostrarToast('Subtarea eliminada', 'success');
@@ -3423,7 +3463,7 @@ async function guardarTarea() {
             const tareaPrevia = sourceSec ? sourceSec.tareas.find(t => t.id === tareaId) : null;
             const showAnterior = tareaPrevia ? (tareaPrevia.show || null) : null;
             moverTareaEntreSecciones(proyecto, tareaId, seccionNombre, seccionDestino);
-            await moverTareaAPI(proyectoId, tareaId, seccionNombre, seccionDestino).catch(() => {});
+            await _sincronizar(moverTareaAPI(proyectoId, tareaId, seccionNombre, seccionDestino), 'mover tarea');
             const destSec = proyecto.secciones.find(s => s.nombre === seccionDestino);
             const tareaMovida = destSec ? destSec.tareas.find(t => t.id === tareaId) : null;
             let replicaCreada = false;
@@ -3433,7 +3473,7 @@ async function guardarTarea() {
                 tareaMovida.tiempoEstimado = tiempoEstimado;
                 tareaMovida.show = showValor;
                 tareaMovida.notas = notas;
-                await actualizarTareaAPI(proyectoId, seccionDestino, tareaMovida).catch(() => {});
+                await _sincronizar(actualizarTareaAPI(proyectoId, seccionDestino, tareaMovida), 'actualizar tarea');
                 logShowTransicion(proyectoId, proyecto, seccionDestino, tareaMovida, showAnterior, showValor);
                 if (showAnterior !== 'No Show' && showValor === 'No Show' && destSec) {
                     const idx = destSec.tareas.findIndex(t => t.id === tareaId);
@@ -3676,7 +3716,7 @@ async function onDrop(e) {
     if (!moved) return;
 
     try {
-        await moverTareaAPI(proyectoId, tareaId, seccionOrigen, seccionDestino).catch(() => {});
+        await _sincronizar(moverTareaAPI(proyectoId, tareaId, seccionOrigen, seccionDestino), 'mover tarea');
         guardarProyectosLocal(proyectos);
         mostrarToast('Tarea movida a ' + seccionDestino, 'success');
     } catch (err) {

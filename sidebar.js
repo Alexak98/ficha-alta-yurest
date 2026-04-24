@@ -186,6 +186,8 @@
 
     // Recorre los grupos y suma los badges hijos para mostrarlos en el padre
     // cuando el grupo está cerrado. Se llama tras cada actualizarBadgeX.
+    // También notifica a la campana de notificaciones para que repinte el
+    // contador sin esperar a la próxima carga.
     function actualizarBadgesGrupos() {
         document.querySelectorAll('.sidebar-group-badge').forEach(badge => {
             const ids = (badge.dataset.children || '').split(',').filter(Boolean);
@@ -196,6 +198,9 @@
             });
             badge.textContent = total > 0 ? total : '';
         });
+        if (window.YurestNotifications && typeof window.YurestNotifications.refresh === 'function') {
+            window.YurestNotifications.refresh();
+        }
     }
     // Exponer para llamar desde fuera tras actualizar badges hijos.
     if (typeof window !== 'undefined') window._actualizarSidebarBadgesGrupos = actualizarBadgesGrupos;

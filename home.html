@@ -667,8 +667,14 @@
     }
 
     // Expose para que si config.js llama a _actualizarSidebarBadgesGrupos
-    // también refresquemos los nuestros.
-    window._actualizarSidebarBadgesGrupos = sincronizarBadgesHome;
+    // también refresquemos los nuestros y la sección "Cosas por hacer".
+    window._actualizarSidebarBadgesGrupos = function () {
+        sincronizarBadgesHome();
+        const todoEl = document.getElementById('todo-section');
+        if (todoEl && window.YurestNotifications && window.YurestNotifications.renderInto) {
+            window.YurestNotifications.renderInto(todoEl);
+        }
+    };
 
     // ─────────────────────────────────────────────────────────────────────
     //  Bootstrap

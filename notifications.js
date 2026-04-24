@@ -397,6 +397,11 @@
         // Precargar para mostrar el contador en la campana sin abrir el dropdown.
         load();
 
+        // Si alguien dispara YurestNotifications.refresh() (ej. tras grabar
+        // un A3 o crear una proforma), recargamos contador + dropdown sin
+        // necesidad de F5.
+        _onRefresh(() => { load(); });
+
         bell.addEventListener('click', (e) => {
             e.stopPropagation();
             const isOpen = pop.classList.toggle('open');
@@ -438,7 +443,17 @@
         listEl.innerHTML = items.map(itemHtml).join('');
     }
 
-    global.YurestNotifications = { fetchAll, mountHeaderBell, renderInto };
+    // Refresco bajo demanda: cualquier consumidor que sepa que ha cambiado
+    // el estado relevante (ej. tras un grabado A3, crear proforma, mover
+    // proyecto…) puede llamar YurestNotifications.refresh() para que la
+    // campana actualice su contador y el dropdown se repinte si está abierto.
+    let _refreshHandlers = [];
+    function refresh() {
+        _refreshHandlers.forEach(fn => { try { fn(); } catch (_) {} });
+    }
+    function _onRefresh(fn) { if (typeof fn === 'function') _refreshHandlers.push(fn); }
+
+    global.YurestNotifications = { fetchAll, mountHeaderBell, renderInto, refresh, _onRefresh };
 
     // Auto-montaje cuando el DOM esté listo (sidebar.js lo referencia también).
     function autoMount() {
