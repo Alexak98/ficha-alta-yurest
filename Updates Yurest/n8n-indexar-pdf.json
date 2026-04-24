@@ -1,0 +1,123 @@
+{
+  "name": "Indexar PDF Yurest (ejecutar 1 vez)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Ue4tcKJzkG3BphcUr31myIv4HISIIezl"
+        },
+        "options": {}
+      },
+      "id": "gdrive-1",
+      "name": "Google Drive - Download PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {},
+        "binaryPropertyName": "data"
+      },
+      "id": "extract-1",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "chunkSize": 1000,
+        "chunkOverlap": 200
+      },
+      "id": "splitter-1",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [1120, 480]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-ada-002",
+        "options": {}
+      },
+      "id": "embeddings-1",
+      "name": "OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [920, 480],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableName": "documents",
+        "options": {}
+      },
+      "id": "supabase-vs-1",
+      "name": "Supabase Vector Store - Insert",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [{ "node": "Google Drive - Download PDF", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Drive - Download PDF": {
+      "main": [
+        [{ "node": "Extract PDF Text", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [{ "node": "Supabase Vector Store - Insert", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [
+        [{ "node": "Supabase Vector Store - Insert", "type": "ai_embedding", "index": 0 }]
+      ]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [
+        [{ "node": "Supabase Vector Store - Insert", "type": "ai_textSplitter", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

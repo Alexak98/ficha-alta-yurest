@@ -1,0 +1,139 @@
+{
+  "name": "Consultas PDF Yurest",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0f2004e2-610e-4232-8805-5481ab872335",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "0f2004e2-610e-4232-8805-5481ab872335"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Ue4tcKJzkG3BphcUr31myIv4HISIIezl"
+        },
+        "options": {}
+      },
+      "id": "gdrive-1",
+      "name": "Google Drive - Download PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {},
+        "binaryPropertyName": "data"
+      },
+      "id": "extract-1",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=Eres un asistente de soporte de Yurest. Responde ÚNICAMENTE con información contenida en el siguiente documento. Si la respuesta no se encuentra en el documento, responde: \"Lo siento, no tengo esa información en mi base de datos.\"\n\nNo inventes ni supongas información que no esté explícitamente en el documento.\n\n--- DOCUMENTO ---\n{{ $json.data }}\n--- FIN DOCUMENTO ---"
+            },
+            {
+              "role": "user",
+              "content": "={{ $('Webhook').item.json.body.query }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "openai-1",
+      "name": "ChatGPT",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [880, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ output: $json.message.content }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Google Drive - Download PDF", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Drive - Download PDF": {
+      "main": [
+        [{ "node": "Extract PDF Text", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [{ "node": "ChatGPT", "type": "main", "index": 0 }]
+      ]
+    },
+    "ChatGPT": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

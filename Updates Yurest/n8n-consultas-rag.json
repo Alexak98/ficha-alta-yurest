@@ -1,0 +1,171 @@
+{
+  "name": "Consultas RAG Yurest",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0f2004e2-610e-4232-8805-5481ab872335",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "0f2004e2-610e-4232-8805-5481ab872335"
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-ada-002",
+        "options": {}
+      },
+      "id": "embeddings-query",
+      "name": "OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [680, 480],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableName": "documents",
+        "topK": 5,
+        "options": {}
+      },
+      "id": "supabase-search",
+      "name": "Supabase Vector Store - Search",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "context",
+              "name": "context",
+              "value": "={{ $json.documents.map(d => d.pageContent).join('\\n\\n') }}",
+              "type": "string"
+            },
+            {
+              "id": "query",
+              "name": "query",
+              "value": "={{ $('Webhook').item.json.body.query }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-context",
+      "name": "Prepare Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=Eres un asistente de soporte de Yurest. Responde ÚNICAMENTE con información contenida en el siguiente contexto. Si la respuesta no se encuentra en el contexto, responde: \"Lo siento, no tengo esa información en mi base de datos.\"\n\nNo inventes ni supongas información que no esté explícitamente en el contexto.\n\n--- CONTEXTO ---\n{{ $json.context }}\n--- FIN CONTEXTO ---"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.query }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "openai-1",
+      "name": "ChatGPT",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [900, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ output: $json.message.content }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Supabase Vector Store - Search", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [
+        [{ "node": "Supabase Vector Store - Search", "type": "ai_embedding", "index": 0 }]
+      ]
+    },
+    "Supabase Vector Store - Search": {
+      "main": [
+        [{ "node": "Prepare Context", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [{ "node": "ChatGPT", "type": "main", "index": 0 }]
+      ]
+    },
+    "ChatGPT": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

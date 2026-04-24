@@ -38,7 +38,9 @@
         // Producto → bombilla (ideas/desarrollo)
         producto:      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>',
         // Presupuestos → documento con € (presupuesto financiero)
-        presupuestos:  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18V11"/><path d="M9 14c0-1 .6-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2"/></svg>'
+        presupuestos:  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18V11"/><path d="M9 14c0-1 .6-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2"/></svg>',
+        // Updates → chispa/estrella (novedades / release notes)
+        updates:       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>'
     };
 
     // Estructura del menú. Cada item tiene:
@@ -98,7 +100,8 @@
             label: 'Producto',
             icon: 'producto',
             items: [
-                { id: 'presupuestos', href: 'presupuestos.html', label: 'Presupuestos', icon: 'presupuestos', badgeId: 'badge-presupuestos' }
+                { id: 'presupuestos', href: 'presupuestos.html', label: 'Presupuestos', icon: 'presupuestos', badgeId: 'badge-presupuestos' },
+                { id: 'updates',      href: 'updates.html',      label: 'Updates',      icon: 'updates',      public: true }
             ]
         },
         {
@@ -134,8 +137,10 @@
     function groupsVisibles() {
         const YC = window.YurestConfig;
         if (!YC || typeof YC.tienePermiso !== 'function') return GROUPS;
+        // Items marcados como `public: true` se muestran a cualquier usuario
+        // autenticado sin necesidad de un permiso en la tabla usuarios.
         return GROUPS
-            .map(g => ({ ...g, items: g.items.filter(it => YC.tienePermiso(it.id)) }))
+            .map(g => ({ ...g, items: g.items.filter(it => it.public || YC.tienePermiso(it.id)) }))
             .filter(g => g.items.length > 0);
     }
 
