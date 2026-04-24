@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Churn Técnico — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth();</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f8fafc; }
+        .page-header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#fff;
+            position:sticky;top:0;z-index:100;
+        }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.2rem;font-weight:800;color:#0f172a;margin:0 }
+
+        .page-content { padding:0;max-width:none }
+        .embed-wrap {
+            background:#fff;
+        }
+        .embed-wrap iframe {
+            display:block;width:100%;height:calc(100vh - 73px);
+            border:0;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <nav class="sidebar" id="sidebar"></nav>
+    <script src="sidebar.js"></script>
+    <script>YurestSidebar.render('churn_tecnico');</script>
+
+    <div class="page-header">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <h1>Churn Técnico</h1>
+    </div>
+
+    <div class="page-content">
+        <div class="embed-wrap">
+            <iframe src="churn-tecnico/index.html" allow="clipboard-read; clipboard-write"></iframe>
+        </div>
+    </div>
+
+<script>
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+</script>
+</body>
+</html>

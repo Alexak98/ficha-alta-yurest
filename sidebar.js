@@ -40,7 +40,9 @@
         // Presupuestos → documento con € (presupuesto financiero)
         presupuestos:  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18V11"/><path d="M9 14c0-1 .6-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2"/></svg>',
         // Updates → chispa/estrella (novedades / release notes)
-        updates:       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>'
+        updates:       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>',
+        // Churn Técnico → flecha descendente con usuario (fuga técnica)
+        churn_tecnico: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/><line x1="23" y1="13" x2="19" y2="13"/></svg>'
     };
 
     // Estructura del menú. Cada item tiene:
@@ -109,9 +111,10 @@
             label: 'Soporte',
             icon: 'soporte',
             items: [
-                { id: 'integraciones', href: 'integraciones.html', label: 'Integraciones',   icon: 'integraciones' },
-                { id: 'hardware',      href: 'hardware.html',      label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
-                { id: 'stock',         href: 'stock.html',         label: 'Stock',           icon: 'stock' }
+                { id: 'integraciones',  href: 'integraciones.html',  label: 'Integraciones',   icon: 'integraciones' },
+                { id: 'hardware',       href: 'hardware.html',       label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
+                { id: 'stock',          href: 'stock.html',          label: 'Stock',           icon: 'stock' },
+                { id: 'churn_tecnico',  href: 'churn-tecnico.html',  label: 'Churn Técnico',   icon: 'churn_tecnico', public: true }
             ]
         },
         {

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Churn Técnico — Yurest</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">Y</div>
+        <h1>Soporte Yurest</h1>
+        <p>Introduce tus credenciales para continuar</p>
+      </div>
+      <form id="loginForm" autocomplete="off">
+        <div class="form-group">
+          <label for="loginUser">Usuario</label>
+          <input type="text" id="loginUser" placeholder="usuario" required autofocus />
+        </div>
+        <div class="form-group">
+          <label for="loginPass">Contraseña</label>
+          <input type="password" id="loginPass" placeholder="contraseña" required />
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <button type="submit" class="btn-login" id="btnLogin">
+          <span class="btn-text">Entrar</span>
+          <div class="spinner"></div>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app hidden" id="appContainer">
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">Y</div>
+          <h1>Soporte Yurest</h1>
+        </div>
+        <div class="header-right">
+          <p class="subtitle">Panel de clientes</p>
+          <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="toolbar">
+        <div class="search-box">
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Buscar cliente..." />
+        </div>
+        <div class="client-count" id="clientCount"></div>
+      </div>
+      <div class="tag-filters" id="tagFilters">
+        <!-- Tag filter chips rendered by JS -->
+      </div>
+
+      <div class="clients-grid" id="clientsGrid">
+        <!-- Cards rendered by JS -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal fullscreen -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Resumen del cliente</h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="progress-bar-container hidden" id="progressContainer">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Content rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
