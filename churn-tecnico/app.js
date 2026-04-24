@@ -220,8 +220,18 @@ function renderTopChurn() {
   const emptyEl = document.getElementById('topChurnEmpty');
   if (!listEl || !emptyEl) return;
 
+  // El Top respeta el rango y el toggle "incluir sin análisis" del filtro
+  // global — antes ignoraba ambos y mostraba clientes de niveles distintos
+  // a los que el usuario estaba revisando.
+  const hasRange = churnMin > 0 || churnMax < 10;
   const ranked = clients
-    .filter(c => typeof c.nivel === 'number' && !Number.isNaN(c.nivel) && c.nivel > 0)
+    .filter(c => {
+      if (typeof c.nivel === 'number' && !Number.isNaN(c.nivel) && c.nivel > 0) {
+        if (hasRange && (c.nivel < churnMin || c.nivel > churnMax)) return false;
+        return true;
+      }
+      return false;
+    })
     .sort((a, b) => {
       if (b.nivel !== a.nivel) return b.nivel - a.nivel;
       // Desempate: el resumen más reciente primero
@@ -342,6 +352,7 @@ function applyFilters() {
 
   updateChurnResetVisibility();
   renderClients(filtered);
+  renderTopChurn();
 }
 
 function updateChurnResetVisibility() {

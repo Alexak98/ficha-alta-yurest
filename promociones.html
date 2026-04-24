@@ -222,6 +222,30 @@
     function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
     function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 
+    function mostrarToast(msg, tipo = 'success', ms = 3500) {
+        let host = document.getElementById('toast-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'toast-host';
+            host.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+            document.body.appendChild(host);
+        }
+        const colors = {
+            success: { bg:'#dcfce7', border:'#86efac', color:'#15803d', icon:'✓' },
+            warning: { bg:'#fef3c7', border:'#fcd34d', color:'#b45309', icon:'⚠' },
+            error:   { bg:'#fee2e2', border:'#fca5a5', color:'#b91c1c', icon:'✕' }
+        };
+        const c = colors[tipo] || colors.success;
+        const t = document.createElement('div');
+        t.style.cssText = `background:${c.bg};color:${c.color};border:1.5px solid ${c.border};padding:10px 16px;border-radius:10px;font-size:.86rem;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.10);display:flex;gap:10px;align-items:center;pointer-events:auto`;
+        const span = document.createElement('span');
+        span.textContent = msg;
+        t.innerHTML = `<span style="font-weight:700;font-size:1rem">${c.icon}</span>`;
+        t.appendChild(span);
+        host.appendChild(t);
+        setTimeout(() => { t.style.transition='opacity .25s'; t.style.opacity='0'; setTimeout(()=>t.remove(),250); }, ms);
+    }
+
     const EP = YurestConfig.ENDPOINTS.promociones;
     let promociones = [];
 
@@ -413,19 +437,19 @@
     async function archivar(id, nombre) {
         if (!confirm(`¿Archivar la promoción "${nombre}"?\nNo se borra de BD — se marca como eliminada. Los proyectos ya asignados a ella se mantienen.\n\nPuedes reactivarla desde "Mostrar archivadas".`)) return;
         try { await _postAction('archivar', id); await cargar(); }
-        catch (err) { alert('Error al archivar: ' + err.message); }
+        catch (err) { mostrarToast('Error al archivar: ' + err.message, 'error', 5000); }
     }
 
     async function reactivar(id, nombre) {
         if (!confirm(`¿Reactivar la promoción "${nombre}"?`)) return;
         try { await _postAction('reactivar', id); await cargar(); }
-        catch (err) { alert('Error al reactivar: ' + err.message); }
+        catch (err) { mostrarToast('Error al reactivar: ' + err.message, 'error', 5000); }
     }
 
     async function cerrar(id, nombre) {
         if (!confirm(`¿Cerrar la promoción "${nombre}"?\nSeguirá siendo visible pero no aparecerá para nuevas asignaciones.`)) return;
         try { await _postAction('cerrar', id); await cargar(); }
-        catch (err) { alert('Error al cerrar: ' + err.message); }
+        catch (err) { mostrarToast('Error al cerrar: ' + err.message, 'error', 5000); }
     }
 
     // Exponer globals para onclick inline

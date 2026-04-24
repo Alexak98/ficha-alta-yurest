@@ -1430,7 +1430,8 @@
             const fichasVisibles = todasFichas.filter(f => { const e = (f['Estado'] || '').trim(); return e === 'Rellenado' || e === ''; });
             poblarFiltroComercial(fichasVisibles);
             document.getElementById('filter-bar').style.display = 'flex';
-            renderTabla(fichasFiltradas);
+            _aplicarFiltrosPersistidos();
+            aplicarFiltros();
         } catch (err) {
             mostrarError('Error al leer las fichas: ' + err.message);
         } finally {
@@ -1474,8 +1475,24 @@
     }
 
     // ── Estado de filtros ─────────────────────────────────────────────────────
-    let filtroTipo       = '';
-    let filtroComercial  = '';
+    // Persistencia en sessionStorage: si el usuario filtra por "Lite",
+    // navega a otro módulo y vuelve, encuentra el filtro tal cual.
+    const FILTROS_KEY = 'yurest_lista_filtros_v1';
+    function _leerFiltros() {
+        try { return JSON.parse(sessionStorage.getItem(FILTROS_KEY) || '{}'); }
+        catch (_) { return {}; }
+    }
+    function _guardarFiltros() {
+        try {
+            sessionStorage.setItem(FILTROS_KEY, JSON.stringify({
+                tipo: filtroTipo, comercial: filtroComercial,
+                busqueda: (document.getElementById('search-input') || {}).value || ''
+            }));
+        } catch (_) {}
+    }
+    const _filtrosInicial = _leerFiltros();
+    let filtroTipo       = _filtrosInicial.tipo || '';
+    let filtroComercial  = _filtrosInicial.comercial || '';
 
     // ── Badge tipo cliente ────────────────────────────────────────────────────
     function tipoBadge(f) {
@@ -1584,7 +1601,7 @@
     }
 
     // ── Handlers de filtros ───────────────────────────────────────────────────
-    function filtrar(query) { aplicarFiltros(); }
+    function filtrar(query) { _guardarFiltros(); aplicarFiltros(); }
 
     function setFiltroTipo(btn, tipo) {
         filtroTipo = tipo;
@@ -1594,13 +1611,33 @@
                 c.classList.add(tipo ? 'active-' + tipo : 'active');
             }
         });
+        _guardarFiltros();
         aplicarFiltros();
     }
 
     function setFiltroComercial(sel) {
         filtroComercial = sel.value;
         sel.classList.toggle('active', !!sel.value);
+        _guardarFiltros();
         aplicarFiltros();
+    }
+
+    // Restaurar UI de filtros desde sessionStorage al cargar.
+    function _aplicarFiltrosPersistidos() {
+        if (filtroTipo) {
+            const chip = document.querySelector(`.filter-chips .chip[data-tipo="${filtroTipo}"]`);
+            if (chip) {
+                document.querySelectorAll('.filter-chips .chip').forEach(c => c.className = 'chip');
+                chip.classList.add('active-' + filtroTipo);
+            }
+        }
+        const sel = document.getElementById('filtro-comercial');
+        if (sel && filtroComercial) {
+            sel.value = filtroComercial;
+            sel.classList.toggle('active', !!filtroComercial);
+        }
+        const search = document.getElementById('search-input');
+        if (search && _filtrosInicial.busqueda) search.value = _filtrosInicial.busqueda;
     }
 
     // ── Poblar selector de comerciales ───────────────────────────────────────

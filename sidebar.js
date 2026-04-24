@@ -160,10 +160,32 @@
             </a>`;
     }
 
+    // Persistencia del estado abierto/cerrado de los grupos. Antes el
+    // usuario abría un grupo, navegaba a otra página y volvía a la misma
+    // — y el grupo aparecía cerrado de nuevo.
+    const SIDEBAR_GROUPS_KEY = 'yurest_sidebar_grupos_abiertos';
+    function _gruposAbiertos() {
+        try {
+            const raw = sessionStorage.getItem(SIDEBAR_GROUPS_KEY);
+            return new Set(raw ? JSON.parse(raw) : []);
+        } catch (_) { return new Set(); }
+    }
+    function _persistirGrupo(id, abierto) {
+        try {
+            const set = _gruposAbiertos();
+            if (abierto) set.add(id); else set.delete(id);
+            sessionStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify([...set]));
+        } catch (_) { /* sin storage: ignorar */ }
+    }
+
     // Construye el HTML de un grupo colapsable.
     function renderGroup(group, activeId, isOpen) {
         const domId = 'sidebar-group-' + group.id;
-        const openCls = isOpen ? ' open' : '';
+        // Si tenemos persistencia previa para este grupo, prevalece sobre
+        // el isOpen calculado por el activeId actual.
+        const persistidos = _gruposAbiertos();
+        const openCalculado = persistidos.has(group.id) ? true : isOpen;
+        const openCls = openCalculado ? ' open' : '';
         // Badge agregado al grupo: aparece SOLO cuando el grupo está cerrado
         // (CSS regla más abajo) y muestra la suma de los hijos con badge.
         const childBadgeIds = group.items.map(it => it.badgeId).filter(Boolean);
@@ -172,7 +194,7 @@
             : '';
         return `
             <div class="sidebar-group${openCls}" id="${domId}">
-                <div class="sidebar-group-header" onclick="document.getElementById('${domId}').classList.toggle('open')">
+                <div class="sidebar-group-header" onclick="(function(el){const op=el.classList.toggle('open');try{const k='${SIDEBAR_GROUPS_KEY}';const set=new Set(JSON.parse(sessionStorage.getItem(k)||'[]'));op?set.add('${group.id}'):set.delete('${group.id}');sessionStorage.setItem(k,JSON.stringify([...set]));}catch(_){}})(document.getElementById('${domId}'))">
                     ${ICON[group.icon] || ''}
                     ${group.label}
                     ${groupBadge}

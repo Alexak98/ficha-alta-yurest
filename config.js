@@ -358,6 +358,11 @@
     }
 
     function cerrarSesion() {
+        // Pedimos confirmación — varios usuarios reportaron clicks accidentales
+        // sobre el botón del sidebar tras venir del menú. confirm() nativo
+        // basta porque la acción no requiere fricción extra (solo evitar
+        // los falsos positivos por dedazo).
+        if (!window.confirm('¿Cerrar sesión?')) return;
         clearSession();
         window.location.replace('login.html');
     }
