@@ -100,7 +100,32 @@
     },
     {
       "parameters": {
-        "jsCode": "// Fichas activas (sin soft-delete)\nconst fichas = $('GET Fichas').all().map(i => i.json).filter(f => f && f.id && !f.deleted_at);\n\n// Cuenta locales por ficha (tolerante a errores: si la tabla locales\n// fallara, simplemente quedan a 0).\nconst locales = ($('GET Locales').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(l => l && l.ficha_id);\n\nconst conteo = {};\nfor (const l of locales) {\n  conteo[l.ficha_id] = (conteo[l.ficha_id] || 0) + 1;\n}\n\n// Enriquecer implementador desde la tabla distribucion. El workflow 06\n// actualiza fichas_alta.implementador al asignar, pero clientes legacy\n// pueden tener el campo vacío mientras su registro en distribucion sí\n// está correcto. Para cada ficha sin implementador, usamos el registro\n// activo más reciente de distribucion.\nconst distri = ($('GET Distribución').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(d => d && d.ficha_id && !d.deleted_at && d.implementador);\n// Último por ficha (mayor created_at gana).\nconst ultimoImplPorFicha = {};\nfor (const d of distri) {\n  const prev = ultimoImplPorFicha[d.ficha_id];\n  const dts  = d.created_at ? new Date(d.created_at).getTime() : 0;\n  if (!prev || dts >= prev.ts) ultimoImplPorFicha[d.ficha_id] = { impl: d.implementador, ts: dts };\n}\n\nfor (const f of fichas) {\n  f.locales_count = conteo[f.id] || 0;\n  if (!f.implementador || !String(f.implementador).trim()) {\n    const hit = ultimoImplPorFicha[f.id];\n    if (hit) f.implementador = hit.impl;\n  }\n}\n\nreturn [{ json: { clientes: fichas } }];"
+        "operation": "getAll",
+        "tableId": "proyectos",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-get-proyectos-fichas",
+      "name": "GET Proyectos",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        480,
+        680
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fichas activas (sin soft-delete)\nconst fichas = $('GET Fichas').all().map(i => i.json).filter(f => f && f.id && !f.deleted_at);\n\n// Cuenta locales por ficha (tolerante a errores: si la tabla locales\n// fallara, simplemente quedan a 0).\nconst locales = ($('GET Locales').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(l => l && l.ficha_id);\n\nconst conteo = {};\nfor (const l of locales) {\n  conteo[l.ficha_id] = (conteo[l.ficha_id] || 0) + 1;\n}\n\n// Enriquecer implementador desde otras tablas cuando fichas_alta lo\n// tenga vacío. Orden de prioridad:\n//   1. distribucion (workflow 06 escribe aquí al asignar)\n//   2. proyectos    (si ya hay proyecto creado, es la fuente de verdad)\n// Se hace como fallback: si la ficha ya tiene implementador propio, no\n// lo pisamos. Esto evita que una reasignación en fichas_alta quede\n// sobreescrita por un snapshot obsoleto de otra tabla.\nconst distri = ($('GET Distribución').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(d => d && d.ficha_id && d.implementador);\nconst implPorDistri = {};\nfor (const d of distri) {\n  const prev = implPorDistri[d.ficha_id];\n  const dts  = d.created_at ? new Date(d.created_at).getTime() : 0;\n  if (!prev || dts >= prev.ts) implPorDistri[d.ficha_id] = { impl: d.implementador, ts: dts };\n}\n\nconst proys = ($('GET Proyectos').all() || [])\n  .map(i => (i && i.json) ? i.json : i)\n  .filter(p => p && p.implementador && !p.deleted_at && p.estado !== 'completado');\nconst implPorProy = {};\nconst implPorCliente = {};\nfor (const p of proys) {\n  const dts = p.ultima_actividad ? new Date(p.ultima_actividad).getTime()\n            : (p.fecha_inicio ? new Date(p.fecha_inicio).getTime() : 0);\n  if (p.ficha_id) {\n    const prev = implPorProy[p.ficha_id];\n    if (!prev || dts >= prev.ts) implPorProy[p.ficha_id] = { impl: p.implementador, ts: dts };\n  }\n  if (p.cliente) {\n    const key = String(p.cliente).trim().toLowerCase();\n    const prev = implPorCliente[key];\n    if (!prev || dts >= prev.ts) implPorCliente[key] = { impl: p.implementador, ts: dts };\n  }\n}\n\nfor (const f of fichas) {\n  f.locales_count = conteo[f.id] || 0;\n  if (!f.implementador || !String(f.implementador).trim()) {\n    const hit = implPorDistri[f.id]\n             || implPorProy[f.id]\n             || implPorCliente[String(f.nombre_comercial || f.denominacion || '').trim().toLowerCase()];\n    if (hit) f.implementador = hit.impl;\n  }\n}\n\nreturn [{ json: { clientes: fichas } }];"
       },
       "id": "format-get-altas",
       "name": "Formatear GET",
@@ -481,6 +506,17 @@
       ]
     },
     "GET Distribución": {
+      "main": [
+        [
+          {
+            "node": "GET Proyectos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Proyectos": {
       "main": [
         [
           {
