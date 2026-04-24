@@ -121,8 +121,13 @@
             display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;
             border-radius:999px;text-transform:uppercase;letter-spacing:.04em;
         }
-        .cl-estado-badge.activo   { background:#dcfce7;color:#166534 }
-        .cl-estado-badge.pendiente{ background:#fef3c7;color:#92400e }
+        .cl-estado-badge.activo      { background:#dcfce7;color:#166534 }
+        .cl-estado-badge.pendiente   { background:#fef3c7;color:#92400e }
+        /* Estados del proyecto (columna "Estado implementación"). */
+        .cl-estado-badge.proy-activo     { background:#dbeafe;color:#1e40af }
+        .cl-estado-badge.proy-pausado    { background:#fde68a;color:#92400e }
+        .cl-estado-badge.proy-completado { background:#dcfce7;color:#166534 }
+        .cl-estado-badge.proy-sin        { background:#f1f5f9;color:#64748b }
 
         .empty-state {
             text-align:center;padding:56px 20px;color:#94a3b8;
@@ -237,7 +242,8 @@
                     <th>Implementador</th>
                     <th>TPV</th>
                     <th>Alta</th>
-                    <th>Estado</th>
+                    <th>Estado cliente</th>
+                    <th>Estado implementación</th>
                 </tr>
             </thead>
             <tbody id="tbody"></tbody>
@@ -341,6 +347,7 @@
             email:         f.email || f['Email'] || '',
             comercial:     f.comercial || f['Comercial'] || '',
             implementador: f.implementador || f['Implementador'] || '',
+            proyectoEstado: f.proyecto_estado || '',
             tpv:           f.tpv || f['TPV'] || '',
             tipo,
             tipoOriginal:  f.tipo_cliente || f['Tipo Cliente'] || '',
@@ -473,9 +480,19 @@
                     <td>${esc(c.tpv || '—')}</td>
                     <td style="color:#64748b">${esc(_fmtFecha(c.fecha))}</td>
                     <td><span class="cl-estado-badge ${c.estado}">${c.estado === 'activo' ? 'Activo' : 'Pendiente'}</span></td>
+                    <td>${_renderEstadoImpl(c.proyectoEstado)}</td>
                 </tr>`;
         }).join('');
     }
+    // Renderiza el badge de "Estado implementación" a partir del estado del
+    // proyecto vinculado al cliente. Si no hay proyecto, pinta un chip neutro.
+    function _renderEstadoImpl(estado) {
+        const e = String(estado || '').toLowerCase();
+        const LABELS = { activo: 'Activo', pausado: 'Pausado', completado: 'Completado' };
+        if (!LABELS[e]) return '<span class="cl-estado-badge proy-sin">Sin proyecto</span>';
+        return `<span class="cl-estado-badge proy-${e}">${LABELS[e]}</span>`;
+    }
+
     function _fmtFecha(iso) {
         if (!iso) return '—';
         const d = new Date(iso);
