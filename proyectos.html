@@ -279,6 +279,17 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label>Asistencia</label>
+                    <select id="tarea-show" class="form-control">
+                        <option value="">Sin marcar</option>
+                        <option value="Show">Show — cliente asistió</option>
+                        <option value="No Show">No Show — cliente no asistió</option>
+                    </select>
+                    <small style="display:block;margin-top:4px;color:var(--text-muted);font-size:11px">
+                        Al marcar <strong>No Show</strong> se crea automáticamente una tarea replicada debajo, sin fecha.
+                    </small>
+                </div>
+                <div class="form-group">
                     <label>Notas</label>
                     <textarea id="tarea-notas" class="form-control" placeholder="Notas..."></textarea>
                 </div>

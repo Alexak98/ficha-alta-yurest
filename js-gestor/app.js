@@ -2823,6 +2823,7 @@ function renderTareaRow(proyectoId, seccionNombre, tarea) {
             <span class="task-name clickable ${estaTerminada ? 'completed' : ''}" onclick="abrirModalTarea('${proyectoId}', '${escapeAttr(seccionNombre)}', '${tarea.id}')">
                 ${escapeHtml(tarea.nombre)}
                 ${hasSubtareas ? `<span class="subtask-count">${subCompleted}/${subCount}</span>` : ''}
+                ${tarea.show === 'No Show' ? '<span class="task-show-badge no-show">No Show</span>' : tarea.show === 'Show' ? '<span class="task-show-badge show">Show</span>' : ''}
             </span>
             <span class="task-estado-badge ${estadoClass}">${estadoText}</span>
             <span class="task-date">${tarea.fechaEntrega ? formatearFechaCorta(tarea.fechaEntrega) : '—'}</span>
@@ -3011,9 +3012,71 @@ function abrirModalTarea(proyectoId, seccionNombre, tareaId) {
     document.getElementById('tarea-nombre').value = tarea.nombre;
     document.getElementById('tarea-fecha').value = tarea.fechaEntrega || '';
     document.getElementById('tarea-tiempo').value = tarea.tiempoEstimado || '';
+    document.getElementById('tarea-show').value = tarea.show || '';
     document.getElementById('tarea-notas').value = tarea.notas || '';
 
     abrirModal('modal-tarea');
+}
+
+function logShowTransicion(proyectoId, proyecto, seccionNombre, tarea, showAnterior, showNuevo) {
+    if (showAnterior === showNuevo) return;
+    if (!(window.YurestConfig && YurestConfig.logProyectoHistorial)) return;
+    let accion = null, desc = '';
+    if (showNuevo === 'No Show') { accion = 'show_noshow'; desc = `Marcada como No Show: ${tarea.nombre}`; }
+    else if (showNuevo === 'Show') { accion = 'show_asignado'; desc = `Marcada como Show: ${tarea.nombre}`; }
+    else if (showAnterior && !showNuevo) { accion = 'show_limpiado'; desc = `Asistencia limpiada: ${tarea.nombre}`; }
+    if (!accion) return;
+    YurestConfig.logProyectoHistorial({
+        proyecto_id: proyectoId,
+        accion,
+        seccion_nombre: seccionNombre,
+        tarea_id: tarea.id,
+        tarea_nombre: tarea.nombre || '',
+        descripcion: desc,
+        metadata: { cliente: proyecto.cliente || '', implementador: proyecto.implementador || '' }
+    });
+}
+
+async function crearReplicaNoShow(proyectoId, proyecto, seccion, tareaOriginal, insertarEn) {
+    const subtareasClon = (tareaOriginal.subtareas || []).map(sub => ({
+        id: generarId(),
+        nombre: sub.nombre,
+        completada: false,
+        fechaEntrega: null,
+        tiempoEstimado: sub.tiempoEstimado || null,
+        tiempoReal: null,
+        participantes: Array.isArray(sub.participantes) ? [...sub.participantes] : [],
+        agendado: false
+    }));
+    const replica = {
+        id: generarId(),
+        nombre: 'Replicada por no show ' + tareaOriginal.nombre,
+        completada: false,
+        show: null,
+        fechaEntrega: null,
+        tiempoEstimado: tareaOriginal.tiempoEstimado || null,
+        notas: tareaOriginal.notas || '',
+        subtareas: subtareasClon
+    };
+    const idx = typeof insertarEn === 'number' && insertarEn >= 0 ? insertarEn + 1 : seccion.tareas.length;
+    seccion.tareas.splice(idx, 0, replica);
+    try {
+        await actualizarTareaAPI(proyectoId, seccion.nombre, replica);
+    } catch (err) {
+        console.warn('Error guardando replica No Show:', err);
+    }
+    if (window.YurestConfig && YurestConfig.logProyectoHistorial) {
+        YurestConfig.logProyectoHistorial({
+            proyecto_id: proyectoId,
+            accion: 'tarea_anadida',
+            seccion_nombre: seccion.nombre,
+            tarea_id: replica.id,
+            tarea_nombre: replica.nombre,
+            descripcion: `Replica generada por No Show: ${replica.nombre}`,
+            metadata: { cliente: proyecto.cliente || '', implementador: proyecto.implementador || '', origen_tarea_id: tareaOriginal.id }
+        });
+    }
+    return replica;
 }
 
 async function guardarTarea() {
@@ -3024,6 +3087,7 @@ async function guardarTarea() {
     const nombre = document.getElementById('tarea-nombre').value.trim();
     const fechaEntrega = document.getElementById('tarea-fecha').value || null;
     const tiempoEstimado = parseInt(document.getElementById('tarea-tiempo').value) || null;
+    const showValor = document.getElementById('tarea-show').value || null;
     const notas = document.getElementById('tarea-notas').value.trim();
 
     if (!nombre) {
@@ -3038,22 +3102,33 @@ async function guardarTarea() {
     if (tareaId && seccionDestino !== seccionNombre) {
         showLoading();
         try {
+            const sourceSec = proyecto.secciones.find(s => s.nombre === seccionNombre);
+            const tareaPrevia = sourceSec ? sourceSec.tareas.find(t => t.id === tareaId) : null;
+            const showAnterior = tareaPrevia ? (tareaPrevia.show || null) : null;
             moverTareaEntreSecciones(proyecto, tareaId, seccionNombre, seccionDestino);
             await moverTareaAPI(proyectoId, tareaId, seccionNombre, seccionDestino).catch(() => {});
             const destSec = proyecto.secciones.find(s => s.nombre === seccionDestino);
             const tareaMovida = destSec ? destSec.tareas.find(t => t.id === tareaId) : null;
+            let replicaCreada = false;
             if (tareaMovida) {
                 tareaMovida.nombre = nombre;
                 tareaMovida.fechaEntrega = fechaEntrega;
                 tareaMovida.tiempoEstimado = tiempoEstimado;
+                tareaMovida.show = showValor;
                 tareaMovida.notas = notas;
                 await actualizarTareaAPI(proyectoId, seccionDestino, tareaMovida).catch(() => {});
+                logShowTransicion(proyectoId, proyecto, seccionDestino, tareaMovida, showAnterior, showValor);
+                if (showAnterior !== 'No Show' && showValor === 'No Show' && destSec) {
+                    const idx = destSec.tareas.findIndex(t => t.id === tareaId);
+                    await crearReplicaNoShow(proyectoId, proyecto, destSec, tareaMovida, idx);
+                    replicaCreada = true;
+                }
             }
             guardarProyectosLocal(proyectos);
             cerrarModal('modal-tarea');
             abrirDetalle(proyectoId);
             refrescarTodo();
-            mostrarToast('Tarea movida a ' + seccionDestino, 'success');
+            mostrarToast(replicaCreada ? 'Tarea movida — replica creada por No Show' : 'Tarea movida a ' + seccionDestino, 'success');
         } catch (err) {
             mostrarToast('Error al mover tarea: ' + err.message, 'error');
         } finally {
@@ -3067,21 +3142,31 @@ async function guardarTarea() {
 
     showLoading();
     try {
+        let replicaCreada = false;
         if (tareaId) {
             const tarea = seccion.tareas.find(t => t.id === tareaId);
             if (tarea) {
+                const showAnterior = tarea.show || null;
                 tarea.nombre = nombre;
                 tarea.fechaEntrega = fechaEntrega;
                 tarea.tiempoEstimado = tiempoEstimado;
+                tarea.show = showValor;
                 tarea.notas = notas;
                 // completada se deriva de subtareas, no se cambia manualmente aqui
                 await actualizarTareaAPI(proyectoId, seccionNombre, tarea);
+                logShowTransicion(proyectoId, proyecto, seccionNombre, tarea, showAnterior, showValor);
+                if (showAnterior !== 'No Show' && showValor === 'No Show') {
+                    const idx = seccion.tareas.findIndex(t => t.id === tareaId);
+                    await crearReplicaNoShow(proyectoId, proyecto, seccion, tarea, idx);
+                    replicaCreada = true;
+                }
             }
         } else {
             const nuevaTarea = {
                 id: generarId(),
                 nombre,
                 completada: false,
+                show: showValor,
                 fechaEntrega,
                 tiempoEstimado,
                 notas,
@@ -3095,7 +3180,7 @@ async function guardarTarea() {
         cerrarModal('modal-tarea');
         abrirDetalle(proyectoId);
         refrescarTodo();
-        mostrarToast('Tarea guardada', 'success');
+        mostrarToast(replicaCreada ? 'Tarea guardada — replica creada por No Show' : 'Tarea guardada', 'success');
     } catch (err) {
         mostrarToast('Error al guardar tarea: ' + err.message, 'error');
     } finally {
@@ -3121,6 +3206,7 @@ function agregarTarea(proyectoId, seccionNombre) {
     document.getElementById('tarea-nombre').value = '';
     document.getElementById('tarea-fecha').value = '';
     document.getElementById('tarea-tiempo').value = '';
+    document.getElementById('tarea-show').value = '';
     document.getElementById('tarea-notas').value = '';
 
     abrirModal('modal-tarea');
