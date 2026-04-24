@@ -7,6 +7,12 @@ const CHURN_LOOKUP_URL = 'https://n8n-soporte.data.yurest.dev/webhook/buscar-res
 
 let clients = [];
 let selectedTags = new Set();
+// Filtro por nivel de churn (Supabase.nivel). Rango cerrado [0,10]; null
+// incluye las organizaciones que aún no tienen fila en churn_tecnico
+// (nivel === null) — por defecto se incluyen para no ocultar el backlog.
+let churnMin = 0;
+let churnMax = 10;
+let includeNullChurn = true;
 
 // ── UI Constants ───────────────────────────────────────────
 
@@ -256,7 +262,62 @@ function applyFilters() {
     );
   }
 
+  // Filtro por rango de nivel de churn. Los null caen fuera del rango
+  // numérico — los dejamos pasar sólo si includeNullChurn === true.
+  const hasRange = churnMin > 0 || churnMax < 10;
+  if (hasRange || !includeNullChurn) {
+    filtered = filtered.filter(c => {
+      if (c.nivel == null || Number.isNaN(c.nivel)) return includeNullChurn;
+      return c.nivel >= churnMin && c.nivel <= churnMax;
+    });
+  }
+
+  updateChurnResetVisibility();
   renderClients(filtered);
+}
+
+function updateChurnResetVisibility() {
+  const btn = document.getElementById('churnFilterReset');
+  if (!btn) return;
+  const dirty = churnMin !== 0 || churnMax !== 10 || !includeNullChurn;
+  btn.classList.toggle('hidden', !dirty);
+}
+
+function initChurnFilter() {
+  const minSel = document.getElementById('churnMin');
+  const maxSel = document.getElementById('churnMax');
+  const chk = document.getElementById('churnIncludeNull');
+  const reset = document.getElementById('churnFilterReset');
+  if (!minSel || !maxSel || !chk || !reset) return;
+
+  // Poblar selects 0..10
+  const opts = Array.from({ length: 11 }, (_, i) => `<option value="${i}">${i}</option>`).join('');
+  minSel.innerHTML = opts;
+  maxSel.innerHTML = opts;
+  minSel.value = String(churnMin);
+  maxSel.value = String(churnMax);
+  chk.checked = includeNullChurn;
+
+  minSel.addEventListener('change', () => {
+    churnMin = Number(minSel.value);
+    // Si el min supera al max, empujamos max para mantener el rango válido.
+    if (churnMin > churnMax) { churnMax = churnMin; maxSel.value = String(churnMax); }
+    applyFilters();
+  });
+  maxSel.addEventListener('change', () => {
+    churnMax = Number(maxSel.value);
+    if (churnMax < churnMin) { churnMin = churnMax; minSel.value = String(churnMin); }
+    applyFilters();
+  });
+  chk.addEventListener('change', () => {
+    includeNullChurn = chk.checked;
+    applyFilters();
+  });
+  reset.addEventListener('click', () => {
+    churnMin = 0; churnMax = 10; includeNullChurn = true;
+    minSel.value = '0'; maxSel.value = '10'; chk.checked = true;
+    applyFilters();
+  });
 }
 
 // ── Render Functions ───────────────────────────────────────
@@ -598,5 +659,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.getElementById('searchInput').addEventListener('input', () => applyFilters());
+initChurnFilter();
 
 initApp();

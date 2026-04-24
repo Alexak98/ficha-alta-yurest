@@ -27,6 +27,20 @@
         <!-- Tag filter chips rendered by JS -->
       </div>
 
+      <div class="churn-filter" id="churnFilter">
+        <span class="churn-filter-label">Nivel de churn</span>
+        <div class="churn-filter-controls">
+          <select id="churnMin" class="churn-filter-select" aria-label="Nivel mínimo"></select>
+          <span class="churn-filter-dash">—</span>
+          <select id="churnMax" class="churn-filter-select" aria-label="Nivel máximo"></select>
+          <label class="churn-filter-check">
+            <input type="checkbox" id="churnIncludeNull" checked />
+            <span>incluir sin análisis</span>
+          </label>
+          <button class="churn-filter-reset hidden" id="churnFilterReset" type="button" title="Limpiar filtro">Limpiar</button>
+        </div>
+      </div>
+
       <div class="clients-grid" id="clientsGrid">
         <!-- Cards rendered by JS -->
       </div>
