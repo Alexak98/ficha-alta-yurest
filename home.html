@@ -667,14 +667,13 @@
     }
 
     // Expose para que si config.js llama a _actualizarSidebarBadgesGrupos
-    // también refresquemos los nuestros y la sección "Cosas por hacer".
-    window._actualizarSidebarBadgesGrupos = function () {
-        sincronizarBadgesHome();
-        const todoEl = document.getElementById('todo-section');
-        if (todoEl && window.YurestNotifications && window.YurestNotifications.renderInto) {
-            window.YurestNotifications.renderInto(todoEl);
-        }
-    };
+    // también refresquemos los nuestros (sólo los badges visibles del home).
+    // OJO: NO llamamos aquí a YurestNotifications.renderInto — lo haríamos
+    // en bucle, porque renderInto → fetchAll → actualizarBadgeX →
+    // _actualizarSidebarBadgesGrupos → renderInto. La sección "Cosas por
+    // hacer" se pinta una sola vez en bootstrap; basta con eso porque el
+    // usuario, al volver al home tras navegar, recarga la página entera.
+    window._actualizarSidebarBadgesGrupos = sincronizarBadgesHome;
 
     // ─────────────────────────────────────────────────────────────────────
     //  Bootstrap

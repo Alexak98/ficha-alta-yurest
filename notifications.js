@@ -384,11 +384,19 @@
             }
         };
 
+        // Guard de re-entrancia. Sin esto, fetchAll() llama actualizarBadgeX
+        // que llama _actualizarSidebarBadgesGrupos que llama refresh() que
+        // llama load() de nuevo → bucle infinito en páginas con sidebar.
+        let _loadingBell = false;
         const load = async () => {
+            if (_loadingBell) return;
+            _loadingBell = true;
             try {
                 lastItems = await fetchAll();
             } catch (_) {
                 lastItems = [];
+            } finally {
+                _loadingBell = false;
             }
             loaded = true;
             renderItems();
@@ -399,7 +407,8 @@
 
         // Si alguien dispara YurestNotifications.refresh() (ej. tras grabar
         // un A3 o crear una proforma), recargamos contador + dropdown sin
-        // necesidad de F5.
+        // necesidad de F5. El guard evita que las llamadas que vienen DESDE
+        // dentro del propio fetchAll provoquen recursión.
         _onRefresh(() => { load(); });
 
         bell.addEventListener('click', (e) => {
@@ -419,8 +428,20 @@
     }
 
     // Pinta la sección "Cosas por hacer" dentro de un contenedor (home).
+    // Re-entrancy guard: fetchAll() llama internamente a las funciones que
+    // actualizan los badges, y esos badges al actualizarse disparan
+    // _actualizarSidebarBadgesGrupos, que en home re-llama a renderInto.
+    // Sin guard era bucle infinito.
+    let _renderingInto = false;
+    let _pendingRender = null;
     async function renderInto(container) {
         if (!container) return;
+        if (_renderingInto) {
+            // Marcamos que tras la actual hay otra pendiente (coalesce).
+            _pendingRender = container;
+            return;
+        }
+        _renderingInto = true;
         injectStyles();
         container.innerHTML = `
             <div class="todo-section-header">
@@ -434,13 +455,21 @@
         const listEl = container.querySelector('#todo-list');
         const subEl = container.querySelector('#todo-section-sub');
         if (items.length === 0) {
-            listEl.outerHTML = `<div class="notif-empty" style="padding:18px 0">No tienes nada pendiente 🎉</div>`;
+            if (listEl) listEl.outerHTML = `<div class="notif-empty" style="padding:18px 0">No tienes nada pendiente 🎉</div>`;
             if (subEl) subEl.textContent = 'Todo al día';
-            return;
+        } else {
+            const total = items.reduce((s, n) => s + (n.count || 0), 0);
+            if (subEl) subEl.textContent = `${total} ítem${total === 1 ? '' : 's'} pendiente${total === 1 ? '' : 's'}`;
+            if (listEl) listEl.innerHTML = items.map(itemHtml).join('');
         }
-        const total = items.reduce((s, n) => s + (n.count || 0), 0);
-        if (subEl) subEl.textContent = `${total} ítem${total === 1 ? '' : 's'} pendiente${total === 1 ? '' : 's'}`;
-        listEl.innerHTML = items.map(itemHtml).join('');
+        _renderingInto = false;
+        // Si llegó otra petición mientras se renderizaba, la procesamos
+        // ahora — pero sólo una (las posteriores se ignoran).
+        if (_pendingRender) {
+            const next = _pendingRender;
+            _pendingRender = null;
+            renderInto(next);
+        }
     }
 
     // Refresco bajo demanda: cualquier consumidor que sepa que ha cambiado
