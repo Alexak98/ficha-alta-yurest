@@ -105,7 +105,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/usuarios?id=eq.{{ $json._internal.userId }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/usuarios?id=eq.{{ $json._internal.userId }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -439,7 +439,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// CRUD de usuarios con PBKDF2-SHA256 en JS puro (sin require('crypto') ni\n// Web Crypto — el entorno n8n de este tenant bloquea ambos).\nconst K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);\nfunction sha256(data){const len=data.length,bits=len*8;const padLen=(len%64<56)?(56-len%64):(120-len%64);const p=new Uint8Array(len+padLen+8);p.set(data);p[len]=0x80;const v=new DataView(p.buffer);v.setUint32(p.length-4,bits>>>0);v.setUint32(p.length-8,Math.floor(bits/0x100000000));let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;const w=new Uint32Array(64);for(let i=0;i<p.length;i+=64){for(let j=0;j<16;j++)w[j]=v.getUint32(i+j*4);for(let j=16;j<64;j++){const s0=(w[j-15]>>>7|w[j-15]<<25)^(w[j-15]>>>18|w[j-15]<<14)^(w[j-15]>>>3);const s1=(w[j-2]>>>17|w[j-2]<<15)^(w[j-2]>>>19|w[j-2]<<13)^(w[j-2]>>>10);w[j]=(w[j-16]+s0+w[j-7]+s1)>>>0;}let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;for(let j=0;j<64;j++){const S1=(e>>>6|e<<26)^(e>>>11|e<<21)^(e>>>25|e<<7);const ch=(e&f)^(~e&g);const t1=(h+S1+ch+K[j]+w[j])>>>0;const S0=(a>>>2|a<<30)^(a>>>13|a<<19)^(a>>>22|a<<10);const mj=(a&b)^(a&c)^(b&c);const t2=(S0+mj)>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;}h0=(h0+a)>>>0;h1=(h1+b)>>>0;h2=(h2+c)>>>0;h3=(h3+d)>>>0;h4=(h4+e)>>>0;h5=(h5+f)>>>0;h6=(h6+g)>>>0;h7=(h7+h)>>>0;}const o=new Uint8Array(32);const ov=new DataView(o.buffer);ov.setUint32(0,h0);ov.setUint32(4,h1);ov.setUint32(8,h2);ov.setUint32(12,h3);ov.setUint32(16,h4);ov.setUint32(20,h5);ov.setUint32(24,h6);ov.setUint32(28,h7);return o;}\nfunction hmacSha256(k,m){if(k.length>64)k=sha256(k);const pk=new Uint8Array(64);pk.set(k);const ip=new Uint8Array(64),op=new Uint8Array(64);for(let i=0;i<64;i++){ip[i]=pk[i]^0x36;op[i]=pk[i]^0x5c;}const inn=new Uint8Array(64+m.length);inn.set(ip);inn.set(m,64);const ih=sha256(inn);const ou=new Uint8Array(64+32);ou.set(op);ou.set(ih,64);return sha256(ou);}\nfunction pbkdf2Sha256(pw,salt,iterations,dkLen){const pwB=typeof pw==='string'?new TextEncoder().encode(pw):pw;const res=new Uint8Array(dkLen);const blocks=Math.ceil(dkLen/32);for(let i=1;i<=blocks;i++){const sb=new Uint8Array(salt.length+4);sb.set(salt);const dv=new DataView(sb.buffer);dv.setUint32(salt.length,i);let u=hmacSha256(pwB,sb);const t=new Uint8Array(u);for(let j=1;j<iterations;j++){u=hmacSha256(pwB,u);for(let k=0;k<32;k++)t[k]^=u[k];}const off=(i-1)*32,end=Math.min(off+32,dkLen);for(let k=0;k<end-off;k++)res[off+k]=t[k];}return res;}\nfunction bytesToB64(bytes){let bin='';for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);return btoa(bin);}\nfunction randomSalt(n){const s=new Uint8Array(n);for(let i=0;i<n;i++)s[i]=Math.floor(Math.random()*256);return s;}\nfunction hashPassword(pw){const salt=randomSalt(16);const iterations=100000;const h=pbkdf2Sha256(pw,salt,iterations,32);return`pbkdf2$${iterations}$${bytesToB64(salt)}$${bytesToB64(h)}`;}\n\n// Todo el flujo de validación y preparación de payload corre dentro de\n// try/catch. Si una validación lanza, NO propagamos el throw: acumulamos\n// el mensaje en `errores` y devolvemos un item estructurado.\n// El nodo IF \"¿Error validación?\" de aguas abajo detecta errores.length>0\n// y cortocircuita directamente a \"Verificar resultado usuario\" (que a su\n// vez responde con {success:false, errores}). Así el webhook siempre\n// devuelve body no-vacío — se evita el \"Unexpected end of JSON input\"\n// que saltaba en admin.html cuando una validación fallaba.\nconst errores = [];\nconst body = ($input.first().json.body) || {};\nconst action = String(body.action || '').toLowerCase();\nconst u = body.usuario || {};\n\nconst PERMISOS_VALIDOS = new Set(['ventas','distribucion','lista','bajas','sinasignar','proyectos','contabilidad','proformas','clientes','promociones','integraciones','hardware','admin','docs']);\nconst PASSWORD_MIN_LEN = 8;\n\nfunction validarPermisosEstricto(arr) {\n  if (arr == null) return [];\n  if (!Array.isArray(arr)) throw new Error('permisos debe ser un array');\n  const invalidos = arr.filter(p => !PERMISOS_VALIDOS.has(String(p)));\n  if (invalidos.length > 0) {\n    throw new Error('Permisos inválidos: ' + invalidos.join(', '));\n  }\n  return arr.map(String);\n}\nfunction validarPasswordLen(pw) {\n  if (typeof pw !== 'string' || pw.length < PASSWORD_MIN_LEN) {\n    throw new Error('La contraseña debe tener al menos ' + PASSWORD_MIN_LEN + ' caracteres');\n  }\n}\n\nconst nowIso = new Date().toISOString();\nlet payload = null;\n\ntry {\n  if (!['create','update','delete','password'].includes(action)) {\n    throw new Error('action requerida: create | update | delete | password');\n  }\n\n  if (action === 'create') {\n    if (!u.username || !u.password) throw new Error('username y password son obligatorios');\n    validarPasswordLen(u.password);\n    payload = {\n      username: String(u.username).trim().toLowerCase(),\n      password_hash: hashPassword(String(u.password)),\n      nombre: u.nombre ? String(u.nombre).trim() : null,\n      email: u.email ? String(u.email).trim().toLowerCase() : null,\n      rol: u.rol === 'admin' ? 'admin' : 'user',\n      permisos: JSON.stringify(validarPermisosEstricto(u.permisos)),\n      activo: u.activo !== false\n    };\n  } else if (action === 'update') {\n    if (!u.id) throw new Error('Falta id para update');\n    payload = { id: u.id };\n    let tocaSesion = false;\n    if (u.nombre !== undefined)   payload.nombre   = u.nombre ? String(u.nombre).trim() : null;\n    if (u.email  !== undefined)   payload.email    = u.email  ? String(u.email).trim().toLowerCase() : null;\n    if (u.rol    !== undefined)   { payload.rol = u.rol === 'admin' ? 'admin' : 'user'; tocaSesion = true; }\n    if (u.permisos !== undefined) { payload.permisos = JSON.stringify(validarPermisosEstricto(u.permisos)); tocaSesion = true; }\n    if (u.activo !== undefined)   { payload.activo = !!u.activo; tocaSesion = true; }\n    if (tocaSesion) payload.sessions_revoked_at = nowIso;\n  } else if (action === 'password') {\n    if (!u.id || !u.password) throw new Error('Falta id o password para cambio de password');\n    validarPasswordLen(u.password);\n    payload = { id: u.id, password_hash: hashPassword(String(u.password)), sessions_revoked_at: nowIso };\n  } else if (action === 'delete') {\n    if (!u.id) throw new Error('Falta id para delete');\n    payload = { id: u.id, deleted_at: nowIso, activo: false, sessions_revoked_at: nowIso };\n  }\n} catch (e) {\n  errores.push(e && e.message ? e.message : String(e));\n}\n\nreturn [{ json: { action, payload, errores } }];\n"
+        "jsCode": "// CRUD de usuarios con PBKDF2-SHA256 en JS puro (sin require('crypto') ni\n// Web Crypto — el entorno n8n de este tenant bloquea ambos).\nconst K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);\nfunction sha256(data){const len=data.length,bits=len*8;const padLen=(len%64<56)?(56-len%64):(120-len%64);const p=new Uint8Array(len+padLen+8);p.set(data);p[len]=0x80;const v=new DataView(p.buffer);v.setUint32(p.length-4,bits>>>0);v.setUint32(p.length-8,Math.floor(bits/0x100000000));let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;const w=new Uint32Array(64);for(let i=0;i<p.length;i+=64){for(let j=0;j<16;j++)w[j]=v.getUint32(i+j*4);for(let j=16;j<64;j++){const s0=(w[j-15]>>>7|w[j-15]<<25)^(w[j-15]>>>18|w[j-15]<<14)^(w[j-15]>>>3);const s1=(w[j-2]>>>17|w[j-2]<<15)^(w[j-2]>>>19|w[j-2]<<13)^(w[j-2]>>>10);w[j]=(w[j-16]+s0+w[j-7]+s1)>>>0;}let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;for(let j=0;j<64;j++){const S1=(e>>>6|e<<26)^(e>>>11|e<<21)^(e>>>25|e<<7);const ch=(e&f)^(~e&g);const t1=(h+S1+ch+K[j]+w[j])>>>0;const S0=(a>>>2|a<<30)^(a>>>13|a<<19)^(a>>>22|a<<10);const mj=(a&b)^(a&c)^(b&c);const t2=(S0+mj)>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;}h0=(h0+a)>>>0;h1=(h1+b)>>>0;h2=(h2+c)>>>0;h3=(h3+d)>>>0;h4=(h4+e)>>>0;h5=(h5+f)>>>0;h6=(h6+g)>>>0;h7=(h7+h)>>>0;}const o=new Uint8Array(32);const ov=new DataView(o.buffer);ov.setUint32(0,h0);ov.setUint32(4,h1);ov.setUint32(8,h2);ov.setUint32(12,h3);ov.setUint32(16,h4);ov.setUint32(20,h5);ov.setUint32(24,h6);ov.setUint32(28,h7);return o;}\nfunction hmacSha256(k,m){if(k.length>64)k=sha256(k);const pk=new Uint8Array(64);pk.set(k);const ip=new Uint8Array(64),op=new Uint8Array(64);for(let i=0;i<64;i++){ip[i]=pk[i]^0x36;op[i]=pk[i]^0x5c;}const inn=new Uint8Array(64+m.length);inn.set(ip);inn.set(m,64);const ih=sha256(inn);const ou=new Uint8Array(64+32);ou.set(op);ou.set(ih,64);return sha256(ou);}\nfunction pbkdf2Sha256(pw,salt,iterations,dkLen){const pwB=typeof pw==='string'?new TextEncoder().encode(pw):pw;const res=new Uint8Array(dkLen);const blocks=Math.ceil(dkLen/32);for(let i=1;i<=blocks;i++){const sb=new Uint8Array(salt.length+4);sb.set(salt);const dv=new DataView(sb.buffer);dv.setUint32(salt.length,i);let u=hmacSha256(pwB,sb);const t=new Uint8Array(u);for(let j=1;j<iterations;j++){u=hmacSha256(pwB,u);for(let k=0;k<32;k++)t[k]^=u[k];}const off=(i-1)*32,end=Math.min(off+32,dkLen);for(let k=0;k<end-off;k++)res[off+k]=t[k];}return res;}\nfunction bytesToB64(bytes){let bin='';for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);return btoa(bin);}\nfunction randomSalt(n){const s=new Uint8Array(n);for(let i=0;i<n;i++)s[i]=Math.floor(Math.random()*256);return s;}\nfunction hashPassword(pw){const salt=randomSalt(16);const iterations=100000;const h=pbkdf2Sha256(pw,salt,iterations,32);return`pbkdf2$${iterations}$${bytesToB64(salt)}$${bytesToB64(h)}`;}\n\n// Todo el flujo de validación y preparación de payload corre dentro de\n// try/catch. Si una validación lanza, NO propagamos el throw: acumulamos\n// el mensaje en `errores` y devolvemos un item estructurado.\n// El nodo IF \"¿Error validación?\" de aguas abajo detecta errores.length>0\n// y cortocircuita directamente a \"Verificar resultado usuario\" (que a su\n// vez responde con {success:false, errores}). Así el webhook siempre\n// devuelve body no-vacío — se evita el \"Unexpected end of JSON input\"\n// que saltaba en admin.html cuando una validación fallaba.\nconst errores = [];\nconst body = ($input.first().json.body) || {};\nconst action = String(body.action || '').toLowerCase();\nconst u = body.usuario || {};\n\nconst PERMISOS_VALIDOS = new Set(['ventas','distribucion','lista','bajas','sinasignar','proyectos','contabilidad','proformas','clientes','promociones','presupuestos','integraciones','hardware','stock','admin','docs']);\nconst PASSWORD_MIN_LEN = 8;\n\nfunction validarPermisosEstricto(arr) {\n  if (arr == null) return [];\n  if (!Array.isArray(arr)) throw new Error('permisos debe ser un array');\n  const invalidos = arr.filter(p => !PERMISOS_VALIDOS.has(String(p)));\n  if (invalidos.length > 0) {\n    throw new Error('Permisos inválidos: ' + invalidos.join(', '));\n  }\n  return arr.map(String);\n}\nfunction validarPasswordLen(pw) {\n  if (typeof pw !== 'string' || pw.length < PASSWORD_MIN_LEN) {\n    throw new Error('La contraseña debe tener al menos ' + PASSWORD_MIN_LEN + ' caracteres');\n  }\n}\n\nconst nowIso = new Date().toISOString();\nlet payload = null;\n\ntry {\n  if (!['create','update','delete','password'].includes(action)) {\n    throw new Error('action requerida: create | update | delete | password');\n  }\n\n  if (action === 'create') {\n    if (!u.username || !u.password) throw new Error('username y password son obligatorios');\n    validarPasswordLen(u.password);\n    payload = {\n      username: String(u.username).trim().toLowerCase(),\n      password_hash: hashPassword(String(u.password)),\n      nombre: u.nombre ? String(u.nombre).trim() : null,\n      email: u.email ? String(u.email).trim().toLowerCase() : null,\n      rol: u.rol === 'admin' ? 'admin' : 'user',\n      permisos: JSON.stringify(validarPermisosEstricto(u.permisos)),\n      activo: u.activo !== false\n    };\n  } else if (action === 'update') {\n    if (!u.id) throw new Error('Falta id para update');\n    payload = { id: u.id };\n    let tocaSesion = false;\n    if (u.nombre !== undefined)   payload.nombre   = u.nombre ? String(u.nombre).trim() : null;\n    if (u.email  !== undefined)   payload.email    = u.email  ? String(u.email).trim().toLowerCase() : null;\n    if (u.rol    !== undefined)   { payload.rol = u.rol === 'admin' ? 'admin' : 'user'; tocaSesion = true; }\n    if (u.permisos !== undefined) { payload.permisos = JSON.stringify(validarPermisosEstricto(u.permisos)); tocaSesion = true; }\n    if (u.activo !== undefined)   { payload.activo = !!u.activo; tocaSesion = true; }\n    if (tocaSesion) payload.sessions_revoked_at = nowIso;\n  } else if (action === 'password') {\n    if (!u.id || !u.password) throw new Error('Falta id o password para cambio de password');\n    validarPasswordLen(u.password);\n    payload = { id: u.id, password_hash: hashPassword(String(u.password)), sessions_revoked_at: nowIso };\n  } else if (action === 'delete') {\n    if (!u.id) throw new Error('Falta id para delete');\n    payload = { id: u.id, deleted_at: nowIso, activo: false, sessions_revoked_at: nowIso };\n  }\n} catch (e) {\n  errores.push(e && e.message ? e.message : String(e));\n}\n\n// 'estado' es un string plano que el IF \"¿Error validación?\" compara\n// directamente con 'error' / 'ok'. Así evitamos depender de expresiones\n// n8n con ternarios sobre arrays, que en algunas versiones de self-hosted\n// evalúan mal y enrutan por la rama equivocada.\nconst estado = errores.length > 0 ? 'error' : 'ok';\nreturn [{ json: { action, payload, errores, estado } }];\n"
       },
       "id": "prep-user-action",
       "name": "Preparar acción Usuario",
@@ -453,31 +453,31 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "create",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ]
-        }
+        "jsCode": "// Gate error: emite el item únicamente si la validación en Preparar\n// detectó algún error. Sirve para cortocircuitar directo a Verificar\n// resultado usuario sin pasar por INSERT/UPDATE. Garantiza además que\n// Verificar siempre se ejecute al menos una vez aunque los Routers\n// INSERT/UPDATE no emitan nada.\nconst j = $input.first().json || {};\nif (j.estado === 'error') return [{ json: j }];\nreturn [];\n"
       },
-      "id": "if-user-create",
-      "name": "¿Es create usuario?",
-      "type": "n8n-nodes-base.if",
+      "id": "gate-user-error",
+      "name": "Gate error",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         640,
         700
-      ]
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Router UPDATE/PATCH: emite el item sólo si la acción NO es create y no\n// hay errores de validación. Para update/password/delete el flujo\n// continúa a Aplanar → Construir body PATCH → UPDATE Usuario. En\n// cualquier otro caso devuelve 0 items para cortar el flujo.\nconst j = $input.first().json || {};\nif (j.estado === 'error' || !j.payload) return [];\nif (j.action === 'create') return [];\nif (!['update','password','delete'].includes(j.action)) return [];\nreturn [{ json: j }];\n"
+      },
+      "id": "if-user-create",
+      "name": "Router UPDATE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        800
+      ],
+      "alwaysOutputData": false
     },
     {
       "parameters": {
@@ -566,7 +566,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://{{ $credentials.supabaseApi.host }}/rest/v1/usuarios?id=eq.{{ $json.id }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/usuarios?id=eq.{{ $json.id }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -613,7 +613,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Si \"Preparar acción Usuario\" emitió errores de validación, respondemos\n// inmediatamente sin intentar leer filas de Supabase (no habrá ninguna).\n// Esta rama se activa cuando el IF \"¿Error validación?\" cortocircuita\n// Preparar → Verificar saltándose las operaciones Supabase.\nconst prep = $('Preparar acción Usuario').first().json;\nif (prep && prep.errores && prep.errores.length > 0) {\n  return [{ json: {\n    success:  false,\n    action:   prep.action || 'unknown',\n    affected: 0,\n    errores:  prep.errores,\n    usuario:  null\n  }}];\n}\n\n// Flujo normal: construye respuesta consistente {success, action, affected,\n// errores, usuario} sin exponer nunca password_hash.\nconst { action } = $('Preparar acción Usuario').first().json;\nconst input = $input.all();\nlet count = 0;\nconst errores = [];\nlet usuario = null;\n\n// Diagnóstico: capturamos qué recibimos realmente para poder depurar\n// cuando el PATCH devuelve 0 filas (síntoma \"No se actualizó\").\nconst debug = { itemCount: input ? input.length : 0, muestras: [] };\n\nfor (const it of (input || [])) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) { debug.muestras.push({ tipo: 'null' }); continue; }\n\n  // Guardamos una muestra compacta (máx 3) para diagnóstico.\n  if (debug.muestras.length < 3) {\n    try {\n      const keys = Object.keys(j || {}).slice(0, 10);\n      debug.muestras.push({ keys, isArray: Array.isArray(j), code: j.code, message: j.message });\n    } catch (_) {}\n  }\n\n  if (j.error) {\n    errores.push(String(j.error.message || j.error.code || j.error));\n    continue;\n  }\n  // PostgREST devuelve errores en este formato.\n  if (j.code && j.message && !j.id) {\n    errores.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (Array.isArray(j)) {\n    count += j.length;\n    if (!usuario && j.length > 0) usuario = j[0];\n    continue;\n  }\n  if (j.id) { count++; if (!usuario) usuario = j; continue; }\n}\nif (usuario) delete usuario.password_hash;\n\n// Si no hubo filas ni errores explícitos, añadimos diagnóstico como error\n// para que el admin vea qué está pasando (antes salía solo \"No se actualizó\"\n// sin detalle). Más útil que un error vacío.\nif (count === 0 && errores.length === 0) {\n  errores.push('PATCH devolvió 0 filas. Diagnóstico: ' + JSON.stringify(debug));\n}\n\nreturn [{ json: { success: count > 0, action, affected: count, errores, usuario } }];\n"
+        "jsCode": "// Si \"Preparar acción Usuario\" emitió errores de validación, respondemos\n// inmediatamente sin intentar leer filas de Supabase (no habrá ninguna).\nconst prep = $('Preparar acción Usuario').first().json;\nif (prep && prep.errores && prep.errores.length > 0) {\n  return [{ json: {\n    success:  false,\n    action:   prep.action || 'unknown',\n    affected: 0,\n    errores:  prep.errores,\n    usuario:  null\n  }}];\n}\n\nconst { action } = $('Preparar acción Usuario').first().json;\nconst input = $input.all();\nlet count = 0;\nconst errores = [];\nlet usuario = null;\n\n// Diagnóstico ampliado: además de lo que llega por $input, capturamos qué\n// devolvieron REALMENTE los nodos INSERT y UPDATE para distinguir entre\n// \"el PATCH falló/devolvió 0 filas\" y \"el IF enrutó mal y el UPDATE ni\n// llegó a correr\".\nconst debug = { itemCount: input ? input.length : 0, muestras: [] };\n\nfunction compact(it) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) return { tipo: 'null' };\n  return { keys: Object.keys(j || {}).slice(0, 10), isArray: Array.isArray(j), code: j.code, message: j.message, id: j.id };\n}\ntry { debug.updateOutput = ($('UPDATE Usuario').all() || []).map(compact); } catch (e) { debug.updateOutputErr = String(e && e.message || e); }\ntry { debug.insertOutput = ($('INSERT Usuario').all() || []).map(compact); } catch (e) { debug.insertOutputErr = String(e && e.message || e); }\ntry { debug.routerInsert = ($('Router INSERT').all() || []).map(compact); } catch (e) { debug.routerInsertErr = String(e && e.message || e); }\ntry { debug.routerUpdate = ($('Router UPDATE').all() || []).map(compact); } catch (e) { debug.routerUpdateErr = String(e && e.message || e); }\ntry { debug.gateError    = ($('Gate error').all() || []).map(compact); }    catch (e) { debug.gateErrorErr    = String(e && e.message || e); }\n\nfor (const it of (input || [])) {\n  const j = (it && it.json) ? it.json : it;\n  if (!j) { debug.muestras.push({ tipo: 'null' }); continue; }\n  if (debug.muestras.length < 3) debug.muestras.push(compact(it));\n\n  if (j.error) { errores.push(String(j.error.message || j.error.code || j.error)); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details ? ' (' + j.details + ')' : '')); continue; }\n  if (Array.isArray(j)) { count += j.length; if (!usuario && j.length > 0) usuario = j[0]; continue; }\n  if (j.id) { count++; if (!usuario) usuario = j; continue; }\n}\nif (usuario) delete usuario.password_hash;\n\nif (count === 0 && errores.length === 0) {\n  errores.push('PATCH devolvió 0 filas. Diagnóstico: ' + JSON.stringify(debug));\n}\n\nreturn [{ json: { success: count > 0, action, affected: count, errores, usuario } }];\n"
       },
       "id": "verify-user-action",
       "name": "Verificar resultado usuario",
@@ -664,31 +664,17 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ ($json.errores || []).length }}",
-              "rightValue": 0,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ]
-        }
+        "jsCode": "// Router INSERT: emite el item sólo si la acción es create y no hay\n// errores de validación. En caso contrario devuelve 0 items para cortar\n// el flujo hacia INSERT. Sustituye a los antiguos nodos IF que en esta\n// instancia de n8n enrutaban mal por out[0] siempre.\nconst j = $input.first().json || {};\nif (j.estado === 'error' || !j.payload) return [];\nif (j.action !== 'create') return [];\nreturn [{ json: j }];\n"
       },
       "id": "if-validation-error",
-      "name": "¿Error validación?",
-      "type": "n8n-nodes-base.if",
+      "name": "Router INSERT",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         660,
-        700
-      ]
+        600
+      ],
+      "alwaysOutputData": false
     }
   ],
   "connections": {
@@ -862,14 +848,35 @@
       "main": [
         [
           {
-            "node": "¿Error validación?",
+            "node": "Router INSERT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Router UPDATE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gate error",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Es create usuario?": {
+    "Gate error": {
+      "main": [
+        [
+          {
+            "node": "Verificar resultado usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router INSERT": {
       "main": [
         [
           {
@@ -877,7 +884,11 @@
             "type": "main",
             "index": 0
           }
-        ],
+        ]
+      ]
+    },
+    "Router UPDATE": {
+      "main": [
         [
           {
             "node": "Aplanar payload usuario",
@@ -936,24 +947,6 @@
         [
           {
             "node": "Respond Usuario",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "¿Error validación?": {
-      "main": [
-        [
-          {
-            "node": "Verificar resultado usuario",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "¿Es create usuario?",
             "type": "main",
             "index": 0
           }
