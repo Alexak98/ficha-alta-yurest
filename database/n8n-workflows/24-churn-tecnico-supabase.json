@@ -1,0 +1,2330 @@
+{
+  "name": "Churn Técnico - yurest (Supabase)",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        160,
+        1328
+      ],
+      "id": "50d9f581-8e46-41ce-a2e1-8915bfac1dd2",
+      "name": "Get many organizations",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        352,
+        1328
+      ],
+      "id": "aba023d3-3a69-4b84-81d9-f5747a2e4147",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "2c62e049-ff93-49de-8095-d64db239104f",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        848
+      ],
+      "id": "618f71f1-e257-4f41-86f7-e2f47af8869b",
+      "name": "Webhook1",
+      "webhookId": "2c62e049-ff93-49de-8095-d64db239104f"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Message a model2').item.json.output[0].content[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1952,
+        848
+      ],
+      "id": "b32efbc7-48be-45fa-abbf-b0b45755c1b1",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "get",
+        "id": "={{ $json.body.id_org }}"
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        176,
+        848
+      ],
+      "id": "3fc3e389-8cee-4b45-8a07-88f100db4a18",
+      "name": "Get an organization",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/comments.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": {}
+      },
+      "id": "014ccfc4-2e99-483b-9676-bcacbc7f85b1",
+      "name": "HTTP Request - Get Comments1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        544,
+        848
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const comments = item.json.comments || [];\n  \n  // 1. Limpiamos el texto uniendo los cuerpos de los comentarios\n  const textoLimpio = comments.map(c => c.body).join('\\n---\\n');\n\n  // 2. Buscamos el ID del ticket usando pairedItem\n  let ticketId = \"Sin ID\";\n  try {\n    ticketId = $(\"Get many tickets\").item(item.pairedItem.item).json.id;\n  } catch (e) {\n    ticketId = \"Error al recuperar ID\";\n  }\n\n  return {\n    json: {\n      ticket_id: ticketId,\n      resumen_input: textoLimpio\n    },\n    pairedItem: item.pairedItem \n  };\n});"
+      },
+      "id": "ea03d24c-96ba-4707-ba4d-21c3259f6ab5",
+      "name": "Code - Limpiar Texto1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Recogemos los tickets procesados\nconst entradas = $input.all();\nconst totalTickets = entradas.length;\n\n// 2. Datos de la organización (obtenidos del primer nodo de referencia)\nconst orgData = $(\"Get an organization\").first().json;\nconst nombreOrg = orgData.name || \"Cliente Desconocido\";\nconst orgId = orgData.id || \"ID Desconocido\";\n\n// 3. Formateo del listado de tickets para la IA\nconst listadoTickets = entradas.map((item, index) => {\n  return `--- TICKET ${index + 1} (ID: ${item.json.ticket_id}) ---\nHISTORIAL Y RESUMEN:\n${item.json.resumen_input}\n`;\n}).join('\\n');\n\n// 4. Construcción del Super Prompt\nconst superPrompt = `\n### ROL\nActúa como un Senior Technical Project Manager. Tu objetivo es sintetizar la actividad de soporte para facilitar la toma de decisiones estratégicas.\n\n### CONTEXTO\n- **CLIENTE**: ${nombreOrg.toUpperCase()}\n- **ID ORGANIZACIÓN**: ${orgId}\n- **VOLUMEN**: ${totalTickets} tickets analizados en este periodo.\n\n### DATOS DE ENTRADA\n${listadoTickets}\n\n### ESTRUCTURA DEL INFORME REQUERIDA\nPor favor, genera un informe profesional en Markdown siguiendo este esquema:\n\n1. **RESUMEN EJECUTIVO**: Diagnóstico general de la situación del cliente (salud de la cuenta).\n2. **ANÁLISIS POR TICKET**: Breve síntesis (máximo 2 líneas) por cada caso, resaltando el problema técnico.\n3. **PATRONES Y CORRELACIONES**: Identificación de errores recurrentes, bugs de producto o fricciones en la UX.\n4. **HOJA DE RUTA (PLAN DE ACCIÓN)**:\n    - 🛠️ **Soporte**: Próximos pasos para cerrar los casos abiertos.\n    - 💻 **Desarrollo**: Sugerencias de mejora técnica o correcciones necesarias.\n5. **MÉTRICA DE RIESGO (CHURN)**: Escala 1-10 y justificación cualitativa.\n\n### FORMATO Y TONO\n- Profesional, directo y orientado a la solución.\n- Usa emojis (🚨, ✅, 🛠️, 📈) para facilitar la lectura rápida.\n`;\n\n// --- SOLUCIÓN PARA LAS COMILLAS (PARCHE FINAL) ---\n// Convertimos a string seguro para JSON y quitamos las comillas externas\nconst promptSeguro = JSON.stringify(superPrompt).slice(1, -1);\n\n// 5. Salida del nodo\nreturn {\n  json: {\n    prompt_final: promptSeguro,\n    cliente: nombreOrg,\n    id_organizacion: orgId,\n    fecha_proceso: new Date().toISOString().split('T')[0]\n  }\n};"
+      },
+      "id": "5228a28d-e3d8-41f9-b666-a2d16e4d0be3",
+      "name": "Generar Prompt Global1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "=organization_id:{{ $json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        368,
+        848
+      ],
+      "id": "89d46458-c113-4323-a0f3-2917114b7ed5",
+      "name": "Get many tickets",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt_final }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1216,
+        848
+      ],
+      "id": "568e7c02-859d-43d4-9dcb-84ebb41e0833",
+      "name": "Message a model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "w2doUpVdPofPaHNg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Conseguir listado de clientes",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        1344
+      ],
+      "id": "1cf494cf-ad37-4313-9326-3d57e85fc8f5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Obtener datos de cuantos tickets tiene en total",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        1088
+      ],
+      "id": "62cce3a5-1a1b-4e87-b625-cd511d1ccdc3",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Consulta campo respuesta_ia",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        1648
+      ],
+      "id": "1a3a30ae-5227-479a-9661-fdf04f629171",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "churn_tecnico",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id_organizacion",
+              "condition": "eq",
+              "keyValue": "={{ $json.body.org_id }}"
+            }
+          ]
+        }
+      },
+      "id": "ab1056fb-b841-4c02-afc2-e5a9f2e157f2",
+      "name": "Google Sheets - Buscar",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        1632
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.respuesta_ia }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cbae3c08-5bf6-4358-afb0-01e0cfd366de",
+      "name": "IF - Existe resultado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        1632
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ \"success\": false, \"error\": \"ID no encontrado\" }) }}",
+        "options": {
+          "responseCode": 404,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "310e3ab7-3b92-4307-aa57-d7ac9c4d9065",
+      "name": "Respond 404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        1728
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "buscar-resumen",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "bb2c2a59-c59b-46ad-b0b2-1135b3b19277",
+      "name": "Webhook2",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        1632
+      ],
+      "webhookId": "3c7b8edb-513b-445e-b2c8-10de6aa6cace"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        576,
+        1552
+      ],
+      "id": "a3497bf5-d1b8-4a71-8295-fce3b256d341",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "=organization_id:{{ $json.body.id_org }}"
+        }
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        144,
+        1072
+      ],
+      "id": "666ce420-a350-499f-80d3-4c15ff55dd7f",
+      "name": "Get many tickets2",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "042f57e0-4391-4d80-a158-b6b8e9fa1084",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        1072
+      ],
+      "id": "81148f00-0ccc-4727-9e75-c9be1d9c313f",
+      "name": "Traer todos los tickets de la org",
+      "webhookId": "042f57e0-4391-4d80-a158-b6b8e9fa1084"
+    },
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "path": "9e0fc21e-f895-42ce-ac92-b710aaa45b25",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        1328
+      ],
+      "id": "f21f7b88-0fc4-4d9d-8128-055e1feaa4ea",
+      "name": "Traer org",
+      "webhookId": "9e0fc21e-f895-42ce-ac92-b710aaa45b25",
+      "alwaysOutputData": false,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        352,
+        1072
+      ],
+      "id": "cf4d7a6a-b1c6-40d9-a65c-4370d3ae883d",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "content": "Obtener nivel de churn",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        1984
+      ],
+      "id": "3863e70b-d145-432e-a6a3-7d35fab78934",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "churn_tecnico",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        128,
+        1968
+      ],
+      "id": "71ef4c7b-93b7-48cf-bb69-5083dbae931e",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        592,
+        1984
+      ],
+      "id": "77164b2b-8e4f-4a3d-b07e-534d5dcbddf6",
+      "name": "Respond to Webhook5"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  delete item.json.respuesta_ia; // Eliminamos el campo específico\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        1968
+      ],
+      "id": "640e80cb-0fb1-470a-a2ba-44fd8966f6aa",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "path": "6c6b655b-98c4-4c0a-afae-73ea4cd3964f",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        1968
+      ],
+      "id": "f229144f-acc7-4d58-b88a-97a397555613",
+      "name": "Webhook3",
+      "webhookId": "6c6b655b-98c4-4c0a-afae-73ea4cd3964f"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "churn_tecnico",
+        "matchingColumns": [
+          "id_organizacion"
+        ],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id_organizacion",
+              "fieldValue": "={{ $('Get an organization').item.json.id }}"
+            },
+            {
+              "fieldId": "nombre",
+              "fieldValue": "={{ $('Get an organization').item.json.name }}"
+            },
+            {
+              "fieldId": "respuesta_ia",
+              "fieldValue": "={{ $('Message a model2').item.json.output[0].content[0].text }}"
+            },
+            {
+              "fieldId": "nivel",
+              "fieldValue": "={{ $json.churn_score }}"
+            },
+            {
+              "fieldId": "fecha_resumen",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        848
+      ],
+      "id": "b4e32cee-6154-4910-8563-3665b44d8f7f",
+      "name": "Actualizar sheet",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  // 1. Acceder al texto dentro de la estructura del mensaje\n  const texto = item.json.output[0].content[0].text;\n\n  // 2. Buscamos patrones comunes como \"Escala\", \"Riesgo\", \"Nivel\" o \"Métrica\"\n  // Seguida de dos puntos, espacios opcionales y un número.\n  // La \"i\" al final hace que no importe si es mayúscula o minúscula.\n  const regex = /(?:Escala|Riesgo|Nivel|Métrica|Valoración):\\s*(\\d+)/i;\n  \n  const match = texto.match(regex);\n\n  // 3. Si no encuentra el patrón anterior, buscamos cualquier número que esté \n  // cerca de la palabra \"Churn\" al final del documento.\n  let valorFinal = null;\n  \n  if (match) {\n    valorFinal = parseInt(match[1], 10);\n  } else {\n    // Intento de rescate: buscar el último número (\\d+) que aparezca después de la palabra \"Churn\"\n    const rescueMatch = texto.match(/churn.*?\\s(\\d+)/is);\n    valorFinal = rescueMatch ? parseInt(rescueMatch[1], 10) : null;\n  }\n\n  // 4. Limitar el resultado entre 1 y 10 por seguridad\n  if (valorFinal !== null) {\n    valorFinal = Math.max(1, Math.min(10, valorFinal));\n  }\n\n  return {\n    json: {\n      churn_score: valorFinal,\n      organizacion: item.json.output[0].id // Opcional: mantener una referencia\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        848
+      ],
+      "id": "24a42f9f-3497-4766-acc4-53e96bb2cb3f",
+      "name": "Limpiar nivel churn de la respuesta ia"
+    },
+    {
+      "parameters": {
+        "content": "Resumen global",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        848
+      ],
+      "id": "3eb4b68e-737c-41db-bf79-e77a40ca8cd3",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "Relleno automatico de la respuesta a los nivel churn vacios",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        2208
+      ],
+      "id": "8ba3d1b4-8eff-484a-b4ec-c00ba2139754",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "get",
+        "id": "={{ $json.id_organizacion }}"
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        720,
+        2192
+      ],
+      "id": "e6ce419c-f4ee-4c1c-a6be-8cfb1aeadc0b",
+      "name": "Get an organization1",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/comments.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": {}
+      },
+      "id": "008045df-bdaa-446e-b093-7e73d7bc75a8",
+      "name": "HTTP Request - Get Comments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1328,
+        2192
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const comments = item.json.comments || [];\n  \n  // 1. Limpiamos el texto uniendo los cuerpos de los comentarios\n  const textoLimpio = comments.map(c => c.body).join('\\n---\\n');\n\n  // 2. Buscamos el ID del ticket usando pairedItem\n  let ticketId = \"Sin ID\";\n  try {\n    ticketId = $(\"Get many tickets1\").item(item.pairedItem.item).json.id;\n  } catch (e) {\n    ticketId = \"Error al recuperar ID\";\n  }\n\n  return {\n    json: {\n      ticket_id: ticketId,\n      resumen_input: textoLimpio\n    },\n    pairedItem: item.pairedItem \n  };\n});"
+      },
+      "id": "9b77a651-2f56-4851-bb8d-6c060c1392a2",
+      "name": "Code - Limpiar Texto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        2192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Recogemos los tickets procesados\nconst entradas = $input.all();\nconst totalTickets = entradas.length;\n\n// 2. Datos de la organización (obtenidos del primer nodo de referencia)\nconst orgData = $(\"Get an organization1\").first().json;\nconst nombreOrg = orgData.name || \"Cliente Desconocido\";\nconst orgId = orgData.id || \"ID Desconocido\";\n\n// 3. Formateo del listado de tickets para la IA\nconst listadoTickets = entradas.map((item, index) => {\n  return `--- TICKET ${index + 1} (ID: ${item.json.ticket_id}) ---\nHISTORIAL Y RESUMEN:\n${item.json.resumen_input}\n`;\n}).join('\\n');\n\n// 4. Construcción del Super Prompt\nconst superPrompt = `\n### ROL\nActúa como un Senior Technical Project Manager. Tu objetivo es sintetizar la actividad de soporte para facilitar la toma de decisiones estratégicas.\n\n### CONTEXTO\n- **CLIENTE**: ${nombreOrg.toUpperCase()}\n- **ID ORGANIZACIÓN**: ${orgId}\n- **VOLUMEN**: ${totalTickets} tickets analizados en este periodo.\n\n### DATOS DE ENTRADA\n${listadoTickets}\n\n### ESTRUCTURA DEL INFORME REQUERIDA\nPor favor, genera un informe profesional en Markdown siguiendo este esquema:\n\n1. **RESUMEN EJECUTIVO**: Diagnóstico general de la situación del cliente (salud de la cuenta).\n2. **ANÁLISIS POR TICKET**: Breve síntesis (máximo 2 líneas) por cada caso, resaltando el problema técnico.\n3. **PATRONES Y CORRELACIONES**: Identificación de errores recurrentes, bugs de producto o fricciones en la UX.\n4. **HOJA DE RUTA (PLAN DE ACCIÓN)**:\n    - 🛠️ **Soporte**: Próximos pasos para cerrar los casos abiertos.\n    - 💻 **Desarrollo**: Sugerencias de mejora técnica o correcciones necesarias.\n5. **MÉTRICA DE RIESGO (CHURN)**: Escala 1-10 y justificación cualitativa.\n\n### FORMATO Y TONO\n- Profesional, directo y orientado a la solución.\n- Usa emojis (🚨, ✅, 🛠️, 📈) para facilitar la lectura rápida.\n`;\n\n// --- SOLUCIÓN PARA LAS COMILLAS (PARCHE FINAL) ---\n// Convertimos a string seguro para JSON y quitamos las comillas externas\nconst promptSeguro = JSON.stringify(superPrompt).slice(1, -1);\n\n// 5. Salida del nodo\nreturn {\n  json: {\n    prompt_final: promptSeguro,\n    cliente: nombreOrg,\n    id_organizacion: orgId,\n    fecha_proceso: new Date().toISOString().split('T')[0]\n  }\n};"
+      },
+      "id": "afb27055-e2d8-465c-8266-bb3e9db57a9f",
+      "name": "Generar Prompt Global",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        2192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "=organization_id:{{ $json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        912,
+        2192
+      ],
+      "id": "affad8f7-5a13-41c8-98f3-ee0dbb10b7a0",
+      "name": "Get many tickets1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt_final }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1904,
+        2192
+      ],
+      "id": "8374fa2a-cf52-462c-8501-b910781bf70f",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "w2doUpVdPofPaHNg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "churn_tecnico",
+        "matchingColumns": [
+          "id_organizacion"
+        ],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id_organizacion",
+              "fieldValue": "={{ $('Get an organization1').item.json.id }}"
+            },
+            {
+              "fieldId": "nombre",
+              "fieldValue": "={{ $('Get an organization1').item.json.name }}"
+            },
+            {
+              "fieldId": "respuesta_ia",
+              "fieldValue": "={{ $('Message a model').item.json.output[0].content[0].text }}"
+            },
+            {
+              "fieldId": "nivel",
+              "fieldValue": "={{ $json.churn_score }}"
+            },
+            {
+              "fieldId": "fecha_resumen",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2448,
+        2192
+      ],
+      "id": "c3f61cac-fd13-4edf-9ab7-f3bafb2377c4",
+      "name": "Actualizar sheet1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  // 1. Acceder al texto dentro de la estructura del mensaje\n  const texto = item.json.output[0].content[0].text;\n\n  // 2. Buscamos patrones comunes como \"Escala\", \"Riesgo\", \"Nivel\" o \"Métrica\"\n  // Seguida de dos puntos, espacios opcionales y un número.\n  // La \"i\" al final hace que no importe si es mayúscula o minúscula.\n  const regex = /(?:Escala|Riesgo|Nivel|Métrica|Valoración):\\s*(\\d+)/i;\n  \n  const match = texto.match(regex);\n\n  // 3. Si no encuentra el patrón anterior, buscamos cualquier número que esté \n  // cerca de la palabra \"Churn\" al final del documento.\n  let valorFinal = null;\n  \n  if (match) {\n    valorFinal = parseInt(match[1], 10);\n  } else {\n    // Intento de rescate: buscar el último número (\\d+) que aparezca después de la palabra \"Churn\"\n    const rescueMatch = texto.match(/churn.*?\\s(\\d+)/is);\n    valorFinal = rescueMatch ? parseInt(rescueMatch[1], 10) : null;\n  }\n\n  // 4. Limitar el resultado entre 1 y 10 por seguridad\n  if (valorFinal !== null) {\n    valorFinal = Math.max(1, Math.min(10, valorFinal));\n  }\n\n  return {\n    json: {\n      churn_score: valorFinal,\n      organizacion: item.json.output[0].id // Opcional: mantener una referencia\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        2192
+      ],
+      "id": "3e4c37a1-8dfe-44ad-adf9-ef270e0ce857",
+      "name": "Limpiar nivel churn de la respuesta ia1"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "churn_tecnico",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        160,
+        2192
+      ],
+      "id": "94816287-b3cf-48fa-b8ae-0e9bf412fc17",
+      "name": "Get row(s) in sheet",
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "85b110a9-8646-4353-a81d-047e300391b9",
+              "leftValue": "={{ $json.nivel }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        2192
+      ],
+      "id": "7e31921a-9d7e-4bbd-8c74-7ef32b6d2a31",
+      "name": "Filter"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        528,
+        2192
+      ],
+      "id": "50148b38-5e8e-4c94-b0c2-29cf478e5810",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d36427eb-502a-49a0-a56f-037e3797a3c4",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        2208
+      ],
+      "id": "9aad8500-6575-484b-98cc-f600c64b95e8",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "churn_tecnico",
+        "matchingColumns": [
+          "id_organizacion"
+        ],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id_organizacion",
+              "fieldValue": "={{ $('Get an organization1').item.json.id }}"
+            },
+            {
+              "fieldId": "respuesta_ia",
+              "fieldValue": "No hay tickets"
+            },
+            {
+              "fieldId": "nivel",
+              "fieldValue": "0"
+            },
+            {
+              "fieldId": "fecha_resumen",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        2416
+      ],
+      "id": "498e94fa-61cd-4a05-ac9e-30bf9e3d452f",
+      "name": "Update row in sheet",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6,
+              "triggerAtMinute": null
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -64,
+        2688
+      ],
+      "id": "983919c8-ceb6-4b61-9cf8-6bcf8bbec4d8",
+      "name": "Schedule Trigger",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "Update diario de churn",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        2704
+      ],
+      "id": "9e59d056-4296-498a-8ad4-e4e6fe1f295c",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "get",
+        "id": "={{ $json.id_organizacion }}"
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        784,
+        2672
+      ],
+      "id": "46c6a821-58e6-41f8-8c92-efb816f18fc7",
+      "name": "Get an organization2",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/comments.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": {}
+      },
+      "id": "8f4577f3-59d7-4731-9fc4-94955ed59705",
+      "name": "HTTP Request - Get Comments2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1392,
+        2672
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const comments = item.json.comments || [];\n  \n  // 1. Limpiamos el texto uniendo los cuerpos de los comentarios\n  const textoLimpio = comments.map(c => c.body).join('\\n---\\n');\n\n  // 2. Buscamos el ID del ticket usando pairedItem\n  let ticketId = \"Sin ID\";\n  try {\n    ticketId = $(\"Get many tickets3\").item(item.pairedItem.item).json.id;\n  } catch (e) {\n    ticketId = \"Error al recuperar ID\";\n  }\n\n  return {\n    json: {\n      ticket_id: ticketId,\n      resumen_input: textoLimpio\n    },\n    pairedItem: item.pairedItem \n  };\n});"
+      },
+      "id": "c2419735-6cf1-4360-9114-103e7f41fc01",
+      "name": "Code - Limpiar Texto2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Recogemos los tickets procesados\nconst entradas = $input.all();\nconst totalTickets = entradas.length;\n\n// 2. Datos de la organización (obtenidos del primer nodo de referencia)\nconst orgData = $(\"Get an organization2\").first().json;\nconst nombreOrg = orgData.name || \"Cliente Desconocido\";\nconst orgId = orgData.id || \"ID Desconocido\";\n\n// 3. Formateo del listado de tickets para la IA\nconst listadoTickets = entradas.map((item, index) => {\n  return `--- TICKET ${index + 1} (ID: ${item.json.ticket_id}) ---\nHISTORIAL Y RESUMEN:\n${item.json.resumen_input}\n`;\n}).join('\\n');\n\n// 4. Construcción del Super Prompt\nconst superPrompt = `\n### ROL\nActúa como un Senior Technical Project Manager. Tu objetivo es sintetizar la actividad de soporte para facilitar la toma de decisiones estratégicas.\n\n### CONTEXTO\n- **CLIENTE**: ${nombreOrg.toUpperCase()}\n- **ID ORGANIZACIÓN**: ${orgId}\n- **VOLUMEN**: ${totalTickets} tickets analizados en este periodo.\n\n### DATOS DE ENTRADA\n${listadoTickets}\n\n### ESTRUCTURA DEL INFORME REQUERIDA\nPor favor, genera un informe profesional en Markdown siguiendo este esquema:\n\n1. **RESUMEN EJECUTIVO**: Diagnóstico general de la situación del cliente (salud de la cuenta).\n2. **ANÁLISIS POR TICKET**: Breve síntesis (máximo 2 líneas) por cada caso, resaltando el problema técnico.\n3. **PATRONES Y CORRELACIONES**: Identificación de errores recurrentes, bugs de producto o fricciones en la UX.\n4. **HOJA DE RUTA (PLAN DE ACCIÓN)**:\n    - 🛠️ **Soporte**: Próximos pasos para cerrar los casos abiertos.\n    - 💻 **Desarrollo**: Sugerencias de mejora técnica o correcciones necesarias.\n5. **MÉTRICA DE RIESGO (CHURN)**: Escala 1-10 y justificación cualitativa.\n\n### FORMATO Y TONO\n- Profesional, directo y orientado a la solución.\n- Usa emojis (🚨, ✅, 🛠️, 📈) para facilitar la lectura rápida.\n`;\n\n// --- SOLUCIÓN PARA LAS COMILLAS (PARCHE FINAL) ---\n// Convertimos a string seguro para JSON y quitamos las comillas externas\nconst promptSeguro = JSON.stringify(superPrompt).slice(1, -1);\n\n// 5. Salida del nodo\nreturn {\n  json: {\n    prompt_final: promptSeguro,\n    cliente: nombreOrg,\n    id_organizacion: orgId,\n    fecha_proceso: new Date().toISOString().split('T')[0]\n  }\n};"
+      },
+      "id": "a8695b5e-0abc-460d-9c56-f753e3f313ff",
+      "name": "Generar Prompt Global2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "=organization_id:{{ $json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        976,
+        2672
+      ],
+      "id": "591379b1-f992-4fd9-97c0-dca4c6c746d6",
+      "name": "Get many tickets3",
+      "alwaysOutputData": true,
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt_final }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1968,
+        2672
+      ],
+      "id": "ed3b1c9b-c91e-44c8-b719-2bcb839ced08",
+      "name": "Message a model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "w2doUpVdPofPaHNg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "churn_tecnico",
+        "matchingColumns": [
+          "id_organizacion"
+        ],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id_organizacion",
+              "fieldValue": "={{ $('Get an organization2').item.json.id }}"
+            },
+            {
+              "fieldId": "nombre",
+              "fieldValue": "={{ $('Get an organization2').item.json.name }}"
+            },
+            {
+              "fieldId": "respuesta_ia",
+              "fieldValue": "={{ $('Message a model1').item.json.output[0].content[0].text }}"
+            },
+            {
+              "fieldId": "nivel",
+              "fieldValue": "={{ $json.churn_score }}"
+            },
+            {
+              "fieldId": "fecha_resumen",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2512,
+        2672
+      ],
+      "id": "9e668f30-c49a-47f1-b2b2-9b0c32f05d69",
+      "name": "Actualizar sheet2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  // 1. Acceder al texto dentro de la estructura del mensaje\n  const texto = item.json.output[0].content[0].text;\n\n  // 2. Buscamos patrones comunes como \"Escala\", \"Riesgo\", \"Nivel\" o \"Métrica\"\n  // Seguida de dos puntos, espacios opcionales y un número.\n  // La \"i\" al final hace que no importe si es mayúscula o minúscula.\n  const regex = /(?:Escala|Riesgo|Nivel|Métrica|Valoración):\\s*(\\d+)/i;\n  \n  const match = texto.match(regex);\n\n  // 3. Si no encuentra el patrón anterior, buscamos cualquier número que esté \n  // cerca de la palabra \"Churn\" al final del documento.\n  let valorFinal = null;\n  \n  if (match) {\n    valorFinal = parseInt(match[1], 10);\n  } else {\n    // Intento de rescate: buscar el último número (\\d+) que aparezca después de la palabra \"Churn\"\n    const rescueMatch = texto.match(/churn.*?\\s(\\d+)/is);\n    valorFinal = rescueMatch ? parseInt(rescueMatch[1], 10) : null;\n  }\n\n  // 4. Limitar el resultado entre 1 y 10 por seguridad\n  if (valorFinal !== null) {\n    valorFinal = Math.max(1, Math.min(10, valorFinal));\n  }\n\n  return {\n    json: {\n      churn_score: valorFinal,\n      organizacion: item.json.output[0].id // Opcional: mantener una referencia\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        2672
+      ],
+      "id": "17c676d2-96bb-4fc3-b88b-ccb313717b8c",
+      "name": "Limpiar nivel churn de la respuesta ia2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "churn_tecnico",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        192,
+        2672
+      ],
+      "id": "e621069a-fe63-4dfc-bda6-e6d8b7377dd4",
+      "name": "Get row(s) in sheet2",
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "85b110a9-8646-4353-a81d-047e300391b9",
+              "leftValue": "={{ $json.fecha_resumen }}",
+              "rightValue": "={{ $now.startOf('day') }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "93c621b1-e1a3-4e92-bf8c-7d0f94ba3d95",
+              "leftValue": "={{ $json.fecha_resumen }}",
+              "rightValue": "={{ $now.startOf('day') }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        2672
+      ],
+      "id": "5af6d515-8c5d-4621-8c40-346aecd2045f",
+      "name": "Filter1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        592,
+        2672
+      ],
+      "id": "e217a91f-9f70-4e65-8b8a-8001d6f65b13",
+      "name": "Limit1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d36427eb-502a-49a0-a56f-037e3797a3c4",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1168,
+        2688
+      ],
+      "id": "a298c65b-07f0-4293-8e23-0e1a15a28d6a",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "churn_tecnico",
+        "matchingColumns": [
+          "id_organizacion"
+        ],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id_organizacion",
+              "fieldValue": "={{ $('Get an organization2').item.json.id }}"
+            },
+            {
+              "fieldId": "respuesta_ia",
+              "fieldValue": "No hay tickets"
+            },
+            {
+              "fieldId": "nivel",
+              "fieldValue": "0"
+            },
+            {
+              "fieldId": "fecha_resumen",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        2896
+      ],
+      "id": "b2980888-d65e-46fe-9caf-1d27343974ed",
+      "name": "Update row in sheet1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -80,
+        3296
+      ],
+      "id": "1a02dc61-480f-43f4-b2c6-7270267cb1c4",
+      "name": "Schedule Trigger1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "Update diario de churn",
+        "height": 80,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        3312
+      ],
+      "id": "43a62064-5414-474d-924d-a2a482d18234",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "operation": "get",
+        "id": "={{ $json.id_organizacion }}"
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        768,
+        3280
+      ],
+      "id": "29bb1ac7-1421-4b0e-942d-a6f3e6e51d82",
+      "name": "Get an organization3",
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/comments.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": {}
+      },
+      "id": "0a441a01-60c5-4fb5-84f6-c2964361613f",
+      "name": "HTTP Request - Get Comments3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1376,
+        3280
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  const comments = item.json.comments || [];\n  \n  // 1. Limpiamos el texto uniendo los cuerpos de los comentarios\n  const textoLimpio = comments.map(c => c.body).join('\\n---\\n');\n\n  // 2. Buscamos el ID del ticket usando pairedItem\n  let ticketId = \"Sin ID\";\n  try {\n    ticketId = $(\"Get many tickets4\").item(item.pairedItem.item).json.id;\n  } catch (e) {\n    ticketId = \"Error al recuperar ID\";\n  }\n\n  return {\n    json: {\n      ticket_id: ticketId,\n      resumen_input: textoLimpio\n    },\n    pairedItem: item.pairedItem \n  };\n});"
+      },
+      "id": "346c01c0-a3fa-4955-b2cd-ea7b3dbfa409",
+      "name": "Code - Limpiar Texto3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        3280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Recogemos los tickets procesados\nconst entradas = $input.all();\nconst totalTickets = entradas.length;\n\n// 2. Datos de la organización (obtenidos del primer nodo de referencia)\nconst orgData = $(\"Get an organization3\").first().json;\nconst nombreOrg = orgData.name || \"Cliente Desconocido\";\nconst orgId = orgData.id || \"ID Desconocido\";\n\n// 3. Formateo del listado de tickets para la IA\nconst listadoTickets = entradas.map((item, index) => {\n  return `--- TICKET ${index + 1} (ID: ${item.json.ticket_id}) ---\nHISTORIAL Y RESUMEN:\n${item.json.resumen_input}\n`;\n}).join('\\n');\n\n// 4. Construcción del Super Prompt\nconst superPrompt = `\n### ROL\nActúa como un Senior Technical Project Manager. Tu objetivo es sintetizar la actividad de soporte para facilitar la toma de decisiones estratégicas.\n\n### CONTEXTO\n- **CLIENTE**: ${nombreOrg.toUpperCase()}\n- **ID ORGANIZACIÓN**: ${orgId}\n- **VOLUMEN**: ${totalTickets} tickets analizados en este periodo.\n\n### DATOS DE ENTRADA\n${listadoTickets}\n\n### ESTRUCTURA DEL INFORME REQUERIDA\nPor favor, genera un informe profesional en Markdown siguiendo este esquema:\n\n1. **RESUMEN EJECUTIVO**: Diagnóstico general de la situación del cliente (salud de la cuenta).\n2. **ANÁLISIS POR TICKET**: Breve síntesis (máximo 2 líneas) por cada caso, resaltando el problema técnico.\n3. **PATRONES Y CORRELACIONES**: Identificación de errores recurrentes, bugs de producto o fricciones en la UX.\n4. **HOJA DE RUTA (PLAN DE ACCIÓN)**:\n    - 🛠️ **Soporte**: Próximos pasos para cerrar los casos abiertos.\n    - 💻 **Desarrollo**: Sugerencias de mejora técnica o correcciones necesarias.\n5. **MÉTRICA DE RIESGO (CHURN)**: Escala 1-10 y justificación cualitativa.\n\n### FORMATO Y TONO\n- Profesional, directo y orientado a la solución.\n- Usa emojis (🚨, ✅, 🛠️, 📈) para facilitar la lectura rápida.\n`;\n\n// --- SOLUCIÓN PARA LAS COMILLAS (PARCHE FINAL) ---\n// Convertimos a string seguro para JSON y quitamos las comillas externas\nconst promptSeguro = JSON.stringify(superPrompt).slice(1, -1);\n\n// 5. Salida del nodo\nreturn {\n  json: {\n    prompt_final: promptSeguro,\n    cliente: nombreOrg,\n    id_organizacion: orgId,\n    fecha_proceso: new Date().toISOString().split('T')[0]\n  }\n};"
+      },
+      "id": "74779635-502d-4b4f-8ec9-5581f1d03362",
+      "name": "Generar Prompt Global3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        3280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "=organization_id:{{ $json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        960,
+        3280
+      ],
+      "id": "83787f61-45f2-4603-b73c-e566888967f0",
+      "name": "Get many tickets4",
+      "alwaysOutputData": true,
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt_final }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1952,
+        3280
+      ],
+      "id": "3b43ea53-3160-4d5d-a06b-eb7e78da83c1",
+      "name": "Message a model3",
+      "credentials": {
+        "openAiApi": {
+          "id": "w2doUpVdPofPaHNg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "churn_tecnico",
+        "matchingColumns": [
+          "id_organizacion"
+        ],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id_organizacion",
+              "fieldValue": "={{ $('Get an organization3').item.json.id }}"
+            },
+            {
+              "fieldId": "nombre",
+              "fieldValue": "={{ $('Get an organization3').item.json.name }}"
+            },
+            {
+              "fieldId": "respuesta_ia",
+              "fieldValue": "={{ $('Message a model3').item.json.output[0].content[0].text }}"
+            },
+            {
+              "fieldId": "nivel",
+              "fieldValue": "={{ $json.churn_score }}"
+            },
+            {
+              "fieldId": "fecha_resumen",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2496,
+        3280
+      ],
+      "id": "2dac6a0b-bb36-4361-96f3-0f1a8a7fb35f",
+      "name": "Actualizar sheet3",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  // 1. Acceder al texto dentro de la estructura del mensaje\n  const texto = item.json.output[0].content[0].text;\n\n  // 2. Buscamos patrones comunes como \"Escala\", \"Riesgo\", \"Nivel\" o \"Métrica\"\n  // Seguida de dos puntos, espacios opcionales y un número.\n  // La \"i\" al final hace que no importe si es mayúscula o minúscula.\n  const regex = /(?:Escala|Riesgo|Nivel|Métrica|Valoración):\\s*(\\d+)/i;\n  \n  const match = texto.match(regex);\n\n  // 3. Si no encuentra el patrón anterior, buscamos cualquier número que esté \n  // cerca de la palabra \"Churn\" al final del documento.\n  let valorFinal = null;\n  \n  if (match) {\n    valorFinal = parseInt(match[1], 10);\n  } else {\n    // Intento de rescate: buscar el último número (\\d+) que aparezca después de la palabra \"Churn\"\n    const rescueMatch = texto.match(/churn.*?\\s(\\d+)/is);\n    valorFinal = rescueMatch ? parseInt(rescueMatch[1], 10) : null;\n  }\n\n  // 4. Limitar el resultado entre 1 y 10 por seguridad\n  if (valorFinal !== null) {\n    valorFinal = Math.max(1, Math.min(10, valorFinal));\n  }\n\n  return {\n    json: {\n      churn_score: valorFinal,\n      organizacion: item.json.output[0].id // Opcional: mantener una referencia\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        3280
+      ],
+      "id": "f879e1f9-1776-4540-8add-1e5c3bd8f346",
+      "name": "Limpiar nivel churn de la respuesta ia3"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "churn_tecnico",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        176,
+        3280
+      ],
+      "id": "736322be-56e3-49a8-b870-687314e10a15",
+      "name": "Get row(s) in sheet3",
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "85b110a9-8646-4353-a81d-047e300391b9",
+              "leftValue": "={{ $json.fecha_resumen }}",
+              "rightValue": "={{ $now.startOf('day') }}",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        3280
+      ],
+      "id": "b3da2a86-fa8f-491c-9a7d-1e66b016716c",
+      "name": "Filter2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        576,
+        3280
+      ],
+      "id": "7562167e-73cc-4a47-9c45-de1e71ea7a32",
+      "name": "Limit2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d36427eb-502a-49a0-a56f-037e3797a3c4",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        3296
+      ],
+      "id": "c1a3eaa3-1fcc-48a6-a551-cece8ca192df",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "churn_tecnico",
+        "matchingColumns": [
+          "id_organizacion"
+        ],
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id_organizacion",
+              "fieldValue": "={{ $('Get an organization3').item.json.id }}"
+            },
+            {
+              "fieldId": "respuesta_ia",
+              "fieldValue": "No hay tickets"
+            },
+            {
+              "fieldId": "nivel",
+              "fieldValue": "0"
+            },
+            {
+              "fieldId": "fecha_resumen",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        3504
+      ],
+      "id": "2ce90c28-adf8-4cfa-b340-03cab1667c1c",
+      "name": "Update row in sheet2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_SUPABASE_CRED_ID",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get many organizations": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Get an organization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an organization": {
+      "main": [
+        [
+          {
+            "node": "Get many tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Comments1": {
+      "main": [
+        [
+          {
+            "node": "Code - Limpiar Texto1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Limpiar Texto1": {
+      "main": [
+        [
+          {
+            "node": "Generar Prompt Global1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Prompt Global1": {
+      "main": [
+        [
+          {
+            "node": "Message a model2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many tickets": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Comments1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model2": {
+      "main": [
+        [
+          {
+            "node": "Limpiar nivel churn de la respuesta ia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Google Sheets - Buscar": {
+      "main": [
+        [
+          {
+            "node": "IF - Existe resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Existe resultado": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 404",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Buscar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traer todos los tickets de la org": {
+      "main": [
+        [
+          {
+            "node": "Get many tickets2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traer org": {
+      "main": [
+        [
+          {
+            "node": "Get many organizations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many tickets2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook5": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook3": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar nivel churn de la respuesta ia": {
+      "main": [
+        [
+          {
+            "node": "Actualizar sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an organization1": {
+      "main": [
+        [
+          {
+            "node": "Get many tickets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Comments": {
+      "main": [
+        [
+          {
+            "node": "Code - Limpiar Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Limpiar Texto": {
+      "main": [
+        [
+          {
+            "node": "Generar Prompt Global",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Prompt Global": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many tickets1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Limpiar nivel churn de la respuesta ia1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar nivel churn de la respuesta ia1": {
+      "main": [
+        [
+          {
+            "node": "Actualizar sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar sheet1": {
+      "main": [
+        []
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Get an organization1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Comments",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an organization2": {
+      "main": [
+        [
+          {
+            "node": "Get many tickets3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Comments2": {
+      "main": [
+        [
+          {
+            "node": "Code - Limpiar Texto2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Limpiar Texto2": {
+      "main": [
+        [
+          {
+            "node": "Generar Prompt Global2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Prompt Global2": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many tickets3": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Limpiar nivel churn de la respuesta ia2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar nivel churn de la respuesta ia2": {
+      "main": [
+        [
+          {
+            "node": "Actualizar sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "Limit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit1": {
+      "main": [
+        [
+          {
+            "node": "Get an organization2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Comments2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        []
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        []
+      ]
+    },
+    "Get an organization3": {
+      "main": [
+        [
+          {
+            "node": "Get many tickets4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Get Comments3": {
+      "main": [
+        [
+          {
+            "node": "Code - Limpiar Texto3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Limpiar Texto3": {
+      "main": [
+        [
+          {
+            "node": "Generar Prompt Global3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Prompt Global3": {
+      "main": [
+        [
+          {
+            "node": "Message a model3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many tickets4": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model3": {
+      "main": [
+        [
+          {
+            "node": "Limpiar nivel churn de la respuesta ia3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar nivel churn de la respuesta ia3": {
+      "main": [
+        [
+          {
+            "node": "Actualizar sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet3": {
+      "main": [
+        [
+          {
+            "node": "Filter2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter2": {
+      "main": [
+        [
+          {
+            "node": "Limit2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit2": {
+      "main": [
+        [
+          {
+            "node": "Get an organization3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Get Comments3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": []
+}
