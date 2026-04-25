@@ -22,31 +22,89 @@
         .page-content { padding:24px;max-width:1200px;margin:0 auto }
 
         .filters {
-            display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;
-            background:#fff;border:1px solid #e2e8f0;border-radius:12px;
-            padding:16px;margin-bottom:20px;
+            background: linear-gradient(135deg, #ffffff 0%, #fafaff 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(15,23,42,0.04);
         }
-        .filter-group { display:flex;flex-direction:column;gap:4px }
-        .filter-group label { font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b }
+        .filters-row {
+            display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+        .filter-group label {
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+            text-transform: uppercase; color: #64748b;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .filter-group label svg { width: 13px; height: 13px; opacity: 0.6 }
+
+        .date-input {
+            position: relative;
+        }
         .filter-group input[type=date] {
-            border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 10px;
-            font-family:inherit;font-size:0.88rem;background:#fff;color:#0f172a;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-family: inherit; font-size: 0.88rem;
+            background: #fff; color: #0f172a;
+            min-width: 150px;
+            transition: border-color .15s, box-shadow .15s;
         }
-        .filter-group input[type=date]:focus { outline:none;border-color:#6366f1 }
-        .preset-btns { display:flex;gap:6px;flex-wrap:wrap }
+        .filter-group input[type=date]:hover { border-color: #c7d2fe }
+        .filter-group input[type=date]:focus {
+            outline: none; border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+        }
+
+        .filter-divider {
+            width: 1px; align-self: stretch; background: #e2e8f0; margin: 0 4px;
+        }
+
+        .preset-btns {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 5px;
+        }
         .preset-btn {
-            border:1.5px solid #e2e8f0;background:#fff;color:#475569;
-            border-radius:8px;padding:6px 11px;font-size:0.78rem;font-weight:600;
-            cursor:pointer;font-family:inherit;
+            border: none; background: transparent; color: #475569;
+            border-radius: 8px;
+            padding: 7px 13px;
+            font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; font-family: inherit;
+            transition: background .15s, color .15s, box-shadow .15s;
+            white-space: nowrap;
         }
-        .preset-btn:hover { border-color:#6366f1;color:#4338ca;background:#f5f3ff }
+        .preset-btn:hover { background: #fff; color: #4338ca }
+        .preset-btn.active {
+            background: #fff; color: #4338ca;
+            box-shadow: 0 1px 3px rgba(67,56,202,0.18), 0 0 0 1px rgba(67,56,202,0.18);
+        }
+
+        .filter-actions { margin-left: auto; display: flex; gap: 10px; align-items: flex-end }
+
         .btn-primary {
-            background:#4338ca;color:#fff;border:none;border-radius:8px;
-            padding:9px 18px;font-weight:700;font-size:0.85rem;cursor:pointer;
-            font-family:inherit;
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+            color: #fff; border: none; border-radius: 10px;
+            padding: 10px 20px;
+            font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; font-family: inherit;
+            box-shadow: 0 1px 3px rgba(67,56,202,0.3);
+            transition: transform .12s, box-shadow .15s, opacity .15s;
+            display: inline-flex; align-items: center; gap: 7px;
         }
-        .btn-primary:hover { background:#3730a3 }
-        .btn-primary:disabled { background:#cbd5e1;cursor:not-allowed }
+        .btn-primary:hover { box-shadow: 0 4px 14px rgba(67,56,202,0.35); transform: translateY(-1px) }
+        .btn-primary:active { transform: translateY(0) }
+        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; transform: none; opacity: 0.7 }
+        .btn-primary svg { width: 14px; height: 14px }
+
+        @media (max-width: 720px) {
+            .filter-actions { margin-left: 0; width: 100% }
+            .filter-actions .btn-primary { width: 100% }
+        }
 
         .summary {
             display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
@@ -138,26 +196,45 @@
 
     <div class="page-content">
         <div class="filters">
-            <div class="filter-group">
-                <label for="f-from">Desde</label>
-                <input type="date" id="f-from">
-            </div>
-            <div class="filter-group">
-                <label for="f-to">Hasta</label>
-                <input type="date" id="f-to">
-            </div>
-            <div class="filter-group">
-                <label>&nbsp;</label>
-                <div class="preset-btns">
-                    <button class="preset-btn" onclick="setPreset(7)">Últimos 7 días</button>
-                    <button class="preset-btn" onclick="setPreset(30)">30 días</button>
-                    <button class="preset-btn" onclick="setPreset(90)">90 días</button>
-                    <button class="preset-btn" onclick="setPresetMesActual()">Mes actual</button>
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label for="f-from">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Desde
+                    </label>
+                    <input type="date" id="f-from" onchange="onFechaManual()">
                 </div>
-            </div>
-            <div class="filter-group" style="margin-left:auto">
-                <label>&nbsp;</label>
-                <button class="btn-primary" id="btn-refresh" onclick="cargar()">Refrescar</button>
+                <div class="filter-group">
+                    <label for="f-to">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Hasta
+                    </label>
+                    <input type="date" id="f-to" onchange="onFechaManual()">
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="filter-group" style="flex:1;min-width:280px">
+                    <label>Rangos rápidos</label>
+                    <div class="preset-btns" id="preset-btns">
+                        <button class="preset-btn" data-preset="hoy"          onclick="aplicarPreset('hoy')">Hoy</button>
+                        <button class="preset-btn" data-preset="ayer"         onclick="aplicarPreset('ayer')">Ayer</button>
+                        <button class="preset-btn" data-preset="semana"       onclick="aplicarPreset('semana')">Esta semana</button>
+                        <button class="preset-btn" data-preset="semanaAnt"    onclick="aplicarPreset('semanaAnt')">Semana pasada</button>
+                        <button class="preset-btn" data-preset="mes"          onclick="aplicarPreset('mes')">Este mes</button>
+                        <button class="preset-btn" data-preset="mesAnt"       onclick="aplicarPreset('mesAnt')">Mes pasado</button>
+                        <button class="preset-btn" data-preset="d30"          onclick="aplicarPreset('d30')">30 días</button>
+                        <button class="preset-btn" data-preset="d90"          onclick="aplicarPreset('d90')">90 días</button>
+                        <button class="preset-btn" data-preset="anio"         onclick="aplicarPreset('anio')">Este año</button>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn-primary" id="btn-refresh" onclick="cargar()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refrescar
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -198,24 +275,84 @@
     function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
     function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 
-    function ymd(d) { return d.toISOString().slice(0, 10); }
+    // Convierte Date local a YYYY-MM-DD sin saltar de día por la zona
+    // horaria (toISOString siempre usa UTC y nos pifia el día en CET).
+    function ymd(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    }
 
-    function setPreset(days) {
-        const to = new Date();
-        const from = new Date();
-        from.setDate(to.getDate() - (days - 1));
+    // Devuelve un Date al inicio de la semana (lunes 00:00) de `d`.
+    function inicioSemana(d) {
+        const x = new Date(d);
+        const js = x.getDay();           // 0=Dom..6=Sáb
+        const offset = js === 0 ? 6 : js - 1;
+        x.setDate(x.getDate() - offset);
+        x.setHours(0, 0, 0, 0);
+        return x;
+    }
+
+    function rangoPreset(id) {
+        const hoy = new Date();
+        let from, to;
+        switch (id) {
+            case 'hoy':       from = new Date(hoy); to = new Date(hoy); break;
+            case 'ayer':
+                from = new Date(hoy); from.setDate(hoy.getDate() - 1);
+                to   = new Date(from); break;
+            case 'semana':
+                from = inicioSemana(hoy); to = new Date(hoy); break;
+            case 'semanaAnt':
+                from = inicioSemana(hoy); from.setDate(from.getDate() - 7);
+                to   = new Date(from);    to.setDate(from.getDate() + 6); break;
+            case 'mes':
+                from = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+                to   = new Date(hoy); break;
+            case 'mesAnt':
+                from = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+                to   = new Date(hoy.getFullYear(), hoy.getMonth(), 0); break;
+            case 'd30':
+                from = new Date(hoy); from.setDate(hoy.getDate() - 29);
+                to   = new Date(hoy); break;
+            case 'd90':
+                from = new Date(hoy); from.setDate(hoy.getDate() - 89);
+                to   = new Date(hoy); break;
+            case 'anio':
+                from = new Date(hoy.getFullYear(), 0, 1);
+                to   = new Date(hoy); break;
+            default:
+                from = new Date(hoy); from.setDate(hoy.getDate() - 29);
+                to   = new Date(hoy);
+        }
+        return { from, to };
+    }
+
+    function aplicarPreset(id) {
+        const { from, to } = rangoPreset(id);
         document.getElementById('f-from').value = ymd(from);
         document.getElementById('f-to').value   = ymd(to);
-    }
-    function setPresetMesActual() {
-        const now = new Date();
-        const from = new Date(now.getFullYear(), now.getMonth(), 1);
-        document.getElementById('f-from').value = ymd(from);
-        document.getElementById('f-to').value   = ymd(now);
+        marcarPresetActivo(id);
+        cargar();
     }
 
-    // Por defecto: últimos 30 días
-    setPreset(30);
+    function marcarPresetActivo(id) {
+        document.querySelectorAll('#preset-btns .preset-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.preset === id);
+        });
+    }
+
+    // Si el usuario edita las fechas a mano, ningún preset queda resaltado.
+    function onFechaManual() { marcarPresetActivo(null); }
+
+    // Por defecto: este mes
+    (function init() {
+        const { from, to } = rangoPreset('mes');
+        document.getElementById('f-from').value = ymd(from);
+        document.getElementById('f-to').value   = ymd(to);
+        marcarPresetActivo('mes');
+    })();
 
     // Convierte la fecha de Date a [diaSemana 0..6 lunes-primero, hora 0..23]
     function bucketFor(date) {
