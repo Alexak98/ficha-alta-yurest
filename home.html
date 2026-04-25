@@ -338,6 +338,7 @@
         soporte:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-7h3v5z"/><path d="M3 19a2 2 0 0 0 2 2h1v-7H3v5z"/></svg>',
 
         ventas:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+        informe_tickets:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6"/><rect x="15" y="3" width="6" height="6"/><rect x="3" y="15" width="6" height="6"/><rect x="15" y="15" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg>',
         implementadores:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
         fichas:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
         bajas:          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
@@ -370,8 +371,9 @@
             icon: 'informes',
             colorA: '#6366f1', colorB: '#4338ca',
             paginas: [
-                { id: 'ventas',       href: 'ventas.html',       label: 'Ventas',           sub: 'Analítica de ventas y clientes', icon: 'ventas' },
-                { id: 'distribucion', href: 'distribucion.html', label: 'Implementadores',  sub: 'Distribución de carga de trabajo', icon: 'implementadores' }
+                { id: 'ventas',          href: 'ventas.html',          label: 'Ventas',                  sub: 'Analítica de ventas y clientes',         icon: 'ventas' },
+                { id: 'distribucion',    href: 'distribucion.html',    label: 'Implementadores',         sub: 'Distribución de carga de trabajo',       icon: 'implementadores' },
+                { id: 'informe_tickets', href: 'informe-tickets.html', label: 'Mapa de calor de tickets', sub: 'Tickets Zendesk por hora y día',         icon: 'informe_tickets' }
             ]
         },
         {

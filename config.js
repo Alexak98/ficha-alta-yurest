@@ -104,14 +104,20 @@
         historial:            `${WEBHOOK_BASE}/historial`,
 
         // Historial de acciones por proyecto (timeline del gestor)
-        proyectoHistorial:    `${WEBHOOK_BASE}/proyectos/historial`
+        proyectoHistorial:    `${WEBHOOK_BASE}/proyectos/historial`,
+
+        // Mapa de calor de tickets Zendesk: GET con ?from=YYYY-MM-DD&to=YYYY-MM-DD.
+        // Devuelve los tickets creados en el rango (esperamos created_at o,
+        // pre-agregado, una matriz [day_of_week 0-6][hour 0-23] con counts).
+        zendeskTicketsHeatmap: `${WEBHOOK_BASE}/zendesk/tickets-heatmap`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
     // tabla usuarios en la migración 2026-04-21_01_usuarios.sql.
     const PERMISOS_DISPONIBLES = [
-        { id: 'ventas',        label: 'Ventas',               grupo: 'Informes'         },
-        { id: 'distribucion',  label: 'Implementadores',      grupo: 'Informes'         },
+        { id: 'ventas',          label: 'Ventas',                  grupo: 'Informes'         },
+        { id: 'distribucion',    label: 'Implementadores',         grupo: 'Informes'         },
+        { id: 'informe_tickets', label: 'Mapa de calor de tickets', grupo: 'Informes'        },
         { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'        },
         { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación'   },
         { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación'   },

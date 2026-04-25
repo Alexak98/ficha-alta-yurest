@@ -17,6 +17,8 @@
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>',
         proformas:
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+        hardware:
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
     };
 
     // Cada tipo declara:
@@ -72,7 +74,40 @@
                 };
             }
         },
+        {
+            id: 'hardware',
+            permiso: 'hardware',
+            resolve: async () => {
+                const count = await countHardwareEnvios();
+                if (!count) return null;
+                return {
+                    count,
+                    href: 'hardware.html',
+                    title: 'Hardware por enviar',
+                    subtitle: count === 1 ? '1 pedido listo para enviar' : `${count} pedidos listos para enviar`,
+                    icon: SVG.hardware,
+                    color: '#0d9488'
+                };
+            }
+        },
     ];
+
+    // Hardware envíos: cuenta pedidos en estado 'lista_envio' (proforma
+    // confirmada y listos para preparar el envío físico).
+    async function countHardwareEnvios() {
+        const YC = global.YurestConfig;
+        if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
+        try {
+            const url = YC.ENDPOINTS.hardwarePedidos
+                + (YC.ENDPOINTS.hardwarePedidos.includes('?') ? '&' : '?')
+                + 'estado=lista_envio&_=' + Date.now();
+            const res = await (YC.apiFetch || fetch)(url, { method: 'GET' });
+            if (!res.ok) return 0;
+            const data = await res.json();
+            const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
+            return lista.filter(p => p && p.estado === 'lista_envio').length;
+        } catch (_) { return 0; }
+    }
 
     // Fichas sin asignar: reutiliza actualizarBadgeSinAsignar() con un span
     // oculto puente (mismo patrón que home.html).
