@@ -780,7 +780,12 @@ function finishProgress() {
 
 // ── Modal ──────────────────────────────────────────────────
 
+// Cliente actualmente abierto en la modal — referencia que usa
+// regenerateSummary() para saber sobre qué organización tirar.
+let currentModalClient = null;
+
 function showClientModal(client) {
+  currentModalClient = client;
   const overlay = document.getElementById('modalOverlay');
   const title = document.getElementById('modalTitle');
   const body = document.getElementById('modalBody');
@@ -823,10 +828,16 @@ function showClientModal(client) {
       <div class="modal-col-right">
         <div class="summary-header">
           <div class="section-label">Resumen</div>
-          <button class="btn-copy hidden" id="btnCopySummary" onclick="copySummary(this)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Copiar
-          </button>
+          <div class="summary-actions">
+            <button class="btn-copy hidden" id="btnRegenerateSummary" onclick="regenerateSummary()" title="Vuelve a generar el resumen IA con los tickets actuales">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Regenerar
+            </button>
+            <button class="btn-copy hidden" id="btnCopySummary" onclick="copySummary(this)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copiar
+            </button>
+          </div>
         </div>
         <div class="summary-text" id="summaryContent">
           <div class="summary-loading">
@@ -872,6 +883,8 @@ function showClientModal(client) {
       btn.setAttribute('data-summary', limpiarMarkdownIA(result.summary));
       btn.classList.remove('hidden');
     }
+    const btnReg = document.getElementById('btnRegenerateSummary');
+    if (btnReg) btnReg.classList.remove('hidden');
     applySummaryToClient(client, result);
   };
 
@@ -881,6 +894,11 @@ function showClientModal(client) {
       el.innerHTML = `<span style="color: #dc2626;">Error al obtener el resumen: ${escapeHtml(err.message)}</span>`;
     }
   };
+
+  // Guardamos los handlers en el state para que el botón "Regenerar"
+  // pueda repintar la modal sin tener que reconstruirla entera.
+  _modalRenderResult = renderResult;
+  _modalRenderError  = renderError;
 
   fetchCachedSummary(client.id).then(cached => {
     if (cached) {
@@ -894,6 +912,41 @@ function showClientModal(client) {
       .then(result => { finishProgress(); renderResult(result); })
       .catch(err => { finishProgress(); renderError(err); });
   }).catch(renderError);
+}
+
+// Handlers de la modal abierta — los rellena showClientModal y los usa
+// regenerateSummary() para repintar el panel.
+let _modalRenderResult = null;
+let _modalRenderError  = null;
+
+// Regenera el resumen IA del cliente abierto en la modal — fuerza un
+// nuevo /generar-resumen aunque haya cache, y repinta la modal con el
+// resultado fresco. El botón se bloquea durante la operación para
+// evitar disparos duplicados.
+async function regenerateSummary() {
+  if (!currentModalClient) return;
+  const client = currentModalClient;
+  const btn    = document.getElementById('btnRegenerateSummary');
+  const btnCp  = document.getElementById('btnCopySummary');
+  const el     = document.getElementById('summaryContent');
+
+  if (btn) btn.disabled = true;
+  if (btnCp) btnCp.classList.add('hidden');
+  if (el) {
+    el.innerHTML = '<div class="summary-loading"><div class="spinner-summary"></div>Regenerando resumen…</div>';
+  }
+
+  startProgress();
+  try {
+    const result = await generateSummary(client.id);
+    finishProgress();
+    if (_modalRenderResult) _modalRenderResult(result);
+  } catch (err) {
+    finishProgress();
+    if (_modalRenderError) _modalRenderError(err);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function escapeHtml(str) {

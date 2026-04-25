@@ -838,6 +838,12 @@ body {
   flex-shrink: 0;
 }
 
+.summary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .btn-copy {
   display: inline-flex;
   align-items: center;
@@ -851,7 +857,7 @@ body {
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
 }
 
 .btn-copy:hover {
@@ -859,10 +865,20 @@ body {
   color: var(--text);
 }
 
+.btn-copy:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 .btn-copy.copied {
   border-color: var(--success);
   color: var(--success);
 }
+
+#btnRegenerateSummary svg { transition: transform 0.4s ease }
+#btnRegenerateSummary:hover svg { transform: rotate(-90deg) }
+#btnRegenerateSummary:disabled svg { animation: spin 0.9s linear infinite }
+@keyframes spin { to { transform: rotate(360deg) } }
 
 .summary-text {
   font-size: 0.875rem;
