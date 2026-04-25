@@ -1,0 +1,112 @@
+{
+  "name": "Yurest - Zendesk Tickets Heatmap",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "zendesk/tickets-heatmap",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-zd-heatmap",
+      "name": "Webhook GET Heatmap",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 320],
+      "webhookId": "zendesk-tickets-heatmap"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lee from / to de la query del webhook. Si no llegan, defecto a\n// los últimos 30 días. Devolvemos también la query de Zendesk Search\n// que se le pasa al nodo \"Get many tickets\".\nconst q = $input.first().json.query || {};\n\nfunction ymd(d) {\n  return d.toISOString().slice(0, 10);\n}\nfunction parseYmd(s) {\n  const m = String(s || '').match(/^\\d{4}-\\d{2}-\\d{2}$/);\n  return m ? s : null;\n}\n\nconst now = new Date();\nconst defaultTo   = ymd(now);\nconst defaultFrom = ymd(new Date(now.getTime() - 29 * 86400000));\n\nlet from = parseYmd(q.from) || defaultFrom;\nlet to   = parseYmd(q.to)   || defaultTo;\nif (from > to) { const t = from; from = to; to = t; }\n\n// Zendesk Search: \"created>=YYYY-MM-DD created<=YYYY-MM-DD type:ticket\".\n// Usamos < (estricto) sobre el día siguiente a `to` para incluir el\n// día completo (Search es por fecha, no por timestamp).\nfunction nextDay(s) {\n  const d = new Date(s + 'T00:00:00Z');\n  d.setUTCDate(d.getUTCDate() + 1);\n  return ymd(d);\n}\nconst zdQuery = `type:ticket created>=${from} created<${nextDay(to)}`;\n\nreturn [{ json: { from, to, zdQuery } }];"
+      },
+      "id": "code-validar-rango",
+      "name": "Validar rango",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "={{ $json.zdQuery }}"
+        }
+      },
+      "id": "zd-get-tickets",
+      "name": "Get many tickets",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [680, 320],
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agrega los tickets por día de la semana (Lun=0..Dom=6) y hora\n// (0..23) en una matriz 7x24. También devuelve el rango original para\n// que el front pueda mostrarlo en la cabecera.\n// Zona horaria: usamos Europe/Madrid (España) para que las horas\n// coincidan con la jornada laboral del equipo.\nconst TZ = 'Europe/Madrid';\n\nconst items = $input.all();\nconst meta = $('Validar rango').first().json;\n\nconst matrix = Array.from({ length: 7 }, () => Array(24).fill(0));\nlet total = 0;\n\nfunction bucket(date) {\n  // Intl con timeZone para sacar día de semana y hora en horario de\n  // España, sin tirar de librerías externas.\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone: TZ,\n    weekday: 'short',\n    hour: 'numeric',\n    hour12: false\n  });\n  const parts = fmt.formatToParts(date);\n  const wd  = parts.find(p => p.type === 'weekday').value;   // Mon..Sun\n  const hr  = parseInt(parts.find(p => p.type === 'hour').value, 10) % 24;\n  const idx = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n  return [idx, hr];\n}\n\nfor (const it of items) {\n  const t = it.json || {};\n  const ts = t.created_at || t.createdAt || t.created;\n  if (!ts) continue;\n  const d = new Date(ts);\n  if (isNaN(d.getTime())) continue;\n  const [dia, hora] = bucket(d);\n  if (dia < 0 || dia > 6 || hora < 0 || hora > 23) continue;\n  matrix[dia][hora]++;\n  total++;\n}\n\nreturn [{\n  json: {\n    from: meta.from,\n    to:   meta.to,\n    total,\n    matrix\n  }\n}];"
+      },
+      "id": "code-agregar",
+      "name": "Agregar matriz",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 320],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-heatmap",
+      "name": "Respond Heatmap",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 320]
+    },
+    {
+      "parameters": {
+        "content": "## Mapa de calor de tickets Zendesk\n\n**Endpoint:** `GET /webhook/zendesk/tickets-heatmap?from=YYYY-MM-DD&to=YYYY-MM-DD`\n\nResponde con `{ from, to, total, matrix[7][24] }` donde la matriz son tickets agrupados por día de la semana (Lun=0..Dom=6) y hora (0..23), en zona horaria Europe/Madrid.\n\nLa página `informe-tickets.html` consume este endpoint y pinta el heatmap.",
+        "height": 220,
+        "width": 420
+      },
+      "id": "sticky-doc",
+      "name": "Doc",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, 80]
+    }
+  ],
+  "connections": {
+    "Webhook GET Heatmap": {
+      "main": [[{ "node": "Validar rango", "type": "main", "index": 0 }]]
+    },
+    "Validar rango": {
+      "main": [[{ "node": "Get many tickets", "type": "main", "index": 0 }]]
+    },
+    "Get many tickets": {
+      "main": [[{ "node": "Agregar matriz", "type": "main", "index": 0 }]]
+    },
+    "Agregar matriz": {
+      "main": [[{ "node": "Respond Heatmap", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "1",
+  "meta": { "instanceId": "yurest-zendesk-heatmap" },
+  "tags": []
+}
