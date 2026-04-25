@@ -295,6 +295,45 @@
                 background: #fafbfc;
             }
             .todo-list .notif-item:hover { background: #fff; border-color: #fecaca; }
+
+            /* ── Progress bar (estilo office) ───────────────────── */
+            .todo-progress {
+                margin: 0 0 14px;
+                transition: opacity .35s ease, max-height .35s ease, margin .35s ease;
+                max-height: 40px;
+                overflow: hidden;
+            }
+            .todo-progress.done {
+                opacity: 0;
+                max-height: 0;
+                margin: 0;
+            }
+            .todo-progress-meta {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-size: 11.5px;
+                font-weight: 500;
+                color: #64748b;
+                margin-bottom: 6px;
+            }
+            .todo-progress-meta .pct {
+                color: #94a3b8;
+                font-variant-numeric: tabular-nums;
+            }
+            .todo-progress-track {
+                height: 4px;
+                background: #f1f5f9;
+                border-radius: 999px;
+                overflow: hidden;
+            }
+            .todo-progress-bar {
+                height: 100%;
+                width: 0%;
+                background: #fc5858;
+                border-radius: 999px;
+                transition: width .2s ease-out;
+            }
         `;
         const style = document.createElement('style');
         style.id = 'notif-styles';
@@ -448,10 +487,47 @@
                 <div class="todo-section-title">Cosas por hacer</div>
                 <div class="todo-section-sub" id="todo-section-sub">Cargando…</div>
             </div>
+            <div class="todo-progress" id="todo-progress" aria-hidden="true">
+                <div class="todo-progress-meta">
+                    <span>Cargando…</span>
+                    <span class="pct" id="todo-progress-pct">0%</span>
+                </div>
+                <div class="todo-progress-track">
+                    <div class="todo-progress-bar" id="todo-progress-bar"></div>
+                </div>
+            </div>
             <ul class="todo-list notif-popover-list" id="todo-list" style="max-height:none;padding:0"></ul>
         `;
+
+        // Animación 0 → 99% en 5s con easing suave. Si fetchAll termina
+        // antes, saltamos a 100% y revelamos la lista al instante.
+        const bar = container.querySelector('#todo-progress-bar');
+        const pctEl = container.querySelector('#todo-progress-pct');
+        const progressEl = container.querySelector('#todo-progress');
+        const listEarly = container.querySelector('#todo-list');
+        if (listEarly) listEarly.style.opacity = '0';
+        const TOTAL_MS = 5000;
+        const TICK_MS = 50;
+        const startedAt = performance.now();
+        let progressInterval = setInterval(() => {
+            if (!bar) return;
+            const t = Math.min(1, (performance.now() - startedAt) / TOTAL_MS);
+            // Easing easeOutQuad para que parezca rápida al principio.
+            const eased = 1 - Math.pow(1 - t, 2);
+            const pct = Math.min(99, eased * 99);
+            bar.style.width = pct + '%';
+            if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+            if (t >= 1) { clearInterval(progressInterval); progressInterval = null; }
+        }, TICK_MS);
+
         let items = [];
         try { items = await fetchAll(); } catch (_) { items = []; }
+
+        // Datos listos: completar barra al 100% y desvanecer.
+        if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+        if (bar) bar.style.width = '100%';
+        if (pctEl) pctEl.textContent = '100%';
+
         const listEl = container.querySelector('#todo-list');
         const subEl = container.querySelector('#todo-section-sub');
         if (items.length === 0) {
@@ -460,7 +536,15 @@
         } else {
             const total = items.reduce((s, n) => s + (n.count || 0), 0);
             if (subEl) subEl.textContent = `${total} ítem${total === 1 ? '' : 's'} pendiente${total === 1 ? '' : 's'}`;
-            if (listEl) listEl.innerHTML = items.map(itemHtml).join('');
+            if (listEl) {
+                listEl.innerHTML = items.map(itemHtml).join('');
+                listEl.style.transition = 'opacity .25s';
+                listEl.style.opacity = '1';
+            }
+        }
+        // Ocultar la barra tras la animación de cierre.
+        if (progressEl) {
+            setTimeout(() => { progressEl.classList.add('done'); }, 200);
         }
         _renderingInto = false;
         // Si llegó otra petición mientras se renderizaba, la procesamos
