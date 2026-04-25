@@ -479,6 +479,26 @@ function formatValue(key, val) {
   return String(val);
 }
 
+// Limpia el texto crudo del resumen IA antes de pasarlo a `marked`.
+// GPT a menudo devuelve el resultado envuelto en un fence ```markdown
+// ```` o ````` ``` ``` `, lo que hace que `marked` lo trate como bloque
+// de código y muestre los asteriscos y los `##` literales en pantalla.
+// Aprovechamos para quitar BOMs y espacios en blanco al inicio/final.
+function limpiarMarkdownIA(raw) {
+  let s = String(raw || '').replace(/^﻿/, '').trim();
+  // Fence al inicio: ```lang\n  ó  ~~~lang\n
+  const fenceStart = s.match(/^(`{3,}|~{3,})[ \t]*([A-Za-z0-9_+-]+)?\s*\r?\n/);
+  if (fenceStart) {
+    s = s.slice(fenceStart[0].length);
+    // Y el cierre correspondiente al final.
+    const fenceEnd = new RegExp('\\r?\\n[ \\t]*' + fenceStart[1].slice(0, 1) + '{3,}\\s*$');
+    s = s.replace(fenceEnd, '');
+  }
+  // Algunos modelos meten comillas tipográficas envolviendo todo el texto.
+  s = s.replace(/^[“"']+\s*/, '').replace(/\s*[”"']+$/, '');
+  return s.trim();
+}
+
 // Normaliza el cuerpo de respuesta de /buscar-resumen o /generar-resumen a
 // { summary, nivel, fechaResumen }. Acepta string, object, o array de 1.
 function normalizeSummaryResponse(data) {
@@ -844,11 +864,12 @@ function showClientModal(client) {
       // El summary viene del webhook IA (n8n). Aunque el contenido se
       // genera por GPT, no lo tratamos como confiable: lo pasamos por
       // DOMPurify para neutralizar cualquier <img onerror>, <script>, etc.
-      const rawHtml = marked.parse(result.summary);
+      const limpio = limpiarMarkdownIA(result.summary);
+      const rawHtml = marked.parse(limpio);
       el.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml);
     }
     if (btn) {
-      btn.setAttribute('data-summary', result.summary);
+      btn.setAttribute('data-summary', limpiarMarkdownIA(result.summary));
       btn.classList.remove('hidden');
     }
     applySummaryToClient(client, result);
