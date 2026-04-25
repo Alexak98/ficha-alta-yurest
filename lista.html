@@ -969,6 +969,10 @@
                 <input type="text" id="sol-sociedad" placeholder="Empresa S.L." autocomplete="off" oninput="solClearErrors()">
             </div>
             <div class="solicitud-field">
+                <label for="sol-cif">CIF de la sociedad</label>
+                <input type="text" id="sol-cif" placeholder="B12345678" autocomplete="off" oninput="solClearErrors()" style="text-transform:uppercase;">
+            </div>
+            <div class="solicitud-field">
                 <label for="sol-nombre">Nombre del cliente</label>
                 <input type="text" id="sol-nombre" placeholder="Ana García López" autocomplete="off" oninput="solClearErrors()">
             </div>
@@ -2503,7 +2507,7 @@
     }
 
     function solClearErrors() {
-        ['sol-sociedad','sol-nombre','sol-email','sol-comercial','sol-tipo'].forEach(id => {
+        ['sol-sociedad','sol-cif','sol-nombre','sol-email','sol-comercial','sol-tipo'].forEach(id => {
             const el = document.getElementById(id);
             el.classList.remove('sol-error');
             const lbl = el.closest('.solicitud-field')?.querySelector('label');
@@ -2513,8 +2517,50 @@
         msg.style.display = 'none';
     }
 
+    function normCif(s) {
+        return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
+    // Validador CIF/NIF/NIE con dígito de control.
+    function esCIFValido(v) {
+        v = (v || '').toUpperCase().trim();
+        if (!/^[A-Z0-9][0-9]{7}[A-Z0-9]$/.test(v)) return false;
+        if (/^[0-9]{8}[A-Z]$/.test(v)) {
+            const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+            const num = parseInt(v.slice(0, 8), 10);
+            return v[8] === letras[num % 23];
+        }
+        if (/^[XYZ][0-9]{7}[A-Z]$/.test(v)) {
+            const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+            const primerDigito = { X: '0', Y: '1', Z: '2' }[v[0]];
+            const num = parseInt(primerDigito + v.slice(1, 8), 10);
+            return v[8] === letras[num % 23];
+        }
+        if (/^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(v)) {
+            const digits = v.slice(1, 8);
+            let sumaPar = 0, sumaImpar = 0;
+            for (let i = 0; i < 7; i++) {
+                const n = parseInt(digits[i], 10);
+                if (i % 2 === 0) {
+                    const doble = n * 2;
+                    sumaImpar += Math.floor(doble / 10) + (doble % 10);
+                } else {
+                    sumaPar += n;
+                }
+            }
+            const suma = sumaPar + sumaImpar;
+            const unidad = (10 - (suma % 10)) % 10;
+            const letraControl = 'JABCDEFGHI'[unidad];
+            const control = v[8];
+            if ('KPQRSNW'.indexOf(v[0]) !== -1) return control === letraControl;
+            return control === String(unidad) || control === letraControl;
+        }
+        return false;
+    }
+
     async function enviarSolicitud() {
         const sociedad  = document.getElementById('sol-sociedad').value.trim();
+        const cif       = document.getElementById('sol-cif').value.trim().toUpperCase();
         const nombre    = document.getElementById('sol-nombre').value.trim();
         const email     = document.getElementById('sol-email').value.trim();
         const comercial = document.getElementById('sol-comercial').value;
@@ -2525,6 +2571,12 @@
         solClearErrors();
         if (!sociedad) {
             const el = document.getElementById('sol-sociedad');
+            el.classList.add('sol-error');
+            el.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+            hasError = true;
+        }
+        if (!cif) {
+            const el = document.getElementById('sol-cif');
             el.classList.add('sol-error');
             el.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
             hasError = true;
@@ -2561,6 +2613,59 @@
             return;
         }
 
+        // Validar formato CIF/NIF
+        if (!esCIFValido(cif)) {
+            const elCif = document.getElementById('sol-cif');
+            elCif.classList.add('sol-error');
+            elCif.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+            const msg = document.getElementById('sol-panel-msg');
+            msg.textContent = 'El CIF/NIF introducido no es válido. Revisa el dígito de control.';
+            msg.style.cssText = 'display:block;background:#fff5f5;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
+            elCif.focus();
+            return;
+        }
+
+        // Comprobar si el CIF ya existe en una ficha registrada o en una solicitud pendiente
+        const cifNorm = normCif(cif);
+        try {
+            const raw = sessionStorage.getItem('yurest_fichas');
+            const fichas = raw ? JSON.parse(raw) : [];
+            const dup = (Array.isArray(fichas) ? fichas : []).find(f => {
+                const c = normCif(f['CIF/NIF'] || f.cif || f['CIF'] || '');
+                return c && c === cifNorm;
+            });
+            if (dup) {
+                const sociedadDup = dup['Nombre Sociedad'] || dup.denominacion || dup['Nombre Comercial'] || '—';
+                const elCif = document.getElementById('sol-cif');
+                elCif.classList.add('sol-error');
+                elCif.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+                const msg = document.getElementById('sol-panel-msg');
+                msg.textContent = `Ya existe una ficha con CIF ${cif} (${sociedadDup}). No se puede crear otra solicitud para la misma sociedad.`;
+                msg.style.cssText = 'display:block;background:#fff5f5;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
+                elCif.focus();
+                return;
+            }
+        } catch (_) { /* si no hay fichas en cache, dejamos pasar */ }
+
+        // También comprobar contra las solicitudes pendientes ya cargadas
+        try {
+            const dupSol = (Array.isArray(todasSolicitudes) ? todasSolicitudes : []).find(s => {
+                const c = normCif(s['CIF/NIF'] || s.cif || s['CIF'] || '');
+                return c && c === cifNorm;
+            });
+            if (dupSol) {
+                const sociedadDup = dupSol['Nombre Sociedad'] || dupSol['Nombre'] || '—';
+                const elCif = document.getElementById('sol-cif');
+                elCif.classList.add('sol-error');
+                elCif.closest('.solicitud-field').querySelector('label').classList.add('sol-error-label');
+                const msg = document.getElementById('sol-panel-msg');
+                msg.textContent = `Ya existe una solicitud pendiente con CIF ${cif} (${sociedadDup}).`;
+                msg.style.cssText = 'display:block;background:#fff5f5;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
+                elCif.focus();
+                return;
+            }
+        } catch (_) {}
+
         const btn = document.getElementById('btn-enviar-sol');
         btn.disabled = true;
         btn.textContent = 'Creando solicitud…';
@@ -2594,6 +2699,8 @@
                     'ID Solicitud':  solicitudId,
                     'access_token':  accessToken,
                     'Nombre Sociedad': sociedad,
+                    'CIF/NIF':       cif,
+                    'cif':           cif,
                     'Nombre':        nombre,
                     'Email':         email,
                     'Comercial':     comercial,
@@ -2622,9 +2729,10 @@
 
         // Feedback visual + limpiar
         const msg = document.getElementById('sol-panel-msg');
-        msg.textContent = `✓ Solicitud ${solicitudId} creada. Email enviado a ${email}.`;
+        msg.textContent = `✓ Solicitud creada. Email enviado a ${email}.`;
         msg.style.cssText = 'display:block;background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
         document.getElementById('sol-sociedad').value  = '';
+        document.getElementById('sol-cif').value       = '';
         document.getElementById('sol-nombre').value    = '';
         document.getElementById('sol-email').value     = '';
         document.getElementById('sol-comercial').value = '';
