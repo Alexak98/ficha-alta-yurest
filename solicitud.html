@@ -481,17 +481,17 @@
                     <div class="form-group col-12">
                         <label>Número de cuenta - IBAN * <span style="color:#94a3b8;font-weight:400">(España: 24 caracteres, en bloques de 4)</span></label>
                         <div class="sepa-iban-grid">
-                            <input type="text" id="sepa_iban_1_{i}" class="sepa-iban-block" maxlength="4" placeholder="ES##" autocomplete="off" oninput="onIbanBlockInput(this,1,{i})" onkeydown="onIbanBlockKey(event,1,{i})">
+                            <input type="text" id="sepa_iban_1_{i}" class="sepa-iban-block" maxlength="4" placeholder="ES##" autocomplete="off" oninput="onIbanBlockInput(this,1,{i})" onkeydown="onIbanBlockKey(event,1,{i})" onpaste="onIbanBlockPaste(event,1,{i})">
                             <span class="sepa-iban-sep">·</span>
-                            <input type="text" id="sepa_iban_2_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,2,{i})" onkeydown="onIbanBlockKey(event,2,{i})">
+                            <input type="text" id="sepa_iban_2_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,2,{i})" onkeydown="onIbanBlockKey(event,2,{i})" onpaste="onIbanBlockPaste(event,2,{i})">
                             <span class="sepa-iban-sep">·</span>
-                            <input type="text" id="sepa_iban_3_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,3,{i})" onkeydown="onIbanBlockKey(event,3,{i})">
+                            <input type="text" id="sepa_iban_3_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,3,{i})" onkeydown="onIbanBlockKey(event,3,{i})" onpaste="onIbanBlockPaste(event,3,{i})">
                             <span class="sepa-iban-sep">·</span>
-                            <input type="text" id="sepa_iban_4_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,4,{i})" onkeydown="onIbanBlockKey(event,4,{i})">
+                            <input type="text" id="sepa_iban_4_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,4,{i})" onkeydown="onIbanBlockKey(event,4,{i})" onpaste="onIbanBlockPaste(event,4,{i})">
                             <span class="sepa-iban-sep">·</span>
-                            <input type="text" id="sepa_iban_5_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,5,{i})" onkeydown="onIbanBlockKey(event,5,{i})">
+                            <input type="text" id="sepa_iban_5_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,5,{i})" onkeydown="onIbanBlockKey(event,5,{i})" onpaste="onIbanBlockPaste(event,5,{i})">
                             <span class="sepa-iban-sep">·</span>
-                            <input type="text" id="sepa_iban_6_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,6,{i})" onkeydown="onIbanBlockKey(event,6,{i})">
+                            <input type="text" id="sepa_iban_6_{i}" class="sepa-iban-block" maxlength="4" placeholder="0000" inputmode="numeric" autocomplete="off" oninput="onIbanBlockInput(this,6,{i})" onkeydown="onIbanBlockKey(event,6,{i})" onpaste="onIbanBlockPaste(event,6,{i})">
                         </div>
                         <small style="display:block;font-size:0.72rem;color:#94a3b8;margin-top:6px">Pega el IBAN completo en cualquier bloque y se repartirá automáticamente.</small>
                     </div>
@@ -545,6 +545,11 @@
     const WEBHOOK_RESPONDER_SOLICITUD = YurestConfig.ENDPOINTS.responderSolicitud;
     const REQUEST_TIMEOUT_MS = 20000;
     const HUMAN_MIN_TIME_MS  = 3000;  // tiempo mínimo humano para rellenar
+
+    // Estado SEPA multi-mandato — declarado arriba para evitar TDZ:
+    // `inicializarSEPA()` se llama a nivel top-level antes de que el script
+    // alcance la sección SEPA más abajo.
+    const _sepaForms = {};
 
     // ─── DATOS DEL ACREEDOR (mandato SEPA) ────────────────────────────────────
     // Identificador SEPA definitivo emitido por la entidad bancaria para
@@ -837,7 +842,7 @@
     //   tipoPago     → 'recurrente' | 'unico'
     //   firmaPainted → bool (el usuario ha dibujado algo)
     //   configured   → bool (los listeners del canvas ya se engancharon)
-    const _sepaForms = {};
+    // (declarado arriba, antes del bloque top-level que llama a inicializarSEPA)
 
     // Devuelve una entrada de estado para la sociedad idx, creándola al vuelo.
     function _sepaState(idx) {
@@ -979,26 +984,64 @@
         state.configured = true;
 
         const ratio = window.devicePixelRatio || 1;
-        const cssW = canvas.clientWidth || 800;
         const cssH = 180;
-        canvas.width  = cssW * ratio;
-        canvas.height = cssH * ratio;
-        canvas.style.height = cssH + 'px';
+
+        // Re-dimensiona el bitmap según el ancho real renderizado del canvas.
+        // Si el contenedor cambia de tamaño (resize, mostrar/ocultar, etc.),
+        // hay que rehacerlo o el navegador estira el bitmap y la firma queda
+        // desplazada respecto al cursor.
+        function ajustarBitmap() {
+            const rect = canvas.getBoundingClientRect();
+            const cssW = Math.max(1, Math.round(rect.width));
+            const targetW = cssW * ratio;
+            const targetH = cssH * ratio;
+            if (canvas.width === targetW && canvas.height === targetH) return;
+            // Preservar el dibujo actual antes de redimensionar (resize del bitmap lo borra).
+            let snapshot = null;
+            try {
+                if (state.firmaPainted) snapshot = canvas.toDataURL('image/png');
+            } catch (_) {}
+            canvas.width  = targetW;
+            canvas.height = targetH;
+            canvas.style.height = cssH + 'px';
+            const c = canvas.getContext('2d');
+            c.setTransform(1, 0, 0, 1, 0, 0);
+            c.scale(ratio, ratio);
+            c.lineWidth = 2.2;
+            c.lineCap = 'round';
+            c.lineJoin = 'round';
+            c.strokeStyle = '#0f172a';
+            if (snapshot) {
+                const img = new Image();
+                img.onload = () => c.drawImage(img, 0, 0, cssW, cssH);
+                img.src = snapshot;
+            }
+        }
+        ajustarBitmap();
         const ctx = canvas.getContext('2d');
-        ctx.scale(ratio, ratio);
-        ctx.lineWidth = 2.2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = '#0f172a';
+
+        // Reescala si cambia el tamaño del canvas (responsive, mostrar form, etc.).
+        if (typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver(() => ajustarBitmap());
+            ro.observe(canvas);
+        }
 
         let drawing = false;
         let last = null;
+        // Convierte coordenadas de pantalla a coordenadas del canvas.
+        // Usa rect.width/height para escalar correctamente aunque el bitmap
+        // y el tamaño CSS no coincidan exactamente.
         function pos(ev) {
             const rect = canvas.getBoundingClientRect();
             const t = ev.touches ? ev.touches[0] : ev;
-            return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+            const scaleX = rect.width  ? (canvas.width  / ratio) / rect.width  : 1;
+            const scaleY = rect.height ? (canvas.height / ratio) / rect.height : 1;
+            return {
+                x: (t.clientX - rect.left) * scaleX,
+                y: (t.clientY - rect.top)  * scaleY
+            };
         }
-        function start(ev) { ev.preventDefault(); drawing = true; last = pos(ev); }
+        function start(ev) { ev.preventDefault(); ajustarBitmap(); drawing = true; last = pos(ev); }
         function move(ev) {
             if (!drawing) return;
             ev.preventDefault();
@@ -1035,7 +1078,24 @@
         idx = idx == null ? 0 : idx;
         if (!_sepaState(idx).firmaPainted) return null;
         const canvas = document.getElementById('sepa-firma-canvas-' + idx);
-        return canvas ? canvas.toDataURL('image/png') : null;
+        if (!canvas) return null;
+        // En retina el bitmap interno es 2-3× el CSS (1600×360+). Exportar
+        // a un canvas de tamaño fijo evita que el payload del webhook crezca
+        // hasta el punto de hacer fallar el guardado por límite de tamaño.
+        try {
+            const out = document.createElement('canvas');
+            const W = 800, H = 180;
+            out.width = W;
+            out.height = H;
+            const c = out.getContext('2d');
+            c.fillStyle = '#ffffff';
+            c.fillRect(0, 0, W, H);
+            c.drawImage(canvas, 0, 0, W, H);
+            // PNG con fondo blanco para que pese menos que el PNG transparente original.
+            return out.toDataURL('image/png');
+        } catch (_) {
+            return canvas.toDataURL('image/png');
+        }
     }
 
     // ── IBAN en bloques de 4 (por sociedad) ───────────────────────────────────
@@ -1109,24 +1169,22 @@
     }
     window.onIbanBlockKey = onIbanBlockKey;
 
-    // Pegar IBAN completo en cualquier bloque. Extraemos blockNum + idx del id
-    // (formato sepa_iban_{block}_{idx}).
-    document.addEventListener('paste', function(ev) {
-        const t = ev.target;
-        if (!t || !t.classList || !t.classList.contains('sepa-iban-block')) return;
-        const txt = (ev.clipboardData || window.clipboardData).getData('text');
+    // Pegar IBAN completo en cualquier bloque: handler directo en cada input
+    // (más fiable que delegación en document — se dispara antes de que
+    // maxlength trunque y antes que oninput).
+    function onIbanBlockPaste(ev, blockNum, idx) {
+        idx = idx == null ? 0 : idx;
+        const txt = (ev.clipboardData || window.clipboardData)?.getData('text') || '';
         if (!txt) return;
-        const limpio = txt.replace(/\s+/g, '').toUpperCase();
-        if (limpio.length <= 4) return;
+        const limpio = txt.replace(/\s+/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (limpio.length <= 4) return; // dejar comportamiento por defecto si es <=4
         ev.preventDefault();
-        const m = t.id.match(/^sepa_iban_(\d+)_(\d+)$/);
-        const blockNum = m ? parseInt(m[1], 10) : 1;
-        const idx      = m ? parseInt(m[2], 10) : 0;
         const prefijo = blockNum === 1 ? '' : getIbanCompleto(idx).slice(0, (blockNum - 1) * 4);
         setIbanFromString(prefijo + limpio, idx);
         const v = getIbanCompleto(idx);
         _focusIbanBlock(Math.min(6, Math.max(1, Math.ceil(v.length / 4))), idx);
-    });
+    }
+    window.onIbanBlockPaste = onIbanBlockPaste;
 
     // ── Validación IBAN con mensaje detallado por tipo de error ──────────────
     function validarIbanDetallado(raw) {
@@ -1333,7 +1391,26 @@
                 signal: controller.signal
             });
 
-            if (!res.ok) throw new Error('Error ' + res.status);
+            if (!res.ok) {
+                let detalle = '';
+                try { const tb = await res.text(); detalle = tb ? ' — ' + tb.slice(0, 300) : ''; } catch (_) {}
+                throw new Error('Error ' + res.status + detalle);
+            }
+            // Algunos workflows de n8n responden 200 incluso si el INSERT
+            // ha fallado: leemos el body para detectar errores explícitos.
+            try {
+                const bodyTxt = await res.clone().text();
+                if (bodyTxt) {
+                    let parsed = null;
+                    try { parsed = JSON.parse(bodyTxt); } catch (_) {}
+                    const errMsg = parsed && (parsed.error || parsed.message || parsed.errorMessage);
+                    if (errMsg && /error|fail|exception|denied/i.test(String(errMsg))) {
+                        throw new Error(String(errMsg));
+                    }
+                }
+            } catch (e) {
+                if (e instanceof Error && e.message && !/Unexpected/i.test(e.message)) throw e;
+            }
 
             document.getElementById('form-state').classList.add('hidden');
             document.getElementById('success-state').classList.remove('hidden');

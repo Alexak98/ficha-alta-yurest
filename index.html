@@ -1001,9 +1001,8 @@
                 <input type="text" data-field="provincia" placeholder="Valencia">
             </div>
 
-            <div class="col-12 subsection-label subsection-label--sep sociedad-label-row">
+            <div class="col-12 subsection-label subsection-label--sep">
                 <span>Sociedad</span>
-                <button type="button" class="btn-copy-cliente" onclick="copiarDatosCliente(this)">Copiar de datos de cliente</button>
             </div>
 
             <!-- Selector de mandato SEPA: dropdown con las sociedades que el
@@ -1963,17 +1962,6 @@
     function formatIban(input) {
         let val = input.value.replace(/\s+/g, '').toUpperCase();
         input.value = val.match(/.{1,4}/g)?.join(' ') || val;
-    }
-
-    function copiarDatosCliente(btn) {
-        const card = btn.closest('.local-card');
-        card.querySelector('[data-field="sociedad_cif"]').value         = document.getElementById('cif').value;
-        card.querySelector('[data-field="sociedad_denominacion"]').value = document.getElementById('denominacion').value;
-        card.querySelector('[data-field="sociedad_calle"]').value        = document.getElementById('calle').value;
-        card.querySelector('[data-field="sociedad_numero"]').value       = document.getElementById('numero').value;
-        card.querySelector('[data-field="sociedad_cp"]').value           = document.getElementById('cp').value;
-        card.querySelector('[data-field="sociedad_municipio"]').value    = document.getElementById('municipio').value;
-        card.querySelector('[data-field="sociedad_provincia"]').value    = document.getElementById('provincia').value;
     }
 
     function toggleFirmas(show) {
