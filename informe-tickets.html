@@ -343,8 +343,19 @@
         });
     }
 
-    // Si el usuario edita las fechas a mano, ningún preset queda resaltado.
-    function onFechaManual() { marcarPresetActivo(null); }
+    // Editar las fechas a mano desmarca el preset activo y dispara la
+    // recarga con un pequeño debounce, para que no saltemos en cada
+    // pulsación del calendario nativo.
+    let _fechaManualTO = null;
+    function onFechaManual() {
+        marcarPresetActivo(null);
+        clearTimeout(_fechaManualTO);
+        _fechaManualTO = setTimeout(() => {
+            const from = document.getElementById('f-from').value;
+            const to   = document.getElementById('f-to').value;
+            if (from && to && from <= to) cargar();
+        }, 350);
+    }
 
     // Por defecto: este mes
     (function init() {
@@ -372,6 +383,7 @@
         return HM_COLORS[idx];
     }
 
+    let _cargaCtrl = null;
     async function cargar() {
         const from = document.getElementById('f-from').value;
         const to   = document.getElementById('f-to').value;
@@ -383,6 +395,13 @@
             mostrarError('La fecha "Desde" no puede ser posterior a "Hasta".');
             return;
         }
+
+        // Cancela cualquier petición previa: si el usuario cambió de
+        // preset rápido, no queremos que la respuesta antigua sobreescriba
+        // la nueva al llegar tarde.
+        if (_cargaCtrl) _cargaCtrl.abort();
+        _cargaCtrl = new AbortController();
+        const signal = _cargaCtrl.signal;
 
         const btn = document.getElementById('btn-refresh');
         btn.disabled = true;
@@ -399,7 +418,7 @@
                 'from=' + encodeURIComponent(from) +
                 '&to='  + encodeURIComponent(to) +
                 '&_='   + Date.now();
-            const res = await YurestConfig.apiFetch(url, { method: 'GET' });
+            const res = await YurestConfig.apiFetch(url, { method: 'GET', signal });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
 
@@ -409,11 +428,16 @@
             const matrix = construirMatriz(data);
             renderHeatmap(matrix, from, to);
         } catch (err) {
+            // Aborts: el usuario disparó otra carga; ignoramos sin ruido.
+            if (err && (err.name === 'AbortError' || signal.aborted)) return;
             console.warn('[informe-tickets]', err);
             mostrarError('No se pudieron cargar los tickets: ' + err.message);
         } finally {
-            btn.disabled = false;
-            document.getElementById('hm-loading').style.display = 'none';
+            // Solo restablecemos UI si esta carga sigue siendo la activa.
+            if (_cargaCtrl && _cargaCtrl.signal === signal) {
+                btn.disabled = false;
+                document.getElementById('hm-loading').style.display = 'none';
+            }
         }
     }
 
