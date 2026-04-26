@@ -2683,12 +2683,21 @@
             data['Módulos'].push(cb.value);
         });
 
+        const _isUuid = v => typeof v === 'string' &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
         document.querySelectorAll('.local-card').forEach(card => {
             const local = {};
             card.querySelectorAll('[data-field]').forEach(input => {
                 const field = input.getAttribute('data-field');
                 local[field] = input.type === 'checkbox' ? input.checked : input.value.trim();
             });
+            // sepa_mandato_id apunta a UUID en BD. Los mandatos legacy se
+            // exponían en el <select> con value = referencia (YUREST-…) o
+            // sintético (sepa-0) — guardarlos rompía la inserción. Si lo
+            // que viene no es UUID, lo descartamos para que vaya NULL.
+            if (local.sepa_mandato_id && !_isUuid(local.sepa_mandato_id)) {
+                local.sepa_mandato_id = '';
+            }
             data.locales.push(local);
         });
 
