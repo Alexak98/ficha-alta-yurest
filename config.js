@@ -109,7 +109,14 @@
         // Mapa de calor de tickets Zendesk: GET con ?from=YYYY-MM-DD&to=YYYY-MM-DD.
         // Devuelve los tickets creados en el rango (esperamos created_at o,
         // pre-agregado, una matriz [day_of_week 0-6][hour 0-23] con counts).
-        zendeskTicketsHeatmap: `${WEBHOOK_BASE}/zendesk/tickets-heatmap`
+        zendeskTicketsHeatmap: `${WEBHOOK_BASE}/zendesk/tickets-heatmap`,
+
+        // Escalados de clientes (departamento Comercial): ampliaciones
+        // contractuales sobre clientes existentes (módulos nuevos o nuevos
+        // locales). GET lista los registros, POST crea uno nuevo en estado
+        // 'pendiente'. La aplicación real sobre fichas/locales/sepa la hace
+        // un workflow n8n cuando el escalado se confirma.
+        escalados:            `${WEBHOOK_BASE}/escalados`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
@@ -119,6 +126,7 @@
         { id: 'distribucion',    label: 'Implementadores',         grupo: 'Informes'         },
         { id: 'informe_tickets', label: 'Mapa de calor de tickets', grupo: 'Informes'        },
         { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'        },
+        { id: 'escalados',     label: 'Escalados de clientes', grupo: 'Comercial'       },
         { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación'   },
         { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación'   },
         { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'     },

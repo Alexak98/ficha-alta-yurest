@@ -44,7 +44,9 @@
         // Updates → chispa/estrella (novedades / release notes)
         updates:       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>',
         // Churn Técnico → flecha descendente con usuario (fuga técnica)
-        churn_tecnico: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/><line x1="23" y1="13" x2="19" y2="13"/></svg>'
+        churn_tecnico: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/><line x1="23" y1="13" x2="19" y2="13"/></svg>',
+        // Escalados → escalera ascendente (upsell / ampliación contractual)
+        escalados:     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 20 8 20 8 14 13 14 13 8 18 8 18 4 21 4"/><polyline points="15 4 21 4 21 10"/></svg>'
     };
 
     // Estructura del menú. Cada item tiene:
@@ -69,7 +71,8 @@
             label: 'Comercial',
             icon: 'comercial',
             items: [
-                { id: 'lista',  href: 'lista.html',  label: 'Fichas de cliente', icon: 'fichas' }
+                { id: 'lista',     href: 'lista.html',     label: 'Fichas de cliente',     icon: 'fichas' },
+                { id: 'escalados', href: 'escalados.html', label: 'Escalados de clientes', icon: 'escalados' }
             ]
         },
         {

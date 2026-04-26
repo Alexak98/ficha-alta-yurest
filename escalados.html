@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Escalados de clientes — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('escalados');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── Sidebar (shared layout) ────────────────────────────────── */
+        .sidebar-overlay { position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:500;opacity:0;pointer-events:none;transition:opacity .25s }
+        .sidebar-overlay.open { opacity:1;pointer-events:all }
+        .sidebar { position:fixed;top:0;left:0;width:248px;height:100vh;background:#fff;z-index:600;transform:translateX(-100%);transition:transform .26s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,.13);display:flex;flex-direction:column }
+        .sidebar.open { transform:translateX(0) }
+        .sidebar-hd { display:flex;align-items:center;justify-content:space-between;padding:20px 18px 16px;border-bottom:1.5px solid #f1f5f9 }
+        .sidebar-brand { display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#fc5858 }
+        .sidebar-brand-dot { width:8px;height:8px;background:#fc5858;border-radius:50%;box-shadow:0 0 0 3px rgba(252,88,88,.25) }
+        .sidebar-close { width:28px;height:28px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s }
+        .sidebar-close:hover { background:#fee2e2;border-color:#fecaca;color:#dc2626 }
+        .sidebar-label { padding:16px 18px 6px;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8 }
+        .sidebar-item { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:.88rem;font-weight:500;color:#334155;text-decoration:none;cursor:pointer;transition:background .14s }
+        .sidebar-item:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-item.active { background:#fff1f1;color:#fc5858;font-weight:700 }
+        .sidebar-item svg { flex-shrink:0;opacity:.7 }
+        .sidebar-item.active svg { opacity:1 }
+        .sidebar-group { margin:2px 0 }
+        .sidebar-group-header { display:flex;align-items:center;gap:12px;padding:11px 18px;margin:2px 10px;border-radius:10px;font-size:.88rem;font-weight:500;color:#334155;cursor:pointer;user-select:none;transition:background .14s,color .14s }
+        .sidebar-group-header:hover { background:#f8fafc;color:#1e293b }
+        .sidebar-group-header svg { flex-shrink:0;opacity:.7 }
+        .sidebar-group-chevron { margin-left:auto;transition:transform .18s }
+        .sidebar-group.open .sidebar-group-chevron { transform:rotate(90deg) }
+        .sidebar-group-children { max-height:0;overflow:hidden;transition:max-height .2s ease }
+        .sidebar-group.open .sidebar-group-children { max-height:500px }
+        .sidebar-group-children .sidebar-item { padding-left:44px;font-size:.84rem;position:relative }
+        .sidebar-group-children .sidebar-item::before { content:'';position:absolute;left:30px;top:50%;width:8px;height:1.5px;background:#cbd5e1 }
+        .sidebar-badge { display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#fb923c,#f59e0b);border-radius:999px;margin-left:auto }
+        .sidebar-badge:empty { display:none }
+        .sidebar-group-badge { display:none;min-width:20px;height:20px;padding:0 7px;font-size:10px;font-weight:800;color:#fff;background:linear-gradient(135deg,#fb923c,#f59e0b);border-radius:999px;align-items:center;justify-content:center;margin-left:auto } .sidebar-group:not(.open) .sidebar-group-badge:not(:empty) { display:inline-flex }
+        .sidebar-ft { margin-top:auto;padding:16px 18px;border-top:1.5px solid #f1f5f9 }
+        .sidebar-ft button { display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #fecaca;background:#fff5f5;color:#dc2626;font-size:.85rem;font-weight:600;font-family:inherit;cursor:pointer }
+        .sidebar-ft button:hover { background:#fee2e2 }
+        .btn-menu { display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex-shrink:0;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;color:#64748b;transition:border-color .15s }
+        .btn-menu:hover { border-color:#fc5858;color:#fc5858;background:#fff1f1 }
+
+        /* ── Layout ─────────────────────────────────────────────── */
+        .page-header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;border-bottom:1px solid #e2e8f0;background:#fff;
+            position:sticky;top:0;z-index:50
+        }
+        .page-header img { height:32px }
+        .page-header h1 { font-size:1.1rem;font-weight:800;color:#1e293b }
+        .page-content { max-width:1400px;margin:0 auto;padding:24px }
+
+        .esc-hero { display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px }
+        .esc-hero h2 { font-size:1.3rem;font-weight:800;letter-spacing:-.01em }
+        .esc-hero p  { font-size:13px;color:#64748b;margin-top:3px }
+        .esc-kpis { display:flex;gap:10px;flex-wrap:wrap }
+        .esc-kpi { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 16px;min-width:120px }
+        .esc-kpi-label { font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em }
+        .esc-kpi-value { font-size:1.4rem;font-weight:800;color:#0f172a;line-height:1.2;margin-top:2px }
+        .esc-kpi-value.red { color:#fc5858 }
+        .esc-kpi-value.green { color:#0d9488 }
+
+        .toolbar { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0 16px }
+        .toolbar .search-wrap { position:relative;flex:1;max-width:340px }
+        .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+        .search-input { width:100%;padding:8px 36px 8px 36px;font-family:inherit;font-size:.85rem;color:#1e293b;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;transition:border-color .15s,background .15s }
+        .search-input:focus { outline:none;border-color:#fc5858;background:#fff }
+        .filter-select { padding:7px 12px;font-family:inherit;font-size:.83rem;color:#334155;background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;cursor:pointer }
+        .filter-select.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
+        .filter-label { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-right:4px }
+        .filter-sep { width:1px;height:22px;background:#e2e8f0;margin:0 4px }
+
+        .btn { padding:8px 16px;font-family:inherit;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;border:1.5px solid transparent;display:inline-flex;align-items:center;gap:6px }
+        .btn-primary { background:#fc5858;color:#fff }
+        .btn-primary:hover { background:#e84848 }
+        .btn-primary[disabled] { background:#fda4a4;cursor:not-allowed }
+        .btn-secondary { background:#fff;color:#475569;border-color:#e2e8f0 }
+        .btn-secondary:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .btn-ghost { background:transparent;color:#64748b;border-color:transparent }
+        .btn-ghost:hover { background:#f8fafc;color:#1e293b }
+
+        /* ── Tabla escalados ─────────────────────────────────────── */
+        .table-wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden }
+        .esc-table { width:100%;border-collapse:separate;border-spacing:0 }
+        .esc-table th { text-align:left;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;font-weight:700;padding:12px 14px;background:#f8fafc;border-bottom:1.5px solid #e2e8f0 }
+        .esc-table td { padding:14px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;vertical-align:middle }
+        .esc-table tr:last-child td { border-bottom:0 }
+        .esc-table tr.row-link { cursor:pointer;transition:background .12s }
+        .esc-table tr.row-link:hover td { background:#fff9fb }
+        .esc-cliente { font-weight:700;color:#0f172a }
+        .esc-cliente-sub { font-size:11px;color:#94a3b8;margin-top:2px }
+        .esc-tipo-pill { display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em }
+        .esc-tipo-pill.modulo { background:#ede9fe;color:#5b21b6 }
+        .esc-tipo-pill.local  { background:#dbeafe;color:#1e40af }
+        .esc-estado-pill { display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em }
+        .esc-estado-pill.pendiente { background:#fef3c7;color:#92400e }
+        .esc-estado-pill.aplicado  { background:#dcfce7;color:#166534 }
+        .esc-estado-pill.cancelado { background:#f1f5f9;color:#64748b }
+        .esc-money { font-variant-numeric:tabular-nums;font-weight:600 }
+
+        .empty-state { text-align:center;padding:56px 20px;color:#94a3b8;background:#fff;border:1.5px dashed #e2e8f0;border-radius:14px }
+        .empty-state h3 { font-size:1rem;font-weight:700;color:#475569;margin-bottom:4px }
+
+        .loading { text-align:center;padding:48px 0;color:#94a3b8 }
+        .loading .spinner { display:inline-block;width:22px;height:22px;border:3px solid #e2e8f0;border-top-color:#fc5858;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px }
+        @keyframes spin { to { transform:rotate(360deg) } }
+
+        /* ── Modal wizard ────────────────────────────────────────── */
+        .modal-overlay { position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:700;opacity:0;visibility:hidden;transition:opacity .2s }
+        .modal-overlay.open { opacity:1;visibility:visible }
+        .modal { position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);width:min(720px,calc(100% - 32px));max-height:calc(100vh - 64px);background:#f8fafc;z-index:701;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;opacity:0;transition:opacity .2s,transform .2s }
+        .modal.open { display:flex;opacity:1;transform:translate(-50%,-50%) }
+        .modal-head { padding:18px 24px;background:#fff;border-bottom:1.5px solid #e2e8f0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px }
+        .modal-head h2 { margin:0;font-size:16px;font-weight:800;color:#0f172a }
+        .modal-head p  { margin:3px 0 0;font-size:12px;color:#64748b }
+        .modal-close { background:none;border:none;width:32px;height:32px;cursor:pointer;color:#94a3b8;font-size:22px;border-radius:8px;font-family:inherit;flex-shrink:0 }
+        .modal-close:hover { background:#f1f5f9;color:#1e293b }
+        .modal-body { flex:1;overflow-y:auto;padding:18px 24px }
+        .modal-actions { padding:14px 24px;background:#fff;border-top:1.5px solid #e2e8f0;display:flex;gap:8px;justify-content:space-between;align-items:center }
+        .modal-actions .right { display:flex;gap:8px }
+
+        /* Stepper en cabecera */
+        .steps { display:flex;align-items:center;gap:6px;margin-top:10px }
+        .step { display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#94a3b8;padding:4px 10px;border-radius:999px;background:#f1f5f9 }
+        .step.active { background:#fff1f1;color:#fc5858 }
+        .step.done   { background:#dcfce7;color:#166534 }
+        .step .step-num { display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#fff;font-size:10px }
+        .step-sep { width:14px;height:1.5px;background:#e2e8f0 }
+
+        /* Inputs */
+        .field { margin-bottom:12px }
+        .field label { display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px }
+        .field input[type="text"], .field input[type="email"], .field input[type="number"], .field select, .field textarea {
+            width:100%;padding:9px 12px;font-family:inherit;font-size:13px;color:#1e293b;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;transition:border-color .15s
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { outline:none;border-color:#fc5858 }
+        .field-row { display:grid;grid-template-columns:1fr 1fr;gap:10px }
+        .field-row.three { grid-template-columns:1fr 1fr 1fr }
+
+        /* Lista clientes (paso 1) */
+        .cli-pick-list { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;max-height:340px;overflow-y:auto }
+        .cli-pick-row { display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .12s }
+        .cli-pick-row:last-child { border-bottom:0 }
+        .cli-pick-row:hover { background:#fff9fb }
+        .cli-pick-row.selected { background:#fff1f1 }
+        .cli-pick-name { font-weight:700;color:#0f172a;font-size:13.5px }
+        .cli-pick-sub  { font-size:11px;color:#94a3b8;margin-top:2px }
+        .cli-pick-tag  { margin-left:auto;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:#fef3c7;color:#92400e;text-transform:uppercase;letter-spacing:.04em }
+        .cli-pick-tag.cp { background:#fce7f3;color:#9d174d }
+
+        /* Tarjetas tipo escalado (paso 2) */
+        .tipo-cards { display:grid;grid-template-columns:1fr 1fr;gap:12px }
+        .tipo-card { background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:18px;cursor:pointer;transition:all .15s }
+        .tipo-card:hover { border-color:#fc5858;transform:translateY(-2px);box-shadow:0 6px 18px rgba(252,88,88,.08) }
+        .tipo-card.selected { border-color:#fc5858;background:#fff1f1 }
+        .tipo-card .tc-icon { width:42px;height:42px;border-radius:10px;background:#fff1f1;color:#fc5858;display:flex;align-items:center;justify-content:center;margin-bottom:10px }
+        .tipo-card h4 { font-size:14px;font-weight:800;color:#0f172a;margin:0 0 4px }
+        .tipo-card p  { font-size:12px;color:#64748b;margin:0;line-height:1.45 }
+
+        /* Módulos checkbox grid (paso 3 módulo) */
+        .mod-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px }
+        .mod-chk { display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .12s;font-size:13px;font-weight:600;color:#334155 }
+        .mod-chk:hover { border-color:#cbd5e1;background:#f8fafc }
+        .mod-chk.checked { border-color:#fc5858;background:#fff1f1;color:#fc5858 }
+        .mod-chk input { accent-color:#fc5858 }
+        .mod-chk.disabled { opacity:.45;cursor:not-allowed;background:#f8fafc }
+        .mod-chk.disabled .mod-current-tag { margin-left:auto;font-size:10px;font-weight:700;color:#0d9488;background:#ccfbf1;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em }
+
+        /* Locales checkbox lista (paso 3 módulo) */
+        .loc-list { display:flex;flex-direction:column;gap:6px }
+        .loc-row { display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .12s }
+        .loc-row:hover { border-color:#cbd5e1 }
+        .loc-row.checked { border-color:#fc5858;background:#fff1f1 }
+        .loc-row input { accent-color:#fc5858 }
+        .loc-name { font-size:13px;font-weight:700;color:#0f172a }
+        .loc-sub  { font-size:11px;color:#94a3b8;margin-top:2px }
+        .loc-meta { margin-left:auto;font-size:11px;color:#64748b;text-align:right }
+
+        /* Caja sección */
+        .box { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:12px }
+        .box-title { font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:8px }
+        .box-title .count { font-size:10px;font-weight:700;background:#f1f5f9;color:#475569;padding:2px 7px;border-radius:999px }
+
+        /* Resumen final */
+        .summary-row { display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0;font-size:13px }
+        .summary-row:last-child { border-bottom:0 }
+        .summary-row .lbl { color:#64748b }
+        .summary-row .val { font-weight:700;color:#0f172a }
+        .summary-total { display:flex;justify-content:space-between;padding:12px 14px;background:#fff1f1;border-radius:10px;margin-top:10px;font-size:14px;font-weight:800;color:#fc5858 }
+
+        /* Toast */
+        .toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1000;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.12);background:#fff;border:1.5px solid #e2e8f0;color:#1e293b;max-width:90%;transition:opacity .25s }
+        .toast.error { border-color:#fca5a5;color:#b91c1c;background:#fff5f5 }
+        .toast.ok    { border-color:#bbf7d0;color:#166534;background:#f0fdf4 }
+
+        /* Radio sepa modo */
+        .radio-row { display:flex;gap:8px;flex-wrap:wrap }
+        .radio-card { flex:1;min-width:180px;padding:10px 14px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px }
+        .radio-card.selected { border-color:#fc5858;background:#fff1f1;color:#fc5858;font-weight:700 }
+        .radio-card input { accent-color:#fc5858 }
+
+        @media (max-width: 720px) {
+            .esc-hero { flex-direction:column;align-items:stretch }
+            .esc-table thead { display:none }
+            .esc-table tr { display:block;padding:10px;border-bottom:1px solid #f1f5f9 }
+            .esc-table td { display:block;padding:3px 8px;border:0 }
+            .tipo-cards { grid-template-columns:1fr }
+            .field-row, .field-row.three { grid-template-columns:1fr }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar"></nav>
+
+<div class="page-header">
+    <button class="btn-menu" onclick="openSidebar()" title="Menú" aria-label="Abrir menú lateral">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+    <h1>Comercial — Escalados de clientes</h1>
+</div>
+
+<div class="page-content">
+
+    <div class="esc-hero">
+        <div>
+            <h2>Escalados de clientes</h2>
+            <p>Ampliaciones contractuales sobre clientes existentes (Corporate y Corporate + CP).</p>
+        </div>
+        <div class="esc-kpis">
+            <div class="esc-kpi">
+                <div class="esc-kpi-label">Total escalados</div>
+                <div class="esc-kpi-value red" id="kpi-total">0</div>
+            </div>
+            <div class="esc-kpi">
+                <div class="esc-kpi-label">Pendientes</div>
+                <div class="esc-kpi-value" id="kpi-pendientes">0</div>
+            </div>
+            <div class="esc-kpi">
+                <div class="esc-kpi-label">Recurrencia añadida</div>
+                <div class="esc-kpi-value green" id="kpi-recurrencia">0 €</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="search-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="search-input" class="search-input" type="search" placeholder="Buscar por cliente…" oninput="aplicarFiltros()">
+        </div>
+        <div class="filter-sep"></div>
+        <span class="filter-label">Tipo</span>
+        <select class="filter-select" id="filtro-tipo" onchange="setFiltroTipo(this)">
+            <option value="">Todos</option>
+            <option value="modulo">Módulo</option>
+            <option value="local">Local</option>
+        </select>
+        <span class="filter-label">Estado</span>
+        <select class="filter-select" id="filtro-estado" onchange="setFiltroEstado(this)">
+            <option value="">Todos</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="aplicado">Aplicado</option>
+            <option value="cancelado">Cancelado</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary" onclick="abrirWizard()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo escalado
+        </button>
+    </div>
+
+    <div id="loading" class="loading"><span class="spinner"></span>Cargando…</div>
+    <div id="empty-state" class="empty-state" style="display:none">
+        <div style="font-size:2.4rem;margin-bottom:8px">📈</div>
+        <h3>Aún no hay escalados</h3>
+        <p>Pulsa <b>Nuevo escalado</b> para registrar la primera ampliación.</p>
+    </div>
+    <div id="table-wrap" class="table-wrap" style="display:none">
+        <table class="esc-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Tipo</th>
+                    <th>Detalle</th>
+                    <th>Setup</th>
+                    <th>Recurrencia</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Modal wizard nuevo escalado ──────────────────────────────── -->
+<div id="modal-overlay" class="modal-overlay" onclick="cerrarWizard()"></div>
+<aside id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" onclick="event.stopPropagation()">
+    <div class="modal-head">
+        <div style="flex:1">
+            <h2 id="wiz-title">Nuevo escalado</h2>
+            <p id="wiz-sub">Selecciona el cliente sobre el que aplicar el escalado.</p>
+            <div class="steps" id="wiz-steps">
+                <div class="step active" data-step="1"><span class="step-num">1</span> Cliente</div>
+                <div class="step-sep"></div>
+                <div class="step" data-step="2"><span class="step-num">2</span> Tipo</div>
+                <div class="step-sep"></div>
+                <div class="step" data-step="3"><span class="step-num">3</span> Detalle</div>
+                <div class="step-sep"></div>
+                <div class="step" data-step="4"><span class="step-num">4</span> Confirmar</div>
+            </div>
+        </div>
+        <button class="modal-close" onclick="cerrarWizard()" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="modal-body" id="wiz-body"></div>
+    <div class="modal-actions">
+        <button class="btn btn-ghost" id="wiz-back" onclick="wizBack()" style="visibility:hidden">← Atrás</button>
+        <div class="right">
+            <button class="btn btn-secondary" onclick="cerrarWizard()">Cancelar</button>
+            <button class="btn btn-primary" id="wiz-next" onclick="wizNext()" disabled>Siguiente →</button>
+        </div>
+    </div>
+</aside>
+
+<script src="sidebar.js"></script>
+<script>YurestSidebar.render('escalados');</script>
+
+<script>
+    'use strict';
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Catálogo de módulos (hardcoded — mapear a fichas_alta.fin_*)
+    //  Para alta sobre cliente Corporate/Corporate+CP únicamente.
+    // ─────────────────────────────────────────────────────────────────────
+    const MODULOS_CATALOGO = [
+        { id: 'basic',          label: 'BASIC',          finField: 'fin_basic'         },
+        { id: 'pro',            label: 'PRO',            finField: 'fin_pro'           },
+        { id: 'rrhh',           label: 'RRHH',           finField: 'fin_rrhh'          },
+        { id: 'operaciones',    label: 'Operaciones',    finField: 'fin_operaciones'   },
+        { id: 'integraciones',  label: 'Integraciones',  finField: 'fin_integraciones' },
+        { id: 'implementacion', label: 'Implementación', finField: 'fin_implementacion'}
+    ];
+
+    const TIPOS_CLIENTE_PERMITIDOS = ['corporate', 'corporate_cp']; // excluye corp_cocina, planes, lite
+
+    const esc = YurestConfig.escHtml;
+    const fmtMoney = (n) => {
+        const v = Number(n);
+        if (!isFinite(v)) return '—';
+        return v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Estado global
+    // ─────────────────────────────────────────────────────────────────────
+    let CLIENTES = [];        // todos los corporate normalizados
+    let ESCALADOS = [];       // listado actual
+    let FILTROS = { q: '', tipo: '', estado: '' };
+
+    // Estado del wizard
+    let WIZ = null;
+
+    function nuevoWiz() {
+        return {
+            step: 1,
+            cliente: null,
+            tipo: null,            // 'modulo' | 'local'
+            modulo: {
+                modulosSel: [],    // ids
+                localesSel: [],    // uuids de locales
+                setup: 0,
+                recurrencia: 0
+            },
+            local: {
+                local: { nombre:'', email:'', calle:'', numero:'', cp:'', municipio:'', provincia:'',
+                         sociedad_cif:'', sociedad_denominacion:'' },
+                sepa: { modo: 'existente', mandato_id: '',
+                        iban:'', bic:'', titular:'', sociedad_cif:'', sociedad_denominacion:'' },
+                modulosSel: [],
+                setup: 0,
+                recurrencia: 0
+            },
+            notas: ''
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Sidebar helpers
+    // ─────────────────────────────────────────────────────────────────────
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open');  document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Toast
+    // ─────────────────────────────────────────────────────────────────────
+    function toast(msg, tipo) {
+        const t = document.createElement('div');
+        t.className = 'toast' + (tipo ? ' ' + tipo : '');
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 280); }, 3200);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Carga inicial: clientes corporate + escalados existentes
+    // ─────────────────────────────────────────────────────────────────────
+    async function cargar() {
+        document.getElementById('loading').style.display = '';
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('table-wrap').style.display = 'none';
+
+        try {
+            const [cliRes, escRes] = await Promise.all([
+                YurestConfig.apiFetch(YurestConfig.ENDPOINTS.altas + '?_=' + Date.now(),
+                    { method: 'GET', headers: { 'Cache-Control': 'no-cache' } }).catch(() => null),
+                YurestConfig.apiFetch(YurestConfig.ENDPOINTS.escalados + '?_=' + Date.now(),
+                    { method: 'GET', headers: { 'Cache-Control': 'no-cache' } }).catch(() => null)
+            ]);
+
+            if (cliRes && cliRes.ok) {
+                const data = await cliRes.json();
+                const raw = Array.isArray(data) ? data
+                    : Array.isArray(data.clientes) ? data.clientes
+                    : Array.isArray(data.data) ? data.data : [];
+                CLIENTES = raw.map(normalizarCliente)
+                              .filter(c => c.id && c.nombre)
+                              .filter(c => esCorporatePermitido(c.tipoOriginal))
+                              .filter(c => c.estado !== 'pendiente')
+                              .sort((a,b) => (a.nombre || '').localeCompare(b.nombre || ''));
+            }
+
+            if (escRes && escRes.ok) {
+                const data = await escRes.json();
+                ESCALADOS = (Array.isArray(data) ? data
+                    : Array.isArray(data.escalados) ? data.escalados
+                    : Array.isArray(data.data) ? data.data : [])
+                    .map(normalizarEscalado)
+                    .sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            }
+        } catch (err) {
+            console.warn('[escalados] error cargando:', err);
+        }
+
+        document.getElementById('loading').style.display = 'none';
+        actualizarKPIs();
+        aplicarFiltros();
+    }
+
+    function esCorporatePermitido(tipoOriginal) {
+        const t = String(tipoOriginal || '').toLowerCase().trim();
+        return TIPOS_CLIENTE_PERMITIDOS.includes(t);
+    }
+
+    function normalizarCliente(f) {
+        // Locales: pueden venir como array, JSON string o ausentes.
+        let locales = [];
+        const rawLoc = f.locales ?? f['Locales'] ?? null;
+        if (Array.isArray(rawLoc)) locales = rawLoc;
+        else if (typeof rawLoc === 'string' && rawLoc.trim()) {
+            try { const p = JSON.parse(rawLoc); if (Array.isArray(p)) locales = p; } catch(_) {}
+        }
+
+        // SEPA mandatos: objeto único o array (post sepa_multi).
+        let sepaMandatos = [];
+        const sm = f.sepa_mandato ?? f['Sepa Mandato'] ?? null;
+        if (Array.isArray(sm)) sepaMandatos = sm;
+        else if (sm && typeof sm === 'object') sepaMandatos = [sm];
+
+        // Módulos contratados — varias fuentes posibles.
+        let modulos = [];
+        if (Array.isArray(f.modulos)) modulos = f.modulos;
+        else if (typeof f.modulos === 'string' && f.modulos.trim()) {
+            try { const p = JSON.parse(f.modulos); if (Array.isArray(p)) modulos = p; } catch(_) {
+                modulos = f.modulos.split(',').map(s => s.trim()).filter(Boolean);
+            }
+        }
+
+        // Detección extra: si tiene fin_<modulo> > 0, lo consideramos contratado.
+        MODULOS_CATALOGO.forEach(m => {
+            const v = Number(f[m.finField] ?? 0);
+            if (v > 0 && !modulos.includes(m.id)) modulos.push(m.id);
+        });
+
+        return {
+            id:            f.id || f.ID,
+            nombre:        f.nombre_comercial || f['Nombre Comercial'] || f.denominacion || '',
+            sociedad:      f.denominacion || '',
+            cif:           f.cif || '',
+            tipoOriginal:  f.tipo_cliente || f['Tipo Cliente'] || '',
+            estado:        String(f.estado || '').toLowerCase() === 'pendiente' ? 'pendiente' : 'activo',
+            modulos:       modulos.map(s => String(s).toLowerCase()),
+            locales,
+            sepaMandatos,
+            raw: f
+        };
+    }
+
+    function normalizarEscalado(e) {
+        const detalle = (typeof e.detalle === 'string') ? safeJSON(e.detalle, {}) : (e.detalle || {});
+        return {
+            id:           e.id,
+            ficha_id:     e.ficha_id,
+            tipo:         e.tipo,
+            estado:       e.estado || 'pendiente',
+            detalle,
+            setup:        Number(e.setup || 0),
+            recurrencia:  Number(e.recurrencia || 0),
+            creado_por:   e.creado_por || '',
+            notas:        e.notas || '',
+            created_at:   e.created_at || '',
+            aplicado_at:  e.aplicado_at || ''
+        };
+    }
+    function safeJSON(s, fallback) { try { return JSON.parse(s); } catch(_) { return fallback; } }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Render tabla + KPIs
+    // ─────────────────────────────────────────────────────────────────────
+    function actualizarKPIs() {
+        document.getElementById('kpi-total').textContent = ESCALADOS.length;
+        document.getElementById('kpi-pendientes').textContent =
+            ESCALADOS.filter(e => e.estado === 'pendiente').length;
+        const recAcumulada = ESCALADOS
+            .filter(e => e.estado !== 'cancelado')
+            .reduce((s, e) => s + (Number(e.recurrencia) || 0), 0);
+        document.getElementById('kpi-recurrencia').textContent = fmtMoney(recAcumulada);
+    }
+
+    function clienteById(id) { return CLIENTES.find(c => c.id === id); }
+
+    function detalleResumen(e) {
+        if (e.tipo === 'modulo') {
+            const mods = (e.detalle.modulos || []).map(id => {
+                const m = MODULOS_CATALOGO.find(x => x.id === id);
+                return m ? m.label : id;
+            });
+            const nLoc = (e.detalle.locales_ids || []).length;
+            return `<b>${esc(mods.join(', ') || '—')}</b> · ${nLoc} local${nLoc === 1 ? '' : 'es'}`;
+        }
+        if (e.tipo === 'local') {
+            const nom = (e.detalle.local && e.detalle.local.nombre) || 'Local';
+            const sepaModo = e.detalle.sepa && e.detalle.sepa.modo;
+            return `<b>${esc(nom)}</b> · SEPA ${sepaModo === 'nuevo' ? 'nuevo' : 'existente'}`;
+        }
+        return '—';
+    }
+
+    function aplicarFiltros() {
+        const q = (FILTROS.q || '').toLowerCase();
+        const filtradas = ESCALADOS.filter(e => {
+            if (FILTROS.tipo && e.tipo !== FILTROS.tipo) return false;
+            if (FILTROS.estado && e.estado !== FILTROS.estado) return false;
+            if (q) {
+                const c = clienteById(e.ficha_id);
+                const hay = [c?.nombre, c?.sociedad, c?.cif].some(v => (v || '').toLowerCase().includes(q));
+                if (!hay) return false;
+            }
+            return true;
+        });
+        renderTabla(filtradas);
+    }
+
+    function renderTabla(rows) {
+        if (rows.length === 0) {
+            document.getElementById('empty-state').style.display = '';
+            document.getElementById('table-wrap').style.display = 'none';
+            return;
+        }
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('table-wrap').style.display = '';
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = rows.map(e => {
+            const c = clienteById(e.ficha_id);
+            const fecha = e.created_at ? new Date(e.created_at).toLocaleDateString('es-ES') : '—';
+            return `
+                <tr>
+                    <td>
+                        <div class="esc-cliente">${esc(c?.nombre || 'Cliente desconocido')}</div>
+                        <div class="esc-cliente-sub">${esc(c?.sociedad || c?.cif || '')}</div>
+                    </td>
+                    <td><span class="esc-tipo-pill ${e.tipo}">${e.tipo}</span></td>
+                    <td>${detalleResumen(e)}</td>
+                    <td class="esc-money">${fmtMoney(e.setup)}</td>
+                    <td class="esc-money">${fmtMoney(e.recurrencia)}/mes</td>
+                    <td><span class="esc-estado-pill ${e.estado}">${e.estado}</span></td>
+                    <td>${esc(fecha)}</td>
+                </tr>`;
+        }).join('');
+    }
+
+    function setFiltroTipo(sel)   { FILTROS.tipo   = sel.value; sel.classList.toggle('active', !!sel.value); aplicarFiltros(); }
+    function setFiltroEstado(sel) { FILTROS.estado = sel.value; sel.classList.toggle('active', !!sel.value); aplicarFiltros(); }
+    document.getElementById('search-input').addEventListener('input', (ev) => {
+        FILTROS.q = ev.target.value || '';
+        aplicarFiltros();
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Wizard — apertura / cierre
+    // ─────────────────────────────────────────────────────────────────────
+    function abrirWizard() {
+        if (CLIENTES.length === 0) {
+            toast('No hay clientes Corporate disponibles para escalar.', 'error');
+            return;
+        }
+        WIZ = nuevoWiz();
+        document.getElementById('modal').classList.add('open');
+        document.getElementById('modal-overlay').classList.add('open');
+        document.getElementById('modal').setAttribute('aria-hidden', 'false');
+        renderStep();
+    }
+    function cerrarWizard() {
+        document.getElementById('modal').classList.remove('open');
+        document.getElementById('modal-overlay').classList.remove('open');
+        document.getElementById('modal').setAttribute('aria-hidden', 'true');
+    }
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && document.getElementById('modal').classList.contains('open')) cerrarWizard();
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Wizard — render por paso
+    // ─────────────────────────────────────────────────────────────────────
+    function renderStep() {
+        // Stepper
+        document.querySelectorAll('#wiz-steps .step').forEach(el => {
+            const n = Number(el.dataset.step);
+            el.classList.toggle('active', n === WIZ.step);
+            el.classList.toggle('done',   n < WIZ.step);
+        });
+
+        // Botón atrás
+        document.getElementById('wiz-back').style.visibility = WIZ.step > 1 ? 'visible' : 'hidden';
+
+        // Botón siguiente: texto y estado
+        const next = document.getElementById('wiz-next');
+        next.textContent = WIZ.step === 4 ? '✓ Crear escalado' : 'Siguiente →';
+        next.disabled = !validaPaso();
+
+        const sub = document.getElementById('wiz-sub');
+        const body = document.getElementById('wiz-body');
+
+        if (WIZ.step === 1) {
+            sub.textContent = 'Selecciona el cliente sobre el que aplicar el escalado.';
+            body.innerHTML = renderPaso1();
+            wireStep1();
+        } else if (WIZ.step === 2) {
+            sub.textContent = `Cliente: ${WIZ.cliente.nombre}. Elige el tipo de escalado.`;
+            body.innerHTML = renderPaso2();
+            wireStep2();
+        } else if (WIZ.step === 3) {
+            sub.textContent = WIZ.tipo === 'modulo'
+                ? 'Elige los módulos a contratar y los locales que abarcan.'
+                : 'Configura el nuevo local, su SEPA y los módulos vinculados.';
+            body.innerHTML = WIZ.tipo === 'modulo' ? renderPaso3Modulo() : renderPaso3Local();
+            if (WIZ.tipo === 'modulo') wireStep3Modulo(); else wireStep3Local();
+        } else if (WIZ.step === 4) {
+            sub.textContent = 'Revisa el resumen antes de crear el escalado.';
+            body.innerHTML = renderPaso4();
+        }
+    }
+
+    // ── Paso 1: clientes ─────────────────────────────────────────────────
+    function renderPaso1() {
+        const filtrados = CLIENTES;  // ya filtrados por tipo permitido
+        return `
+            <div class="field">
+                <label>Buscar cliente</label>
+                <input type="text" id="cli-search" placeholder="Nombre, sociedad o CIF…" />
+            </div>
+            <div class="cli-pick-list" id="cli-pick-list">
+                ${filtrados.map(c => filaCliente(c)).join('') || `<div style="padding:18px;text-align:center;color:#94a3b8">Sin clientes</div>`}
+            </div>
+        `;
+    }
+    function filaCliente(c) {
+        const isCp = String(c.tipoOriginal).toLowerCase() === 'corporate_cp';
+        const sel  = WIZ.cliente && WIZ.cliente.id === c.id ? ' selected' : '';
+        return `
+            <div class="cli-pick-row${sel}" data-id="${esc(c.id)}">
+                <div>
+                    <div class="cli-pick-name">${esc(c.nombre)}</div>
+                    <div class="cli-pick-sub">${esc(c.sociedad || '')}${c.cif ? ' · ' + esc(c.cif) : ''}</div>
+                </div>
+                <span class="cli-pick-tag ${isCp ? 'cp' : ''}">${isCp ? 'Corporate + CP' : 'Corporate'}</span>
+            </div>`;
+    }
+    function wireStep1() {
+        const list = document.getElementById('cli-pick-list');
+        const search = document.getElementById('cli-search');
+        list.addEventListener('click', (ev) => {
+            const row = ev.target.closest('.cli-pick-row');
+            if (!row) return;
+            const id = row.dataset.id;
+            const c = CLIENTES.find(x => x.id === id);
+            if (!c) return;
+            WIZ.cliente = c;
+            list.querySelectorAll('.cli-pick-row').forEach(r => r.classList.toggle('selected', r === row));
+            document.getElementById('wiz-next').disabled = false;
+        });
+        search.addEventListener('input', () => {
+            const q = (search.value || '').toLowerCase();
+            const filtered = CLIENTES.filter(c =>
+                [c.nombre, c.sociedad, c.cif].some(v => (v || '').toLowerCase().includes(q)));
+            list.innerHTML = filtered.length
+                ? filtered.map(filaCliente).join('')
+                : `<div style="padding:18px;text-align:center;color:#94a3b8">Sin resultados</div>`;
+        });
+    }
+
+    // ── Paso 2: tipo ─────────────────────────────────────────────────────
+    function renderPaso2() {
+        const sel = (k) => WIZ.tipo === k ? ' selected' : '';
+        return `
+            <div class="tipo-cards">
+                <div class="tipo-card${sel('modulo')}" data-tipo="modulo">
+                    <div class="tc-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <h4>Escalado de módulo</h4>
+                    <p>Contratar módulos que el cliente aún no tiene y aplicarlos a uno o varios locales existentes.</p>
+                </div>
+                <div class="tipo-card${sel('local')}" data-tipo="local">
+                    <div class="tc-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+                    </div>
+                    <h4>Escalado de local</h4>
+                    <p>Dar de alta un nuevo local con su SEPA (existente o nuevo) y, opcionalmente, módulos vinculados.</p>
+                </div>
+            </div>
+        `;
+    }
+    function wireStep2() {
+        document.querySelectorAll('.tipo-card').forEach(card => {
+            card.addEventListener('click', () => {
+                WIZ.tipo = card.dataset.tipo;
+                document.querySelectorAll('.tipo-card').forEach(c => c.classList.toggle('selected', c === card));
+                document.getElementById('wiz-next').disabled = false;
+            });
+        });
+    }
+
+    // ── Paso 3 Módulo ────────────────────────────────────────────────────
+    function renderPaso3Modulo() {
+        const c = WIZ.cliente;
+        const yaTiene = new Set(c.modulos || []);
+        const m = WIZ.modulo;
+
+        const modulosHtml = MODULOS_CATALOGO.map(mod => {
+            const tiene = yaTiene.has(mod.id);
+            const checked = m.modulosSel.includes(mod.id);
+            return `
+                <label class="mod-chk ${tiene ? 'disabled' : ''} ${checked && !tiene ? 'checked' : ''}" data-id="${esc(mod.id)}">
+                    <input type="checkbox" ${checked && !tiene ? 'checked' : ''} ${tiene ? 'disabled' : ''} />
+                    ${esc(mod.label)}
+                    ${tiene ? '<span class="mod-current-tag">contratado</span>' : ''}
+                </label>`;
+        }).join('');
+
+        const locales = c.locales || [];
+        const localesHtml = locales.length ? locales.map(l => {
+            const id = l.id || l.uuid || l.ID;
+            const checked = m.localesSel.includes(id);
+            const sepa = c.sepaMandatos.find(s => s && s.id === l.sepa_mandato_id);
+            const sepaTxt = sepa ? (sepa.referencia || sepa.iban || 'SEPA') : 'SEPA s/asignar';
+            return `
+                <label class="loc-row ${checked ? 'checked' : ''}" data-id="${esc(id)}">
+                    <input type="checkbox" ${checked ? 'checked' : ''} />
+                    <div>
+                        <div class="loc-name">${esc(l.nombre || 'Local')}</div>
+                        <div class="loc-sub">${esc([l.calle, l.numero, l.cp, l.municipio].filter(Boolean).join(' '))}</div>
+                    </div>
+                    <div class="loc-meta">${esc(sepaTxt)}</div>
+                </label>`;
+        }).join('') : `<div style="padding:14px;text-align:center;color:#94a3b8;font-size:12px">El cliente aún no tiene locales registrados.</div>`;
+
+        return `
+            <div class="box">
+                <div class="box-title">Módulos a contratar <span class="count">${MODULOS_CATALOGO.filter(x => !yaTiene.has(x.id)).length} disponibles</span></div>
+                <div class="mod-grid" id="mod-grid">${modulosHtml}</div>
+                ${yaTiene.size ? `<div style="margin-top:8px;font-size:11px;color:#0d9488">El cliente ya tiene: <b>${[...yaTiene].map(id => (MODULOS_CATALOGO.find(x => x.id === id) || {}).label || id).filter(Boolean).join(', ')}</b></div>` : ''}
+            </div>
+
+            <div class="box">
+                <div class="box-title">Locales afectados <span class="count">${locales.length}</span></div>
+                <div class="loc-list" id="loc-list">${localesHtml}</div>
+            </div>
+
+            <div class="box">
+                <div class="box-title">Importes</div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>Setup (€, único)</label>
+                        <input type="number" id="inp-setup" min="0" step="0.01" value="${m.setup || ''}" />
+                    </div>
+                    <div class="field">
+                        <label>Recurrencia (€/mes)</label>
+                        <input type="number" id="inp-recurrencia" min="0" step="0.01" value="${m.recurrencia || ''}" />
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    function wireStep3Modulo() {
+        const m = WIZ.modulo;
+        document.getElementById('mod-grid').addEventListener('change', (ev) => {
+            const lbl = ev.target.closest('.mod-chk'); if (!lbl) return;
+            const id = lbl.dataset.id;
+            if (ev.target.checked) {
+                if (!m.modulosSel.includes(id)) m.modulosSel.push(id);
+                lbl.classList.add('checked');
+            } else {
+                m.modulosSel = m.modulosSel.filter(x => x !== id);
+                lbl.classList.remove('checked');
+            }
+            actualizaNextModulo();
+        });
+        document.getElementById('loc-list').addEventListener('change', (ev) => {
+            const row = ev.target.closest('.loc-row'); if (!row) return;
+            const id = row.dataset.id;
+            if (ev.target.checked) {
+                if (!m.localesSel.includes(id)) m.localesSel.push(id);
+                row.classList.add('checked');
+            } else {
+                m.localesSel = m.localesSel.filter(x => x !== id);
+                row.classList.remove('checked');
+            }
+            actualizaNextModulo();
+        });
+        document.getElementById('inp-setup').addEventListener('input', (ev) => {
+            m.setup = Number(ev.target.value) || 0;
+            actualizaNextModulo();
+        });
+        document.getElementById('inp-recurrencia').addEventListener('input', (ev) => {
+            m.recurrencia = Number(ev.target.value) || 0;
+            actualizaNextModulo();
+        });
+        actualizaNextModulo();
+    }
+    function actualizaNextModulo() {
+        document.getElementById('wiz-next').disabled = !validaPaso();
+    }
+
+    // ── Paso 3 Local ─────────────────────────────────────────────────────
+    function renderPaso3Local() {
+        const l = WIZ.local;
+        const c = WIZ.cliente;
+        const sepasExist = c.sepaMandatos || [];
+
+        const sepaModo = l.sepa.modo || 'existente';
+        const sepaSelectHtml = sepasExist.length ? `
+            <div class="field">
+                <label>Mandato SEPA del cliente</label>
+                <select id="loc-sepa-id">
+                    <option value="">— Selecciona —</option>
+                    ${sepasExist.map(s => {
+                        const id = s.id || '';
+                        const ref = s.referencia || s.iban || 'SEPA';
+                        const soc = s.sociedad_denominacion ? ' · ' + s.sociedad_denominacion : '';
+                        const sel = (l.sepa.mandato_id === id) ? ' selected' : '';
+                        return `<option value="${esc(id)}"${sel}>${esc(ref)}${esc(soc)}</option>`;
+                    }).join('')}
+                </select>
+            </div>` : `<div style="font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px">Este cliente no tiene mandatos SEPA registrados. Configura uno nuevo abajo.</div>`;
+
+        const modulosHtml = MODULOS_CATALOGO.map(mod => {
+            const checked = l.modulosSel.includes(mod.id);
+            return `
+                <label class="mod-chk${checked ? ' checked' : ''}" data-id="${esc(mod.id)}">
+                    <input type="checkbox" ${checked ? 'checked' : ''} />
+                    ${esc(mod.label)}
+                </label>`;
+        }).join('');
+
+        return `
+            <div class="box">
+                <div class="box-title">Datos del local</div>
+                <div class="field"><label>Nombre del local *</label><input type="text" id="loc-nombre" value="${esc(l.local.nombre || '')}" /></div>
+                <div class="field-row">
+                    <div class="field"><label>Email</label><input type="email" id="loc-email" value="${esc(l.local.email || '')}" /></div>
+                    <div class="field"><label>CP</label><input type="text" id="loc-cp" maxlength="5" value="${esc(l.local.cp || '')}" /></div>
+                </div>
+                <div class="field-row">
+                    <div class="field"><label>Calle</label><input type="text" id="loc-calle" value="${esc(l.local.calle || '')}" /></div>
+                    <div class="field"><label>Número</label><input type="text" id="loc-numero" value="${esc(l.local.numero || '')}" /></div>
+                </div>
+                <div class="field-row">
+                    <div class="field"><label>Municipio</label><input type="text" id="loc-municipio" value="${esc(l.local.municipio || '')}" /></div>
+                    <div class="field"><label>Provincia</label><input type="text" id="loc-provincia" value="${esc(l.local.provincia || '')}" /></div>
+                </div>
+            </div>
+
+            <div class="box">
+                <div class="box-title">SEPA</div>
+                <div class="radio-row" style="margin-bottom:10px">
+                    <label class="radio-card${sepaModo === 'existente' ? ' selected' : ''}">
+                        <input type="radio" name="sepa-modo" value="existente" ${sepaModo === 'existente' ? 'checked' : ''} ${sepasExist.length ? '' : 'disabled'} />
+                        SEPA existente del cliente
+                    </label>
+                    <label class="radio-card${sepaModo === 'nuevo' ? ' selected' : ''}">
+                        <input type="radio" name="sepa-modo" value="nuevo" ${sepaModo === 'nuevo' ? 'checked' : ''} />
+                        Crear SEPA nuevo
+                    </label>
+                </div>
+                <div id="sepa-existente-wrap" style="display:${sepaModo === 'existente' ? '' : 'none'}">
+                    ${sepaSelectHtml}
+                </div>
+                <div id="sepa-nuevo-wrap" style="display:${sepaModo === 'nuevo' ? '' : 'none'}">
+                    <div class="field"><label>IBAN *</label><input type="text" id="sepa-iban" value="${esc(l.sepa.iban || '')}" placeholder="ES00 0000 0000 0000 0000 0000" /></div>
+                    <div class="field-row">
+                        <div class="field"><label>Titular</label><input type="text" id="sepa-titular" value="${esc(l.sepa.titular || '')}" /></div>
+                        <div class="field"><label>BIC</label><input type="text" id="sepa-bic" value="${esc(l.sepa.bic || '')}" /></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label>CIF sociedad</label><input type="text" id="sepa-soc-cif" value="${esc(l.sepa.sociedad_cif || '')}" /></div>
+                        <div class="field"><label>Denominación sociedad</label><input type="text" id="sepa-soc-den" value="${esc(l.sepa.sociedad_denominacion || '')}" /></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="box">
+                <div class="box-title">Módulos vinculados al local <span class="count">opcional</span></div>
+                <div class="mod-grid" id="mod-grid-loc">${modulosHtml}</div>
+            </div>
+
+            <div class="box">
+                <div class="box-title">Importes</div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>Setup (€, único)</label>
+                        <input type="number" id="inp-setup-l" min="0" step="0.01" value="${l.setup || ''}" />
+                    </div>
+                    <div class="field">
+                        <label>Recurrencia (€/mes)</label>
+                        <input type="number" id="inp-recurrencia-l" min="0" step="0.01" value="${l.recurrencia || ''}" />
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    function wireStep3Local() {
+        const l = WIZ.local;
+
+        // Inputs locales
+        const bind = (id, key) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', (ev) => { l.local[key] = ev.target.value; actualizaNextLocal(); });
+        };
+        ['loc-nombre','loc-email','loc-cp','loc-calle','loc-numero','loc-municipio','loc-provincia'].forEach(id =>
+            bind(id, id.replace('loc-','')));
+
+        // SEPA modo
+        document.querySelectorAll('input[name="sepa-modo"]').forEach(r => {
+            r.addEventListener('change', () => {
+                l.sepa.modo = r.value;
+                document.querySelectorAll('.radio-card').forEach(rc => {
+                    rc.classList.toggle('selected', rc.querySelector('input').checked);
+                });
+                document.getElementById('sepa-existente-wrap').style.display = l.sepa.modo === 'existente' ? '' : 'none';
+                document.getElementById('sepa-nuevo-wrap').style.display    = l.sepa.modo === 'nuevo'    ? '' : 'none';
+                actualizaNextLocal();
+            });
+        });
+
+        // SEPA existente
+        const selSepa = document.getElementById('loc-sepa-id');
+        if (selSepa) selSepa.addEventListener('change', () => { l.sepa.mandato_id = selSepa.value; actualizaNextLocal(); });
+
+        // SEPA nuevo
+        const bindSepa = (id, key) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', (ev) => { l.sepa[key] = ev.target.value; actualizaNextLocal(); });
+        };
+        bindSepa('sepa-iban', 'iban');
+        bindSepa('sepa-titular', 'titular');
+        bindSepa('sepa-bic', 'bic');
+        bindSepa('sepa-soc-cif', 'sociedad_cif');
+        bindSepa('sepa-soc-den', 'sociedad_denominacion');
+
+        // Módulos
+        document.getElementById('mod-grid-loc').addEventListener('change', (ev) => {
+            const lbl = ev.target.closest('.mod-chk'); if (!lbl) return;
+            const id = lbl.dataset.id;
+            if (ev.target.checked) {
+                if (!l.modulosSel.includes(id)) l.modulosSel.push(id);
+                lbl.classList.add('checked');
+            } else {
+                l.modulosSel = l.modulosSel.filter(x => x !== id);
+                lbl.classList.remove('checked');
+            }
+        });
+
+        // Importes
+        document.getElementById('inp-setup-l').addEventListener('input', (ev) => { l.setup = Number(ev.target.value) || 0; });
+        document.getElementById('inp-recurrencia-l').addEventListener('input', (ev) => { l.recurrencia = Number(ev.target.value) || 0; });
+
+        actualizaNextLocal();
+    }
+    function actualizaNextLocal() {
+        document.getElementById('wiz-next').disabled = !validaPaso();
+    }
+
+    // ── Paso 4: resumen ──────────────────────────────────────────────────
+    function renderPaso4() {
+        const c = WIZ.cliente;
+        const tipo = WIZ.tipo;
+        let detalleHtml = '';
+        let setup = 0, rec = 0;
+
+        if (tipo === 'modulo') {
+            const m = WIZ.modulo;
+            const mods = m.modulosSel.map(id => (MODULOS_CATALOGO.find(x => x.id === id) || {}).label || id);
+            const locs = m.localesSel.map(id => {
+                const lo = (c.locales || []).find(x => (x.id || x.uuid || x.ID) === id);
+                return lo ? (lo.nombre || 'Local') : id;
+            });
+            setup = m.setup; rec = m.recurrencia;
+            detalleHtml = `
+                <div class="summary-row"><span class="lbl">Módulos contratados</span><span class="val">${esc(mods.join(', '))}</span></div>
+                <div class="summary-row"><span class="lbl">Locales afectados</span><span class="val">${esc(locs.join(', '))}</span></div>`;
+        } else {
+            const l = WIZ.local;
+            const sepaTxt = l.sepa.modo === 'existente'
+                ? `Existente: ${(c.sepaMandatos.find(s => s.id === l.sepa.mandato_id) || {}).referencia || l.sepa.mandato_id}`
+                : `Nuevo: ${l.sepa.iban || '—'}`;
+            setup = l.setup; rec = l.recurrencia;
+            const mods = l.modulosSel.map(id => (MODULOS_CATALOGO.find(x => x.id === id) || {}).label || id);
+            detalleHtml = `
+                <div class="summary-row"><span class="lbl">Local</span><span class="val">${esc(l.local.nombre)}</span></div>
+                <div class="summary-row"><span class="lbl">Dirección</span><span class="val">${esc([l.local.calle, l.local.numero, l.local.cp, l.local.municipio].filter(Boolean).join(' '))}</span></div>
+                <div class="summary-row"><span class="lbl">SEPA</span><span class="val">${esc(sepaTxt)}</span></div>
+                ${mods.length ? `<div class="summary-row"><span class="lbl">Módulos</span><span class="val">${esc(mods.join(', '))}</span></div>` : ''}`;
+        }
+
+        return `
+            <div class="box">
+                <div class="box-title">Cliente</div>
+                <div class="summary-row"><span class="lbl">Nombre</span><span class="val">${esc(c.nombre)}</span></div>
+                <div class="summary-row"><span class="lbl">Sociedad / CIF</span><span class="val">${esc(c.sociedad)} · ${esc(c.cif || '—')}</span></div>
+                <div class="summary-row"><span class="lbl">Tipo escalado</span><span class="val">${tipo === 'modulo' ? 'Módulo' : 'Local'}</span></div>
+                ${detalleHtml}
+                <div class="summary-row"><span class="lbl">Setup</span><span class="val">${fmtMoney(setup)}</span></div>
+                <div class="summary-row"><span class="lbl">Recurrencia mensual</span><span class="val">${fmtMoney(rec)}</span></div>
+                <div class="summary-total"><span>Total mensual añadido</span><span>${fmtMoney(rec)}/mes</span></div>
+            </div>
+            <div class="box">
+                <div class="box-title">Notas (opcional)</div>
+                <textarea id="wiz-notas" rows="3" style="width:100%;padding:9px 12px;font-family:inherit;font-size:13px;color:#1e293b;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px" placeholder="Comentarios para el equipo…">${esc(WIZ.notas || '')}</textarea>
+            </div>
+        `;
+    }
+
+    // ── Validación por paso ──────────────────────────────────────────────
+    function validaPaso() {
+        if (WIZ.step === 1) return !!WIZ.cliente;
+        if (WIZ.step === 2) return !!WIZ.tipo;
+        if (WIZ.step === 3) {
+            if (WIZ.tipo === 'modulo') {
+                const m = WIZ.modulo;
+                return m.modulosSel.length > 0 && m.localesSel.length > 0;
+            } else {
+                const l = WIZ.local;
+                if (!l.local.nombre || !l.local.nombre.trim()) return false;
+                if (l.sepa.modo === 'existente' && !l.sepa.mandato_id) return false;
+                if (l.sepa.modo === 'nuevo' && !(l.sepa.iban && l.sepa.iban.trim())) return false;
+                return true;
+            }
+        }
+        if (WIZ.step === 4) return true;
+        return false;
+    }
+
+    // ── Navegación ───────────────────────────────────────────────────────
+    function wizBack() {
+        if (WIZ.step <= 1) return;
+        // Si retrocedo a 2 desde 3 y cambio de tipo, mantengo selección.
+        WIZ.step -= 1;
+        renderStep();
+    }
+    async function wizNext() {
+        if (!validaPaso()) return;
+        if (WIZ.step < 4) {
+            WIZ.step += 1;
+            renderStep();
+            return;
+        }
+        // Crear escalado
+        await guardarEscalado();
+    }
+
+    // ── Persistencia ─────────────────────────────────────────────────────
+    async function guardarEscalado() {
+        const notasEl = document.getElementById('wiz-notas');
+        if (notasEl) WIZ.notas = notasEl.value || '';
+
+        const sess = YurestConfig.getSession();
+        const creadoPor = (sess && (sess.user || sess.username)) || '';
+
+        let detalle, setup, recurrencia;
+        if (WIZ.tipo === 'modulo') {
+            const m = WIZ.modulo;
+            detalle = {
+                modulos: m.modulosSel,
+                locales_ids: m.localesSel,
+                setup: m.setup,
+                recurrencia: m.recurrencia
+            };
+            setup = m.setup; recurrencia = m.recurrencia;
+        } else {
+            const l = WIZ.local;
+            detalle = {
+                local: l.local,
+                sepa: l.sepa.modo === 'existente'
+                    ? { modo: 'existente', mandato_id: l.sepa.mandato_id }
+                    : { modo: 'nuevo', iban: l.sepa.iban, bic: l.sepa.bic, titular: l.sepa.titular,
+                        sociedad_cif: l.sepa.sociedad_cif, sociedad_denominacion: l.sepa.sociedad_denominacion },
+                modulos: l.modulosSel,
+                setup: l.setup,
+                recurrencia: l.recurrencia
+            };
+            setup = l.setup; recurrencia = l.recurrencia;
+        }
+
+        const payload = {
+            ficha_id: WIZ.cliente.id,
+            tipo: WIZ.tipo,
+            estado: 'pendiente',
+            detalle,
+            setup,
+            recurrencia,
+            notas: WIZ.notas || null,
+            creado_por: creadoPor || null
+        };
+
+        const btn = document.getElementById('wiz-next');
+        btn.disabled = true;
+        btn.textContent = 'Creando…';
+
+        try {
+            const res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.escalados, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+
+            // Optimistic: añadimos a la lista local con id provisional.
+            let body = null;
+            try { body = await res.json(); } catch(_) {}
+            const created = (body && body.escalado) || body || {};
+            const nuevo = normalizarEscalado({
+                id: created.id || ('local-' + Date.now()),
+                ficha_id: payload.ficha_id,
+                tipo: payload.tipo,
+                estado: 'pendiente',
+                detalle: payload.detalle,
+                setup: payload.setup,
+                recurrencia: payload.recurrencia,
+                notas: payload.notas,
+                creado_por: payload.creado_por,
+                created_at: new Date().toISOString()
+            });
+            ESCALADOS.unshift(nuevo);
+            actualizarKPIs();
+            aplicarFiltros();
+
+            cerrarWizard();
+            toast('Escalado creado en estado pendiente.', 'ok');
+        } catch (err) {
+            console.warn('[escalados] error guardando:', err);
+            toast('No se pudo guardar el escalado. Reintenta.', 'error');
+            btn.disabled = false;
+            btn.textContent = '✓ Crear escalado';
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Bootstrap
+    // ─────────────────────────────────────────────────────────────────────
+    cargar();
+</script>
+
+</body>
+</html>

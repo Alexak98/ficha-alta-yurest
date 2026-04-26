@@ -42,6 +42,7 @@ El webhook `GET Altas` en `04-fichas-alta.json` es el que valida el login — ah
 | 13-grabado-a3.json          | Toggle "grabado en A3" en proyectos          |
 | 14-notif-integraciones-semanal.json | Recordatorio semanal por email de integraciones sin avance, con último comentario Asana |
 | 15-notif-integraciones-api.json     | API de configuración y consulta de historial (usada por el panel de Integraciones) |
+| 26-escalados.json                   | CRUD de escalados de clientes (Comercial → Escalados de clientes)                       |
 
 ## Recordatorio semanal de Integraciones (workflow 14)
 

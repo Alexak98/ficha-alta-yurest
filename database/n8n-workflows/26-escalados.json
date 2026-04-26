@@ -1,0 +1,196 @@
+{
+  "name": "Yurest - Escalados de clientes CRUD",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "escalados",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-esc-get",
+      "name": "Webhook GET Escalados",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "escalados-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "escalados",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-esc-get",
+      "name": "GET Escalados Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [440, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve los escalados. Por defecto oculta los soft-deleted; con\n// ?incluir_archivados=1 los incluye al final del orden. Filtros opcionales:\n//   ?ficha_id=<uuid>      sólo escalados de un cliente\n//   ?tipo=modulo|local\n//   ?estado=pendiente|aplicado|cancelado\n//   ?incluir_archivados=1\nconst wh = $('Webhook GET Escalados').first().json || {};\nconst q  = wh.query || wh.params || {};\nconst verArch = String(q.incluir_archivados || '') === '1';\nlet out = ($input.all() || [])\n  .map(i => i.json)\n  .filter(x => x && x.id && (verArch || !x.deleted_at));\n\nif (q.ficha_id) out = out.filter(e => e.ficha_id === q.ficha_id);\nif (q.tipo)     out = out.filter(e => e.tipo === q.tipo);\nif (q.estado)   out = out.filter(e => e.estado === q.estado);\n\n// Orden: vivos primero (no archivados); dentro, pendientes antes que el resto\n// y por fecha de creación descendente.\nconst pesoEstado = { pendiente: 0, aplicado: 1, cancelado: 2 };\nout.sort((a, b) => {\n  const ax = a.deleted_at ? 1 : 0;\n  const bx = b.deleted_at ? 1 : 0;\n  if (ax !== bx) return ax - bx;\n  const pa = pesoEstado[a.estado] ?? 9;\n  const pb = pesoEstado[b.estado] ?? 9;\n  if (pa !== pb) return pa - pb;\n  const da = a.created_at ? new Date(a.created_at).getTime() : 0;\n  const db = b.created_at ? new Date(b.created_at).getTime() : 0;\n  return db - da;\n});\n\n// Totales agregados (sólo vivos no cancelados): cuántos hay y suma de\n// recurrencia. Útil para que el front muestre KPIs sin recalcular.\nconst totales = out\n  .filter(e => !e.deleted_at && e.estado !== 'cancelado')\n  .reduce((acc, e) => {\n    acc.count       += 1;\n    acc.setup       += Number(e.setup)       || 0;\n    acc.recurrencia += Number(e.recurrencia) || 0;\n    return acc;\n  }, { count: 0, setup: 0, recurrencia: 0 });\n\nreturn [{ json: { escalados: out, totales } }];"
+      },
+      "id": "esc-format-get",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "esc-respond-get",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "escalados",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-esc-post",
+      "name": "Webhook POST Escalados",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "webhookId": "escalados-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "esc-respond-post",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1640, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Acciones soportadas:\n//   create   → alta de escalado en estado 'pendiente' (default si no llega action)\n//   update   → edición de detalle/importes/notas\n//   aplicar  → marca como aplicado y setea aplicado_at = now()\n//             (NO aplica todavía los cambios reales sobre fichas/locales —\n//              eso lo hará un workflow posterior, ver flujo de aplicación)\n//   cancelar → estado='cancelado'\n//   archivar / reactivar → soft-delete\n//\n// Acepta el payload tanto envuelto en { escalado: {...}, action } como\n// plano (todo en raíz). Cuando llega plano sin action lo tratamos como\n// 'create' — es lo que envía la página escalados.html actual.\nconst raw  = $input.first().json || {};\nconst body = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst e    = (body.escalado && typeof body.escalado === 'object') ? body.escalado : body;\nconst action = String(body.action || (e.id ? 'update' : 'create')).toLowerCase();\nconst now = new Date().toISOString();\nconst errores = [];\n\nconst VALID = ['create', 'update', 'aplicar', 'cancelar', 'archivar', 'reactivar'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !e.id) errores.push('id obligatorio para ' + action);\nif (e.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(e.id)) {\n  errores.push('id no es un UUID válido');\n}\n\nconst TIPOS    = ['modulo', 'local'];\nconst ESTADOS  = ['pendiente', 'aplicado', 'cancelado'];\n\nfunction validaNumero(v, nombre, min, max) {\n  if (v === undefined || v === null || v === '') return undefined;\n  const n = +v;\n  if (!Number.isFinite(n))    { errores.push(nombre + ' debe ser número'); return undefined; }\n  if (n < min || n > max)      { errores.push(nombre + ' fuera de rango (' + min + '..' + max + ')'); return undefined; }\n  return n;\n}\n\nfunction validaDetalle(tipo, det) {\n  if (!det || typeof det !== 'object') { errores.push('detalle debe ser objeto'); return; }\n  if (tipo === 'modulo') {\n    if (!Array.isArray(det.modulos) || det.modulos.length === 0)\n      errores.push('detalle.modulos debe ser array no vacío');\n    if (!Array.isArray(det.locales_ids) || det.locales_ids.length === 0)\n      errores.push('detalle.locales_ids debe ser array no vacío');\n  } else if (tipo === 'local') {\n    if (!det.local || typeof det.local !== 'object' || !String(det.local.nombre || '').trim())\n      errores.push('detalle.local.nombre obligatorio');\n    const sepa = det.sepa || {};\n    if (!['existente','nuevo'].includes(sepa.modo))\n      errores.push('detalle.sepa.modo debe ser existente|nuevo');\n    if (sepa.modo === 'existente' && !sepa.mandato_id)\n      errores.push('detalle.sepa.mandato_id obligatorio cuando modo=existente');\n    if (sepa.modo === 'nuevo' && !String(sepa.iban || '').trim())\n      errores.push('detalle.sepa.iban obligatorio cuando modo=nuevo');\n  }\n}\n\nlet out = {};\nif (action === 'create') {\n  if (!e.ficha_id) errores.push('ficha_id obligatorio');\n  else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(e.ficha_id))\n    errores.push('ficha_id no es UUID válido');\n  if (!TIPOS.includes(e.tipo)) errores.push('tipo debe ser modulo|local');\n  if (e.estado && !ESTADOS.includes(e.estado)) errores.push('estado debe ser pendiente|aplicado|cancelado');\n  validaDetalle(e.tipo, e.detalle);\n  const setup = validaNumero(e.setup,       'setup',       0, 99999999.99);\n  const recur = validaNumero(e.recurrencia, 'recurrencia', 0, 99999999.99);\n  const _uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); });\n  out = {\n    id: _uuid,\n    ficha_id: e.ficha_id,\n    tipo: e.tipo,\n    estado: e.estado || 'pendiente',\n    detalle: e.detalle || {},\n    setup:       setup !== undefined ? setup : 0,\n    recurrencia: recur !== undefined ? recur : 0,\n    creado_por: e.creado_por != null ? String(e.creado_por) : null,\n    notas:      e.notas      != null ? String(e.notas)      : null,\n    created_at: now,\n    updated_at: now\n  };\n} else if (action === 'update') {\n  out.id = e.id;\n  if (e.tipo !== undefined) {\n    if (!TIPOS.includes(e.tipo)) errores.push('tipo debe ser modulo|local');\n    else out.tipo = e.tipo;\n  }\n  if (e.estado !== undefined) {\n    if (!ESTADOS.includes(e.estado)) errores.push('estado debe ser pendiente|aplicado|cancelado');\n    else out.estado = e.estado;\n  }\n  if (e.detalle !== undefined) {\n    validaDetalle(e.tipo || (out.tipo || ''), e.detalle);\n    out.detalle = e.detalle;\n  }\n  if (e.setup       !== undefined) { const n = validaNumero(e.setup,       'setup',       0, 99999999.99); if (n !== undefined) out.setup       = n; }\n  if (e.recurrencia !== undefined) { const n = validaNumero(e.recurrencia, 'recurrencia', 0, 99999999.99); if (n !== undefined) out.recurrencia = n; }\n  if (e.notas       !== undefined) out.notas       = e.notas       != null ? String(e.notas)       : null;\n  if (e.creado_por  !== undefined) out.creado_por  = e.creado_por  != null ? String(e.creado_por)  : null;\n  out.updated_at = now;\n} else if (action === 'aplicar') {\n  out = { id: e.id, estado: 'aplicado', aplicado_at: now, updated_at: now };\n} else if (action === 'cancelar') {\n  out = { id: e.id, estado: 'cancelado', updated_at: now };\n} else if (action === 'archivar') {\n  out = { id: e.id, deleted_at: now, updated_at: now };\n} else if (action === 'reactivar') {\n  out = { id: e.id, deleted_at: null, updated_at: now };\n}\n\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\n\nif (errores.length > 0) {\n  return [{ json: { __error: true, __errores: errores, __action: action, __method: 'POST', __qs: 'on_conflict=id' } }];\n}\nconst _method = (action === 'create') ? 'POST' : 'PATCH';\nconst _qs     = (action === 'create') ? 'on_conflict=id' : ('id=eq.' + encodeURIComponent(e.id || ''));\nreturn [{ json: Object.assign({}, out, { __method: _method, __qs: _qs, __action: action }) }];"
+      },
+      "id": "prep-upsert-escalados",
+      "name": "Preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 460]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.__method || 'POST' }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/escalados?{{ $json.__qs || 'on_conflict=id' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.fromEntries(Object.entries($json).filter(e => !e[0].startsWith('__')))) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-upsert-escalados",
+      "name": "Supabase UPSERT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [640, 460],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la salida PostgREST al shape único del frontend:\n//   { success, escalado, errores }\nconst prep = $('Preparar').first().json || {};\nif (prep.__error) {\n  return [{ json: { success: false, escalado: null, errores: prep.__errores || ['validación falló'] } }];\n}\nconst items = $input.all() || [];\nconst errores = [];\nlet rows = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.code && j.message && !j.id) {\n    errores.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n    continue;\n  }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.id) rows.push(j);\n  if (Array.isArray(j.data)) rows = rows.concat(j.data);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('PostgREST devolvió 0 filas');\nreturn [{ json: {\n  success: rows.length > 0,\n  escalado: rows[0] || null,\n  errores\n} }];"
+      },
+      "id": "fmt-upsert-escalados",
+      "name": "Formatear respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 460]
+    }
+  ],
+  "connections": {
+    "Webhook GET Escalados": { "main": [[{ "node": "GET Escalados Supabase", "type": "main", "index": 0 }]] },
+    "GET Escalados Supabase": { "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]] },
+    "Formatear GET": { "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]] },
+    "Webhook POST Escalados": { "main": [[{ "node": "Preparar", "type": "main", "index": 0 }]] },
+    "Preparar": { "main": [[{ "node": "Supabase UPSERT", "type": "main", "index": 0 }]] },
+    "Supabase UPSERT": { "main": [[{ "node": "Formatear respuesta", "type": "main", "index": 0 }]] },
+    "Formatear respuesta": { "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}
