@@ -64,15 +64,13 @@
         .esc-kpi-value.red { color:#fc5858 }
         .esc-kpi-value.green { color:#0d9488 }
 
-        .toolbar { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0 16px }
-        .toolbar .search-wrap { position:relative;flex:1;max-width:340px }
-        .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
-        .search-input { width:100%;padding:8px 36px 8px 36px;font-family:inherit;font-size:.85rem;color:#1e293b;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;transition:border-color .15s,background .15s }
-        .search-input:focus { outline:none;border-color:#fc5858;background:#fff }
-        .filter-select { padding:7px 12px;font-family:inherit;font-size:.83rem;color:#334155;background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;cursor:pointer }
-        .filter-select.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
-        .filter-label { font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-right:4px }
-        .filter-sep { width:1px;height:22px;background:#e2e8f0;margin:0 4px }
+        .toolbar { display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0 14px }
+        .toolbar .search-wrap { position:relative;width:240px;max-width:100% }
+        .search-icon { position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+        .search-input { width:100%;padding:7px 12px 7px 32px;font-family:inherit;font-size:.82rem;color:#1e293b;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;transition:border-color .15s }
+        .search-input:focus { outline:none;border-color:#fc5858 }
+        .filter-select { padding:6px 26px 6px 10px;font-family:inherit;font-size:.78rem;font-weight:600;color:#475569;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 8px center }
+        .filter-select.active { background-color:#fff1f1;border-color:#fc5858;color:#fc5858 }
 
         .btn { padding:8px 16px;font-family:inherit;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;border:1.5px solid transparent;display:inline-flex;align-items:center;gap:6px }
         .btn-primary { background:#fc5858;color:#fff }
@@ -251,19 +249,16 @@
 
     <div class="toolbar">
         <div class="search-wrap">
-            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="search-input" class="search-input" type="search" placeholder="Buscar por cliente…" oninput="aplicarFiltros()">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="search-input" class="search-input" type="search" placeholder="Buscar cliente…" oninput="aplicarFiltros()">
         </div>
-        <div class="filter-sep"></div>
-        <span class="filter-label">Tipo</span>
-        <select class="filter-select" id="filtro-tipo" onchange="setFiltroTipo(this)">
-            <option value="">Todos</option>
+        <select class="filter-select" id="filtro-tipo" onchange="setFiltroTipo(this)" title="Tipo de escalado">
+            <option value="">Tipo: todos</option>
             <option value="modulo">Módulo</option>
             <option value="local">Local</option>
         </select>
-        <span class="filter-label">Estado</span>
-        <select class="filter-select" id="filtro-estado" onchange="setFiltroEstado(this)">
-            <option value="">Todos</option>
+        <select class="filter-select" id="filtro-estado" onchange="setFiltroEstado(this)" title="Estado">
+            <option value="">Estado: todos</option>
             <option value="pendiente">Pendiente</option>
             <option value="aplicado">Aplicado</option>
             <option value="cancelado">Cancelado</option>
@@ -339,13 +334,20 @@
     //  Catálogo de módulos (hardcoded — mapear a fichas_alta.fin_*)
     //  Para alta sobre cliente Corporate/Corporate+CP únicamente.
     // ─────────────────────────────────────────────────────────────────────
+    // Catálogo de módulos contratables como upsell por un cliente Corporate.
+    // Quedan FUERA: BASIC, PRO, Integraciones e Implementación — pertenecen a
+    // Planes/Lite o son fees de setup, no upsells corporativos.
+    // `finField` (cuando existe) sirve para detectar que el cliente ya lo
+    // tiene contratado mirando fichas_alta.fin_*. Los módulos sin finField
+    // sólo se detectan vía el array fichas_alta.modulos.
     const MODULOS_CATALOGO = [
-        { id: 'basic',          label: 'BASIC',          finField: 'fin_basic'         },
-        { id: 'pro',            label: 'PRO',            finField: 'fin_pro'           },
-        { id: 'rrhh',           label: 'RRHH',           finField: 'fin_rrhh'          },
-        { id: 'operaciones',    label: 'Operaciones',    finField: 'fin_operaciones'   },
-        { id: 'integraciones',  label: 'Integraciones',  finField: 'fin_integraciones' },
-        { id: 'implementacion', label: 'Implementación', finField: 'fin_implementacion'}
+        { id: 'rrhh',           label: 'RRHH',           finField: 'fin_rrhh'        },
+        { id: 'operaciones',    label: 'Operaciones',    finField: 'fin_operaciones' },
+        { id: 'delivery',       label: 'Delivery'        },
+        { id: 'fidelizacion',   label: 'Fidelización'    },
+        { id: 'kds',            label: 'KDS'             },
+        { id: 'ocr',            label: 'OCR'             },
+        { id: 'cocina_central', label: 'Cocina central'  }
     ];
 
     const TIPOS_CLIENTE_PERMITIDOS = ['corporate', 'corporate_cp']; // excluye corp_cocina, planes, lite
@@ -483,10 +485,14 @@
         }
 
         // Detección extra: si tiene fin_<modulo> > 0, lo consideramos contratado.
+        // (sólo aplica a módulos del catálogo que tengan finField mapeado).
         MODULOS_CATALOGO.forEach(m => {
+            if (!m.finField) return;
             const v = Number(f[m.finField] ?? 0);
             if (v > 0 && !modulos.includes(m.id)) modulos.push(m.id);
         });
+        // OCR vive en fichas_alta.ocr_activo (boolean), no en fin_*.
+        if (f.ocr_activo === true && !modulos.includes('ocr')) modulos.push('ocr');
 
         return {
             id:            f.id || f.ID,
