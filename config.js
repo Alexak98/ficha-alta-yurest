@@ -116,7 +116,14 @@
         // locales). GET lista los registros, POST crea uno nuevo en estado
         // 'pendiente'. La aplicación real sobre fichas/locales/sepa la hace
         // un workflow n8n cuando el escalado se confirma.
-        escalados:            `${WEBHOOK_BASE}/escalados`
+        escalados:            `${WEBHOOK_BASE}/escalados`,
+
+        // Customer Success Kanban: POST para mover un cliente entre
+        // columnas del seguimiento (en_implementacion → post_primer_mes →
+        // …). Actualiza fichas_alta.cs_estado y registra en
+        // cs_estado_historial. El listado de clientes con su cs_estado se
+        // sirve desde el endpoint `altas` (workflow 04 ya devuelve la columna).
+        csEstado:             `${WEBHOOK_BASE}/cs-estado`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
@@ -132,6 +139,7 @@
         { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'     },
         { id: 'proformas',     label: 'Solicitud de proformas', grupo: 'Contabilidad'   },
         { id: 'clientes',      label: 'Clientes',             grupo: 'Customer Success' },
+        { id: 'cs_kanban',     label: 'Kanban CS',             grupo: 'Customer Success' },
         { id: 'bajas',         label: 'Bajas',                grupo: 'Customer Success' },
         { id: 'promociones',   label: 'Promociones',          grupo: 'Customer Success' },
         { id: 'presupuestos',  label: 'Presupuestos',         grupo: 'Producto'         },

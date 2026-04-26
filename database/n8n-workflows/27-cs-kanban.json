@@ -1,0 +1,160 @@
+{
+  "name": "Yurest - Customer Success Kanban (cs_estado)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cs-estado",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-cs-post",
+      "name": "Webhook POST cs-estado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "cs-estado-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mueve un cliente entre columnas del Kanban de Customer Success.\n// Payload esperado:\n//   { ficha_id, cs_estado, movido_por?, notas? }\n//\n// cs_estado puede ser uno de los slugs válidos o null para 'sin clasificar'.\n// Validamos antes de patchear para evitar que el CHECK de Postgres devuelva\n// un mensaje opaco.\nconst raw  = $input.first().json || {};\nconst body = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst now  = new Date().toISOString();\nconst errores = [];\n\nconst ESTADOS_VALIDOS = [\n  'en_implementacion',\n  'post_primer_mes',\n  'reunion_post_1_mes_agendada',\n  'posible_escalado',\n  'stand_by',\n  'critico',\n  'sanacion',\n  'post_3_meses'\n];\n\nconst fichaId = body.ficha_id;\nif (!fichaId) errores.push('ficha_id obligatorio');\nelse if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fichaId))\n  errores.push('ficha_id no es UUID válido');\n\n// cs_estado: aceptamos null/undefined/'' como 'sin clasificar' (NULL en BD).\nlet csEstado = body.cs_estado;\nif (csEstado === undefined || csEstado === '' || csEstado === null) {\n  csEstado = null;\n} else if (!ESTADOS_VALIDOS.includes(csEstado)) {\n  errores.push('cs_estado inválido: ' + csEstado);\n}\n\nif (errores.length > 0) {\n  return [{ json: { __error: true, __errores: errores } }];\n}\n\nreturn [{ json: {\n  ficha_id: fichaId,\n  cs_estado: csEstado,\n  movido_por: body.movido_por != null ? String(body.movido_por) : null,\n  notas:      body.notas      != null ? String(body.notas)      : null,\n  __qs_ficha: 'id=eq.' + encodeURIComponent(fichaId),\n  __ts: now\n} }];"
+      },
+      "id": "prep-cs",
+      "name": "Validar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/fichas_alta?{{ $json.__qs_ficha }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ cs_estado: $json.cs_estado, updated_at: $json.__ts }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "patch-ficha-cs",
+      "name": "PATCH fichas_alta cs_estado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [640, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/cs_estado_historial",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (function(){\n  const prep = $('Validar payload').first().json || {};\n  const patched = $input.first().json || {};\n  const fila = Array.isArray(patched) ? patched[0] : patched;\n  // estado_desde lo deducimos desde el item PATCH (fila ya actualizada con\n  // cs_estado nuevo). Para el desde necesitamos el valor previo, que no\n  // tenemos en este flujo simple. Lo dejamos NULL — el historial registra\n  // sólo a dónde fue.\n  return JSON.stringify({\n    ficha_id: prep.ficha_id,\n    estado_desde: null,\n    estado_hasta: prep.cs_estado || 'sin_clasificar',\n    movido_por: prep.movido_por,\n    notas: prep.notas\n  });\n})() }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "insert-historial",
+      "name": "INSERT historial",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [840, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la salida al shape único del frontend:\n//   { success, ficha_id, cs_estado, errores }\nconst prep = $('Validar payload').first().json || {};\nif (prep.__error) {\n  return [{ json: { success: false, ficha_id: null, cs_estado: null, errores: prep.__errores || ['validación falló'] } }];\n}\n\nfunction _msgError(j) {\n  if (!j) return null;\n  if (j.error) {\n    if (typeof j.error === 'string') return j.error;\n    const m = j.error.message || j.error.detail || j.error.details || j.error.hint;\n    if (m) return j.error.code ? (m + ' [' + j.error.code + ']') : m;\n  }\n  if (j.code && j.message && !j.id) {\n    return j.message + (j.details ? ' (' + j.details + ')' : '') + ' [' + j.code + ']';\n  }\n  return null;\n}\n\nconst errores = [];\nlet fila = null;\n\n// PATCH fichas_alta\ntry {\n  const items = $('PATCH fichas_alta cs_estado').all() || [];\n  for (const it of items) {\n    const j = (it && it.json) ? it.json : it;\n    const m = _msgError(j);\n    if (m) { errores.push('PATCH ficha: ' + m); continue; }\n    if (Array.isArray(j) && j.length > 0) fila = j[0];\n    else if (j && j.id) fila = j;\n  }\n  if (!fila && errores.length === 0) {\n    errores.push('PATCH ficha: no se actualizó ninguna fila (¿id correcto?)');\n  }\n} catch (e) { errores.push('PATCH ficha: ' + (e.message || e)); }\n\n// INSERT historial — fallo aquí no bloquea, pero lo apuntamos.\ntry {\n  const items = $('INSERT historial').all() || [];\n  for (const it of items) {\n    const j = (it && it.json) ? it.json : it;\n    const m = _msgError(j);\n    if (m) errores.push('historial: ' + m);\n  }\n} catch (_) {}\n\nreturn [{ json: {\n  success: !!fila && errores.filter(e => e.startsWith('PATCH')).length === 0,\n  ficha_id: prep.ficha_id,\n  cs_estado: fila ? fila.cs_estado : prep.cs_estado,\n  errores\n} }];"
+      },
+      "id": "fmt-cs-result",
+      "name": "Formatear respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-cs",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1240, 300]
+    }
+  ],
+  "connections": {
+    "Webhook POST cs-estado": { "main": [[{ "node": "Validar payload", "type": "main", "index": 0 }]] },
+    "Validar payload": { "main": [[{ "node": "PATCH fichas_alta cs_estado", "type": "main", "index": 0 }]] },
+    "PATCH fichas_alta cs_estado": { "main": [[{ "node": "INSERT historial", "type": "main", "index": 0 }]] },
+    "INSERT historial": { "main": [[{ "node": "Formatear respuesta", "type": "main", "index": 0 }]] },
+    "Formatear respuesta": { "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

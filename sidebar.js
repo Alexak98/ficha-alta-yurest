@@ -46,7 +46,9 @@
         // Churn Técnico → flecha descendente con usuario (fuga técnica)
         churn_tecnico: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/><line x1="23" y1="13" x2="19" y2="13"/></svg>',
         // Escalados → escalera ascendente (upsell / ampliación contractual)
-        escalados:     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 20 8 20 8 14 13 14 13 8 18 8 18 4 21 4"/><polyline points="15 4 21 4 21 10"/></svg>'
+        escalados:     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 20 8 20 8 14 13 14 13 8 18 8 18 4 21 4"/><polyline points="15 4 21 4 21 10"/></svg>',
+        // Kanban CS → tres columnas verticales (tablero kanban)
+        cs_kanban:     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="11" rx="1"/><rect x="17" y="3" width="4" height="14" rx="1"/></svg>'
     };
 
     // Estructura del menú. Cada item tiene:
@@ -99,6 +101,7 @@
             icon: 'customer',
             items: [
                 { id: 'clientes',    href: 'clientes.html',    label: 'Clientes',    icon: 'clientes'    },
+                { id: 'cs_kanban',   href: 'cs-kanban.html',   label: 'Kanban CS',   icon: 'cs_kanban'   },
                 { id: 'bajas',       href: 'bajas.html',       label: 'Bajas',       icon: 'bajas'       },
                 { id: 'promociones', href: 'promociones.html', label: 'Promociones', icon: 'promociones', badgeId: 'badge-promociones' }
             ]
