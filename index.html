@@ -306,7 +306,7 @@
             </div>
 
             <div class="form-group col-12" id="firmas-yn-row">
-                <label>Firmas contratadas</label>
+                <label for="firmas_no">Firmas contratadas</label>
                 <div class="yn-group">
                     <input type="radio" id="firmas_no" name="firmas_yn" value="no" checked onchange="toggleFirmas(false)">
                     <label for="firmas_no" class="yn-btn">No</label>
@@ -316,7 +316,7 @@
             </div>
 
             <div id="firmas-packs" class="form-group col-12 hidden">
-                <label>Pack de firmas</label>
+                <label for="pack100">Pack de firmas</label>
                 <div class="pack-group">
                     <input type="radio" id="pack100" name="firmas" value="100" onchange="recalcularCarrito()">
                     <label for="pack100" class="pack-btn">
@@ -348,7 +348,7 @@
             </div>
 
             <div id="tablet-question" class="form-group col-12 hidden">
-                <label>Necesita envio de tablet</label>
+                <label for="tablet_si">Necesita envio de tablet</label>
                 <div class="pct-group">
                     <input type="radio" id="tablet_si" name="tablet" value="si" onchange="toggleTablet('si')">
                     <label for="tablet_si" class="pct-btn">Sí</label>
@@ -433,7 +433,7 @@
         </div>
         <div class="form-grid">
                     <div class="form-group col-12">
-                        <label>Seleccionar distribuidor</label>
+                        <label for="dist_mrm">Seleccionar distribuidor</label>
                         <div class="pct-group">
                             <input type="radio" id="dist_mrm"   name="dist_preset" value="mrm"          onchange="seleccionarDistribuidor('mrm')">
                             <label for="dist_mrm"   class="pct-btn">MRM</label>
@@ -474,7 +474,7 @@
                         <input type="tel" id="dist_telefono" placeholder="+34 600 000 000">
                     </div>
                     <div class="form-group col-4">
-                        <label>Comisión distribuidor</label>
+                        <label for="pct_20">Comisión distribuidor</label>
                         <div class="pct-group">
                             <input type="radio" id="pct_20" name="dist_comision_pct" value="20" onchange="actualizarComisionDistribuidor()">
                             <label for="pct_20" class="pct-btn">20 %</label>
@@ -813,7 +813,7 @@
         </div>
         <div class="form-grid">
             <div class="form-group col-12">
-                <label>Software de contabilidad</label>
+                <label for="intfin_noaplica">Software de contabilidad</label>
                 <div class="pct-group">
                     <input type="radio" id="intfin_noaplica" name="intfin" value="no_aplica" onchange="onIntfinChange()">
                     <label for="intfin_noaplica" class="pct-btn">No aplica</label>
@@ -961,11 +961,11 @@
         <div class="form-grid">
             <div class="form-group col-6">
                 <label>Nombre del Local *</label>
-                <input type="text" data-field="nombre" placeholder="Ej: Sucursal Centro" oninput="sincronizarRecurrenciaMensual(); actualizarCorpModuleLocales()">
+                <input type="text" data-field="nombre" placeholder="Ej: Sucursal Centro" oninput="sincronizarRecurrenciaMensual(); actualizarCorpModuleLocales()" aria-label="Nombre del Local">
             </div>
             <div class="form-group col-6">
                 <label>Email de contacto</label>
-                <input type="email" data-field="email" placeholder="local@ejemplo.com">
+                <input type="email" data-field="email" placeholder="local@ejemplo.com" aria-label="Email de contacto">
             </div>
 
             <!-- Marca de "cocina central". Solo visible cuando el tipo de
@@ -982,23 +982,23 @@
 
             <div class="form-group col-8">
                 <label>Calle</label>
-                <input type="text" data-field="calle">
+                <input type="text" data-field="calle" aria-label="Calle">
             </div>
             <div class="form-group col-2">
                 <label>Nº</label>
-                <input type="text" data-field="numero">
+                <input type="text" data-field="numero" aria-label="Nº">
             </div>
             <div class="form-group col-2">
                 <label>CP</label>
-                <input type="text" data-field="cp">
+                <input type="text" data-field="cp" aria-label="CP">
             </div>
             <div class="form-group col-6">
                 <label>Municipio</label>
-                <input type="text" data-field="municipio" placeholder="Valencia">
+                <input type="text" data-field="municipio" placeholder="Valencia" aria-label="Municipio">
             </div>
             <div class="form-group col-6">
                 <label>Provincia</label>
-                <input type="text" data-field="provincia" placeholder="Valencia">
+                <input type="text" data-field="provincia" placeholder="Valencia" aria-label="Provincia">
             </div>
 
             <div class="col-12 subsection-label subsection-label--sep">
@@ -1013,7 +1013,7 @@
                  como única opción (deshabilitado). -->
             <div class="form-group col-12">
                 <label>Mandato SEPA / cuenta de cargo</label>
-                <select data-field="sepa_mandato_id" class="form-control local-sepa-select" onchange="onSeleccionarSepaLocal(this)">
+                <select data-field="sepa_mandato_id" class="form-control local-sepa-select" onchange="onSeleccionarSepaLocal(this)" aria-label="Mandato SEPA / cuenta de cargo">
                     <option value="">— Sin asignar —</option>
                 </select>
                 <small class="form-hint">Selecciona a qué sociedad/cuenta se facturará este local. Los datos de sociedad se rellenan automáticamente con el deudor del mandato firmado.</small>
@@ -1021,31 +1021,31 @@
 
             <div class="form-group col-6">
                 <label>CIF / NIF</label>
-                <input type="text" data-field="sociedad_cif" placeholder="A00000000">
+                <input type="text" data-field="sociedad_cif" placeholder="A00000000" aria-label="CIF / NIF">
             </div>
             <div class="form-group col-6">
                 <label>Denominación Social</label>
-                <input type="text" data-field="sociedad_denominacion" placeholder="Nombre legal de la empresa">
+                <input type="text" data-field="sociedad_denominacion" placeholder="Nombre legal de la empresa" aria-label="Denominación Social">
             </div>
             <div class="form-group col-8">
                 <label>Calle</label>
-                <input type="text" data-field="sociedad_calle" placeholder="Nombre de la vía">
+                <input type="text" data-field="sociedad_calle" placeholder="Nombre de la vía" aria-label="Calle">
             </div>
             <div class="form-group col-2">
                 <label>Nº</label>
-                <input type="text" data-field="sociedad_numero" placeholder="123">
+                <input type="text" data-field="sociedad_numero" placeholder="123" aria-label="Nº">
             </div>
             <div class="form-group col-2">
                 <label>CP</label>
-                <input type="text" data-field="sociedad_cp" placeholder="46000">
+                <input type="text" data-field="sociedad_cp" placeholder="46000" aria-label="CP">
             </div>
             <div class="form-group col-6">
                 <label>Municipio</label>
-                <input type="text" data-field="sociedad_municipio" placeholder="Valencia">
+                <input type="text" data-field="sociedad_municipio" placeholder="Valencia" aria-label="Municipio">
             </div>
             <div class="form-group col-6">
                 <label>Provincia</label>
-                <input type="text" data-field="sociedad_provincia" placeholder="Valencia">
+                <input type="text" data-field="sociedad_provincia" placeholder="Valencia" aria-label="Provincia">
             </div>
         </div>
     </div>
