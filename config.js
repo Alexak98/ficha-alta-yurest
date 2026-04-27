@@ -678,6 +678,187 @@
     }
 
     // ──────────────────────────────────────────────────────────
+    //  CONFIRM DELETE — helper reusable
+    // ──────────────────────────────────────────────────────────
+    // Sustituye al window.confirm() (feo, sin estilo, no a11y) por un
+    // diálogo modal accesible y consistente con el resto del portal.
+    //
+    // Uso:
+    //   if (await YurestConfig.confirmDelete({
+    //       titulo: 'Eliminar usuario',
+    //       mensaje: '¿Seguro que quieres eliminar a ' + nombre + '?',
+    //       confirmTexto: 'Eliminar'
+    //   })) {
+    //       // proceder con la acción destructiva
+    //   }
+    //
+    // Opciones:
+    //   titulo        — string corto (ej. "Eliminar usuario")
+    //   mensaje       — string descriptivo, puede incluir el nombre del recurso
+    //   confirmTexto  — texto del botón rojo (default "Eliminar")
+    //   cancelTexto   — texto del botón gris (default "Cancelar")
+    //   requireText   — si lo pasas, el usuario tiene que TIPEARLO antes
+    //                   de poder pulsar Eliminar. Útil para acciones muy
+    //                   destructivas (borrar cliente con N proyectos).
+    //
+    // Devuelve: Promise<boolean> — true si confirmó, false si canceló o
+    // pulsó Escape.
+    function confirmDelete(opts) {
+        opts = opts || {};
+        const titulo  = opts.titulo  || '¿Confirmar?';
+        const mensaje = opts.mensaje || 'Esta acción no se puede deshacer.';
+        const confirmTexto = opts.confirmTexto || 'Eliminar';
+        const cancelTexto  = opts.cancelTexto  || 'Cancelar';
+        const requireText  = opts.requireText  || null;
+
+        return new Promise(resolve => {
+            // Inyectamos un overlay efímero (se elimina al cerrar). No
+            // colisiona con otros modales porque vive como hijo directo
+            // del body con id único.
+            const id = 'yurest-confirm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+            const overlay = document.createElement('div');
+            overlay.id = id;
+            overlay.className = 'yurest-confirm-overlay';
+            overlay.innerHTML = `
+                <div class="yurest-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-m">
+                    <h3 id="${id}-t" class="yurest-confirm-title">${escHtml(titulo)}</h3>
+                    <p id="${id}-m" class="yurest-confirm-msg">${escHtml(mensaje)}</p>
+                    ${requireText ? `
+                        <p class="yurest-confirm-hint">Para confirmar, escribe <strong>${escHtml(requireText)}</strong>:</p>
+                        <input type="text" class="yurest-confirm-input" id="${id}-i" autocomplete="off" />
+                    ` : ''}
+                    <div class="yurest-confirm-actions">
+                        <button type="button" class="yurest-confirm-btn cancel" data-action="cancel">${escHtml(cancelTexto)}</button>
+                        <button type="button" class="yurest-confirm-btn danger" data-action="confirm" ${requireText ? 'disabled' : ''}>${escHtml(confirmTexto)}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+
+            const cleanup = (val) => {
+                document.removeEventListener('keydown', escListener);
+                a11yCerrarModal(id);
+                overlay.remove();
+                resolve(val);
+            };
+            const escListener = (e) => {
+                if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
+            };
+            document.addEventListener('keydown', escListener);
+
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) cleanup(false);
+                const btn = e.target.closest('[data-action]');
+                if (!btn) return;
+                if (btn.dataset.action === 'cancel') cleanup(false);
+                else if (btn.dataset.action === 'confirm' && !btn.disabled) cleanup(true);
+            });
+
+            if (requireText) {
+                const input = overlay.querySelector('#' + id + '-i');
+                const okBtn = overlay.querySelector('[data-action="confirm"]');
+                input.addEventListener('input', () => {
+                    okBtn.disabled = (input.value.trim() !== requireText);
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !okBtn.disabled) cleanup(true);
+                });
+            }
+
+            // Pintamos overlay visible en el siguiente frame para activar
+            // la transición CSS (de opacity 0 a 1).
+            requestAnimationFrame(() => overlay.classList.add('open'));
+            // a11y: foco trap + aria-hidden al resto de la página.
+            a11yAbrirModal(id);
+        });
+    }
+
+    // Inyectamos los estilos del confirmDelete una sola vez. Vive aquí
+    // para no exigir cambios en cada página que lo use.
+    function _injectConfirmDeleteStyles() {
+        if (document.getElementById('yurest-confirm-style')) return;
+        const st = document.createElement('style');
+        st.id = 'yurest-confirm-style';
+        st.textContent = `
+            .yurest-confirm-overlay {
+                position: fixed; inset: 0;
+                background: rgba(15,23,42,0.55);
+                z-index: 9000;
+                display: flex; align-items: center; justify-content: center;
+                padding: 20px;
+                opacity: 0; transition: opacity .18s;
+            }
+            .yurest-confirm-overlay.open { opacity: 1; }
+            .yurest-confirm-modal {
+                background: #fff;
+                border-radius: var(--radius-lg, 14px);
+                box-shadow: var(--shadow-xl, 0 25px 60px rgba(15,23,42,.20));
+                max-width: 440px; width: 100%;
+                padding: 22px 24px;
+                font-family: var(--font-sans);
+            }
+            .yurest-confirm-title {
+                font-size: 1.05rem; font-weight: 800; color: var(--text, #1e293b);
+                margin: 0 0 8px;
+            }
+            .yurest-confirm-msg {
+                font-size: 0.9rem; color: var(--text-muted, #5a6b7e);
+                margin: 0 0 16px; line-height: 1.45;
+            }
+            .yurest-confirm-hint {
+                font-size: 0.8rem; color: var(--text-muted, #5a6b7e);
+                margin: 4px 0 6px;
+            }
+            .yurest-confirm-input {
+                width: 100%;
+                padding: 9px 12px;
+                font-family: var(--font-sans);
+                font-size: 0.9rem;
+                border: 1.5px solid var(--border, #e8e8e8);
+                border-radius: var(--radius-md, 10px);
+                background: #fff;
+                margin-bottom: 14px;
+                color: var(--text, #1e293b);
+            }
+            .yurest-confirm-input:focus {
+                outline: none;
+                border-color: #dc2626;
+                box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+            }
+            .yurest-confirm-actions {
+                display: flex; gap: 8px; justify-content: flex-end;
+            }
+            .yurest-confirm-btn {
+                padding: 9px 18px;
+                font-family: var(--font-sans);
+                font-size: 0.85rem; font-weight: 600;
+                border-radius: var(--radius-md, 10px);
+                cursor: pointer;
+                border: 1.5px solid transparent;
+                transition: background .15s, border-color .15s;
+            }
+            .yurest-confirm-btn.cancel {
+                background: #fff; color: var(--text-muted, #475569);
+                border-color: var(--border, #e2e8f0);
+            }
+            .yurest-confirm-btn.cancel:hover { background: #f8fafc; border-color: #cbd5e1; }
+            .yurest-confirm-btn.danger {
+                background: #dc2626; color: #fff;
+                border-color: #dc2626;
+            }
+            .yurest-confirm-btn.danger:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
+            .yurest-confirm-btn.danger:disabled { opacity: 0.45; cursor: not-allowed; }
+        `;
+        document.head.appendChild(st);
+    }
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', _injectConfirmDeleteStyles, { once: true });
+        } else {
+            _injectConfirmDeleteStyles();
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────
     //  BADGE "GRABAR EN A3" — pendientes de Contabilidad
     // ──────────────────────────────────────────────────────────
     // Cuenta fichas con mandato SEPA firmado pendientes de grabar en A3.
@@ -1069,6 +1250,7 @@
         logProyectoHistorial,
         getProyectoHistorial,
         computeDiff,
-        formatDate
+        formatDate,
+        confirmDelete
     };
 })(window);

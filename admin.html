@@ -193,7 +193,7 @@
 
 <div class="page-header">
     <button class="btn-menu" onclick="openSidebar()" title="Menú">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
     <h1>Administración — Usuarios</h1>
@@ -206,7 +206,7 @@
             <p>Gestiona el acceso de cada miembro del equipo a las secciones del portal.</p>
         </div>
         <button class="btn-primary" onclick="abrirEditor()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nuevo usuario
         </button>
     </div>
@@ -424,10 +424,10 @@
                     <td>
                         <div class="u-actions">
                             <button class="u-icon-btn accent" title="Editar" onclick="abrirEditor('${esc(u.id)}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                             </button>
                             <button class="u-icon-btn danger" title="Eliminar" onclick="borrar('${esc(u.id)}','${esc(u.nombre || u.username)}', this)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
                             </button>
                         </div>
                     </td>
@@ -579,7 +579,12 @@
     }
 
     async function borrar(id, nombre, btn) {
-        if (!confirm(`¿Eliminar el usuario "${nombre}"?\n\nNo podrá iniciar sesión. La acción se puede revertir desde la BD si hace falta.`)) return;
+        const ok = await YurestConfig.confirmDelete({
+            titulo: 'Eliminar usuario',
+            mensaje: `¿Eliminar el usuario "${nombre}"? No podrá iniciar sesión. La acción se puede revertir desde la BD si hace falta.`,
+            confirmTexto: 'Eliminar'
+        });
+        if (!ok) return;
         // Protección: si es admin y eliminarse a sí mismo, impedir (el usuario actual no puede borrarse)
         const yo = YurestConfig.getUsuario();
         if (yo && yo.id === id) {

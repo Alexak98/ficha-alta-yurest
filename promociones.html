@@ -120,7 +120,7 @@
 
     <div class="page-header">
         <button class="btn-menu" onclick="openSidebar()" title="Menú">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
         <h1>Promociones</h1>
@@ -423,19 +423,32 @@
     }
 
     async function archivar(id, nombre) {
-        if (!confirm(`¿Archivar la promoción "${nombre}"?\nNo se borra de BD — se marca como eliminada. Los proyectos ya asignados a ella se mantienen.\n\nPuedes reactivarla desde "Mostrar archivadas".`)) return;
+        if (!(await YurestConfig.confirmDelete({
+            titulo: 'Archivar promoción',
+            mensaje: `¿Archivar la promoción "${nombre}"? No se borra de BD — se marca como eliminada. Los proyectos asignados se mantienen y puedes reactivarla desde "Mostrar archivadas".`,
+            confirmTexto: 'Archivar'
+        }))) return;
         try { await _postAction('archivar', id); await cargar(); }
         catch (err) { mostrarToast('Error al archivar: ' + err.message, 'error', 5000); }
     }
 
     async function reactivar(id, nombre) {
-        if (!confirm(`¿Reactivar la promoción "${nombre}"?`)) return;
+        if (!(await YurestConfig.confirmDelete({
+            titulo: 'Reactivar promoción',
+            mensaje: `¿Reactivar la promoción "${nombre}"?`,
+            confirmTexto: 'Reactivar',
+            cancelTexto: 'Cancelar'
+        }))) return;
         try { await _postAction('reactivar', id); await cargar(); }
         catch (err) { mostrarToast('Error al reactivar: ' + err.message, 'error', 5000); }
     }
 
     async function cerrar(id, nombre) {
-        if (!confirm(`¿Cerrar la promoción "${nombre}"?\nSeguirá siendo visible pero no aparecerá para nuevas asignaciones.`)) return;
+        if (!(await YurestConfig.confirmDelete({
+            titulo: 'Cerrar promoción',
+            mensaje: `¿Cerrar la promoción "${nombre}"? Seguirá siendo visible pero no aparecerá para nuevas asignaciones.`,
+            confirmTexto: 'Cerrar'
+        }))) return;
         try { await _postAction('cerrar', id); await cargar(); }
         catch (err) { mostrarToast('Error al cerrar: ' + err.message, 'error', 5000); }
     }

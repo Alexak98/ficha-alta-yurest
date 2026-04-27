@@ -44,7 +44,7 @@
             <span class="brand-name">Yurest</span>
         </div>
         <a href="lista.html" class="back-link">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Volver al listado
         </a>
         <h1>Ficha cliente</h1>
@@ -79,21 +79,21 @@
         </nav>
     </aside>
     <button id="ficha-nav-toggle" type="button" onclick="document.body.classList.toggle('ficha-nav-open')" aria-label="Abrir navegación de secciones">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
 
     <div id="status-msg" class="status-msg hidden"></div>
     <div id="alta-rapida-banner" style="display:none;align-items:center;gap:10px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:0.88rem;color:#166534;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span style="flex:1"><strong>Alta rápida</strong> — Rellena los datos básicos y guarda. Para completar el resto de la ficha (JP, firmante, financiero, módulos…) pulsa <strong>Editar</strong> desde el listado.</span>
         <button type="button" aria-label="Cerrar aviso" onclick="document.getElementById('alta-rapida-banner').style.display='none'" style="background:transparent;border:none;color:#166534;cursor:pointer;font-size:1.1rem;padding:0 4px;line-height:1">×</button>
     </div>
 
     <div id="edit-banner" style="display:none;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:0.88rem;color:#1d4ed8;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         <span>Modo edición — ficha <strong id="edit-banner-id"></strong>. Modifica los campos y pulsa <strong>Guardar</strong> para actualizar.</span>
         <button type="button" onclick="abrirHistorialFicha()" style="margin-left:auto;padding:5px 12px;background:#fff;border:1.5px solid #bfdbfe;color:#1d4ed8;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Historial
         </button>
         <a href="lista.html" style="font-size:0.82rem;color:#2563eb;text-decoration:underline;">← Volver sin guardar</a>
@@ -522,7 +522,7 @@
             <span class="section-num">06</span>
             <h3>Persona Firmante Contrato</h3>
             <button type="button" class="btn-copy-jp" onclick="copiarDatosJP()" title="Copiar datos del Jefe de Proyecto">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 Copiar datos de Jefe de Proyecto
             </button>
         </div>
@@ -612,7 +612,7 @@
                 <span class="section-num">08</span>
                 <h3>Datos Financieros</h3>
             </div>
-            <svg id="fin-chevron" class="fin-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg aria-hidden="true" id="fin-chevron" class="fin-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div id="fin-body" class="fin-body">
 
@@ -930,7 +930,7 @@
             <span class="section-num">14</span>
             <h3>Documentos</h3>
             <label class="btn btn-secondary btn-sm" style="margin-left:auto;cursor:pointer">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Adjuntar
                 <input type="file" id="ficha-adjunto-input" accept="image/png,image/jpeg,application/pdf" multiple style="display:none" onchange="agregarAdjuntosFicha(event)">
             </label>
@@ -2524,8 +2524,8 @@
             const isImg = adj.tipo && adj.tipo.startsWith('image/');
             const isPdf = adj.tipo === 'application/pdf';
             const icon  = isPdf
-                ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
-                : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
+                ? '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+                : '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
             const sizeKB = adj.size ? (adj.size < 1048576 ? Math.round(adj.size/1024) + ' KB' : (adj.size/1048576).toFixed(1) + ' MB') : '';
             const safeName = String(adj.nombre || '').replace(/</g,'&lt;');
             return `
@@ -2538,7 +2538,7 @@
                         <span class="ficha-adjunto-meta">${sizeKB}</span>
                     </div>
                     <button type="button" class="ficha-adjunto-del" onclick="eliminarFichaAdjunto(${i})" title="Eliminar">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                     </button>
                 </div>`;
         }).join('');
@@ -2586,9 +2586,14 @@
     }
     window.agregarAdjuntosFicha = agregarAdjuntosFicha;
 
-    function eliminarFichaAdjunto(idx) {
+    async function eliminarFichaAdjunto(idx) {
         if (!_fichaAdjuntos[idx]) return;
-        if (!confirm(`¿Eliminar "${_fichaAdjuntos[idx].nombre}"?`)) return;
+        const ok = await YurestConfig.confirmDelete({
+            titulo: 'Eliminar adjunto',
+            mensaje: `¿Eliminar el adjunto "${_fichaAdjuntos[idx].nombre}"?`,
+            confirmTexto: 'Eliminar'
+        });
+        if (!ok) return;
         _fichaAdjuntos.splice(idx, 1);
         _renderFichaAdjuntos();
     }
