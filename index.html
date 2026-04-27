@@ -10,6 +10,55 @@
     <link rel="stylesheet" href="style.css">
     <style>
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Breadcrumb sticky de sección actual — un IntersectionObserver
+           al final del archivo lo rellena con el número y nombre de la
+           card más visible. Vacío hasta que algo es visible (regla :empty
+           lo oculta). */
+        .seccion-breadcrumb {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: saturate(140%) blur(8px);
+            -webkit-backdrop-filter: saturate(140%) blur(8px);
+            border-bottom: 1px solid var(--border);
+            padding: 9px 24px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            line-height: 1;
+            min-height: 0;
+            transition: opacity 0.15s;
+        }
+        .seccion-breadcrumb:empty {
+            display: none;
+        }
+        .seccion-breadcrumb .br-pre {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #94a3b8;
+        }
+        .seccion-breadcrumb .br-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            font-size: 0.66rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+        .seccion-breadcrumb .br-lbl {
+            font-weight: 700;
+            color: var(--text);
+        }
         .ficha-adjuntos-list { display:flex; flex-direction:column; gap:6px; }
         .ficha-adjuntos-empty { text-align:center; padding:18px; color:#94a3b8; font-size:0.85rem; background:#f8fafc; border:1px dashed #e2e8f0; border-radius:8px; }
         .ficha-adjunto-item {
@@ -51,6 +100,11 @@
         <p class="header-sub">Completa los datos para registrar un nuevo cliente en el sistema</p>
     </div>
 </header>
+
+<!-- Breadcrumb sticky: refleja la sección visible mientras el comercial
+     hace scroll. Útil sobre todo en móvil/tablet donde el nav lateral
+     no se ve. Lo rellena un IntersectionObserver al final del archivo. -->
+<div id="seccion-breadcrumb" class="seccion-breadcrumb" aria-live="polite"></div>
 
 <div class="container">
 
@@ -3983,6 +4037,73 @@
         <span class="resumen-valor resumen-valor--total" id="resumen-total">—</span>
     </div>
 </div>
+
+<script>
+// ── Breadcrumb sticky + tab order del nav lateral ─────────────────────
+// Refleja la card visible más arriba con un IntersectionObserver. Para
+// que no rebote al cambiar entre secciones colindantes, usamos thresholds
+// y rootMargin generosos; sólo recolocamos cuando el cambio es estable.
+(function () {
+    'use strict';
+
+    const breadcrumb = document.getElementById('seccion-breadcrumb');
+    const cards = document.querySelectorAll('.card[id$="-section"]');
+    if (breadcrumb && cards.length && 'IntersectionObserver' in window) {
+        let visibleMap = new Map();  // section -> ratio
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) visibleMap.set(e.target, e.intersectionRatio);
+                else visibleMap.delete(e.target);
+            });
+            // La sección que se muestra es la primera (más arriba) que
+            // está al menos un poco visible. Si no hay ninguna, mantenemos
+            // la última conocida.
+            if (visibleMap.size === 0) return;
+            const winner = [...visibleMap.keys()].sort((a, b) =>
+                a.getBoundingClientRect().top - b.getBoundingClientRect().top
+            )[0];
+            const num   = winner.querySelector('.section-num')?.textContent.trim() || '';
+            const titleEl = winner.querySelector('.card-header h3') || winner.querySelector('h3');
+            const lbl   = (titleEl?.textContent || '').trim();
+            if (!num && !lbl) return;
+            breadcrumb.innerHTML =
+                '<span class="br-pre">Estás en</span>' +
+                (num ? '<span class="br-num">' + num + '</span>' : '') +
+                (lbl ? '<span class="br-lbl">' + lbl + '</span>' : '');
+        }, {
+            // Activa cuando una card ocupa al menos el 30% de la franja
+            // por debajo del breadcrumb sticky (~60px) y antes del 50%
+            // inferior del viewport.
+            threshold: [0, 0.3, 0.6, 1],
+            rootMargin: '-72px 0px -45% 0px'
+        });
+        cards.forEach(c => obs.observe(c));
+    }
+
+    // Tab order: cuando el nav lateral está oculto en móvil (no .ficha-nav-open),
+    // sus enlaces siguen siendo focusables aunque no se vean. inert los
+    // saca del flujo de teclado y del árbol de accesibilidad mientras
+    // estén ocultos.
+    const navLateral = document.getElementById('ficha-nav');
+    if (navLateral) {
+        const aplicarInert = () => {
+            const esMovil = window.matchMedia('(max-width: 1100px)').matches;
+            const drawerAbierto = document.body.classList.contains('ficha-nav-open');
+            if (esMovil && !drawerAbierto) {
+                navLateral.setAttribute('inert', '');
+                navLateral.setAttribute('aria-hidden', 'true');
+            } else {
+                navLateral.removeAttribute('inert');
+                navLateral.removeAttribute('aria-hidden');
+            }
+        };
+        aplicarInert();
+        // Sincroniza con cambios del drawer y del viewport.
+        new MutationObserver(aplicarInert).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        window.addEventListener('resize', aplicarInert, { passive: true });
+    }
+})();
+</script>
 
 </body>
 </html>

@@ -857,6 +857,64 @@ select option { color: var(--text); }
 
 /* ── Responsive ──────────────────────────────────────── */
 
+/* ── Skeleton loaders ──────────────────────────────────────────────────
+   Sustituye al spinner solitario en el primer paint con placeholders
+   que mantienen el layout. Uso:
+       <div class="skeleton-card">
+           <div class="skeleton skeleton-line w-60"></div>
+           <div class="skeleton skeleton-line w-40"></div>
+       </div>
+   Se quitan al renderizar el contenido real.
+   ─────────────────────────────────────────────────────────────────── */
+.skeleton {
+    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s infinite linear;
+    border-radius: var(--radius-sm);
+    color: transparent !important;
+    user-select: none;
+    pointer-events: none;
+}
+.skeleton-line {
+    height: 14px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-sm);
+}
+.skeleton-line:last-child { margin-bottom: 0; }
+.skeleton-line.w-90 { width: 90%; }
+.skeleton-line.w-80 { width: 80%; }
+.skeleton-line.w-70 { width: 70%; }
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-50 { width: 50%; }
+.skeleton-line.w-40 { width: 40%; }
+.skeleton-line.w-30 { width: 30%; }
+.skeleton-card {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+}
+.skeleton-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.skeleton-row-flex {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+@keyframes skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+/* Respeta prefers-reduced-motion: deshabilita la animación pero mantiene
+   el placeholder visible. */
+@media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; }
+}
+
 /* ── Paginación de listados (lista.html, etc) ───────────────────────── */
 .paginacion {
     display: flex;
