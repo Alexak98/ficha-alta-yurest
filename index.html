@@ -1848,32 +1848,52 @@
         return parseFloat(str.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
     }
 
+    // Calcula el setup neto leyendo directamente del estado del formulario
+    // (inputs + checkboxes), no del textContent del carrito. Esto evita
+    // que el widget se quede con "—" si recalcularCarrito aún no ha
+    // pintado la cifra cuando arrancamos en modo edición.
+    function _computeSetupForResumen() {
+        const tipo = (document.querySelector('input[name="tipo_cliente"]:checked') || {}).value || '';
+        if (!tipo) return null;
+        if (esCorp(tipo)) {
+            const bruto = parseFloat(document.getElementById('corp_setup_precio')?.value) || 0;
+            const desc  = parseFloat(document.getElementById('corp_setup_descuento')?.value) || 0;
+            return bruto > 0 ? Math.max(0, bruto * (1 - desc / 100)) : 0;
+        }
+        // Planes / Lite: sumamos los cart_items de pago único (con la regla
+        // de que en planes, si BASIC o PRO están activos, RRHH y Operaciones
+        // no suman setup — replica la lógica de recalcularCarrito).
+        const planesIds = (typeof getPlanesCheckedIds === 'function')
+            ? getPlanesCheckedIds() : new Set();
+        const planesProductoActivo = planesIds.has('plan_basic') || planesIds.has('plan_pro');
+        let subtotal = 0;
+        document.querySelectorAll('input[name="cart_item"][data-pago="unico"]:checked').forEach(cb => {
+            if (tipo === 'planes' && planesProductoActivo &&
+                (cb.value === 'plan_rrhh' || cb.value === 'plan_operaciones')) return;
+            const pi = document.getElementById('precio_' + cb.value);
+            if (pi) subtotal += parseFloat(pi.value) || 0;
+        });
+        if (typeof getFirmasCost === 'function') subtotal += getFirmasCost();
+        const descId = (tipo === 'planes') ? 'planes_setup_descuento' : 'cart_descuento';
+        const desc   = parseFloat(document.getElementById(descId)?.value) || 0;
+        return Math.max(0, subtotal * (1 - desc / 100));
+    }
+
     function actualizarResumenFlotante() {
         const setupEl    = document.getElementById('resumen-setup');
         const mensualEl  = document.getElementById('resumen-mensual');
         const firmasEl   = document.getElementById('resumen-firmas');
         const firmasFila = document.getElementById('resumen-firmas-fila');
+        const fmt = n => (n == null) ? '—' : n.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
         if (setupEl) {
-            const corpSetupCart  = document.getElementById('corp-setup-cart');
-            const isCorporate    = corpSetupCart && !corpSetupCart.classList.contains('hidden');
-            const planesNetoRow  = document.getElementById('planes-setup-neto-row');
-            const planesNetoVisible = planesNetoRow && !planesNetoRow.classList.contains('hidden');
-            if (isCorporate) {
-                // Corporate: mostrar solo el importe de setup manual (no los módulos)
-                const setupBruto = parseFloat(document.getElementById('corp_setup_precio')?.value) || 0;
-                const setupDesc  = parseFloat(document.getElementById('corp_setup_descuento')?.value) || 0;
-                const setupNeto  = Math.max(0, setupBruto * (1 - setupDesc / 100));
-                if (setupBruto > 0 && setupDesc > 0) {
-                    setupEl.textContent = setupNeto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
-                } else if (setupBruto > 0) {
-                    setupEl.textContent = setupBruto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
-                } else {
-                    setupEl.textContent = '—';
-                }
-            } else if (planesNetoVisible) {
-                setupEl.textContent = document.getElementById('tipo-cart-planes-neto')?.innerText || '—';
+            const setupNeto = _computeSetupForResumen();
+            if (setupNeto == null || setupNeto <= 0) {
+                // Fallback al textContent del display por si algo cambia el
+                // cálculo y no nos enteramos (clientes Lite con flujos raros).
+                const txt = document.getElementById('tipo-cart-subtotal')?.textContent;
+                setupEl.textContent = (txt && parseEsNumber(txt) > 0) ? txt : '—';
             } else {
-                setupEl.textContent = document.getElementById('tipo-cart-subtotal')?.textContent || '—';
+                setupEl.textContent = fmt(setupNeto);
             }
         }
         if (mensualEl) {
@@ -1884,14 +1904,17 @@
             const resumenLbl    = document.getElementById('resumen-mensual-label');
             if (esCorporate) {
                 const isAnual = document.querySelector('input[name="corp_periodo"]:checked')?.value === 'anual';
-                mensualEl.textContent = document.getElementById('corp-recurrencia-total')?.textContent || '—';
+                const txt = document.getElementById('corp-recurrencia-total')?.textContent;
+                mensualEl.textContent = (txt && parseEsNumber(txt) > 0) ? txt : '—';
                 if (resumenLbl) resumenLbl.textContent = isAnual ? 'Anual' : 'Mensual';
             } else if (esPlanes) {
                 const isAnual = document.querySelector('input[name="planes_periodo"]:checked')?.value === 'anual';
-                mensualEl.textContent = document.getElementById('planes-recurrencia-total')?.textContent || '—';
+                const txt = document.getElementById('planes-recurrencia-total')?.textContent;
+                mensualEl.textContent = (txt && parseEsNumber(txt) > 0) ? txt : '—';
                 if (resumenLbl) resumenLbl.textContent = isAnual ? 'Anual' : 'Mensual';
             } else {
-                mensualEl.textContent = document.getElementById('tipo-cart-mensual-subtotal')?.textContent || '—';
+                const txt = document.getElementById('tipo-cart-mensual-subtotal')?.textContent;
+                mensualEl.textContent = (txt && parseEsNumber(txt) > 0) ? txt : '—';
                 if (resumenLbl) resumenLbl.textContent = 'Mensual';
             }
         }
