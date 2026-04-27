@@ -297,7 +297,7 @@
             const pct = capTotal > 0 ? Math.round((occTotal / capTotal) * 100) : 0;
             const estadoCls = archivada ? 'archivada' : (p.estado === 'cerrada' ? 'cerrada' : (full ? 'full' : 'activa'));
             const estadoLbl = archivada ? 'Archivada' : (p.estado === 'cerrada' ? 'Cerrada' : (full ? 'Completa' : 'Activa'));
-            const fecha = p.fecha_inicio ? new Date(p.fecha_inicio).toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) : '';
+            const fecha = p.fecha_inicio ? YurestConfig.formatDate(p.fecha_inicio) : '';
             const acciones = archivada
                 ? `<button class="ok" onclick="reactivar('${esc(p.id)}', '${esc(p.nombre).replace(/'/g,"&#39;")}')">♻️ Reactivar</button>`
                 : `

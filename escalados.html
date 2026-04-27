@@ -575,7 +575,7 @@
         const tbody = document.getElementById('tbody');
         tbody.innerHTML = rows.map(e => {
             const c = clienteById(e.ficha_id);
-            const fecha = e.created_at ? new Date(e.created_at).toLocaleDateString('es-ES') : '—';
+            const fecha = e.created_at ? YurestConfig.formatDate(e.created_at, 'numeric') : '—';
             return `
                 <tr>
                     <td>

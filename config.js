@@ -507,6 +507,43 @@
     //  UTILIDADES COMUNES
     // ──────────────────────────────────────────────────────────
 
+    // Formatea una fecha para los listados de UI con un par de modos
+    // estandarizados — antes cada página tenía su propio toLocaleDateString
+    // con opciones distintas (mezcla de "23 abr 2026" y "23/04/2026" y
+    // "Sábado, 23 de abril..."), lo que rompía la consistencia visual de
+    // las tablas. Ahora todo el portal pasa por aquí.
+    //
+    // Modos:
+    //   'short'    → "23 abr 2026"           (default — listados generales)
+    //   'numeric'  → "23/04/2026"            (tablas densas, columnas estrechas)
+    //   'datetime' → "23 abr 2026, 13:45"    (auditoría, audit log, timestamps)
+    //   'long'     → "sábado, 23 de abril de 2026"  (encabezados destacados)
+    //
+    // Devuelve '—' si la entrada es null/undefined/'' o no parsea como
+    // fecha válida — el listado nunca debería pintar "Invalid Date".
+    function formatDate(v, modo) {
+        if (v == null || v === '') return '—';
+        const d = (v instanceof Date) ? v : new Date(v);
+        if (isNaN(d.getTime())) return '—';
+        const m = modo || 'short';
+        if (m === 'numeric') {
+            return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+        if (m === 'datetime') {
+            return d.toLocaleString('es-ES', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+        if (m === 'long') {
+            return d.toLocaleDateString('es-ES', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+            });
+        }
+        // 'short' (default)
+        return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
     // Escapa texto para insertar como contenido HTML. Seguro frente a XSS.
     function escHtml(text) {
         return String(text == null ? '' : text)
@@ -1020,6 +1057,7 @@
         getHistorial,
         logProyectoHistorial,
         getProyectoHistorial,
-        computeDiff
+        computeDiff,
+        formatDate
     };
 })(window);

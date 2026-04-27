@@ -400,7 +400,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                 acciones = `${prof}<span style="font-size:.72rem;color:#16a34a;align-self:center">✓ En Soporte listo para envío</span>`;
             }
 
-            const fmt = v => v ? new Date(v).toLocaleString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+            const fmt = v => v ? YurestConfig.formatDate(v, 'datetime') : '—';
             const orphan = p.proyecto_id ? '' : '<span class="hw-pedido-orphan">proyecto eliminado</span>';
             // Sociedad a facturar: snapshot congelado al crear el pedido. Si falta
             // (pedidos legacy o clientes sin SEPA), no pintamos el bloque.

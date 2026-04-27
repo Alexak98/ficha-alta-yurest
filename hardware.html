@@ -279,7 +279,7 @@
         const subtotalLine = tienePrecios
             ? `<div style="text-align:right;font-size:.84rem;color:#334155;padding:4px 2px 0"><strong>Total: ${fmtPrecio(subtotal)}</strong></div>`
             : '';
-        const fmt = v => v ? new Date(v).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const fmt = v => v ? YurestConfig.formatDate(v) : '—';
         // Para listados slim=1 los PDFs vienen sin .data — solo metadatos.
         // Renderizamos un botón que dispara la descarga on-demand. Para
         // payloads completos (no-slim) seguimos usando el atajo data: por
