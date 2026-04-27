@@ -1062,6 +1062,7 @@
                 <tbody id="tabla-body"></tbody>
             </table>
         </div>
+        <div id="paginacion" class="paginacion"></div>
     </div>
 
         <div id="empty-state" class="empty-state hidden">
@@ -1501,10 +1502,16 @@
         return `<span class="badge-tipo badge-estado-rellenado">Rellenado</span>`;
     }
 
+    // Paginación de la tabla principal — antes pintábamos las 100+ fichas
+    // de golpe, lo que ralentizaba el render. Ahora 25 por página + nav.
+    const PAGE_SIZE = 25;
+    let _paginaActual = 1;
+
     function renderTabla(fichas) {
         const tbody          = document.getElementById('tabla-body');
         const tableContainer = document.getElementById('table-container');
         const emptyState     = document.getElementById('empty-state');
+        const paginacionEl   = document.getElementById('paginacion');
 
         // Solo mostrar fichas rellenadas (o sin estado, por compatibilidad)
         const fichasRellenadas = fichas.filter(f => {
@@ -1515,13 +1522,22 @@
         if (fichasRellenadas.length === 0) {
             tableContainer.classList.add('hidden');
             emptyState.classList.remove('hidden');
+            if (paginacionEl) paginacionEl.innerHTML = '';
             return;
         }
 
         emptyState.classList.add('hidden');
         tableContainer.classList.remove('hidden');
 
-        tbody.innerHTML = fichasRellenadas.map(f => {
+        // Recalcular página si quedó fuera de rango (p.ej. tras filtrar)
+        const totalPaginas = Math.max(1, Math.ceil(fichasRellenadas.length / PAGE_SIZE));
+        if (_paginaActual > totalPaginas) _paginaActual = totalPaginas;
+        if (_paginaActual < 1) _paginaActual = 1;
+        const inicio = (_paginaActual - 1) * PAGE_SIZE;
+        const fin    = inicio + PAGE_SIZE;
+        const fichasPagina = fichasRellenadas.slice(inicio, fin);
+
+        tbody.innerHTML = fichasPagina.map(f => {
             // Usar el índice real en fichasFiltradas para que verFicha/editarFicha/eliminarFicha
             // apunten siempre al objeto correcto, independientemente del filtrado previo.
             const idx = fichasFiltradas.indexOf(f);
@@ -1540,7 +1556,34 @@
                 </td>
             </tr>`;
         }).join('');
+
+        // Controles de paginación
+        if (paginacionEl) {
+            if (totalPaginas <= 1) {
+                paginacionEl.innerHTML = '';
+            } else {
+                const desde = inicio + 1;
+                const hasta = Math.min(fin, fichasRellenadas.length);
+                paginacionEl.innerHTML = `
+                    <span class="pag-info">${desde}–${hasta} de ${fichasRellenadas.length}</span>
+                    <div class="pag-buttons">
+                        <button class="pag-btn" ${_paginaActual === 1 ? 'disabled' : ''} onclick="irPagina(${_paginaActual - 1})" aria-label="Página anterior">‹ Anterior</button>
+                        <span class="pag-current">Página ${_paginaActual} de ${totalPaginas}</span>
+                        <button class="pag-btn" ${_paginaActual === totalPaginas ? 'disabled' : ''} onclick="irPagina(${_paginaActual + 1})" aria-label="Página siguiente">Siguiente ›</button>
+                    </div>`;
+            }
+        }
     }
+
+    // Navegación entre páginas — re-renderiza con la página deseada y
+    // hace scroll a la cabecera de la tabla para que el usuario vea
+    // las nuevas filas (si está al final no le aparece de golpe arriba).
+    function irPagina(n) {
+        _paginaActual = n;
+        renderTabla(fichasFiltradas);
+        document.getElementById('table-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.irPagina = irPagina;
 
     // ── Helper: obtener el campo comercial independientemente del case ─────────
     function getComercial(f) {
@@ -1560,6 +1603,10 @@
 
     // ── Aplicar todos los filtros activos ─────────────────────────────────────
     function aplicarFiltros() {
+        // Cualquier cambio de filtros vuelve a la página 1; es el comportamiento
+        // esperado — si filtras "Lite" no quieres aterrizar en la página 4
+        // de los resultados antiguos.
+        _paginaActual = 1;
         const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
 
         fichasFiltradas = todasFichas.filter(f => {
