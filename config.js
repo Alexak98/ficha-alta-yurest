@@ -421,25 +421,73 @@
         }
     }
 
-    // Fetch con manejo automático de 401/403 → redirige a login.
-    // Suma al contador global de peticiones en curso para mostrar el
-    // indicador "Cargando…" en cualquier página, incluso para llamadas
-    // que la página no muestra explícitamente.
-    async function apiFetch(url, options) {
-        const opts = { ...(options || {}) };
-        opts.headers = { ...getAuthHeaders(), ...(opts.headers || {}) };
+    // Fetch con:
+    //   · manejo automático de 401/403 → redirige a login,
+    //   · contador global de peticiones en vuelo (indicador "Cargando…"),
+    //   · deduplicación de GETs idénticos en vuelo (varios consumidores
+    //     piden la misma URL y se hace UNA sola llamada de red),
+    //   · timeout duro de 30s para que el indicador no se quede colgado
+    //     si n8n tarda eternamente.
+    const _inflightGet = new Map(); // url → Promise<Response>
+    const FETCH_TIMEOUT_MS = 30000;
+
+    function _abortAfter(ms) {
+        const ctrl = new AbortController();
+        const id = setTimeout(() => ctrl.abort(new Error('timeout')), ms);
+        return { signal: ctrl.signal, cancel: () => clearTimeout(id) };
+    }
+
+    async function _doFetchTracked(url, opts) {
         _bumpInflight(+1);
+        const t = _abortAfter(FETCH_TIMEOUT_MS);
+        // No pisamos un AbortSignal pasado por el caller — si lo pasó, lo
+        // respetamos; si no, usamos el nuestro de timeout.
+        const finalOpts = { ...opts, signal: opts.signal || t.signal };
         try {
-            const res = await fetch(url, opts);
+            const res = await fetch(url, finalOpts);
             if (res.status === 401 || res.status === 403) {
                 clearSession();
                 window.location.replace('login.html');
                 throw new Error('Sesión expirada');
             }
             return res;
+        } catch (err) {
+            // Mensaje legible para timeout (DOMException de AbortError).
+            if (err && (err.name === 'AbortError' || /timeout/i.test(String(err.message || '')))) {
+                throw new Error('La petición tardó más de ' + (FETCH_TIMEOUT_MS / 1000) + 's y se canceló');
+            }
+            throw err;
         } finally {
+            t.cancel();
             _bumpInflight(-1);
         }
+    }
+
+    async function apiFetch(url, options) {
+        const opts = { ...(options || {}) };
+        opts.headers = { ...getAuthHeaders(), ...(opts.headers || {}) };
+        const method = String(opts.method || 'GET').toUpperCase();
+
+        // Solo deduplicamos GETs (los POST/PATCH son acciones, no idempotentes
+        // a nivel de respuesta). Si llega un GET con AbortSignal propio del
+        // caller no podemos compartir promesa, así que tampoco se dedupe.
+        if (method !== 'GET' || opts.signal) {
+            return _doFetchTracked(url, opts);
+        }
+
+        const key = method + ' ' + url;
+        if (_inflightGet.has(key)) {
+            // Hay una petición idéntica en vuelo — devolvemos un clon de su
+            // Response para que cada consumidor pueda leer el body con
+            // .json()/.text() de forma independiente.
+            return _inflightGet.get(key).then(r => r.clone());
+        }
+        const p = _doFetchTracked(url, opts);
+        _inflightGet.set(key, p);
+        // Liberar la entrada al terminar (éxito o fallo) para que un fetch
+        // posterior vuelva a hit a red.
+        p.finally(() => { _inflightGet.delete(key); });
+        return p.then(r => r.clone());
     }
 
     function cerrarSesion() {
