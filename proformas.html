@@ -212,15 +212,22 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
 
     async function cargarPedidos() {
         try {
-            const url = EP_HW + (EP_HW.includes('?') ? '&' : '?') + '_=' + Date.now();
+            // slim=1: el listado no necesita los blobs base64. Cuando se pulsa
+            // "Proforma" / "Justificante" descargamos el PDF on-demand vía
+            // _abrirPdfPedido. Bajamos el payload de varios MB a unos KB.
+            const url = EP_HW + (EP_HW.includes('?') ? '&' : '?') + 'slim=1&_=' + Date.now();
             const res = await YurestConfig.apiFetch(url, {
                 method: 'GET',
                 headers: { 'Cache-Control': 'no-cache' }
             });
             if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-            pedidos = Array.isArray(data.pedidos) ? data.pedidos
-                    : Array.isArray(data) ? data : [];
+            const txt = await res.text();
+            if (!txt) { pedidos = []; }
+            else {
+                const data = JSON.parse(txt);
+                pedidos = Array.isArray(data.pedidos) ? data.pedidos
+                        : Array.isArray(data) ? data : [];
+            }
             els.loading.classList.add('hidden');
             els.content.style.display = '';
             renderProformas();
@@ -229,6 +236,47 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             mostrarError('No se pudieron cargar los pedidos: ' + err.message);
         }
     }
+
+    // Cache + descarga on-demand del PDF de un pedido (cuando el listado
+    // vino slim=1).
+    const _pdfCache = new Map();
+    async function _abrirPdfPedido(btn, pedidoId, tipo) {
+        if (!pedidoId || !tipo) return;
+        const key = pedidoId + ':' + tipo;
+        const labelOrig = btn.dataset.label || btn.textContent;
+        try {
+            let blob = _pdfCache.get(key);
+            if (!blob || !blob.data) {
+                btn.disabled = true;
+                btn.textContent = 'Descargando…';
+                const url = EP_HW + (EP_HW.includes('?') ? '&' : '?') + 'id=' + encodeURIComponent(pedidoId) + '&_=' + Date.now();
+                const res = await YurestConfig.apiFetch(url, { method: 'GET' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const txt = await res.text();
+                if (!txt) throw new Error('Respuesta vacía');
+                const data = JSON.parse(txt);
+                const lista = Array.isArray(data.pedidos) ? data.pedidos
+                            : (Array.isArray(data) ? data : []);
+                const pedido = lista.find(p => p && p.id === pedidoId) || lista[0];
+                if (!pedido) throw new Error('Pedido no encontrado');
+                blob = (tipo === 'proforma') ? pedido.proforma_pdf : pedido.justificante_pdf;
+                if (!blob || !blob.data) throw new Error('El pedido no tiene ' + tipo);
+                _pdfCache.set(key, blob);
+            }
+            const a = document.createElement('a');
+            a.href = blob.data;
+            a.download = blob.nombre || (tipo + '.pdf');
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (err) {
+            alert('No se pudo abrir el ' + tipo + ': ' + (err.message || err));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = labelOrig;
+        }
+    }
+    window._abrirPdfPedido = _abrirPdfPedido;
 
     function setFiltroProforma(f) {
         filtroProforma = f;
@@ -319,6 +367,19 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             //   pendiente_confirmar → ver proforma + justificante + confirmar o devolver
             //   lista_envio         → ver adjuntos (solo lectura)
             let acciones = '';
+            // Helper: pinta el botón de un PDF. Si el blob viene completo
+            // (no-slim), atajo data: directo. Si vino slim (solo metadatos),
+            // botón que descarga on-demand.
+            const _pdfBtn = (blob, tipo, etiqueta, claseExtra) => {
+                if (!blob) return '';
+                if (blob.data) {
+                    return `<a href="${esc(blob.data)}" download="${esc(blob.nombre || (tipo + '.pdf'))}" class="hw-cta ${claseExtra}">${etiqueta}</a>`;
+                }
+                return `<button type="button" class="hw-cta ${claseExtra}"
+                                onclick="_abrirPdfPedido(this, '${esc(p.id)}', '${tipo}')"
+                                data-label="${esc(etiqueta)}">${etiqueta}</button>`;
+            };
+
             if (p.estado === 'solicitada') {
                 acciones = `
                     <label class="hw-cta primary">
@@ -326,24 +387,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
                         <input type="file" accept="application/pdf" onchange="subirProforma('${esc(p.id)}', this)">
                     </label>`;
             } else if (p.estado === 'pendiente_confirmar') {
-                const prof = p.proforma_pdf && p.proforma_pdf.data
-                    ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
-                    : '';
-                const just = p.justificante_pdf && p.justificante_pdf.data
-                    ? `<a href="${esc(p.justificante_pdf.data)}" download="${esc(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-cta">🧾 Justificante</a>`
-                    : '';
+                const prof = _pdfBtn(p.proforma_pdf,     'proforma',     '📄 Proforma',     '');
+                const just = _pdfBtn(p.justificante_pdf, 'justificante', '🧾 Justificante', '');
                 acciones = `${prof}${just}
                     <button class="hw-cta success" onclick="confirmarPago('${esc(p.id)}')">✓ Confirmar pago</button>
                     <button class="hw-cta warning" onclick="devolverJustificante('${esc(p.id)}')" title="Justificante incorrecto — devolver al implementador">↩ Devolver justificante</button>`;
             } else if (p.estado === 'proforma_adjuntada') {
-                const prof = p.proforma_pdf && p.proforma_pdf.data
-                    ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Ver proforma enviada</a>`
-                    : '';
+                const prof = _pdfBtn(p.proforma_pdf, 'proforma', '📄 Ver proforma enviada', '');
                 acciones = `${prof}<span style="font-size:.72rem;color:#64748b;align-self:center">Esperando justificante del implementador…</span>`;
             } else if (p.estado === 'lista_envio') {
-                const prof = p.proforma_pdf && p.proforma_pdf.data
-                    ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-cta">📄 Proforma</a>`
-                    : '';
+                const prof = _pdfBtn(p.proforma_pdf, 'proforma', '📄 Proforma', '');
                 acciones = `${prof}<span style="font-size:.72rem;color:#16a34a;align-self:center">✓ En Soporte listo para envío</span>`;
             }
 

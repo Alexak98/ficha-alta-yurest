@@ -94,13 +94,15 @@
 
     // Hardware envíos: cuenta pedidos en estado 'lista_envio' (proforma
     // confirmada y listos para preparar el envío físico).
+    // Pasamos `slim=1` para que el workflow no nos devuelva los PDFs base64
+    // — solo necesitamos la longitud del array.
     async function countHardwareEnvios() {
         const YC = global.YurestConfig;
         if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
         try {
             const url = YC.ENDPOINTS.hardwarePedidos
                 + (YC.ENDPOINTS.hardwarePedidos.includes('?') ? '&' : '?')
-                + 'estado=lista_envio&_=' + Date.now();
+                + 'estado=lista_envio&slim=1&_=' + Date.now();
             const res = await (YC.apiFetch || fetch)(url, { method: 'GET' });
             if (!res.ok) return 0;
             const data = await res.json();
@@ -127,16 +129,23 @@
         return readBadge('badge-a3');
     }
 
-    // Proformas: no hay helper en config.js, fetcheamos el endpoint y
-    // contamos los estados que requieren acción de contabilidad.
+    // Proformas: contamos los estados que requieren acción de contabilidad.
+    // Usamos `?estados=solicitada,pendiente_confirmar&slim=1` para que el
+    // workflow filtre en el servidor y omita los PDFs base64 — pasamos de
+    // bajar varios MB a unos pocos KB en cada arranque de página.
     async function countProformasPendientes() {
         const YC = global.YurestConfig;
         if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
         try {
-            const res = await (YC.apiFetch || fetch)(YC.ENDPOINTS.hardwarePedidos, { method: 'GET' });
+            const url = YC.ENDPOINTS.hardwarePedidos
+                + (YC.ENDPOINTS.hardwarePedidos.includes('?') ? '&' : '?')
+                + 'estados=solicitada,pendiente_confirmar&slim=1&_=' + Date.now();
+            const res = await (YC.apiFetch || fetch)(url, { method: 'GET' });
             if (!res.ok) return 0;
             const data = await res.json();
             const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
+            // El workflow ya filtró por estado; pero por defensa filtramos
+            // en cliente igualmente (workflows no actualizados verían 0).
             return lista.filter(p => p && (p.estado === 'solicitada' || p.estado === 'pendiente_confirmar')).length;
         } catch (_) { return 0; }
     }

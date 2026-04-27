@@ -160,7 +160,10 @@
     }
 
     async function _fetchPorEstado(estado, intento = 0) {
-        const url = EP + (EP.includes('?') ? '&' : '?') + 'estado=' + encodeURIComponent(estado) + '&_=' + Date.now();
+        // slim=1 omite los blobs base64 de proforma_pdf/justificante_pdf en
+        // el listado — bajamos de varios MB a unos pocos KB. Los PDFs se
+        // descargan on-demand al pulsar los botones (ver _abrirPdfPedido).
+        const url = EP + (EP.includes('?') ? '&' : '?') + 'estado=' + encodeURIComponent(estado) + '&slim=1&_=' + Date.now();
         const res = await YurestConfig.apiFetch(url, { method:'GET', headers:{ 'Cache-Control':'no-cache' } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         // El primer hit a un webhook n8n "frío" a veces devuelve 200 con
@@ -180,6 +183,50 @@
         catch (_) { throw new Error('Respuesta no-JSON: ' + txt.slice(0, 120)); }
         return Array.isArray(data.pedidos) ? data.pedidos : (Array.isArray(data) ? data : []);
     }
+
+    // Descarga on-demand del PDF de un pedido cuando el listado vino en
+    // modo `slim=1` y por tanto el blob no estaba en el array. Cacheamos
+    // los PDFs ya pedidos en sessionStorage para evitar refetches al
+    // pulsar dos veces el mismo botón.
+    const _pdfCache = new Map(); // pedidoId+tipo → { data, nombre }
+    async function abrirPdfPedido(btn, pedidoId, tipo) {
+        if (!pedidoId || !tipo) return;
+        const key = pedidoId + ':' + tipo;
+        const labelOrig = btn.dataset.label || btn.textContent;
+        try {
+            let blob = _pdfCache.get(key);
+            if (!blob || !blob.data) {
+                btn.disabled = true;
+                btn.textContent = 'Descargando…';
+                const url = EP + (EP.includes('?') ? '&' : '?') + 'id=' + encodeURIComponent(pedidoId) + '&_=' + Date.now();
+                const res = await YurestConfig.apiFetch(url, { method: 'GET' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const txt = await res.text();
+                if (!txt) throw new Error('Respuesta vacía');
+                const data = JSON.parse(txt);
+                const lista = Array.isArray(data.pedidos) ? data.pedidos
+                            : (Array.isArray(data) ? data : []);
+                const pedido = lista.find(p => p && p.id === pedidoId) || lista[0];
+                if (!pedido) throw new Error('Pedido no encontrado');
+                blob = (tipo === 'proforma') ? pedido.proforma_pdf : pedido.justificante_pdf;
+                if (!blob || !blob.data) throw new Error('El pedido no tiene ' + tipo);
+                _pdfCache.set(key, blob);
+            }
+            // Disparamos la descarga sintetizando un <a download>.
+            const a = document.createElement('a');
+            a.href = blob.data;
+            a.download = blob.nombre || (tipo + '.pdf');
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (err) {
+            alert('No se pudo abrir el ' + tipo + ': ' + (err.message || err));
+        } finally {
+            btn.disabled = false;
+            btn.textContent = labelOrig;
+        }
+    }
+    window.abrirPdfPedido = abrirPdfPedido;
 
     function setTab(tab) {
         _tabActivo = tab;
@@ -243,11 +290,25 @@
             ? `<div style="text-align:right;font-size:.84rem;color:#334155;padding:4px 2px 0"><strong>Total: ${fmtPrecio(subtotal)}</strong></div>`
             : '';
         const fmt = v => v ? new Date(v).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'}) : '—';
-        const proforma = p.proforma_pdf && p.proforma_pdf.data
-            ? `<a href="${esc(p.proforma_pdf.data)}" download="${esc(p.proforma_pdf.nombre || 'proforma.pdf')}" class="hw-btn primary">📄 Abrir proforma</a>`
+        // Para listados slim=1 los PDFs vienen sin .data — solo metadatos.
+        // Renderizamos un botón que dispara la descarga on-demand. Para
+        // payloads completos (no-slim) seguimos usando el atajo data: por
+        // si alguien llama sin slim.
+        const _btnPdf = (blob, tipo, etiqueta, claseExtra) => {
+            if (!blob) return '';
+            if (blob.data) {
+                return `<a href="${esc(blob.data)}" download="${esc(blob.nombre || (tipo + '.pdf'))}" class="hw-btn ${claseExtra}">${etiqueta}</a>`;
+            }
+            // slim — pedimos el PDF on-demand
+            return `<button type="button" class="hw-btn ${claseExtra}"
+                            onclick="abrirPdfPedido(this, '${esc(p.id)}', '${tipo}')"
+                            data-label="${esc(etiqueta)}">${etiqueta}</button>`;
+        };
+        const proforma = p.proforma_pdf
+            ? _btnPdf(p.proforma_pdf, 'proforma', '📄 Abrir proforma', 'primary')
             : '<span style="color:#dc2626;font-size:.74rem">Sin proforma (estado inconsistente)</span>';
-        const justif = p.justificante_pdf && p.justificante_pdf.data
-            ? `<a href="${esc(p.justificante_pdf.data)}" download="${esc(p.justificante_pdf.nombre || 'justificante.pdf')}" class="hw-btn">🧾 Justificante de pago</a>`
+        const justif = p.justificante_pdf
+            ? _btnPdf(p.justificante_pdf, 'justificante', '🧾 Justificante de pago', '')
             : '';
 
         const esEnviado = p.estado === 'enviado';
