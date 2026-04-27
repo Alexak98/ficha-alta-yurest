@@ -366,17 +366,80 @@
         return headers;
     }
 
-    // Fetch con manejo automático de 401/403 → redirige a login
+    // Indicador global de peticiones en curso. Se inyecta una sola vez
+    // en cualquier página que use apiFetch y se muestra/oculta según el
+    // contador de fetches activos. No requiere markup en cada HTML.
+    let _inflightCount = 0;
+    function _ensureInflightEl() {
+        if (typeof document === 'undefined') return null;
+        let el = document.getElementById('yurest-inflight');
+        if (el) return el;
+        el = document.createElement('div');
+        el.id = 'yurest-inflight';
+        el.setAttribute('aria-hidden', 'true');
+        el.style.cssText = [
+            'position:fixed', 'right:18px', 'bottom:18px', 'z-index:9999',
+            'display:none', 'align-items:center', 'gap:8px',
+            'padding:8px 14px', 'border-radius:999px',
+            'background:rgba(15,23,42,.92)', 'color:#fff',
+            'font:600 12px system-ui,-apple-system,Segoe UI,Roboto,sans-serif',
+            'letter-spacing:.02em',
+            'box-shadow:0 6px 18px rgba(15,23,42,.18)',
+            'pointer-events:none', 'transition:opacity .18s'
+        ].join(';');
+        el.innerHTML =
+            '<span style="display:inline-block;width:14px;height:14px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:yurest-spin .7s linear infinite"></span>' +
+            '<span id="yurest-inflight-txt">Cargando…</span>';
+        // Inyectamos la animación una vez.
+        if (!document.getElementById('yurest-inflight-style')) {
+            const st = document.createElement('style');
+            st.id = 'yurest-inflight-style';
+            st.textContent = '@keyframes yurest-spin{to{transform:rotate(360deg)}}';
+            document.head.appendChild(st);
+        }
+        const attach = () => { if (document.body) document.body.appendChild(el); };
+        if (document.body) attach();
+        else document.addEventListener('DOMContentLoaded', attach, { once: true });
+        return el;
+    }
+    function _bumpInflight(delta) {
+        _inflightCount = Math.max(0, _inflightCount + delta);
+        const el = _ensureInflightEl();
+        if (!el) return;
+        if (_inflightCount > 0) {
+            const txt = document.getElementById('yurest-inflight-txt');
+            if (txt) txt.textContent = _inflightCount === 1
+                ? 'Cargando…'
+                : 'Cargando · ' + _inflightCount + ' peticiones';
+            el.style.display = 'inline-flex';
+            el.style.opacity = '1';
+        } else {
+            el.style.opacity = '0';
+            // Pequeño delay antes de ocultar para evitar parpadeos al
+            // encadenar peticiones rápidas.
+            setTimeout(() => { if (_inflightCount === 0) el.style.display = 'none'; }, 180);
+        }
+    }
+
+    // Fetch con manejo automático de 401/403 → redirige a login.
+    // Suma al contador global de peticiones en curso para mostrar el
+    // indicador "Cargando…" en cualquier página, incluso para llamadas
+    // que la página no muestra explícitamente.
     async function apiFetch(url, options) {
         const opts = { ...(options || {}) };
         opts.headers = { ...getAuthHeaders(), ...(opts.headers || {}) };
-        const res = await fetch(url, opts);
-        if (res.status === 401 || res.status === 403) {
-            clearSession();
-            window.location.replace('login.html');
-            throw new Error('Sesión expirada');
+        _bumpInflight(+1);
+        try {
+            const res = await fetch(url, opts);
+            if (res.status === 401 || res.status === 403) {
+                clearSession();
+                window.location.replace('login.html');
+                throw new Error('Sesión expirada');
+            }
+            return res;
+        } finally {
+            _bumpInflight(-1);
         }
-        return res;
     }
 
     function cerrarSesion() {

@@ -159,11 +159,25 @@
         }
     }
 
-    async function _fetchPorEstado(estado) {
+    async function _fetchPorEstado(estado, intento = 0) {
         const url = EP + (EP.includes('?') ? '&' : '?') + 'estado=' + encodeURIComponent(estado) + '&_=' + Date.now();
         const res = await YurestConfig.apiFetch(url, { method:'GET', headers:{ 'Cache-Control':'no-cache' } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
+        // El primer hit a un webhook n8n "frío" a veces devuelve 200 con
+        // body vacío — con json() directo eso revienta como
+        // "Unexpected end of JSON input". Leemos texto y reintentamos
+        // una vez si está vacío.
+        const txt = await res.text();
+        if (!txt || !txt.trim()) {
+            if (intento < 1) {
+                await new Promise(r => setTimeout(r, 600));
+                return _fetchPorEstado(estado, intento + 1);
+            }
+            return [];
+        }
+        let data;
+        try { data = JSON.parse(txt); }
+        catch (_) { throw new Error('Respuesta no-JSON: ' + txt.slice(0, 120)); }
         return Array.isArray(data.pedidos) ? data.pedidos : (Array.isArray(data) ? data : []);
     }
 
