@@ -1830,20 +1830,15 @@
             ${localesHtml}
         </div>`;
 
-        // 03 Facturación
+        // 03 Facturación — el IBAN ya no se pide en la ficha (vive en el
+        // mandato SEPA por sociedad), así que sólo mostramos los emails.
         if (f['Email Factura'] || f['Email CC']) {
             html += `<div class="ps">
                 <div class="ps-title"><span class="section-num">0${n++}</span><h4>Datos de Facturación</h4></div>
                 <div class="ps-fields">
                     ${campo('Email envío factura', f['Email Factura'])}
                     ${campo('Con copia', f['Email CC'])}
-                    ${campo('IBAN', f['IBAN'], true, true)}
                 </div>
-            </div>`;
-        } else if (f['IBAN']) {
-            html += `<div class="ps">
-                <div class="ps-title"><span class="section-num">0${n++}</span><h4>Datos de Facturación</h4></div>
-                <div class="ps-fields">${campo('IBAN', f['IBAN'], true, true)}</div>
             </div>`;
         }
 
