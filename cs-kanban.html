@@ -53,7 +53,22 @@
         .page-header img { height:32px }
         .page-header h1 { font-size:1.1rem;font-weight:800;color:#1e293b }
 
-        .page-content { padding:18px 22px;display:flex;flex-direction:column;gap:14px;height:calc(100vh - 73px) }
+        /* `min-width:0` aquí y en .kb-board son imprescindibles: en un flex
+           container vertical, los hijos no respetan el ancho del padre por
+           defecto si su contenido es más ancho. Sin esto el .kb-board crece
+           hasta el tamaño total de las columnas y el scroll se aplica al
+           body (la web "se mueve por detrás") en vez de quedarse dentro
+           del tablero. Con min-width:0 el overflow-x:auto del board sí
+           recorta y dibuja su propia barra de scroll horizontal. */
+        html, body { overflow-x:hidden }
+        .page-content {
+            padding:18px 22px;
+            display:flex; flex-direction:column;
+            gap:14px;
+            height:calc(100vh - 73px);
+            min-width:0;
+            max-width:100%;
+        }
 
         .kb-hero {
             display:flex;align-items:center;justify-content:space-between;
@@ -83,6 +98,10 @@
             overflow-x:auto;
             overflow-y:hidden;
             padding-bottom:8px;
+            min-width:0;
+            max-width:100%;
+            /* Scroll fluido con rueda del trackpad/ratón en horizontal */
+            overscroll-behavior-x:contain;
         }
         .kb-board::-webkit-scrollbar { height:10px }
         .kb-board::-webkit-scrollbar-thumb { background:#cbd5e1;border-radius:6px }
