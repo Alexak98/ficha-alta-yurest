@@ -1933,6 +1933,12 @@ function hwAbrirModalNuevo(proyectoId, cliente, implementador) {
     document.getElementById('hw-new-notas').value = '';
     _hwCart = {};
     _hwSepaMandatos = [];
+    // Pre-rellenamos el carrito con los items marcados como `fixed:true`
+    // en el catálogo (p.ej. Gastos de envío). Siempre van con cantidad 1
+    // y el render los pinta con los controles deshabilitados.
+    HARDWARE_CATALOGO.forEach(g => {
+        g.items.forEach(it => { if (it.fixed) _hwCart[it.id] = 1; });
+    });
     _hwRenderCatalogo();
     _hwActualizarTotal();
     _hwCargarSociedades(cliente);
@@ -1998,20 +2004,32 @@ function _hwRenderCatalogo() {
     const cont = document.getElementById('hw-cat-container');
     if (!cont) return;
     cont.innerHTML = HARDWARE_CATALOGO.map(grupo => {
-        const cards = grupo.items.map(it => `
-            <div class="hw-cat-item" data-item-id="${escapeHtml(it.id)}">
+        const cards = grupo.items.map(it => {
+            const isFixed = !!it.fixed;
+            const qty     = _hwCart[it.id] || (isFixed ? 1 : 0);
+            // Para items fijos: cantidad bloqueada a 1, controles deshabilitados,
+            // candado visual y la card siempre con la clase `has-qty`.
+            const lockBadge = isFixed
+                ? '<span class="hw-cat-item-lock" title="Incluido siempre en el pedido">🔒 obligatorio</span>'
+                : '';
+            const disabledAttr = isFixed ? 'disabled' : '';
+            const minVal       = isFixed ? 1 : 0;
+            return `
+            <div class="hw-cat-item${isFixed ? ' is-fixed has-qty' : ''}" data-item-id="${escapeHtml(it.id)}">
                 <div class="hw-cat-item-info">
-                    <div class="hw-cat-item-nombre">${escapeHtml(it.nombre)}</div>
+                    <div class="hw-cat-item-nombre">${escapeHtml(it.nombre)} ${lockBadge}</div>
                     ${it.formato ? `<div class="hw-cat-item-formato">${escapeHtml(it.formato)}</div>` : ''}
                     <div class="hw-cat-item-precio">${hwFmtPrecio(it.precio)}${it.unidad ? ` / ${escapeHtml(it.unidad)}` : ''}</div>
                 </div>
                 <div class="hw-cat-item-qty">
-                    <button type="button" class="hw-qty-btn" onclick="_hwCambiarCantidad('${escapeHtml(it.id)}', -1)" aria-label="Restar">−</button>
-                    <input type="number" min="0" value="0" class="hw-qty-input" id="hw-qty-${escapeHtml(it.id)}"
+                    <button type="button" class="hw-qty-btn" ${disabledAttr} onclick="_hwCambiarCantidad('${escapeHtml(it.id)}', -1)" aria-label="Restar">−</button>
+                    <input type="number" min="${minVal}" value="${qty}" class="hw-qty-input" id="hw-qty-${escapeHtml(it.id)}"
+                           ${disabledAttr ? 'readonly' : ''}
                            oninput="_hwSetCantidad('${escapeHtml(it.id)}', this.value)">
-                    <button type="button" class="hw-qty-btn" onclick="_hwCambiarCantidad('${escapeHtml(it.id)}', 1)" aria-label="Sumar">+</button>
+                    <button type="button" class="hw-qty-btn" ${disabledAttr} onclick="_hwCambiarCantidad('${escapeHtml(it.id)}', 1)" aria-label="Sumar">+</button>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
         return `
             <div class="hw-cat-grupo">
                 <h4 class="hw-cat-grupo-title"><span>${grupo.icon}</span> ${escapeHtml(grupo.grupo)}</h4>
@@ -2021,7 +2039,9 @@ function _hwRenderCatalogo() {
 }
 
 function _hwSetCantidad(itemId, valor) {
-    const n = Math.max(0, parseInt(valor, 10) || 0);
+    const it = hardwareBuscarItem(itemId);
+    const minimo = (it && it.fixed) ? 1 : 0;
+    const n = Math.max(minimo, parseInt(valor, 10) || 0);
     if (n === 0) delete _hwCart[itemId];
     else _hwCart[itemId] = n;
     const input = document.getElementById('hw-qty-' + itemId);
@@ -2085,6 +2105,17 @@ async function hwCrearPedido() {
 
     if (items.length === 0) {
         mostrarToast('Añade al menos un artículo al carrito', 'error');
+        return;
+    }
+    // El carrito siempre lleva los items fixed (gastos de envío). Para que el
+    // pedido tenga sentido necesitamos al menos un item NO fijo elegido por
+    // el implementador.
+    const hayNoFijo = items.some(it => {
+        const cat = hardwareBuscarItem(it.id);
+        return !(cat && cat.fixed);
+    });
+    if (!hayNoFijo) {
+        mostrarToast('Añade al menos un artículo además de los gastos de envío', 'error');
         return;
     }
 

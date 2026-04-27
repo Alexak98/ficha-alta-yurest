@@ -1174,6 +1174,24 @@ body {
     background: #eef2ff;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, .08);
 }
+/* Items fijos (gastos de envío): siempre incluidos. Color ámbar para
+   distinguirlos del estado "marcado por el usuario" (lila), botones
+   ±/input deshabilitados gestionados desde JS. */
+.hw-cat-item.is-fixed {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, .08);
+}
+.hw-cat-item.is-fixed .hw-qty-btn[disabled] { opacity: .35; cursor: not-allowed; }
+.hw-cat-item.is-fixed .hw-qty-input[readonly] { background: #fef3c7; color: #92400e; cursor: not-allowed; }
+.hw-cat-item-lock {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+    color: #92400e; background: #fef3c7;
+    padding: 1px 7px; border-radius: 999px;
+    vertical-align: middle;
+}
 .hw-cat-item-info { flex: 1; min-width: 0; }
 .hw-cat-item-nombre { font-size: .88rem; font-weight: 600; color: #0f172a; line-height: 1.3; }
 .hw-cat-item-formato { font-size: .74rem; color: #64748b; margin-top: 2px; }

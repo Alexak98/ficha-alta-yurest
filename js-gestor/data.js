@@ -89,6 +89,18 @@ const HARDWARE_CATALOGO = [
             { id: 'sop_kds_mesa',  nombre: 'Soporte KDS VESA de mesa (sin anclaje)',      precio: 50 },
             { id: 'funda_antic',   nombre: 'Funda anticaída con soporte giratorio y correas', precio: 34 }
         ]
+    },
+    {
+        grupo: 'Envío',
+        icon:  '🚚',
+        items: [
+            // Item fijo: siempre presente en el carrito con cantidad 1.
+            // El front lo pre-añade al abrir el modal y bloquea su edición
+            // (no se puede poner a 0 ni cambiar la cantidad). Si en el
+            // futuro hay envíos express con coste distinto, se añadiría
+            // como item adicional en este mismo grupo, no se editaría éste.
+            { id: 'gastos_envio', nombre: 'Gastos de envío', formato: 'incluido en cada pedido', precio: 23, unidad: 'envío', fixed: true }
+        ]
     }
 ];
 
