@@ -1886,12 +1886,20 @@
         const firmasFila = document.getElementById('resumen-firmas-fila');
         const fmt = n => (n == null) ? '—' : n.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
         if (setupEl) {
-            const setupNeto = _computeSetupForResumen();
+            let setupNeto;
+            try { setupNeto = _computeSetupForResumen(); }
+            catch (e) { console.warn('[resumen] setup compute error:', e); setupNeto = null; }
+            // Fallback al textContent del display si el compute da null/0 (p. ej.
+            // sin tipo aún, o un flujo Lite raro). Probamos también la celda
+            // de "Neto" cuando hay descuento en planes.
             if (setupNeto == null || setupNeto <= 0) {
-                // Fallback al textContent del display por si algo cambia el
-                // cálculo y no nos enteramos (clientes Lite con flujos raros).
-                const txt = document.getElementById('tipo-cart-subtotal')?.textContent;
-                setupEl.textContent = (txt && parseEsNumber(txt) > 0) ? txt : '—';
+                const candidates = [
+                    document.getElementById('tipo-cart-planes-neto')?.textContent,
+                    document.getElementById('tipo-cart-neto')?.textContent,
+                    document.getElementById('tipo-cart-subtotal')?.textContent
+                ];
+                const valido = candidates.find(t => t && parseEsNumber(t) > 0);
+                setupEl.textContent = valido || '—';
             } else {
                 setupEl.textContent = fmt(setupNeto);
             }
@@ -3549,6 +3557,13 @@
             if (typeof actualizarEstadoNavSecciones === 'function') {
                 actualizarEstadoNavSecciones();
             }
+            // Red de seguridad: algunas restauraciones (precios por local en
+            // Planes, recurrencia con descuento) terminan de propagarse en
+            // un microtick posterior. Forzamos otra pasada del widget tras
+            // 200 ms para que nunca quede "—" con datos cargados.
+            setTimeout(() => {
+                try { actualizarResumenFlotante(); } catch (_) {}
+            }, 220);
         });
     }
 
@@ -3911,6 +3926,32 @@
         }
         // Si completa=1 → formulario completo tal cual, sin ocultaciones
     })();
+
+    // Red de seguridad final: aunque varias rutas llaman a actualizarResumenFlotante
+    // cuando deberían, hemos visto casos en modo edición en los que el widget
+    // se queda "—" porque el cálculo se hace antes de que el carrito haya
+    // restaurado precios. Un listener delegado sobre todo el documento garantiza
+    // que cualquier cambio en cart_item / precio_* / corp_setup_* / planes_setup_*
+    // termina actualizando el widget — sin importar el orden de los eventos.
+    document.addEventListener('change', (ev) => {
+        const t = ev.target;
+        if (!t) return;
+        if (t.name === 'cart_item' || t.name === 'tipo_cliente' ||
+            (t.id && (/^precio_/.test(t.id) || /^corp_setup/.test(t.id) ||
+                      /^planes_setup/.test(t.id) || /^corp_recur/.test(t.id) ||
+                      /^planes_recur/.test(t.id) || /^mensual/.test(t.id)))) {
+            try { actualizarResumenFlotante(); } catch (_) {}
+        }
+    }, true);
+    document.addEventListener('input', (ev) => {
+        const t = ev.target;
+        if (!t || !t.id) return;
+        if (/^precio_/.test(t.id) || /^corp_setup/.test(t.id) ||
+            /^planes_setup/.test(t.id) || /^corp_recur/.test(t.id) ||
+            /^planes_recur/.test(t.id)) {
+            try { actualizarResumenFlotante(); } catch (_) {}
+        }
+    }, true);
 </script>
 
 
