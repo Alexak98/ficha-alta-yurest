@@ -856,6 +856,25 @@ select option { color: var(--text); }
 }
 
 /* ── Responsive ──────────────────────────────────────── */
+
+/* Tablas anchas: el wrapper envolvente recorta el desbordamiento y
+   dibuja su propia barra horizontal. Aplica a:
+    .table-scroll → utilidad explícita para tablas nuevas
+    .table-wrap   → clase ya existente en clientes / escalados / hardware
+    .wrap         → clase ya existente en presupuestos (tabla principal)
+   `-webkit-overflow-scrolling:touch` da inercia en iOS. */
+.table-scroll, .table-wrap, .wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* En pantallas medianas (iPad portrait) el sidebar 248px deja muy
+   poco espacio al contenido. Reducimos a 220px sin perder
+   legibilidad — el sidebar.js ya gestiona el slide-in con overlay. */
+@media (max-width: 1024px) {
+    .sidebar { width: 220px; }
+}
+
 @media (max-width: 640px) {
     .page-header { padding: 30px 20px 40px; }
     .page-header h1 { font-size: 1.35rem; }
@@ -868,6 +887,8 @@ select option { color: var(--text); }
     .btn { text-align: center; }
     .toggles-row { flex-wrap: wrap; }
     #add-local-float { writing-mode: horizontal-tb; top: auto; bottom: 90px; left: 0; transform: none; border-radius: 0 8px 8px 0; padding: 12px 14px; }
+    /* Touch target mínimo 44×44 (recomendación Apple HIG / WCAG) */
+    .btn-menu { width: 44px; height: 44px; }
 }
 
 /* ── Comisión distribuidor ───────────────────────────── */
