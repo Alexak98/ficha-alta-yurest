@@ -489,11 +489,18 @@
         document.getElementById('f-permisos').innerHTML = renderPermisos(permisosActivos);
 
         document.getElementById('modal-editor').classList.add('open');
-        setTimeout(() => document.getElementById('f-nombre').focus(), 50);
+        // a11y: role=dialog + trap Tab + foco automático al primer input
+        // del modal. Sustituye el setTimeout focus() previo.
+        if (YurestConfig.a11yAbrirModal) {
+            YurestConfig.a11yAbrirModal('modal-editor');
+        } else {
+            setTimeout(() => document.getElementById('f-nombre').focus(), 50);
+        }
     }
 
     function cerrarEditor() {
         document.getElementById('modal-editor').classList.remove('open');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('modal-editor');
         editandoId = null;
     }
 

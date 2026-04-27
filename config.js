@@ -604,19 +604,30 @@
 
     const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-    function a11yAbrirModal(overlayId) {
+    // a11yAbrirModal(overlayId, modalId?)
+    //   overlayId — id del fondo (.modal-overlay). Si modalId no se pasa,
+    //               busca .modal/[role="dialog"] DENTRO del overlay.
+    //   modalId   — id del contenedor del modal cuando vive como hermano
+    //               del overlay (patrón usado en escalados.html y otras
+    //               páginas donde el aside.modal flota a top-level).
+    function a11yAbrirModal(overlayId, modalId) {
         const overlay = document.getElementById(overlayId);
         if (!overlay) return;
-        const modal = overlay.querySelector('.modal, [role="dialog"]') || overlay;
+        const modal = (modalId && document.getElementById(modalId))
+                   || overlay.querySelector('.modal, [role="dialog"]')
+                   || overlay;
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-hidden', 'false');
         overlay.setAttribute('aria-hidden', 'false');
-        // Marcar aria-hidden en el resto de la página
+        // Marcar aria-hidden en el resto de la página, EXCEPTO el overlay
+        // y el modal real (que puede vivir como hermano del overlay, no
+        // dentro). Si lo escondemos, los lectores no leerán nada.
         document.querySelectorAll('body > *').forEach(el => {
-            if (el !== overlay && !el.contains(overlay)) {
-                el.setAttribute('data-a11y-hidden-before', el.getAttribute('aria-hidden') || '');
-                el.setAttribute('aria-hidden', 'true');
-            }
+            if (el === overlay || el === modal) return;
+            if (el.contains(overlay) || el.contains(modal)) return;
+            el.setAttribute('data-a11y-hidden-before', el.getAttribute('aria-hidden') || '');
+            el.setAttribute('aria-hidden', 'true');
         });
         _previousFocus = document.activeElement;
         // Foco al primer elemento focusable. Ignoramos readonly/aria-hidden.

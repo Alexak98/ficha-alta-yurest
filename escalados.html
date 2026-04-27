@@ -610,13 +610,16 @@
         WIZ = nuevoWiz();
         document.getElementById('modal').classList.add('open');
         document.getElementById('modal-overlay').classList.add('open');
-        document.getElementById('modal').setAttribute('aria-hidden', 'false');
         renderStep();
+        // a11y: role=dialog + aria-modal + foco al primer input + trap de Tab
+        // + aria-hidden=true al resto del body. Lectores de pantalla quedan
+        // dentro del modal hasta que se cierre.
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-overlay', 'modal');
     }
     function cerrarWizard() {
         document.getElementById('modal').classList.remove('open');
         document.getElementById('modal-overlay').classList.remove('open');
-        document.getElementById('modal').setAttribute('aria-hidden', 'true');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('modal-overlay');
     }
     document.addEventListener('keydown', (ev) => {
         if (ev.key === 'Escape' && document.getElementById('modal').classList.contains('open')) cerrarWizard();
