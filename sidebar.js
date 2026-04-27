@@ -62,10 +62,14 @@
             id: 'informes',
             label: 'Informes',
             icon: 'informes',
+            // `subgrupo` agrupa los items dentro del menú lateral con un
+            // separador visual (mismo patrón que el detalle del home).
+            // Si dos items consecutivos comparten subgrupo se renderizan
+            // bajo una única cabecera.
             items: [
-                { id: 'ventas',          href: 'ventas.html',           label: 'Ventas',                  icon: 'ventas' },
-                { id: 'distribucion',    href: 'distribucion.html',     label: 'Implementadores',         icon: 'implementadores' },
-                { id: 'informe_tickets', href: 'informe-tickets.html',  label: 'Mapa de calor de tickets', icon: 'informe_tickets' }
+                { id: 'ventas',          href: 'ventas.html',           label: 'Ventas',                   icon: 'ventas',          subgrupo: 'Comercial' },
+                { id: 'distribucion',    href: 'distribucion.html',     label: 'Implementadores',          icon: 'implementadores', subgrupo: 'Implementación' },
+                { id: 'informe_tickets', href: 'informe-tickets.html',  label: 'Mapa de calor de tickets', icon: 'informe_tickets', subgrupo: 'Soporte' }
             ]
         },
         {
@@ -169,6 +173,26 @@
             </a>`;
     }
 
+    // Renderiza los hijos de un grupo. Si alguno declara `subgrupo`, los
+    // agrupamos por ese campo y pintamos un separador con el nombre antes
+    // de cada bloque (mismo patrón que el detalle del home — Informes
+    // queda dividido en Comercial / Implementación / Soporte).
+    function renderChildren(items, activeId) {
+        const usaSubgrupos = items.some(it => it && it.subgrupo);
+        if (!usaSubgrupos) return items.map(it => renderItem(it, activeId)).join('');
+        const orden = [];
+        const porSub = new Map();
+        items.forEach(it => {
+            const k = it.subgrupo || 'Otros';
+            if (!porSub.has(k)) { porSub.set(k, []); orden.push(k); }
+            porSub.get(k).push(it);
+        });
+        return orden.map(k => `
+            <div class="sidebar-subgroup-label">${k}</div>
+            ${porSub.get(k).map(it => renderItem(it, activeId)).join('')}
+        `).join('');
+    }
+
     // Persistencia del estado abierto/cerrado de los grupos. Antes el
     // usuario abría un grupo, navegaba a otra página y volvía a la misma
     // — y el grupo aparecía cerrado de nuevo.
@@ -210,7 +234,7 @@
                     ${ICON.chevronRight}
                 </div>
                 <div class="sidebar-group-children">
-                    ${group.items.map(it => renderItem(it, activeId)).join('')}
+                    ${renderChildren(group.items, activeId)}
                 </div>
             </div>`;
     }
@@ -238,9 +262,44 @@
 
     // Renderiza el sidebar completo en el <nav id="sidebar"> de la página actual.
     // `activeId` es el id del item que debe aparecer resaltado (p.ej. 'lista').
+    // Estilos propios del sidebar que no viven en cada HTML (los originales
+    // están inline en cada página). Inyectamos sólo lo nuevo aquí para no
+    // tener que tocar 20 ficheros cada vez que se añade un detalle visual.
+    function _injectSidebarStyles() {
+        if (document.getElementById('yurest-sidebar-extra-style')) return;
+        const st = document.createElement('style');
+        st.id = 'yurest-sidebar-extra-style';
+        st.textContent = `
+            .sidebar-subgroup-label {
+                margin: 8px 18px 2px 30px;
+                padding: 0;
+                font-size: 9.5px;
+                font-weight: 800;
+                letter-spacing: .1em;
+                text-transform: uppercase;
+                color: #94a3b8;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .sidebar-subgroup-label::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: #e2e8f0;
+            }
+            /* La pseudo-línea conectora de los items dentro de los grupos
+               se acorta cuando va precedida por un separador subgrupo
+               para no chocar visualmente con la regla horizontal. */
+            .sidebar-subgroup-label + .sidebar-item::before { display: none; }
+        `;
+        document.head.appendChild(st);
+    }
+
     function render(activeId) {
         const nav = document.getElementById('sidebar');
         if (!nav) return;
+        _injectSidebarStyles();
 
         const activeGroup = findGroupOf(activeId);
         // Sólo mostramos los grupos/items para los que el usuario tiene permiso
