@@ -320,23 +320,103 @@
         }
     }
 
-    // Devuelve los permisos del usuario actual. Admin tiene acceso implícito
-    // a todo, devolvemos el listado completo para simplificar checks.
+    // ──────────────────────────────────────────────────────────
+    //  PERMISOS — soporta dos shapes en `usuarios.permisos`:
+    //
+    //  1) Array plano (LEGACY, retro-compat):
+    //         ["clientes", "lista", "admin"]
+    //     → cada página listada implica acceso completo
+    //       (lectura + escritura + borrado).
+    //
+    //  2) Objeto granular (NUEVO):
+    //         { "read": ["clientes","lista"],
+    //           "write": ["clientes"],
+    //           "delete": ["clientes"] }
+    //     → control fino: poder LEER no implica poder EDITAR ni BORRAR.
+    //
+    //  Helpers expuestos:
+    //    · getPermisos()      — array plano de pageIds con CUALQUIER acceso.
+    //    · tienePermiso(id)   — TRUE si tiene cualquier acceso (legacy)
+    //                            o si está en read/write/delete (nuevo).
+    //                            Equivale a "puede ENTRAR a la página".
+    //    · puedeLeer(id)      — TRUE si está en read (o en array legacy).
+    //    · puedeEscribir(id)  — TRUE si está en write (o en array legacy).
+    //    · puedeBorrar(id)    — TRUE si está en delete (o en array legacy).
+    //
+    //  Admin (rol='admin') tiene siempre TRUE en todas.
+    // ──────────────────────────────────────────────────────────
+
+    // Helper interno: extrae el shape de permisos del usuario actual.
+    // Devuelve siempre { read:Set, write:Set, delete:Set, todos:Set, esLegacy }.
+    function _normalizarPermisosUsuario(s) {
+        const out = { read: new Set(), write: new Set(), delete: new Set(), todos: new Set(), esLegacy: false };
+        if (!s) return out;
+        if (s.rol === 'admin') {
+            // Admin: marcamos todos los pageIds disponibles en las 3 sets.
+            PERMISOS_DISPONIBLES.forEach(p => {
+                out.read.add(p.id);
+                out.write.add(p.id);
+                out.delete.add(p.id);
+                out.todos.add(p.id);
+            });
+            return out;
+        }
+        const p = s.permisos;
+        if (Array.isArray(p)) {
+            // Shape legacy: cada id en el array = acceso completo (r+w+d).
+            out.esLegacy = true;
+            p.forEach(id => {
+                const sId = String(id);
+                out.read.add(sId);
+                out.write.add(sId);
+                out.delete.add(sId);
+                out.todos.add(sId);
+            });
+        } else if (p && typeof p === 'object') {
+            // Shape granular nuevo.
+            (p.read   || []).forEach(id => { out.read.add(String(id));   out.todos.add(String(id)); });
+            (p.write  || []).forEach(id => { out.write.add(String(id));  out.todos.add(String(id)); });
+            (p.delete || []).forEach(id => { out.delete.add(String(id)); out.todos.add(String(id)); });
+        }
+        return out;
+    }
+
     function getPermisos() {
         const s = getSession();
         if (!s) return [];
-        if (s.rol === 'admin') return PERMISOS_DISPONIBLES.map(p => p.id);
-        return Array.isArray(s.permisos) ? s.permisos : [];
+        return [...(_normalizarPermisosUsuario(s).todos)];
     }
 
-    // Check rápido: ¿el usuario tiene permiso para esta página?
     function tienePermiso(pageId) {
         if (!pageId) return false;
         const s = getSession();
         if (!s) return false;
-        if (s.rol === 'admin') return true;            // admin ve todo
-        const permisos = Array.isArray(s.permisos) ? s.permisos : [];
-        return permisos.includes(pageId);
+        if (s.rol === 'admin') return true;
+        return _normalizarPermisosUsuario(s).todos.has(String(pageId));
+    }
+
+    function puedeLeer(pageId) {
+        if (!pageId) return false;
+        const s = getSession();
+        if (!s) return false;
+        if (s.rol === 'admin') return true;
+        return _normalizarPermisosUsuario(s).read.has(String(pageId));
+    }
+
+    function puedeEscribir(pageId) {
+        if (!pageId) return false;
+        const s = getSession();
+        if (!s) return false;
+        if (s.rol === 'admin') return true;
+        return _normalizarPermisosUsuario(s).write.has(String(pageId));
+    }
+
+    function puedeBorrar(pageId) {
+        if (!pageId) return false;
+        const s = getSession();
+        if (!s) return false;
+        if (s.rol === 'admin') return true;
+        return _normalizarPermisosUsuario(s).delete.has(String(pageId));
     }
 
     // ¿Es admin?
@@ -355,7 +435,8 @@
             nombre:   s.nombre || s.user || '',
             email:    s.email || '',
             rol:      s.rol || 'user',
-            permisos: Array.isArray(s.permisos) ? s.permisos : []
+            // permisos en su shape original (array legacy u objeto granular)
+            permisos: s.permisos
         };
     }
 
@@ -1228,6 +1309,9 @@
         requireAuth,
         getPermisos,
         tienePermiso,
+        puedeLeer,
+        puedeEscribir,
+        puedeBorrar,
         esAdmin,
         getUsuario,
         getAuthHeaders,

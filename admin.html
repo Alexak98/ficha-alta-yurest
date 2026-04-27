@@ -108,6 +108,10 @@
             border:1px solid #e2e8f0;
         }
         .u-chip.admin { background:#ede9fe;color:#6d28d9;border-color:#ddd6fe }
+        .u-chip-flags {
+            margin-left:4px;font-family:var(--font-mono);font-size:9.5px;
+            font-weight:800;color:#fc5858;letter-spacing:.05em;
+        }
         .u-actions { display:flex;gap:6px;justify-content:flex-end }
         .u-icon-btn {
             width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
@@ -169,6 +173,48 @@
         }
         .perm-chip input { accent-color:#fc5858;margin-right:2px }
         .perm-chip.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
+
+        /* Tabla granular de permisos: cada página → 3 columnas L/E/B.
+           Layout grid para alinear las cabeceras con sus checkboxes. */
+        .perm-table {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;
+            overflow:hidden;
+        }
+        .perm-table-head, .perm-row {
+            display:grid;
+            grid-template-columns: 1fr 32px 32px 32px;
+            align-items:center;
+            padding:6px 12px;
+        }
+        .perm-table-head {
+            background:#f1f5f9;
+            border-bottom:1.5px solid #e2e8f0;
+        }
+        .perm-table-head .perm-th-name {
+            font-size:10px;font-weight:800;color:#64748b;
+            text-transform:uppercase;letter-spacing:.06em;
+        }
+        .perm-table-head .perm-th-flag {
+            font-size:11px;font-weight:800;color:#475569;
+            text-align:center;cursor:help;
+        }
+        .perm-row {
+            border-bottom:1px solid #f1f5f9;
+            transition:background .12s;
+        }
+        .perm-row:last-child { border-bottom:0 }
+        .perm-row:hover { background:#fafbff }
+        .perm-row-name {
+            font-size:13px;color:#1e293b;font-weight:500;
+        }
+        .perm-flag {
+            display:flex;align-items:center;justify-content:center;
+            cursor:pointer;
+        }
+        .perm-flag input {
+            width:16px;height:16px;
+            accent-color:#fc5858;cursor:pointer;
+        }
 
         /* Spinner */
         @keyframes a-spin { from { transform:rotate(0) } to { transform:rotate(360deg) } }
@@ -397,10 +443,21 @@
         PERMS.forEach(p => { permsMap[p.id] = p.label; });
 
         document.getElementById('users-tbody').innerHTML = usuarios.map(u => {
+            // permisos puede ser array legacy u objeto granular {read,write,delete}.
+            // Para los chips del listado, mostramos cada página con un sufijo
+            // que indica los niveles concedidos: por ejemplo "Clientes · LEB".
+            // Admin = todos los niveles.
+            const norm = _normalizarPermisosUsuario(u.permisos);
+            const todasIds = new Set([...norm.read, ...norm.write, ...norm.delete]);
             const chips = u.rol === 'admin'
                 ? '<span class="u-chip admin">Todos (admin)</span>'
-                : (Array.isArray(u.permisos) && u.permisos.length
-                    ? u.permisos.map(id => `<span class="u-chip">${esc(permsMap[id] || id)}</span>`).join('')
+                : (todasIds.size
+                    ? [...todasIds].map(id => {
+                        const flags = (norm.read.has(id)   ? 'L' : '·') +
+                                      (norm.write.has(id)  ? 'E' : '·') +
+                                      (norm.delete.has(id) ? 'B' : '·');
+                        return `<span class="u-chip" title="L=Lectura · E=Escritura · B=Borrado">${esc(permsMap[id] || id)} <span class="u-chip-flags">${flags}</span></span>`;
+                      }).join('')
                     : '<span style="color:#94a3b8;font-size:11px;font-style:italic">Sin acceso</span>');
 
             return `
@@ -438,6 +495,10 @@
     // ─────────────────────────────────────────────────────────────────────
     //  Editor modal
     // ─────────────────────────────────────────────────────────────────────
+    // Render granular: por cada página, tres checkboxes (R / E / B).
+    // - Marcar E o B implica R automáticamente al guardar (no se puede
+    //   editar/borrar sin poder ver).
+    // - permisosActivos es { read:Set, write:Set, delete:Set }.
     function renderPermisos(permisosActivos) {
         const porGrupo = {};
         PERMS.forEach(p => {
@@ -447,19 +508,65 @@
         return Object.entries(porGrupo).map(([grupo, items]) => `
             <div class="perm-grupo">
                 <div class="perm-grupo-label">${esc(grupo)}</div>
-                <div class="perm-grupo-items">
+                <div class="perm-table">
+                    <div class="perm-table-head">
+                        <span class="perm-th-name">Página</span>
+                        <span class="perm-th-flag" title="Lectura">L</span>
+                        <span class="perm-th-flag" title="Escritura">E</span>
+                        <span class="perm-th-flag" title="Borrado">B</span>
+                    </div>
                     ${items.map(p => {
-                        const on = permisosActivos.has(p.id);
+                        const r = permisosActivos.read.has(p.id);
+                        const w = permisosActivos.write.has(p.id);
+                        const d = permisosActivos.delete.has(p.id);
                         return `
-                            <label class="perm-chip ${on ? 'active' : ''}">
-                                <input type="checkbox" value="${esc(p.id)}" ${on ? 'checked' : ''}
-                                       onchange="this.parentNode.classList.toggle('active', this.checked)">
-                                ${esc(p.label)}
-                            </label>`;
+                            <div class="perm-row" data-page="${esc(p.id)}">
+                                <span class="perm-row-name">${esc(p.label)}</span>
+                                <label class="perm-flag" title="Lectura"><input type="checkbox" data-perm="read"   value="${esc(p.id)}" ${r ? 'checked' : ''}></label>
+                                <label class="perm-flag" title="Escritura"><input type="checkbox" data-perm="write" value="${esc(p.id)}" ${w ? 'checked' : ''}></label>
+                                <label class="perm-flag" title="Borrado"><input type="checkbox" data-perm="delete" value="${esc(p.id)}" ${d ? 'checked' : ''}></label>
+                            </div>`;
                     }).join('')}
                 </div>
             </div>
         `).join('');
+    }
+
+    // Convierte el shape almacenado en BD (array legacy u objeto granular)
+    // a { read:Set, write:Set, delete:Set } para alimentar renderPermisos.
+    function _normalizarPermisosUsuario(p) {
+        const out = { read: new Set(), write: new Set(), delete: new Set() };
+        if (!p) return out;
+        if (Array.isArray(p)) {
+            // Legacy: cada id implica acceso completo (r+w+d).
+            p.forEach(id => {
+                out.read.add(String(id));
+                out.write.add(String(id));
+                out.delete.add(String(id));
+            });
+        } else if (typeof p === 'object') {
+            (p.read   || []).forEach(id => out.read.add(String(id)));
+            (p.write  || []).forEach(id => out.write.add(String(id)));
+            (p.delete || []).forEach(id => out.delete.add(String(id)));
+        }
+        return out;
+    }
+
+    // Lee los checkboxes del editor y construye el objeto granular.
+    // Si el usuario marcó E o B, garantizamos R también (no tiene
+    // sentido editar/borrar sin poder ver).
+    function _leerPermisosEditor() {
+        const out = { read: [], write: [], delete: [] };
+        document.querySelectorAll('#f-permisos .perm-row').forEach(row => {
+            const id = row.dataset.page;
+            const r = row.querySelector('input[data-perm="read"]').checked;
+            const w = row.querySelector('input[data-perm="write"]').checked;
+            const d = row.querySelector('input[data-perm="delete"]').checked;
+            if (r || w || d) out.read.push(id);   // implícito si tiene algún acceso
+            if (w) out.write.push(id);
+            if (d) out.delete.push(id);
+        });
+        return out;
     }
 
     function abrirEditor(id) {
@@ -481,8 +588,8 @@
             ? 'Nueva contraseña'
             : 'Contraseña (mínimo 8 caracteres)';
 
-        // Permisos
-        const permisosActivos = new Set(u ? (u.permisos || []) : []);
+        // Permisos: shape granular { read, write, delete }
+        const permisosActivos = _normalizarPermisosUsuario(u ? u.permisos : null);
         document.getElementById('f-permisos').innerHTML = renderPermisos(permisosActivos);
 
         document.getElementById('modal-editor').classList.add('open');
@@ -508,7 +615,9 @@
         const rol      = document.getElementById('f-rol').value;
         const password = document.getElementById('f-password').value;
         const activo   = document.getElementById('f-activo').checked;
-        const permisos = [...document.querySelectorAll('#f-permisos input:checked')].map(cb => cb.value);
+        // Construye el shape granular { read, write, delete } a partir
+        // de los checkboxes R/E/B del editor.
+        const permisos = _leerPermisosEditor();
 
         // Validación
         if (!editandoId) {

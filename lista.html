@@ -1512,6 +1512,16 @@
         const tableContainer = document.getElementById('table-container');
         const emptyState     = document.getElementById('empty-state');
         const paginacionEl   = document.getElementById('paginacion');
+        // Permisos granulares: admin siempre los ve; user con sólo `read`
+        // en `lista` no ve Editar/Eliminar. Los chequeos están en
+        // YurestConfig.puedeEscribir / puedeBorrar (back-compat con shape
+        // legacy: array → acceso completo).
+        const _puedeEditar = YurestConfig.puedeEscribir
+            ? YurestConfig.puedeEscribir('lista')
+            : true;
+        const _puedeBorrar = YurestConfig.puedeBorrar
+            ? YurestConfig.puedeBorrar('lista')
+            : true;
 
         // Solo mostrar fichas rellenadas (o sin estado, por compatibilidad)
         const fichasRellenadas = fichas.filter(f => {
@@ -1551,8 +1561,8 @@
                 <td class="td-center">${estadoBadge(f)}</td>
                 <td class="td-actions">
                     <button class="btn-ver" onclick="event.stopPropagation();abrirDrive(${idx})" title="Abrir carpeta de Drive">📁 Drive</button>
-                    <button class="btn-edit" onclick="event.stopPropagation();editarFicha(${idx})">Editar</button>
-                    <button class="btn-del"  onclick="event.stopPropagation();eliminarFicha(${idx})">Eliminar</button>
+                    ${_puedeEditar ? `<button class="btn-edit" onclick="event.stopPropagation();editarFicha(${idx})">Editar</button>` : ''}
+                    ${_puedeBorrar ? `<button class="btn-del"  onclick="event.stopPropagation();eliminarFicha(${idx})">Eliminar</button>` : ''}
                 </td>
             </tr>`;
         }).join('');
