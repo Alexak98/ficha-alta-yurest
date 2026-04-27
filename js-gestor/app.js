@@ -1830,7 +1830,7 @@ function _hwRenderLista(proyecto) {
                     <div>
                         <p class="hw-pedido-cliente">Pedido del ${fmt(p.solicitado_at)}</p>
                         ${p.implementador ? `<div class="hw-pedido-sub">Solicitó: ${escapeHtml(p.implementador)}</div>` : ''}
-                        <div style="font-size:.66rem;color:#94a3b8;font-family:monospace;margin-top:3px">#${escapeHtml(String(p.id || '').slice(0,8))}</div>
+                        <div style="font-size:.66rem;color:#94a3b8;font-family:var(--font-mono);margin-top:3px">#${escapeHtml(String(p.id || '').slice(0,8))}</div>
                         ${fechasLine}
                     </div>
                     <span class="hw-pedido-estado ${info.cls}">${escapeHtml(info.lbl)}</span>

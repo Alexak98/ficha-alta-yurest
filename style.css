@@ -2,15 +2,80 @@
 @import url('fonts.css');
 
 :root {
+    /* Color */
     --primary: #fc5858;
     --primary-dark: #e03030;
     --bg: #f8f8f8;
     --text: #1e293b;
-    --text-muted: #64748b;
+    --text-muted: #5a6b7e;          /* contraste WCAG AAA sobre #fff */
     --border: #e8e8e8;
     --white: #ffffff;
-    --shadow: 0 4px 20px rgba(252,88,88,0.07), 0 1px 4px rgba(0,0,0,0.05);
-    --radius: 14px;
+
+    /* Tipografía — la fuente corporativa Bw Modelica se carga en
+       fonts.css, que `style.css` importa al inicio. Aquí sólo
+       referenciamos. */
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* Radios — usar siempre via var(--radius-*) para mantener consistencia */
+    --radius-sm:   6px;
+    --radius-md:  10px;
+    --radius-lg:  14px;
+    --radius-xl:  18px;
+    --radius-pill: 999px;
+
+    /* Sombras — jerarquía estricta: sm = subtle/borders, md = cards,
+       lg = popovers/dropdowns, xl = modales/overlays */
+    --shadow-sm: 0 1px 2px rgba(15,23,42,0.05);
+    --shadow-md: 0 4px 12px rgba(15,23,42,0.08);
+    --shadow-lg: 0 10px 25px rgba(15,23,42,0.12);
+    --shadow-xl: 0 25px 60px rgba(15,23,42,0.20);
+    --shadow-primary: 0 4px 14px rgba(252,88,88,0.30);
+
+    /* Spacing */
+    --gap-xs:   4px;
+    --gap-sm:   8px;
+    --gap-md:  12px;
+    --gap-lg:  18px;
+    --gap-xl:  24px;
+    --gap-2xl: 32px;
+
+    /* Badges (usadas en sidebar, home, hardware, escalados) — un único
+       par de colores para "pendiente" / "informativo". Evita las 3
+       paletas distintas que había. */
+    --badge-bg:   #fef3c7;
+    --badge-text: #92400e;
+    /* Variante "atención" (estado naranja saturado, p. ej. notificaciones
+       sin leer en sidebar) */
+    --badge-attn-bg:   #fb923c;
+    --badge-attn-text: #ffffff;
+
+    /* Focus ring — accesibilidad. Lo aplica :focus-visible global más abajo. */
+    --focus-ring: 0 0 0 3px rgba(252,88,88,0.32);
+
+    /* Legacy aliases — para no romper código que usaba var(--radius) y
+       var(--shadow). Apuntan al token estándar. */
+    --radius: var(--radius-lg);
+    --shadow: var(--shadow-md);
+}
+
+/* Accesibilidad: estado de foco visible y consistente para teclado.
+   `:focus-visible` solo aparece cuando el usuario navega con teclado,
+   no con click — por lo que no contamina la UI de mouse. */
+*:focus { outline: none; }
+*:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+.tipo-btn:focus-visible,
+.pack-btn:focus-visible,
+.yn-btn:focus-visible,
+.pct-btn:focus-visible {
+    box-shadow: var(--focus-ring);
+    outline-offset: 1px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

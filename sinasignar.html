@@ -552,7 +552,7 @@
                 ? `<strong>${escapeHtml(jpDisplay)}</strong>${f.jpRol ? ` <span style="color:#64748b">· ${escapeHtml(f.jpRol)}</span>` : ''}`
                 : '<em style="color:#64748b">Sin nombre registrado</em>';
             const mailHtml = jpMail
-                ? `<div style="margin-top:2px;font-family:monospace;font-size:0.8rem;color:#475569">${escapeHtml(jpMail)}</div>`
+                ? `<div style="margin-top:2px;font-family: var(--font-mono);font-size:0.8rem;color:#475569">${escapeHtml(jpMail)}</div>`
                 : '';
             const aviso = jpMail
                 ? `<div style="margin-top:6px;font-size:0.75rem;color:#0891b2">Se añadirá automáticamente como participante del proyecto</div>`

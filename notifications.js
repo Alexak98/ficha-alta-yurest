@@ -215,7 +215,8 @@
                 line-height: 18px;
                 text-align: center;
                 box-shadow: 0 0 0 2px #fff;
-                font-family: 'Inter', -apple-system, sans-serif;
+                /* Fuente corporativa Bw Modelica */
+                font-family: 'Bw Modelica', system-ui, -apple-system, sans-serif;
             }
             .notif-popover {
                 position: absolute;

@@ -221,7 +221,7 @@
         .td-denom { font-weight: 600; color: #1e293b; }
         .td-comercial { color: #64748b; }
         .td-fecha { color: #94a3b8; font-size: 0.8rem; white-space: nowrap; }
-        .td-cif { font-family: monospace; font-size: 0.83rem; color: #64748b; }
+        .td-cif { font-family: var(--font-mono); font-size: 0.83rem; color: #64748b; }
         .td-center { text-align: center; }
 
         .mod-badge {
@@ -376,7 +376,7 @@
             gap: 10px;
         }
         .error-banner code {
-            font-family: monospace;
+            font-family: var(--font-mono);
             background: #fee2e2;
             padding: 2px 6px;
             border-radius: 4px;
@@ -510,7 +510,7 @@
             line-height: 1.4;
         }
         .pf span.vacio { color: #cbd5e1; font-style: italic; font-size: 0.82rem; }
-        .pf .mono { font-family: monospace; font-size: 0.83rem; }
+        .pf .mono { font-family: var(--font-mono); font-size: 0.83rem; }
 
         .modulos-tags {
             display: flex;
@@ -575,7 +575,7 @@
         }
         .cred-icon { font-size: 0.8rem; flex-shrink: 0; }
         .cred-value {
-            font-family: 'Courier New', monospace; font-size: 0.82rem;
+            font-family: var(--font-mono); font-size: 0.82rem;
             color: #334155; font-weight: 600; flex: 1;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
@@ -1190,7 +1190,7 @@
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
             <label style="display:flex;align-items:center;gap:8px;font-size:0.86rem;color:#334155;cursor:pointer;">
                 <input type="radio" name="reenvio_dest" value="mismo" checked onchange="toggleReenvioInput(false)">
-                <span>Mismo email<br><span id="reenvio-email-label" style="font-family:monospace;font-size:0.8rem;color:#64748b"></span></span>
+                <span>Mismo email<br><span id="reenvio-email-label" style="font-family: var(--font-mono);font-size:0.8rem;color:#64748b"></span></span>
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:0.86rem;color:#334155;cursor:pointer;">
                 <input type="radio" name="reenvio_dest" value="otro" onchange="toggleReenvioInput(true)">

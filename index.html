@@ -912,8 +912,8 @@
                 <div><strong style="color:#64748b">Referencia</strong><br><span id="sepa-d-ref">—</span></div>
                 <div><strong style="color:#64748b">Tipo de pago</strong><br><span id="sepa-d-tipo">—</span></div>
                 <div><strong style="color:#64748b">Titular</strong><br><span id="sepa-d-titular">—</span></div>
-                <div><strong style="color:#64748b">IBAN</strong><br><span id="sepa-d-iban" style="font-family:monospace">—</span></div>
-                <div><strong style="color:#64748b">SWIFT BIC</strong><br><span id="sepa-d-swift" style="font-family:monospace">—</span></div>
+                <div><strong style="color:#64748b">IBAN</strong><br><span id="sepa-d-iban" style="font-family: var(--font-mono)">—</span></div>
+                <div><strong style="color:#64748b">SWIFT BIC</strong><br><span id="sepa-d-swift" style="font-family: var(--font-mono)">—</span></div>
                 <div><strong style="color:#64748b">Fecha · Localidad</strong><br><span id="sepa-d-fecha">—</span></div>
                 <div style="grid-column:1/-1"><strong style="color:#64748b">Dirección del deudor</strong><br><span id="sepa-d-direccion">—</span></div>
             </div>
@@ -2401,12 +2401,12 @@
                 <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;background:#fff">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
                         <strong style="color:#1e3a8a;font-size:.9rem">Sociedad #${i + 1} — ${esc(d.nombre || 'Sin nombre')}</strong>
-                        <span style="font-family:monospace;font-size:.72rem;color:#64748b">${esc(s.referencia || '—')}</span>
+                        <span style="font-family: var(--font-mono);font-size:.72rem;color:#64748b">${esc(s.referencia || '—')}</span>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px 14px;font-size:.82rem;color:#1e293b">
                         <div><strong style="color:#64748b">Tipo</strong><br>${esc(tipo)}</div>
-                        <div><strong style="color:#64748b">IBAN</strong><br><span style="font-family:monospace">${esc(ibanFmt)}</span></div>
-                        <div><strong style="color:#64748b">SWIFT</strong><br><span style="font-family:monospace">${esc(s.swift || '—')}</span></div>
+                        <div><strong style="color:#64748b">IBAN</strong><br><span style="font-family: var(--font-mono)">${esc(ibanFmt)}</span></div>
+                        <div><strong style="color:#64748b">SWIFT</strong><br><span style="font-family: var(--font-mono)">${esc(s.swift || '—')}</span></div>
                         <div><strong style="color:#64748b">Fecha · Localidad</strong><br>${esc([s.fecha_firma, s.localidad].filter(Boolean).join(' · ') || '—')}</div>
                         <div style="grid-column:1/-1"><strong style="color:#64748b">Dirección</strong><br>${esc(dirCompleta || '—')}</div>
                     </div>
@@ -2426,8 +2426,8 @@
                 <div><strong style="color:#64748b">Referencia</strong><br><span id="sepa-d-ref">—</span></div>
                 <div><strong style="color:#64748b">Tipo de pago</strong><br><span id="sepa-d-tipo">—</span></div>
                 <div><strong style="color:#64748b">Titular</strong><br><span id="sepa-d-titular">—</span></div>
-                <div><strong style="color:#64748b">IBAN</strong><br><span id="sepa-d-iban" style="font-family:monospace">—</span></div>
-                <div><strong style="color:#64748b">SWIFT BIC</strong><br><span id="sepa-d-swift" style="font-family:monospace">—</span></div>
+                <div><strong style="color:#64748b">IBAN</strong><br><span id="sepa-d-iban" style="font-family: var(--font-mono)">—</span></div>
+                <div><strong style="color:#64748b">SWIFT BIC</strong><br><span id="sepa-d-swift" style="font-family: var(--font-mono)">—</span></div>
                 <div><strong style="color:#64748b">Fecha · Localidad</strong><br><span id="sepa-d-fecha">—</span></div>
                 <div style="grid-column:1/-1"><strong style="color:#64748b">Dirección del deudor</strong><br><span id="sepa-d-direccion">—</span></div>
             </div>

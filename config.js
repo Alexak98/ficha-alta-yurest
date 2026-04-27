@@ -382,7 +382,10 @@
             'display:none', 'align-items:center', 'gap:8px',
             'padding:8px 14px', 'border-radius:999px',
             'background:rgba(15,23,42,.92)', 'color:#fff',
-            'font:600 12px system-ui,-apple-system,Segoe UI,Roboto,sans-serif',
+            // Fuente corporativa Bw Modelica (cargada vía fonts.css/style.css);
+            // si por algún motivo no estuviera disponible, los fallbacks system
+            // mantienen legibilidad sin romper layout.
+            "font:600 12px 'Bw Modelica', system-ui, -apple-system, sans-serif",
             'letter-spacing:.02em',
             'box-shadow:0 6px 18px rgba(15,23,42,.18)',
             'pointer-events:none', 'transition:opacity .18s'
