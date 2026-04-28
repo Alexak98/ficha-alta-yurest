@@ -448,15 +448,24 @@ function renderResumen(data) {
         renderBd('Por entorno', data.porEntorno, 'entorno') +
         renderBd('Por módulo',  data.porModulo,  'modulo');
 
-    // Resumen IA — markdown → HTML sanitizado por DOMPurify
-    const md = data.resumen_markdown || '*(sin resumen)*';
+    // Resumen IA — markdown → HTML sanitizado por DOMPurify.
+    // Si el backend nos devuelve algo que NO es string (regresión por
+    // cambio de versión del nodo OpenAI, p.ej.), serializamos por JSON
+    // antes de pasarlo a marked — así nunca pintamos "[object Object]".
+    let raw = data.resumen_markdown;
+    if (raw == null) {
+        raw = '*(sin resumen)*';
+    } else if (typeof raw !== 'string') {
+        try { raw = '```json\n' + JSON.stringify(raw, null, 2).slice(0, 600) + '\n```'; }
+        catch (_) { raw = String(raw); }
+    }
     const aiBody = document.getElementById('rs-ai-body');
     try {
-        const html = marked.parse(md);
+        const html = marked.parse(raw);
         aiBody.innerHTML = DOMPurify.sanitize(html);
     } catch (_) {
         // Fallback: pintar el markdown crudo con escape básico
-        aiBody.innerHTML = '<pre style="white-space:pre-wrap;font-family:inherit">' + esc(md) + '</pre>';
+        aiBody.innerHTML = '<pre style="white-space:pre-wrap;font-family:inherit">' + esc(raw) + '</pre>';
     }
 
     // Lista de tickets (colapsada por defecto)
