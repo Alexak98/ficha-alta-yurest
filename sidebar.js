@@ -69,9 +69,10 @@
             // Si dos items consecutivos comparten subgrupo se renderizan
             // bajo una única cabecera.
             items: [
-                { id: 'ventas',          href: 'ventas.html',           label: 'Ventas',                   icon: 'ventas',          subgrupo: 'Comercial' },
-                { id: 'distribucion',    href: 'distribucion.html',     label: 'Implementadores',          icon: 'implementadores', subgrupo: 'Implementación' },
-                { id: 'informe_tickets', href: 'informe-tickets.html',  label: 'Mapa de calor de tickets', icon: 'informe_tickets', subgrupo: 'Soporte' }
+                { id: 'ventas',           href: 'ventas.html',          label: 'Ventas',                   icon: 'ventas',          subgrupo: 'Comercial' },
+                { id: 'distribucion',     href: 'distribucion.html',    label: 'Implementadores',          icon: 'implementadores', subgrupo: 'Implementación' },
+                { id: 'informe_tickets',  href: 'informe-tickets.html', label: 'Mapa de calor de tickets', icon: 'informe_tickets', subgrupo: 'Soporte' },
+                { id: 'resumen_semanal',  href: 'resumen-semanal.html', label: 'Resumen semanal',          icon: 'resumen_semanal', subgrupo: 'Soporte' }
             ]
         },
         {
@@ -129,7 +130,6 @@
                 { id: 'integraciones',     href: 'integraciones.html',  label: 'Integraciones',   icon: 'integraciones' },
                 { id: 'hardware',          href: 'hardware.html',       label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
                 { id: 'stock',             href: 'stock.html',          label: 'Stock',           icon: 'stock' },
-                { id: 'resumen_semanal',   href: 'resumen-semanal.html', label: 'Resumen semanal', icon: 'resumen_semanal' },
                 { id: 'churn_tecnico',     href: 'churn-tecnico.html',  label: 'Churn Técnico',   icon: 'churn_tecnico', public: true }
             ]
         },

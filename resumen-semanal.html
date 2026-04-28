@@ -237,10 +237,20 @@
             <button type="button" class="rs-preset active" data-preset="anterior" onclick="setPreset('anterior')">Semana pasada</button>
             <button type="button" class="rs-preset" data-preset="anteanterior" onclick="setPreset('anteanterior')">Hace 2 semanas</button>
         </div>
-        <button type="button" class="rs-btn" id="rs-generate" onclick="generar()">
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
-            Generar resumen
-        </button>
+        <div style="display:flex;gap:8px;align-items:center">
+            <button type="button" class="rs-btn" id="rs-generate" onclick="generar()">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+                Generar resumen
+            </button>
+            <!-- Botón "Regenerar": fuerza al backend a ignorar la fila cacheada
+                 en Supabase y volver a llamar a OpenAI. Sólo aparece habilitado
+                 cuando el resumen actual viene de caché. -->
+            <button type="button" class="rs-preset" id="rs-regen" onclick="generar(true)" disabled
+                    title="Vuelve a generar el resumen aunque haya uno guardado">
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><path d="M3 12a9 9 0 0 1 15.36-6.36L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.36 6.36L3 16"/><path d="M3 21v-5h5"/></svg>
+                Regenerar
+            </button>
+        </div>
     </div>
 
     <!-- Estados base: loading / error / empty / contenido -->
@@ -264,6 +274,10 @@
             <div class="rs-ai-head">
                 <span class="badge">IA</span>
                 <h2>Resumen ejecutivo</h2>
+                <!-- Meta de caché: aparece sólo cuando el backend nos
+                     devolvió un resumen ya guardado en Supabase. Indica
+                     cuándo se generó por última vez. -->
+                <span id="rs-cache-meta" style="display:none;margin-left:auto;font-size:.7rem;color:#94a3b8;align-self:center"></span>
             </div>
             <div class="rs-ai-body" id="rs-ai-body"></div>
         </div>
@@ -337,7 +351,7 @@ setPreset('anterior');
 
 let _cargaCtrl = null;
 
-async function generar() {
+async function generar(force) {
     const week = document.getElementById('rs-week').value;
     if (!week) {
         mostrarError('Selecciona una semana antes de generar el resumen.');
@@ -351,7 +365,9 @@ async function generar() {
     const signal = _cargaCtrl.signal;
 
     const btn = document.getElementById('rs-generate');
+    const btnRegen = document.getElementById('rs-regen');
     btn.disabled = true;
+    if (btnRegen) btnRegen.disabled = true;
 
     document.getElementById('rs-loading').style.display = 'block';
     document.getElementById('rs-error').style.display   = 'none';
@@ -361,6 +377,7 @@ async function generar() {
     try {
         const url = EP + (EP.includes('?') ? '&' : '?') +
             'week=' + encodeURIComponent(week) +
+            (force ? '&refresh=1' : '') +
             '&_='   + Date.now();
         const res = await YurestConfig.apiFetch(url, { method: 'GET', signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -398,6 +415,27 @@ function mostrarError(msg) {
 // ──────────────────────────────────────────────────────────
 
 function renderResumen(data) {
+    // Meta de caché: si el backend nos devuelve `cached:true` con
+    // `generado_en`, lo mostramos en pequeño junto a la cabecera del
+    // resumen y habilitamos el botón "Regenerar". En generaciones
+    // frescas, ocultamos el badge y deshabilitamos el botón (no tiene
+    // sentido regenerar algo que se acaba de regenerar).
+    const cacheMeta = document.getElementById('rs-cache-meta');
+    const btnRegen  = document.getElementById('rs-regen');
+    if (data.cached && data.generado_en) {
+        const fecha = new Date(data.generado_en);
+        const txt = isNaN(fecha.getTime())
+            ? '· Cacheado'
+            : '· Cacheado · ' + fecha.toLocaleString('es-ES', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        cacheMeta.textContent = txt;
+        cacheMeta.style.display = '';
+        if (btnRegen) btnRegen.disabled = false;
+    } else {
+        cacheMeta.textContent = '';
+        cacheMeta.style.display = 'none';
+        if (btnRegen) btnRegen.disabled = true;
+    }
+
     // KPIs cabecera
     const topTipo    = data.porTipo?.[0]    || { nombre: '—', count: 0 };
     const topEntorno = data.porEntorno?.[0] || { nombre: '—', count: 0 };
