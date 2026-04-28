@@ -400,10 +400,23 @@ async function generar(force) {
         }
         // El workflow incluye un objeto `_diag` con información sobre
         // por qué pasó por la rama hit/miss y si el UPSERT funcionó.
-        // Lo volcamos completo para depurar — el formato cambia entre
-        // hit (`{path, rows_found}`) y miss (`{path, motivo, upsert_*}`).
+        // Lo volcamos completo a consola y, si el upsert FALLÓ, lo
+        // mostramos como warning visible — así sabemos en plata por qué
+        // la siguiente lectura no encuentra cache.
         if (data && data._diag) {
-            console.info('[resumen-semanal] _diag:', data._diag);
+            console.info('[resumen-semanal v2] _diag:', JSON.stringify(data._diag));
+            const d = data._diag;
+            if (d.path === 'cache_miss' && d.upsert_ok === false) {
+                mostrarBannerCache(
+                    'No se pudo guardar el resumen en caché — la próxima lectura volverá a llamar a OpenAI.',
+                    d.upsert_error || '(sin detalle)'
+                );
+            } else if (d.path === 'cache_miss' && d.supabase_error) {
+                mostrarBannerCache(
+                    'Error al consultar la caché en Supabase.',
+                    d.supabase_error
+                );
+            }
         }
         if (!data.total || data.total === 0) {
             document.getElementById('rs-empty').style.display = 'block';
@@ -427,6 +440,27 @@ function mostrarError(msg) {
     const el = document.getElementById('rs-error');
     el.textContent = msg;
     el.style.display = 'block';
+}
+
+// Banner amarillo (warn) sobre la caché. No bloquea la UI — el resumen
+// principal sigue mostrándose, sólo avisa que la próxima lectura no
+// será instantánea porque no se ha persistido.
+function mostrarBannerCache(titulo, detalle) {
+    let el = document.getElementById('rs-cache-warn');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'rs-cache-warn';
+        el.style.cssText = 'background:#fef3c7;border:1.5px solid #fde68a;color:#92400e;'
+            + 'padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:.86rem;'
+            + 'display:flex;flex-direction:column;gap:4px';
+        // Insertamos antes del bloque de contenido, dentro de page-content.
+        const cont = document.getElementById('rs-content');
+        if (cont && cont.parentNode) cont.parentNode.insertBefore(el, cont);
+    }
+    el.innerHTML = '<strong>⚠️ Caché:</strong> ' + esc(titulo) +
+        '<code style="font-size:.78rem;background:rgba(0,0,0,.04);padding:4px 8px;'
+        + 'border-radius:6px;font-family:var(--font-mono)">' + esc(detalle) + '</code>';
+    el.style.display = 'flex';
 }
 
 // ──────────────────────────────────────────────────────────
