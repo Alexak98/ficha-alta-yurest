@@ -103,8 +103,13 @@ body {
     top: 0;
     z-index: 50;
 }
+/* Logo en la esquina superior izquierda: oculto a propósito.
+   La marca solo aparece dentro del sidebar (ver sidebar.js → .sidebar-brand-logo).
+   Si en el futuro queremos volver a mostrarlo en la cabecera, basta con
+   cambiar `display:none` por `height:32px`. */
 .page-header img,
-.page-header img.brand-logo { height: 32px; }
+.page-header img.brand-logo { display: none; }
+.home-brand img { display: none; }
 .page-header h1 {
     font-size: 1.1rem;
     font-weight: 800;

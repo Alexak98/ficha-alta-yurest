@@ -273,6 +273,12 @@
         const st = document.createElement('style');
         st.id = 'yurest-sidebar-extra-style';
         st.textContent = `
+            /* Logo dentro del sidebar — sustituye al texto+dot que había
+               antes. Tamaño contenido para que no se coma el botón cerrar.
+               El alto compensa los 24-26px del botón de cerrar al lado. */
+            .sidebar-brand-logo {
+                height: 26px; width: auto; display: block;
+            }
             .sidebar-subgroup-label {
                 margin: 8px 18px 2px 30px;
                 padding: 0;
@@ -311,8 +317,9 @@
         const html = `
             <div class="sidebar-hd">
                 <div class="sidebar-brand">
-                    <span class="sidebar-brand-dot"></span>
-                    Yurest
+                    <img class="sidebar-brand-logo"
+                         src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png"
+                         alt="Yurest">
                 </div>
                 <button class="sidebar-close" onclick="closeSidebar()" aria-label="Cerrar menú">✕</button>
             </div>
