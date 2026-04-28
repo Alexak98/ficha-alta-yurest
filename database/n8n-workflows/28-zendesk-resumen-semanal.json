@@ -28,7 +28,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/resumenes_semanales?fecha_desde=eq.{{ $json.fecha_desde }}&select=*",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/resumenes_semanales?semana=eq.{{ $json.semana }}&select=*",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "options": {
@@ -183,7 +183,7 @@
     },
     {
       "parameters": {
-        "content": "## Resumen semanal de incidencias — versión simplificada\n\n**Endpoint:** `GET /webhook/zendesk/resumen-semanal?week=YYYY-Www`\n\nFlow:\n\n1. **Validar rango** calcula `fecha_desde` (lunes ISO) y `fecha_hasta` (domingo).\n2. **Consultar Supabase**: GET `?fecha_desde=eq.{{ fecha_desde }}` contra `resumenes_semanales`.\n3. **¿Existe en Supabase?** (IF v2.2): condición `Array.isArray($json) ? $json.length : 0 > 0`.\n   - **TRUE** → Format desde Supabase → Respond.\n   - **FALSE** → Get tickets → Preparar prompt → OpenAI → Formatear → Respond.\n\nEl workflow ya **NO** escribe a Supabase. Si quieres pre-poblar el caché, hazlo desde otro sitio (script manual o un job aparte).",
+        "content": "## Resumen semanal de incidencias — versión simplificada\n\n**Endpoint:** `GET /webhook/zendesk/resumen-semanal?week=YYYY-Www`\n\nFlow:\n\n1. **Validar rango** calcula `semana` (número ISO 1-53), `fecha_desde` y `fecha_hasta`.\n2. **Consultar Supabase**: GET `?semana=eq.{{ semana }}` contra `resumenes_semanales`.\n3. **¿Existe en Supabase?** (IF v2.2): condición `Array.isArray($json) ? $json.length : 0 > 0`.\n   - **TRUE** → Format desde Supabase → Respond.\n   - **FALSE** → Get tickets → Preparar prompt → OpenAI → Formatear → Respond.\n\nEl workflow ya **NO** escribe a Supabase. Si quieres pre-poblar el caché, hazlo desde otro sitio (script manual o un job aparte).",
         "height": 280,
         "width": 480
       },
