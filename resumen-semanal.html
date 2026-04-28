@@ -233,8 +233,8 @@
             <input type="week" id="rs-week" onchange="setPreset(null)" />
         </div>
         <div class="rs-presets" role="group" aria-label="Atajos de semana">
-            <button type="button" class="rs-preset" data-preset="actual"   onclick="setPreset('actual')">Esta semana</button>
-            <button type="button" class="rs-preset active" data-preset="anterior" onclick="setPreset('anterior')">Semana pasada</button>
+            <button type="button" class="rs-preset active" data-preset="actual"   onclick="setPreset('actual')">Esta semana</button>
+            <button type="button" class="rs-preset" data-preset="anterior" onclick="setPreset('anterior')">Semana pasada</button>
             <button type="button" class="rs-preset" data-preset="anteanterior" onclick="setPreset('anteanterior')">Hace 2 semanas</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -352,15 +352,14 @@ window.setPreset = setPreset;
 // los chips activos pero antes no generaba — ahora lo encadenamos.
 document.getElementById('rs-week').addEventListener('change', () => generar());
 
-// Carga inicial: por defecto entramos en "semana pasada" y la pintamos
-// directamente. Es la vista que más se consulta (semana cerrada,
-// resultados estables) y, gracias al cache, suele venir instantánea.
-setPreset('anterior');
-
 // ──────────────────────────────────────────────────────────
 //  Generar resumen
 // ──────────────────────────────────────────────────────────
-
+// `_cargaCtrl` se DECLARA antes que la primera llamada a setPreset()
+// para evitar el ReferenceError "Cannot access '_cargaCtrl' before
+// initialization" que dispara la temporal dead zone de `let` cuando
+// la primera generación ocurre en carga inicial. Al estar arriba ya
+// no hay TDZ que romper.
 let _cargaCtrl = null;
 
 async function generar(force) {
@@ -435,6 +434,12 @@ async function generar(force) {
     }
 }
 window.generar = generar;
+
+// Carga inicial: entramos por defecto en "Esta semana" y disparamos la
+// generación. Lo hacemos AQUÍ (al final del setup) para que la TDZ del
+// `let _cargaCtrl` ya esté resuelta y el call no rompa con
+// "Cannot access '_cargaCtrl' before initialization".
+setPreset('actual');
 
 function mostrarError(msg) {
     const el = document.getElementById('rs-error');
