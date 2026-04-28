@@ -48,7 +48,9 @@
         // Escalados → escalera ascendente (upsell / ampliación contractual)
         escalados:     '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 20 8 20 8 14 13 14 13 8 18 8 18 4 21 4"/><polyline points="15 4 21 4 21 10"/></svg>',
         // Kanban CS → tres columnas verticales (tablero kanban)
-        cs_kanban:     '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="11" rx="1"/><rect x="17" y="3" width="4" height="14" rx="1"/></svg>'
+        cs_kanban:     '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="11" rx="1"/><rect x="17" y="3" width="4" height="14" rx="1"/></svg>',
+        // Resumen semanal → bocadillo de chat (resumen IA)
+        resumen_semanal: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>'
     };
 
     // Estructura del menú. Cada item tiene:
@@ -124,10 +126,11 @@
             label: 'Soporte',
             icon: 'soporte',
             items: [
-                { id: 'integraciones',  href: 'integraciones.html',  label: 'Integraciones',   icon: 'integraciones' },
-                { id: 'hardware',       href: 'hardware.html',       label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
-                { id: 'stock',          href: 'stock.html',          label: 'Stock',           icon: 'stock' },
-                { id: 'churn_tecnico',  href: 'churn-tecnico.html',  label: 'Churn Técnico',   icon: 'churn_tecnico', public: true }
+                { id: 'integraciones',     href: 'integraciones.html',  label: 'Integraciones',   icon: 'integraciones' },
+                { id: 'hardware',          href: 'hardware.html',       label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
+                { id: 'stock',             href: 'stock.html',          label: 'Stock',           icon: 'stock' },
+                { id: 'resumen_semanal',   href: 'resumen-semanal.html', label: 'Resumen semanal', icon: 'resumen_semanal' },
+                { id: 'churn_tecnico',     href: 'churn-tecnico.html',  label: 'Churn Técnico',   icon: 'churn_tecnico', public: true }
             ]
         },
         {

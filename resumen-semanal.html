@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Resumen semanal de incidencias — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('resumen_semanal');</script>
+    <link rel="stylesheet" href="style.css">
+    <!-- marked + DOMPurify para renderizar el markdown que devuelve GPT
+         de forma segura (DOMPurify quita cualquier <script> o on*=). -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    <style>
+        body { background:#f8fafc; }
+
+        .page-content { padding:24px;max-width:1100px;margin:0 auto }
+
+        .rs-toolbar {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            padding:18px 22px;margin-bottom:18px;
+            display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:end;
+        }
+        @media (max-width:760px) {
+            .rs-toolbar { grid-template-columns:1fr;gap:12px }
+        }
+        .rs-field label {
+            display:block;font-size:.66rem;font-weight:800;color:#64748b;
+            letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;
+        }
+        .rs-field input[type="week"] {
+            padding:8px 12px;font-family:inherit;font-size:.86rem;color:#1e293b;
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;
+            min-width:200px;
+        }
+        .rs-field input[type="week"]:focus { outline:none;border-color:#fc5858 }
+
+        .rs-presets { display:flex;gap:6px;flex-wrap:wrap }
+        .rs-preset {
+            padding:6px 12px;font-family:inherit;font-size:.78rem;font-weight:600;
+            border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;
+            color:#475569;cursor:pointer;transition:all .12s;
+        }
+        .rs-preset:hover { border-color:#cbd5e1;color:#0f172a }
+        .rs-preset.active { background:#fff1f1;border-color:#fc5858;color:#fc5858 }
+
+        .rs-btn {
+            padding:9px 18px;font-family:inherit;font-size:.86rem;font-weight:700;
+            border-radius:10px;border:none;cursor:pointer;
+            background:linear-gradient(135deg,#fc5858,#e84848);color:#fff;
+            box-shadow:0 4px 14px rgba(252,88,88,.30);
+            transition:transform .12s, box-shadow .12s;
+            display:inline-flex;align-items:center;gap:8px;
+        }
+        .rs-btn:hover:not(:disabled) {
+            transform:translateY(-1px);box-shadow:0 6px 18px rgba(252,88,88,.40);
+        }
+        .rs-btn:disabled { opacity:.55;cursor:not-allowed }
+
+        /* KPIs */
+        .rs-kpis {
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+            gap:10px;margin-bottom:18px;
+        }
+        .rs-kpi {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            padding:14px 18px;
+        }
+        .rs-kpi-label {
+            font-size:.66rem;font-weight:800;letter-spacing:.08em;
+            text-transform:uppercase;color:#94a3b8;margin-bottom:6px;
+        }
+        .rs-kpi-value {
+            font-size:1.8rem;font-weight:800;color:#0f172a;line-height:1;
+            font-variant-numeric:tabular-nums;
+        }
+        .rs-kpi-sub { font-size:.74rem;color:#64748b;margin-top:4px }
+
+        /* Breakdown bars */
+        .rs-breakdowns {
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+            gap:14px;margin-bottom:18px;
+        }
+        .rs-bd {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            padding:14px 18px;
+        }
+        .rs-bd-title {
+            font-size:.7rem;font-weight:800;letter-spacing:.08em;
+            text-transform:uppercase;color:#64748b;margin-bottom:10px;
+            display:flex;align-items:center;gap:8px;
+        }
+        .rs-bd-row {
+            display:flex;align-items:center;gap:10px;font-size:.85rem;
+            padding:5px 0;
+        }
+        .rs-bd-name {
+            flex-shrink:0;min-width:110px;color:#1e293b;font-weight:600;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .rs-bd-bar {
+            flex:1;height:6px;background:#f1f5f9;border-radius:999px;overflow:hidden;
+        }
+        .rs-bd-fill {
+            height:100%;background:linear-gradient(90deg,#fc5858,#e84848);
+            border-radius:999px;transition:width .4s;
+        }
+        .rs-bd-fill.tipo    { background:linear-gradient(90deg,#a855f7,#7c3aed) }
+        .rs-bd-fill.entorno { background:linear-gradient(90deg,#3b82f6,#1d4ed8) }
+        .rs-bd-fill.modulo  { background:linear-gradient(90deg,#ec4899,#be185d) }
+        .rs-bd-count {
+            flex-shrink:0;min-width:34px;text-align:right;
+            font-variant-numeric:tabular-nums;color:#64748b;font-weight:700;font-size:.78rem;
+        }
+
+        /* Resumen IA */
+        .rs-ai {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;
+            padding:24px 28px;margin-bottom:18px;
+        }
+        .rs-ai-head {
+            display:flex;align-items:center;gap:10px;margin-bottom:12px;
+            padding-bottom:12px;border-bottom:1.5px solid #f1f5f9;
+        }
+        .rs-ai-head .badge {
+            background:linear-gradient(135deg,#fc5858,#e84848);color:#fff;
+            font-size:.62rem;font-weight:800;letter-spacing:.08em;
+            text-transform:uppercase;padding:3px 9px;border-radius:999px;
+        }
+        .rs-ai-head h2 { font-size:1.05rem;font-weight:800;color:#0f172a;margin:0 }
+        .rs-ai-body { font-size:.92rem;color:#1e293b;line-height:1.6 }
+        .rs-ai-body h3 {
+            font-size:1rem;font-weight:800;color:#0f172a;
+            margin:18px 0 8px;
+        }
+        .rs-ai-body h3:first-child { margin-top:0 }
+        .rs-ai-body ul, .rs-ai-body ol { padding-left:22px;margin:6px 0 12px }
+        .rs-ai-body li { margin:3px 0 }
+        .rs-ai-body strong { color:#0f172a;font-weight:700 }
+        .rs-ai-body p { margin:6px 0 }
+        .rs-ai-body code {
+            background:#f1f5f9;padding:1px 6px;border-radius:4px;
+            font-family:var(--font-mono);font-size:.84em;
+        }
+
+        /* Lista de tickets (colapsable) */
+        .rs-tickets {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;
+            overflow:hidden;
+        }
+        .rs-tickets-head {
+            display:flex;align-items:center;justify-content:space-between;
+            padding:14px 22px;cursor:pointer;user-select:none;
+            transition:background .12s;
+        }
+        .rs-tickets-head:hover { background:#fafbff }
+        .rs-tickets-head h2 {
+            font-size:.92rem;font-weight:800;color:#0f172a;margin:0;
+            display:flex;align-items:center;gap:10px;
+        }
+        .rs-tickets-head .count {
+            background:#fff1f1;color:#fc5858;font-size:.7rem;font-weight:800;
+            padding:2px 10px;border-radius:999px;
+        }
+        .rs-chevron { color:#94a3b8;transition:transform .2s;flex-shrink:0 }
+        .rs-tickets.open .rs-chevron { transform:rotate(90deg) }
+        .rs-tickets-body {
+            max-height:0;overflow:hidden;transition:max-height .25s ease;
+            border-top:1.5px solid #f1f5f9;
+        }
+        .rs-tickets.open .rs-tickets-body { max-height:1200px;overflow-y:auto }
+        .rs-row {
+            padding:11px 22px;border-bottom:1px solid #f1f5f9;
+            display:flex;flex-direction:column;gap:4px;
+        }
+        .rs-row:last-child { border-bottom:0 }
+        .rs-row-head {
+            display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+        }
+        .rs-row-id {
+            font-family:var(--font-mono);font-size:.78rem;font-weight:700;color:#fc5858;
+        }
+        .rs-row-when {
+            font-size:.72rem;color:#94a3b8;font-variant-numeric:tabular-nums;
+        }
+        .rs-row-subject { font-size:.86rem;color:#0f172a;font-weight:500;line-height:1.35 }
+        .rs-row-chips { display:flex;flex-wrap:wrap;gap:6px;margin-top:3px }
+        .rs-chip {
+            font-size:.62rem;font-weight:800;letter-spacing:.04em;
+            text-transform:uppercase;padding:2px 8px;border-radius:999px;
+            border:1px solid transparent;white-space:nowrap;
+        }
+        .rs-chip.tipo    { background:#ede9fe;color:#5b21b6;border-color:#ddd6fe }
+        .rs-chip.entorno { background:#dbeafe;color:#1e40af;border-color:#bfdbfe }
+        .rs-chip.modulo  { background:#fce7f3;color:#9d174d;border-color:#fbcfe8 }
+
+        /* Estados */
+        .rs-loading, .rs-error, .rs-empty {
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;
+            padding:48px 24px;text-align:center;color:#64748b;
+        }
+        .rs-loading .spinner {
+            display:inline-block;width:32px;height:32px;
+            border:3px solid #e2e8f0;border-top-color:#fc5858;border-radius:50%;
+            animation:spin .9s linear infinite;
+        }
+        .rs-loading p { margin-top:14px;font-size:.9rem;color:#475569 }
+        .rs-loading .hint { font-size:.78rem;color:#94a3b8;margin-top:4px }
+        @keyframes spin { to { transform:rotate(360deg) } }
+        .rs-error { color:#b91c1c;border-color:#fecaca;background:#fef2f2 }
+    </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar"></nav>
+
+<header class="page-header">
+    <button class="btn-menu" onclick="openSidebar()" title="Menú" aria-label="Abrir menú lateral">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+    <h1>Resumen semanal de incidencias</h1>
+</header>
+
+<div class="page-content">
+
+    <!-- Toolbar: selector de semana + presets + botón generar -->
+    <div class="rs-toolbar">
+        <div class="rs-field">
+            <label for="rs-week">Semana</label>
+            <input type="week" id="rs-week" onchange="setPreset(null)" />
+        </div>
+        <div class="rs-presets" role="group" aria-label="Atajos de semana">
+            <button type="button" class="rs-preset" data-preset="actual"   onclick="setPreset('actual')">Esta semana</button>
+            <button type="button" class="rs-preset active" data-preset="anterior" onclick="setPreset('anterior')">Semana pasada</button>
+            <button type="button" class="rs-preset" data-preset="anteanterior" onclick="setPreset('anteanterior')">Hace 2 semanas</button>
+        </div>
+        <button type="button" class="rs-btn" id="rs-generate" onclick="generar()">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+            Generar resumen
+        </button>
+    </div>
+
+    <!-- Estados base: loading / error / empty / contenido -->
+    <div id="rs-loading" class="rs-loading" style="display:none">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Recopilando tickets de Zendesk y generando el resumen con IA…</p>
+        <p class="hint">Suele tardar entre 10 y 30 segundos</p>
+    </div>
+    <div id="rs-error" class="rs-error" style="display:none"></div>
+    <div id="rs-empty" class="rs-empty" style="display:none">
+        <p>No hay incidencias en la semana seleccionada.</p>
+    </div>
+
+    <div id="rs-content" style="display:none">
+        <!-- KPIs -->
+        <div class="rs-kpis" id="rs-kpis"></div>
+        <!-- Breakdowns por tipo / entorno / módulo -->
+        <div class="rs-breakdowns" id="rs-breakdowns"></div>
+        <!-- Resumen ejecutivo IA (markdown renderizado) -->
+        <div class="rs-ai">
+            <div class="rs-ai-head">
+                <span class="badge">IA</span>
+                <h2>Resumen ejecutivo</h2>
+            </div>
+            <div class="rs-ai-body" id="rs-ai-body"></div>
+        </div>
+        <!-- Lista expandible de tickets -->
+        <div class="rs-tickets" id="rs-tickets-block">
+            <div class="rs-tickets-head" onclick="document.getElementById('rs-tickets-block').classList.toggle('open')">
+                <h2>
+                    Tickets de la semana
+                    <span class="count" id="rs-tickets-count">0</span>
+                </h2>
+                <svg class="rs-chevron" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div class="rs-tickets-body" id="rs-tickets-body"></div>
+        </div>
+    </div>
+
+</div>
+
+<script src="sidebar.js"></script>
+<script>YurestSidebar.render('resumen_semanal');</script>
+
+<script>
+'use strict';
+
+const EP = YurestConfig.ENDPOINTS.zendeskResumenSemanal;
+const esc = YurestConfig.escHtml;
+
+function openSidebar()  { document.getElementById('sidebar').classList.add('open');  document.getElementById('sidebar-overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+window.openSidebar = openSidebar; window.closeSidebar = closeSidebar;
+
+// ──────────────────────────────────────────────────────────
+//  Cálculo de semanas ISO (lunes a domingo)
+// ──────────────────────────────────────────────────────────
+
+function lunesDeSemana(d) {
+    const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const dow = x.getUTCDay() || 7;
+    if (dow !== 1) x.setUTCDate(x.getUTCDate() - (dow - 1));
+    return x;
+}
+// Devuelve "YYYY-Www" con padding (formato del input type="week")
+function isoWeekString(d) {
+    const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const dow = x.getUTCDay() || 7;
+    x.setUTCDate(x.getUTCDate() + 4 - dow);
+    const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((x - yearStart) / 86400000) + 1) / 7);
+    return x.getUTCFullYear() + '-W' + String(week).padStart(2, '0');
+}
+
+function setPreset(preset) {
+    const inp = document.getElementById('rs-week');
+    document.querySelectorAll('.rs-preset').forEach(b => b.classList.remove('active'));
+    if (!preset) return;  // selección manual del input — quita activos
+    document.querySelector(`.rs-preset[data-preset="${preset}"]`)?.classList.add('active');
+    const ahora = new Date();
+    let target = new Date(ahora);
+    if (preset === 'anterior')      target.setUTCDate(ahora.getUTCDate() - 7);
+    if (preset === 'anteanterior')  target.setUTCDate(ahora.getUTCDate() - 14);
+    inp.value = isoWeekString(target);
+}
+window.setPreset = setPreset;
+
+// Inicial: semana pasada
+setPreset('anterior');
+
+// ──────────────────────────────────────────────────────────
+//  Generar resumen
+// ──────────────────────────────────────────────────────────
+
+let _cargaCtrl = null;
+
+async function generar() {
+    const week = document.getElementById('rs-week').value;
+    if (!week) {
+        mostrarError('Selecciona una semana antes de generar el resumen.');
+        return;
+    }
+
+    // Cancela cualquier petición previa: el usuario puede volver a
+    // pulsar "Generar" antes de que termine la anterior.
+    if (_cargaCtrl) _cargaCtrl.abort();
+    _cargaCtrl = new AbortController();
+    const signal = _cargaCtrl.signal;
+
+    const btn = document.getElementById('rs-generate');
+    btn.disabled = true;
+
+    document.getElementById('rs-loading').style.display = 'block';
+    document.getElementById('rs-error').style.display   = 'none';
+    document.getElementById('rs-empty').style.display   = 'none';
+    document.getElementById('rs-content').style.display = 'none';
+
+    try {
+        const url = EP + (EP.includes('?') ? '&' : '?') +
+            'week=' + encodeURIComponent(week) +
+            '&_='   + Date.now();
+        const res = await YurestConfig.apiFetch(url, { method: 'GET', signal });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (data && data.success === false) {
+            const errs = Array.isArray(data.errores) ? data.errores.join('; ') : 'Error desconocido';
+            throw new Error(errs);
+        }
+        if (!data.total || data.total === 0) {
+            document.getElementById('rs-empty').style.display = 'block';
+            return;
+        }
+        renderResumen(data);
+    } catch (err) {
+        if (err && (err.name === 'AbortError' || signal.aborted)) return;
+        console.warn('[resumen-semanal]', err);
+        mostrarError('No se pudo generar el resumen: ' + (err.message || err));
+    } finally {
+        if (_cargaCtrl && _cargaCtrl.signal === signal) {
+            btn.disabled = false;
+            document.getElementById('rs-loading').style.display = 'none';
+        }
+    }
+}
+window.generar = generar;
+
+function mostrarError(msg) {
+    const el = document.getElementById('rs-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+// ──────────────────────────────────────────────────────────
+//  Render
+// ──────────────────────────────────────────────────────────
+
+function renderResumen(data) {
+    // KPIs cabecera
+    const topTipo    = data.porTipo?.[0]    || { nombre: '—', count: 0 };
+    const topEntorno = data.porEntorno?.[0] || { nombre: '—', count: 0 };
+    const topModulo  = data.porModulo?.[0]  || { nombre: '—', count: 0 };
+
+    document.getElementById('rs-kpis').innerHTML = `
+        <div class="rs-kpi">
+            <div class="rs-kpi-label">Tickets totales</div>
+            <div class="rs-kpi-value">${data.total}</div>
+            <div class="rs-kpi-sub">${esc(data.rango?.label || '')}</div>
+        </div>
+        <div class="rs-kpi">
+            <div class="rs-kpi-label">Tipo dominante</div>
+            <div class="rs-kpi-value" style="font-size:1.2rem">${esc(topTipo.nombre)}</div>
+            <div class="rs-kpi-sub">${topTipo.count} ticket${topTipo.count === 1 ? '' : 's'}</div>
+        </div>
+        <div class="rs-kpi">
+            <div class="rs-kpi-label">Entorno top</div>
+            <div class="rs-kpi-value" style="font-size:1.2rem">${esc(topEntorno.nombre)}</div>
+            <div class="rs-kpi-sub">${topEntorno.count} ticket${topEntorno.count === 1 ? '' : 's'}</div>
+        </div>
+        <div class="rs-kpi">
+            <div class="rs-kpi-label">Módulo top</div>
+            <div class="rs-kpi-value" style="font-size:1.2rem">${esc(topModulo.nombre)}</div>
+            <div class="rs-kpi-sub">${topModulo.count} ticket${topModulo.count === 1 ? '' : 's'}</div>
+        </div>
+    `;
+
+    // Breakdowns: barras horizontales por categoría (top 6 cada una)
+    const renderBd = (titulo, arr, cls) => {
+        if (!arr || arr.length === 0) return '';
+        const max = Math.max(...arr.map(x => x.count));
+        const top = arr.slice(0, 6);
+        const rows = top.map(x => `
+            <div class="rs-bd-row">
+                <span class="rs-bd-name" title="${esc(x.nombre)}">${esc(x.nombre)}</span>
+                <span class="rs-bd-bar"><span class="rs-bd-fill ${cls}" style="width:${(x.count / max) * 100}%"></span></span>
+                <span class="rs-bd-count">${x.count}</span>
+            </div>`).join('');
+        return `
+            <div class="rs-bd">
+                <div class="rs-bd-title">${esc(titulo)} <span style="margin-left:auto;color:#94a3b8;font-weight:600">(top ${top.length})</span></div>
+                ${rows}
+            </div>`;
+    };
+    document.getElementById('rs-breakdowns').innerHTML =
+        renderBd('Por tipo',    data.porTipo,    'tipo') +
+        renderBd('Por entorno', data.porEntorno, 'entorno') +
+        renderBd('Por módulo',  data.porModulo,  'modulo');
+
+    // Resumen IA — markdown → HTML sanitizado por DOMPurify
+    const md = data.resumen_markdown || '*(sin resumen)*';
+    const aiBody = document.getElementById('rs-ai-body');
+    try {
+        const html = marked.parse(md);
+        aiBody.innerHTML = DOMPurify.sanitize(html);
+    } catch (_) {
+        // Fallback: pintar el markdown crudo con escape básico
+        aiBody.innerHTML = '<pre style="white-space:pre-wrap;font-family:inherit">' + esc(md) + '</pre>';
+    }
+
+    // Lista de tickets (colapsada por defecto)
+    const tickets = Array.isArray(data.tickets) ? data.tickets : [];
+    document.getElementById('rs-tickets-count').textContent = tickets.length;
+    const body = document.getElementById('rs-tickets-body');
+    if (tickets.length === 0) {
+        body.innerHTML = '<div style="padding:32px;text-align:center;color:#94a3b8">Sin tickets para listar</div>';
+    } else {
+        body.innerHTML = tickets.map(t => {
+            const id = t.id != null ? t.id : '—';
+            const subject = t.subject || '(sin título)';
+            const when = t.created_at
+                ? new Date(t.created_at).toLocaleString('es-ES', {
+                      day: '2-digit', month: 'short',
+                      hour: '2-digit', minute: '2-digit'
+                  })
+                : '';
+            const chips = [
+                t.tipo    && t.tipo    !== 'Sin tipo'    ? `<span class="rs-chip tipo">${esc(t.tipo)}</span>` : '',
+                t.entorno && t.entorno !== 'Sin entorno' ? `<span class="rs-chip entorno">${esc(t.entorno)}</span>` : '',
+                t.modulo  && t.modulo  !== 'Sin módulo'  ? `<span class="rs-chip modulo">${esc(t.modulo)}</span>` : ''
+            ].filter(Boolean).join('');
+            return `
+                <div class="rs-row">
+                    <div class="rs-row-head">
+                        <span class="rs-row-id">#${esc(String(id))}</span>
+                        <span class="rs-row-when">${esc(when)}</span>
+                    </div>
+                    <div class="rs-row-subject">${esc(subject)}</div>
+                    ${chips ? `<div class="rs-row-chips">${chips}</div>` : ''}
+                </div>`;
+        }).join('');
+    }
+
+    document.getElementById('rs-content').style.display = 'block';
+}
+
+</script>
+
+</body>
+</html>

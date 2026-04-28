@@ -123,7 +123,13 @@
         // …). Actualiza fichas_alta.cs_estado y registra en
         // cs_estado_historial. El listado de clientes con su cs_estado se
         // sirve desde el endpoint `altas` (workflow 04 ya devuelve la columna).
-        csEstado:             `${WEBHOOK_BASE}/cs-estado`
+        csEstado:             `${WEBHOOK_BASE}/cs-estado`,
+
+        // Resumen semanal de incidencias (Soporte): coge tickets Zendesk
+        // de la semana, los manda a ChatGPT con tipo/entorno/módulo y
+        // devuelve un resumen ejecutivo + top stats + lista bruta.
+        // Acepta `?week=actual|anterior` o `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
+        zendeskResumenSemanal: `${WEBHOOK_BASE}/zendesk/resumen-semanal`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
@@ -146,6 +152,7 @@
         { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
         { id: 'hardware',      label: 'Hardware envíos',      grupo: 'Soporte'          },
         { id: 'stock',         label: 'Stock hardware',       grupo: 'Soporte'          },
+        { id: 'resumen_semanal', label: 'Resumen semanal',    grupo: 'Soporte'          },
         { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
         { id: 'docs',          label: 'Documentación',        grupo: 'Otros'            }
     ];

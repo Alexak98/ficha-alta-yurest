@@ -1,0 +1,141 @@
+{
+  "name": "Yurest - Resumen semanal incidencias (Zendesk + GPT)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "zendesk/resumen-semanal",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-resumen-get",
+      "name": "Webhook GET resumen",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "zendesk-resumen-semanal-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Acepta dos formatos en la URL:\n//   ?from=YYYY-MM-DD&to=YYYY-MM-DD     (rango libre)\n//   ?week=YYYY-WW                      (semana ISO; lunes a domingo)\n//\n// Si no llega nada, default = última semana completa (lunes->domingo\n// que ya terminó). Devuelve { from, to, label } para usar más abajo.\nconst raw = $input.first().json || {};\nconst q = raw.query || raw.params || {};\n\nfunction parseISO(s) { const d = new Date(s + 'T00:00:00Z'); return isNaN(d.getTime()) ? null : d; }\nfunction iso(d) { return d.toISOString().slice(0, 10); }\n\nfunction lunesDeSemana(d) {\n  // d es Date UTC. ISO weeks empiezan en lunes.\n  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));\n  const dow = x.getUTCDay() || 7; // 1..7\n  if (dow !== 1) x.setUTCDate(x.getUTCDate() - (dow - 1));\n  return x;\n}\n\nfunction semanaISO(d) {\n  // Devuelve [year, week] ISO.\n  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));\n  const dow = x.getUTCDay() || 7;\n  x.setUTCDate(x.getUTCDate() + 4 - dow);\n  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));\n  const week = Math.ceil((((x - yearStart) / 86400000) + 1) / 7);\n  return [x.getUTCFullYear(), week];\n}\n\nlet from = null, to = null, label = '';\n\nif (q.week && /^\\d{4}-W?\\d{1,2}$/i.test(q.week)) {\n  // ISO YYYY-WW\n  const [y, w] = String(q.week).replace('W', '').split('-').map(Number);\n  // Cálculo del lunes de la semana w del año y\n  const enero4 = new Date(Date.UTC(y, 0, 4));\n  const lunesW1 = lunesDeSemana(enero4);\n  const lunes = new Date(lunesW1.getTime() + (w - 1) * 7 * 86400000);\n  const domingo = new Date(lunes.getTime() + 6 * 86400000);\n  from = iso(lunes); to = iso(domingo);\n  label = `Semana ${w} de ${y}`;\n} else if (q.from && q.to) {\n  const dF = parseISO(q.from), dT = parseISO(q.to);\n  if (!dF || !dT) throw new Error('from/to deben ser YYYY-MM-DD');\n  from = iso(dF); to = iso(dT);\n  label = `${from} → ${to}`;\n} else {\n  // Default: última semana ISO completa (la anterior a la actual)\n  const ahora = new Date();\n  const lunesActual = lunesDeSemana(ahora);\n  const lunesPasada = new Date(lunesActual.getTime() - 7 * 86400000);\n  const domingoPasada = new Date(lunesPasada.getTime() + 6 * 86400000);\n  from = iso(lunesPasada); to = iso(domingoPasada);\n  const [y, w] = semanaISO(lunesPasada);\n  label = `Semana ${w} de ${y}`;\n}\n\n// Construye la query Zendesk Search:\n//   created>=YYYY-MM-DD created<=YYYY-MM-DD type:ticket\nconst zendeskQuery = `type:ticket created>=${from} created<=${to}`;\n\nreturn [{ json: { from, to, label, zendeskQuery } }];"
+      },
+      "id": "code-validar-rango",
+      "name": "Validar rango",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "={{ $json.zendeskQuery }}"
+        }
+      },
+      "id": "zd-get-tickets",
+      "name": "Get many tickets",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [640, 300],
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recibe N tickets de Zendesk + el resultado de \"Validar rango\".\n// Saca tipo / entorno / módulo de los custom fields, agrupa para los\n// breakdowns de cabecera, y construye el prompt para GPT.\n\n// IDs reales en yurest.zendesk.com — mismo set que el workflow 25.\nconst CUSTOM_FIELD_IDS = {\n  tipo:    26672700540829,  // \"Tipo de ticket\"\n  entorno: 27376906089629,  // \"Entorno\"\n  modulo:  27243772817053   // \"Módulo\"\n};\n\nfunction extraerCustomField(t, id) {\n  if (id == null) return null;\n  const fuentes = [t.custom_fields, t.fields].filter(Array.isArray);\n  for (const arr of fuentes) {\n    const cf = arr.find(c => c && (c.id === id || String(c.id) === String(id)));\n    if (cf && cf.value != null && cf.value !== '') return cf.value;\n  }\n  return null;\n}\n\nconst rango = $('Validar rango').first().json;\nconst tickets = ($input.all() || []).map(it => it.json).filter(Boolean);\n\n// Normaliza cada ticket con los campos que vamos a usar.\nconst norm = tickets.map(t => ({\n  id:      t.id,\n  subject: t.subject || t.title || t.descripcion || '(sin título)',\n  status:  t.status || null,\n  created_at: t.created_at || t.createdAt || null,\n  tipo:    extraerCustomField(t, CUSTOM_FIELD_IDS.tipo)    || 'Sin tipo',\n  entorno: extraerCustomField(t, CUSTOM_FIELD_IDS.entorno) || 'Sin entorno',\n  modulo:  extraerCustomField(t, CUSTOM_FIELD_IDS.modulo)  || 'Sin módulo'\n}));\n\n// Breakdowns: cuenta por categoría y top-N.\nfunction cuenta(arr, key) {\n  const map = new Map();\n  for (const x of arr) {\n    const k = x[key];\n    map.set(k, (map.get(k) || 0) + 1);\n  }\n  return [...map.entries()]\n    .map(([nombre, count]) => ({ nombre, count }))\n    .sort((a, b) => b.count - a.count);\n}\nconst porTipo    = cuenta(norm, 'tipo');\nconst porEntorno = cuenta(norm, 'entorno');\nconst porModulo  = cuenta(norm, 'modulo');\n\n// Prompt para GPT — el cuerpo principal del informe va escrito por la\n// IA, los breakdowns numéricos los devuelve el workflow tal cual.\nfunction listaTickets() {\n  return norm.map((t, i) => `${i + 1}. [#${t.id}] [${t.tipo} · ${t.entorno} · ${t.modulo}] ${t.subject}`).join('\\n');\n}\nfunction listaBreakdown(arr) {\n  return arr.slice(0, 8).map(b => `  - ${b.nombre}: ${b.count}`).join('\\n');\n}\n\nconst superPrompt = `Eres un Senior Support Manager en Yurest, una plataforma SaaS de\\\ngestión integral para hostelería. Te pasamos los tickets recibidos\\\nesta semana con su Tipo, Entorno (Producción/Staging/etc), Módulo\\\nafectado y asunto. Tu trabajo es generar un informe ejecutivo breve\\\nque ayude al equipo de Producto y Soporte a saber dónde poner foco.\\n\\n\\\n## DATOS DEL PERIODO\\n\\\n- **Periodo**: ${rango.label} (${rango.from} → ${rango.to})\\n\\\n- **Tickets totales**: ${norm.length}\\n\\\n- **Por tipo**:\\n${listaBreakdown(porTipo)}\\n\\\n- **Por entorno**:\\n${listaBreakdown(porEntorno)}\\n\\\n- **Por módulo**:\\n${listaBreakdown(porModulo)}\\n\\n\\\n## LISTADO\\n\\\n${listaTickets()}\\n\\n\\\n## ESTRUCTURA DEL INFORME\\n\\\nResponde **en español** y en formato Markdown, siguiendo este esquema\\\nexacto:\\n\\n\\\n### 🩺 Diagnóstico de la semana\\n\\\nUn párrafo (3-5 líneas) con la lectura general — volumen vs semana\\\ntípica, qué destaca, salud global del producto.\\n\\n\\\n### 🔥 Temas calientes\\n\\\nLista de 3-5 patrones recurrentes detectados en los asuntos. Cada uno:\\\n**Negrita el tema**, una línea explicando, y entre paréntesis cuántos\\\ntickets aproximados lo tocan. Ejemplos: \"crashes al cerrar caja\",\\\n\"errores de sincronización con TPV X\", \"confusión con la nueva\\\nfunción Y\".\\n\\n\\\n### 🎯 Recomendaciones\\n\\\n2-3 acciones concretas:\\n\\\n- 🛠️ **Soporte**: qué responder/preparar para clientes recurrentes.\\n\\\n- 💻 **Producto**: qué bug arreglar o qué feature/UX revisar.\\n\\\n- 📚 **Documentación**: qué FAQ o guía actualizar.\\n\\n\\\n### 📊 Lectura rápida\\n\\\n- **Entorno con más tickets**: <nombre + count>.\\n\\\n- **Módulo con más tickets**: <nombre + count>.\\n\\\n- **Tipo dominante**: <nombre + count>.\\n\\n\\\n### Tono\\n\\\nClaro, ejecutivo, sin paja. Si hay menos de 5 tickets en total, di que\\\nes una semana tranquila y resume en 2-3 frases. Usa los emojis sólo\\\nen los headings.`;\n\n// Devolvemos un único item con todo lo que el resto del flujo necesita.\nreturn [{\n  json: {\n    prompt_final: superPrompt,\n    rango,\n    total: norm.length,\n    porTipo,\n    porEntorno,\n    porModulo,\n    tickets: norm\n  }\n}];"
+      },
+      "id": "code-prepare-prompt",
+      "name": "Preparar prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.prompt_final }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "openai-resumen",
+      "name": "Generar resumen",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [1060, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "w2doUpVdPofPaHNg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combina la respuesta de GPT con los datos estructurados que ya\n// teníamos del nodo \"Preparar prompt\". El front recibe el resumen\n// como markdown bruto + los breakdowns + la lista de tickets para\n// poder pintar todo sin recalcular.\n\nconst prep = $('Preparar prompt').first().json;\nconst aiResp = $input.first().json || {};\n\n// El nodo @n8n/n8n-nodes-langchain.openAi devuelve la respuesta de\n// formas distintas según versión. Probamos las dos más comunes y\n// caemos a un texto seguro si nada matcha.\nlet resumenMd = '';\nif (typeof aiResp === 'string') {\n  resumenMd = aiResp;\n} else if (aiResp.content) {\n  resumenMd = String(aiResp.content);\n} else if (aiResp.message?.content) {\n  resumenMd = String(aiResp.message.content);\n} else if (Array.isArray(aiResp.choices) && aiResp.choices[0]?.message?.content) {\n  resumenMd = String(aiResp.choices[0].message.content);\n} else if (aiResp.text) {\n  resumenMd = String(aiResp.text);\n} else if (aiResp.output) {\n  resumenMd = String(aiResp.output);\n} else {\n  // Último recurso: serializar todo y que lo vea el dev al menos\n  try { resumenMd = '⚠️ Respuesta inesperada de OpenAI:\\n```json\\n' + JSON.stringify(aiResp, null, 2).slice(0, 600) + '\\n```'; }\n  catch (_) { resumenMd = '(sin resumen)'; }\n}\n\n// GPT a veces devuelve el contenido envuelto en ```markdown … ```.\n// Lo limpiamos para que el front no pinte la valla del fence.\nresumenMd = resumenMd\n  .replace(/^```(?:markdown|md)?\\s*\\n?/i, '')\n  .replace(/\\n?```\\s*$/i, '')\n  .trim();\n\nreturn [{\n  json: {\n    success: true,\n    rango:   prep.rango,\n    total:   prep.total,\n    porTipo: prep.porTipo,\n    porEntorno: prep.porEntorno,\n    porModulo: prep.porModulo,\n    tickets: prep.tickets,\n    resumen_markdown: resumenMd\n  }\n}];"
+      },
+      "id": "code-format-result",
+      "name": "Formatear resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-resumen",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1480, 300]
+    }
+  ],
+  "connections": {
+    "Webhook GET resumen": { "main": [[{ "node": "Validar rango", "type": "main", "index": 0 }]] },
+    "Validar rango":       { "main": [[{ "node": "Get many tickets", "type": "main", "index": 0 }]] },
+    "Get many tickets":    { "main": [[{ "node": "Preparar prompt", "type": "main", "index": 0 }]] },
+    "Preparar prompt":     { "main": [[{ "node": "Generar resumen", "type": "main", "index": 0 }]] },
+    "Generar resumen":     { "main": [[{ "node": "Formatear resultado", "type": "main", "index": 0 }]] },
+    "Formatear resultado": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}
