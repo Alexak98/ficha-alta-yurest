@@ -339,10 +339,22 @@ function setPreset(preset) {
     if (preset === 'anterior')      target.setUTCDate(ahora.getUTCDate() - 7);
     if (preset === 'anteanterior')  target.setUTCDate(ahora.getUTCDate() - 14);
     inp.value = isoWeekString(target);
+    // Auto-generar al cambiar de semana — el usuario no debería tener
+    // que pulsar el botón "Generar" después de elegir un atajo. Si la
+    // semana ya está cacheada en Supabase, esto es prácticamente
+    // instantáneo (no llama a OpenAI).
+    generar();
 }
 window.setPreset = setPreset;
 
-// Inicial: semana pasada
+// Si el usuario cambia el input de semana a mano, lanzamos también la
+// generación. El handler `onchange="setPreset(null)"` del HTML quita
+// los chips activos pero antes no generaba — ahora lo encadenamos.
+document.getElementById('rs-week').addEventListener('change', () => generar());
+
+// Carga inicial: por defecto entramos en "semana pasada" y la pintamos
+// directamente. Es la vista que más se consulta (semana cerrada,
+// resultados estables) y, gracias al cache, suele venir instantánea.
 setPreset('anterior');
 
 // ──────────────────────────────────────────────────────────
