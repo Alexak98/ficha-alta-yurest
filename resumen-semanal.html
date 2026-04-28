@@ -400,12 +400,10 @@ async function generar(force) {
         }
         // El workflow incluye un objeto `_diag` con información sobre
         // por qué pasó por la rama hit/miss y si el UPSERT funcionó.
-        // Lo dejamos en consola para depurar (no contamina la UI).
+        // Lo volcamos completo para depurar — el formato cambia entre
+        // hit (`{path, rows_found}`) y miss (`{path, motivo, upsert_*}`).
         if (data && data._diag) {
-            const d = data._diag;
-            console.info('[resumen-semanal] cache:', d.path,
-                d.path === 'cache_miss' ? '· motivo=' + d.motivo : '',
-                d.upsert_ok === false ? '· upsert FALLÓ: ' + d.upsert_error : '');
+            console.info('[resumen-semanal] _diag:', data._diag);
         }
         if (!data.total || data.total === 0) {
             document.getElementById('rs-empty').style.display = 'block';
