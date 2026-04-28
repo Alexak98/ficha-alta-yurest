@@ -67,11 +67,12 @@
           "conditions": [
             {
               "id": "cond-existe",
-              "leftValue": "={{ Array.isArray($json) ? $json.length : 0 }}",
-              "rightValue": 0,
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
               "operator": {
-                "type": "number",
-                "operation": "gt"
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
               }
             }
           ]
