@@ -131,6 +131,12 @@
             font-weight:700;color:#475569;text-align:right;
             padding-right:8px;white-space:nowrap;
         }
+        /* Cabecera de día clicable: muestra TODOS los tickets de ese día */
+        .heatmap-table th.day.clickable {
+            cursor:pointer;text-decoration:underline dotted #cbd5e1 2px;
+            text-underline-offset:3px;transition:color .12s;
+        }
+        .heatmap-table th.day.clickable:hover { color:#fc5858 }
         .hm-cell {
             width:26px;height:26px;border-radius:5px;
             background:#f1f5f9;cursor:default;
@@ -138,12 +144,99 @@
             font-size:0.66rem;color:rgba(0,0,0,0.55);font-weight:600;
             transition:transform .12s, box-shadow .12s;
         }
+        .hm-cell.has-data { cursor:pointer }
         .hm-cell.has-data:hover {
             transform:scale(1.18);box-shadow:0 4px 12px rgba(15,23,42,0.18);
             z-index:2;position:relative;
         }
+        .hm-cell.has-data:focus-visible {
+            outline:2px solid #fc5858;outline-offset:2px;z-index:2;position:relative;
+        }
         /* Texto en cellas oscuras: blanco para contraste */
         .hm-cell.dark { color:rgba(255,255,255,0.92) }
+
+        .hm-hint {
+            font-size:.72rem;color:#94a3b8;margin-top:10px;font-style:italic;
+        }
+
+        /* ── Drawer lista de tickets ─────────────────────────────────── */
+        .tk-overlay {
+            position:fixed;inset:0;z-index:700;
+            background:rgba(15,23,42,.5);
+            opacity:0;pointer-events:none;
+            transition:opacity .2s;
+        }
+        .tk-overlay.open { opacity:1;pointer-events:all }
+        .tk-panel {
+            position:fixed;top:0;right:0;bottom:0;
+            width:min(480px, 100%);
+            background:#fff;z-index:701;
+            transform:translateX(100%);
+            transition:transform .26s cubic-bezier(.4,0,.2,1);
+            display:flex;flex-direction:column;
+            box-shadow:-4px 0 24px rgba(0,0,0,.10);
+        }
+        .tk-panel.open { transform:translateX(0) }
+        .tk-panel-head {
+            padding:18px 22px;
+            border-bottom:1.5px solid #e2e8f0;
+            display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+        }
+        .tk-panel-head h2 {
+            margin:0;font-size:16px;font-weight:800;color:#0f172a;
+        }
+        .tk-panel-head p {
+            margin:3px 0 0;font-size:12px;color:#64748b;
+        }
+        .tk-panel-close {
+            width:32px;height:32px;flex-shrink:0;
+            background:none;border:none;cursor:pointer;
+            color:#94a3b8;font-size:22px;border-radius:8px;
+            font-family:inherit;
+        }
+        .tk-panel-close:hover { background:#f1f5f9;color:#0f172a }
+        .tk-panel-body {
+            flex:1;overflow-y:auto;
+            padding:14px 18px 24px;
+        }
+        .tk-row {
+            display:flex;flex-direction:column;gap:4px;
+            padding:12px 14px;
+            border:1.5px solid #e2e8f0;border-radius:10px;
+            background:#fff;margin-bottom:8px;
+            text-decoration:none;color:inherit;
+            transition:border-color .12s, box-shadow .12s, transform .12s;
+        }
+        .tk-row:hover {
+            border-color:#fc5858;box-shadow:0 4px 14px rgba(252,88,88,.10);
+            transform:translateY(-1px);
+        }
+        .tk-row-head {
+            display:flex;align-items:baseline;gap:8px;justify-content:space-between;
+        }
+        .tk-row-id {
+            font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+            color:#fc5858;
+        }
+        .tk-row-when {
+            font-size:.72rem;color:#94a3b8;font-variant-numeric:tabular-nums;
+        }
+        .tk-row-subject {
+            font-size:.88rem;color:#0f172a;font-weight:500;line-height:1.35;
+        }
+        .tk-row-meta {
+            display:flex;gap:8px;font-size:.7rem;color:#64748b;
+            margin-top:2px;
+        }
+        .tk-row-status {
+            display:inline-block;font-size:.62rem;font-weight:800;
+            padding:2px 7px;border-radius:999px;
+            text-transform:uppercase;letter-spacing:.04em;
+            background:#f1f5f9;color:#475569;
+        }
+        .tk-empty {
+            text-align:center;padding:32px 18px;color:#94a3b8;font-size:.85rem;
+        }
 
         .legend {
             display:flex;align-items:center;gap:10px;margin-top:14px;
@@ -251,9 +344,23 @@
                     <span>Más</span>
                     <span id="legend-max" style="margin-left:auto;color:#475569;font-weight:600"></span>
                 </div>
+                <p class="hm-hint" id="hm-hint">Pulsa una celda para ver los tickets de ese día y hora. Pulsa la cabecera de un día para ver todos los del día.</p>
             </div>
         </div>
     </div>
+
+<!-- Drawer lateral: lista de tickets del bucket pulsado -->
+<div id="tk-overlay" class="tk-overlay" onclick="cerrarPanel()"></div>
+<aside id="tk-panel" class="tk-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tk-panel-title">
+    <div class="tk-panel-head">
+        <div>
+            <h2 id="tk-panel-title">Tickets</h2>
+            <p id="tk-panel-sub">—</p>
+        </div>
+        <button class="tk-panel-close" type="button" onclick="cerrarPanel()" aria-label="Cerrar panel">&times;</button>
+    </div>
+    <div class="tk-panel-body" id="tk-panel-body"></div>
+</aside>
 
 <script>
     const EP = YurestConfig.ENDPOINTS.zendeskTicketsHeatmap;
@@ -383,6 +490,48 @@
         return [dia, date.getHours()];
     }
 
+    // ──────────────────────────────────────────────────────────
+    //  Drill-down: lista de tickets cacheada en memoria
+    // ──────────────────────────────────────────────────────────
+    // Se rellena en cada `cargar()` si el endpoint envía la lista bruta
+    // (`data.tickets[]`). Cuando viene un formato pre-agregado sin
+    // tickets, queda en [] y los handlers de click son no-op.
+    let _tickets = [];
+
+    // Extrae la lista de tickets del payload, normalizando los campos
+    // (id, subject, day, hour, created_at). Devuelve [] si el formato
+    // no la incluye.
+    function recopilarTickets(data) {
+        const out = [];
+        const fuente = Array.isArray(data?.tickets) ? data.tickets
+                     : Array.isArray(data) ? data
+                     : Array.isArray(data?.data) ? data.data : null;
+        if (!fuente) return out;
+        for (const t of fuente) {
+            if (!t) continue;
+            const ts = t.created_at || t.createdAt || t.created || t.fecha;
+            // El workflow ya nos manda day/hour calculados en TZ Madrid.
+            // Si no vienen (formato crudo), los calculamos local.
+            let day  = (typeof t.day  === 'number') ? t.day  : null;
+            let hour = (typeof t.hour === 'number') ? t.hour : null;
+            if ((day == null || hour == null) && ts) {
+                const dt = new Date(ts);
+                if (!isNaN(dt.getTime())) {
+                    [day, hour] = bucketFor(dt);
+                }
+            }
+            if (day == null || hour == null) continue;
+            out.push({
+                id:      t.id != null ? t.id : t.ticket_id,
+                subject: t.subject || t.title || t.descripcion || '(sin título)',
+                status:  t.status  || null,
+                created_at: ts || null,
+                day, hour
+            });
+        }
+        return out;
+    }
+
     function colorPara(count, max) {
         if (!count) return null;
         if (max <= 0) return HM_COLORS[0];
@@ -436,6 +585,11 @@
             //  · Array de tickets con created_at (fechamos cada uno).
             //  · { matrix: [[7][24]] } o { buckets: [{day,hour,count}] } pre-agregado.
             const matrix = construirMatriz(data);
+            // Para el drill-down (click en celda/día) guardamos la lista
+            // de tickets si el endpoint la devolvió. Si no llegó (workflow
+            // viejo), simplemente no se podrá pulsar — el front detecta
+            // que _tickets es [] y no monta los handlers.
+            _tickets = recopilarTickets(data);
             renderHeatmap(matrix, from, to);
         } catch (err) {
             // Aborts: el usuario disparó otra carga; ignoramos sin ruido.
@@ -537,11 +691,20 @@
         `;
 
         // Tabla
+        // Sólo activamos drill-down si tenemos la lista bruta (el workflow
+        // nuevo la envía como `data.tickets`). Workflows antiguos siguen
+        // funcionando — el heatmap se ve igual pero sin clicks.
+        const hayDrillDown = _tickets.length > 0;
+        const dayClass = hayDrillDown ? 'day clickable' : 'day';
+
         let html = '<thead><tr><th></th>';
         for (let h = 0; h < 24; h++) html += `<th class="hour">${h}</th>`;
         html += '</tr></thead><tbody>';
         for (let d = 0; d < 7; d++) {
-            html += `<tr><th class="day">${DIAS[d]}</th>`;
+            const thAttrs = hayDrillDown
+                ? ` tabindex="0" role="button" onclick="abrirPanelDia(${d})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirPanelDia(${d})}"`
+                : '';
+            html += `<tr><th class="${dayClass}"${thAttrs}>${DIAS[d]}</th>`;
             for (let h = 0; h < 24; h++) {
                 const c   = matrix[d][h];
                 const bg  = colorPara(c, max);
@@ -553,12 +716,21 @@
                 const style = bg ? `background:${bg}` : '';
                 const tip = `${DIAS[d]} ${String(h).padStart(2, '0')}:00 · ${c} ticket${c === 1 ? '' : 's'}`;
                 const txt = c >= 1 ? c : '';
-                html += `<td><div class="${cls}" style="${style}" title="${tip}">${txt}</div></td>`;
+                // Activamos click + foco por teclado sólo en celdas con datos
+                // y cuando hay lista de tickets disponible. Sin ambas, queda
+                // como un cuadradito decorativo.
+                const cellAttrs = (c >= 1 && hayDrillDown)
+                    ? ` tabindex="0" role="button" aria-label="${tip} — ver tickets" onclick="abrirPanelCelda(${d},${h})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirPanelCelda(${d},${h})}"`
+                    : '';
+                html += `<td><div class="${cls}" style="${style}" title="${tip}"${cellAttrs}>${txt}</div></td>`;
             }
             html += '</tr>';
         }
         html += '</tbody>';
         document.getElementById('hm-table').innerHTML = html;
+        // Si no hay drill-down, ocultamos la pista de "Pulsa una celda…".
+        const hint = document.getElementById('hm-hint');
+        if (hint) hint.style.display = hayDrillDown ? '' : 'none';
 
         // Leyenda
         document.getElementById('legend-bar').innerHTML =
@@ -577,6 +749,99 @@
         document.getElementById('hm-empty').style.display   = 'none';
         document.getElementById('summary').style.display    = 'none';
     }
+
+    // ──────────────────────────────────────────────────────────
+    //  Drawer: lista de tickets de un bucket
+    // ──────────────────────────────────────────────────────────
+
+    // Abre el drawer con los tickets del bucket (día d, hora h).
+    function abrirPanelCelda(d, h) {
+        const filtrados = _tickets
+            .filter(t => t.day === d && t.hour === h)
+            .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+        const titulo = `${DIAS[d]} · ${String(h).padStart(2, '0')}:00`;
+        const sub = `${filtrados.length} ticket${filtrados.length === 1 ? '' : 's'} en esa franja`;
+        _renderPanel(titulo, sub, filtrados);
+    }
+    window.abrirPanelCelda = abrirPanelCelda;
+
+    // Abre el drawer con todos los tickets del día (cualquier hora).
+    function abrirPanelDia(d) {
+        const DIAS_LARGOS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+        const filtrados = _tickets
+            .filter(t => t.day === d)
+            .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+        const titulo = `${DIAS_LARGOS[d]} (todo el día)`;
+        const sub = `${filtrados.length} ticket${filtrados.length === 1 ? '' : 's'}`;
+        _renderPanel(titulo, sub, filtrados);
+    }
+    window.abrirPanelDia = abrirPanelDia;
+
+    function _renderPanel(titulo, sub, tickets) {
+        const overlay = document.getElementById('tk-overlay');
+        const panel   = document.getElementById('tk-panel');
+        const titleEl = document.getElementById('tk-panel-title');
+        const subEl   = document.getElementById('tk-panel-sub');
+        const body    = document.getElementById('tk-panel-body');
+
+        titleEl.textContent = titulo;
+        subEl.textContent   = sub;
+
+        if (!tickets.length) {
+            body.innerHTML = '<div class="tk-empty">No hay tickets en este filtro.</div>';
+        } else {
+            const esc = YurestConfig.escHtml;
+            body.innerHTML = tickets.map(t => {
+                const id = t.id != null ? t.id : '—';
+                const subject = t.subject || '(sin título)';
+                const when = t.created_at
+                    ? new Date(t.created_at).toLocaleString('es-ES', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                      })
+                    : '';
+                const status = t.status
+                    ? `<span class="tk-row-status">${esc(t.status)}</span>`
+                    : '';
+                // Si en el futuro tenemos URL base de Zendesk en config,
+                // este contenedor pasaría a ser <a href="..."> y abriría
+                // el ticket directamente. Por ahora div no-link.
+                return `
+                    <div class="tk-row">
+                        <div class="tk-row-head">
+                            <span class="tk-row-id">#${esc(String(id))}</span>
+                            <span class="tk-row-when">${esc(when)}</span>
+                        </div>
+                        <div class="tk-row-subject">${esc(subject)}</div>
+                        ${status ? `<div class="tk-row-meta">${status}</div>` : ''}
+                    </div>`;
+            }).join('');
+        }
+
+        overlay.classList.add('open');
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        // a11y: foco al título cuando se abre, devuélvelo al cerrar.
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('tk-overlay', 'tk-panel');
+    }
+
+    function cerrarPanel() {
+        const overlay = document.getElementById('tk-overlay');
+        const panel   = document.getElementById('tk-panel');
+        overlay.classList.remove('open');
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('tk-overlay');
+    }
+    window.cerrarPanel = cerrarPanel;
+
+    // Cerrar con Escape — el helper a11yAbrirModal añade trap pero no
+    // Escape; ese listener lo gestionamos aquí.
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && document.getElementById('tk-panel').classList.contains('open')) {
+            cerrarPanel();
+        }
+    });
 
     // Carga inicial
     cargar();
