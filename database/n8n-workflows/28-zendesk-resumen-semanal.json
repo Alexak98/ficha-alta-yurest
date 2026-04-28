@@ -56,23 +56,54 @@
     },
     {
       "parameters": {
-        "jsCode": "// Filtro RAMA \"CACHE HIT\":\n// Emite UN item con el resumen cacheado si y sólo si:\n//   1. La consulta a Supabase devolvió fila para (anio, semana).\n//   2. El usuario NO forzó refresh con ?refresh=1.\n// En cualquier otro caso devuelve [] (la rama muere).\n//\n// La rama paralela \"Cache miss\" hace lo opuesto.\nconst meta = $('Validar rango').first().json;\nif (meta.forceRefresh) return [];\n\nconst raw = $input.first().json;\n// PostgREST devuelve un array directo cuando neverError + fullResponse=false.\n// Tolerante a wrappers (raw.data) y a respuestas de error (objeto con\n// {code,message,details,hint}) — esos los tratamos como miss.\nlet rows = [];\nif (Array.isArray(raw)) rows = raw;\nelse if (raw && Array.isArray(raw.data)) rows = raw.data;\nelse if (raw && typeof raw === 'object' && raw.code && raw.message) rows = [];\nif (rows.length === 0) return [];\n\n// Helper: PostgREST devuelve JSONB como objeto/array nativo, pero por\n// defensa parseamos si llega como string (ocurre con algunos clientes\n// que no respetan Accept: application/json).\nfunction parseArr(v) {\n  if (Array.isArray(v)) return v;\n  if (typeof v === 'string') {\n    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }\n  }\n  return [];\n}\n\nconst c = rows[0];\nreturn [{ json: {\n  cached: true,\n  rango: { from: c.fecha_desde, to: c.fecha_hasta, label: meta.label },\n  anio:    meta.anio,\n  semana:  meta.semana,\n  total:   c.total_tickets || 0,\n  porTipo:    parseArr(c.por_tipo),\n  porEntorno: parseArr(c.por_entorno),\n  porModulo:  parseArr(c.por_modulo),\n  tickets:    parseArr(c.tickets),\n  resumen_markdown: c.resumen_markdown || '',\n  modelo:     c.modelo || null,\n  generado_en:    c.created_at,\n  actualizado_en: c.updated_at,\n  success: true,\n  _diag: { path: 'cache_hit', rows_found: rows.length }\n} }];"
+        "jsCode": "// Mira lo que respondió Supabase y aplana en un único booleano\n// `hasCache` para que el siguiente nodo (IF) tenga una decisión\n// trivial. PostgREST con neverError + fullResponse=false devuelve:\n//   - array (vacío o no) cuando todo va bien\n//   - objeto {code,message,details,hint} si hubo error\n// En ambos casos preservamos `meta` (anio, semana, zendeskQuery, ...)\n// para que la rama de generación tenga lo que necesita.\nconst meta = $('Validar rango').first().json;\nconst raw  = $input.first().json;\n\nlet rows = [];\nif (Array.isArray(raw)) rows = raw;\nelse if (raw && Array.isArray(raw.data)) rows = raw.data;\n// Cualquier otro shape (objeto error, null, string) → rows vacío\n\nconst hayFila    = rows.length > 0;\nconst hasCache   = hayFila && !meta.forceRefresh;\n\nreturn [{ json: Object.assign({}, meta, {\n  hasCache,\n  cached: hayFila ? rows[0] : null\n}) }];"
       },
-      "id": "code-cache-hit",
-      "name": "Cache hit",
+      "id": "code-normalizar-cache",
+      "name": "Normalizar cache",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [820, 180]
+      "position": [820, 300]
     },
     {
       "parameters": {
-        "jsCode": "// Filtro RAMA \"CACHE MISS\":\n// Pasa al siguiente nodo SI:\n//   - No hay fila cacheada para esta (anio, semana), O\n//   - El usuario forzó refresh con ?refresh=1.\n// En ambos casos hay que regenerar contra Zendesk + OpenAI.\n//\n// Adjuntamos un objeto _diag al payload con el motivo del miss para\n// que el front lo pueda inspeccionar en DevTools (ayuda a depurar\n// problemas de credenciales / RLS / shape de respuesta).\nconst meta = $('Validar rango').first().json;\nconst raw = $input.first().json;\n\nlet rows = [];\nlet supaError = null;\nif (Array.isArray(raw)) rows = raw;\nelse if (raw && Array.isArray(raw.data)) rows = raw.data;\nelse if (raw && typeof raw === 'object' && (raw.code || raw.message)) {\n  supaError = (raw.message || raw.code || '') + (raw.details ? ' (' + raw.details + ')' : '');\n  rows = [];\n}\nconst hayCache = rows.length > 0;\n\nif (hayCache && !meta.forceRefresh) return [];  // hit → esta rama muere\n\nlet motivo = 'no_cache';\nif (meta.forceRefresh) motivo = 'force_refresh';\nelse if (supaError)    motivo = 'supabase_error';\n\nreturn [{ json: Object.assign({}, meta, {\n  _diag: { path: 'cache_miss', motivo, rows_found: rows.length, supabase_error: supaError }\n}) }];"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-hascache",
+              "leftValue": "={{ $json.hasCache }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
       },
-      "id": "code-cache-miss",
-      "name": "Cache miss",
+      "id": "if-cache",
+      "name": "IF cache",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1020, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convierte la fila de Supabase al shape que espera el front.\n// JSONB columns ya vienen como objeto/array nativo. Por defensa\n// parseamos si llegasen como string (algunos clientes que no\n// respetan Accept: application/json lo serializan).\nconst j    = $json;\nconst c    = j.cached || {};\nconst meta = { anio: j.anio, semana: j.semana, label: j.label };\n\nfunction parseArr(v) {\n  if (Array.isArray(v)) return v;\n  if (typeof v === 'string') {\n    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }\n  }\n  return [];\n}\n\nreturn [{ json: {\n  success: true,\n  cached:  true,\n  rango:   { from: c.fecha_desde, to: c.fecha_hasta, label: meta.label },\n  anio:    meta.anio,\n  semana:  meta.semana,\n  total:   c.total_tickets || 0,\n  porTipo:    parseArr(c.por_tipo),\n  porEntorno: parseArr(c.por_entorno),\n  porModulo:  parseArr(c.por_modulo),\n  tickets:    parseArr(c.tickets),\n  resumen_markdown: c.resumen_markdown || '',\n  modelo:     c.modelo || null,\n  generado_en:    c.created_at,\n  actualizado_en: c.updated_at,\n  _diag: { path: 'cache_hit' }\n} }];"
+      },
+      "id": "code-format-hit",
+      "name": "Format cache hit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [820, 420]
+      "position": [1220, 180]
     },
     {
       "parameters": {
@@ -86,7 +117,7 @@
       "name": "Get many tickets",
       "type": "n8n-nodes-base.zendesk",
       "typeVersion": 1,
-      "position": [1020, 420],
+      "position": [1220, 420],
       "credentials": {
         "zendeskApi": {
           "id": "KagVdQFawJyTOzEO",
@@ -102,7 +133,7 @@
       "name": "Preparar prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1220, 420]
+      "position": [1420, 420]
     },
     {
       "parameters": {
@@ -122,7 +153,7 @@
       "name": "Generar resumen",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [1420, 420],
+      "position": [1620, 420],
       "credentials": {
         "openAiApi": {
           "id": "w2doUpVdPofPaHNg",
@@ -132,64 +163,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Combina la respuesta de GPT con los datos estructurados que ya\n// teníamos del nodo \"Preparar prompt\". El front recibe el resumen\n// como markdown bruto + los breakdowns + la lista de tickets para\n// poder pintar todo sin recalcular.\n\nconst prep = $('Preparar prompt').first().json;\nconst aiResp = $input.first().json || {};\n\nfunction extractText(c) {\n  if (c == null) return '';\n  if (typeof c === 'string') return c;\n  if (Array.isArray(c)) {\n    return c.map(extractText).filter(Boolean).join('');\n  }\n  if (typeof c === 'object') {\n    if (typeof c.text === 'string')    return c.text;\n    if (typeof c.content === 'string') return c.content;\n    if (typeof c.output === 'string')  return c.output;\n    if (typeof c.value === 'string')   return c.value;\n    if (c.text)    return extractText(c.text);\n    if (c.content) return extractText(c.content);\n    if (c.output)  return extractText(c.output);\n  }\n  return '';\n}\n\nlet resumenMd = '';\nif (typeof aiResp === 'string') {\n  resumenMd = aiResp;\n} else if (Array.isArray(aiResp.choices) && aiResp.choices[0]?.message?.content) {\n  resumenMd = extractText(aiResp.choices[0].message.content);\n} else if (aiResp.message && aiResp.message.content) {\n  resumenMd = extractText(aiResp.message.content);\n} else if (aiResp.content) {\n  resumenMd = extractText(aiResp.content);\n} else if (aiResp.text) {\n  resumenMd = extractText(aiResp.text);\n} else if (aiResp.output) {\n  resumenMd = extractText(aiResp.output);\n}\n\nif (!resumenMd || typeof resumenMd !== 'string') {\n  try {\n    resumenMd = '⚠️ Respuesta inesperada de OpenAI:\\n```json\\n' +\n      JSON.stringify(aiResp, null, 2).slice(0, 800) + '\\n```';\n  } catch (_) { resumenMd = '(sin resumen)'; }\n}\n\nresumenMd = resumenMd\n  .replace(/^```(?:markdown|md)?\\s*\\n?/i, '')\n  .replace(/\\n?```\\s*$/i, '')\n  .trim();\n\nreturn [{\n  json: {\n    success: true,\n    cached:  false,\n    rango:   prep.rango,\n    anio:    prep.anio,\n    semana:  prep.semana,\n    total:   prep.total,\n    porTipo: prep.porTipo,\n    porEntorno: prep.porEntorno,\n    porModulo:  prep.porModulo,\n    tickets:    prep.tickets,\n    resumen_markdown: resumenMd,\n    modelo: 'gpt-4o-mini'\n  }\n}];"
+        "jsCode": "// Combina la respuesta de GPT con los datos estructurados que ya\n// teníamos del nodo \"Preparar prompt\". El front recibe el resumen\n// como markdown bruto + los breakdowns + la lista de tickets para\n// poder pintar todo sin recalcular.\n\nconst prep = $('Preparar prompt').first().json;\nconst aiResp = $input.first().json || {};\n\nfunction extractText(c) {\n  if (c == null) return '';\n  if (typeof c === 'string') return c;\n  if (Array.isArray(c)) {\n    return c.map(extractText).filter(Boolean).join('');\n  }\n  if (typeof c === 'object') {\n    if (typeof c.text === 'string')    return c.text;\n    if (typeof c.content === 'string') return c.content;\n    if (typeof c.output === 'string')  return c.output;\n    if (typeof c.value === 'string')   return c.value;\n    if (c.text)    return extractText(c.text);\n    if (c.content) return extractText(c.content);\n    if (c.output)  return extractText(c.output);\n  }\n  return '';\n}\n\nlet resumenMd = '';\nif (typeof aiResp === 'string') {\n  resumenMd = aiResp;\n} else if (Array.isArray(aiResp.choices) && aiResp.choices[0]?.message?.content) {\n  resumenMd = extractText(aiResp.choices[0].message.content);\n} else if (aiResp.message && aiResp.message.content) {\n  resumenMd = extractText(aiResp.message.content);\n} else if (aiResp.content) {\n  resumenMd = extractText(aiResp.content);\n} else if (aiResp.text) {\n  resumenMd = extractText(aiResp.text);\n} else if (aiResp.output) {\n  resumenMd = extractText(aiResp.output);\n}\n\nif (!resumenMd || typeof resumenMd !== 'string') {\n  try {\n    resumenMd = '⚠️ Respuesta inesperada de OpenAI:\\n```json\\n' +\n      JSON.stringify(aiResp, null, 2).slice(0, 800) + '\\n```';\n  } catch (_) { resumenMd = '(sin resumen)'; }\n}\n\nresumenMd = resumenMd\n  .replace(/^```(?:markdown|md)?\\s*\\n?/i, '')\n  .replace(/\\n?```\\s*$/i, '')\n  .trim();\n\nreturn [{\n  json: {\n    success: true,\n    cached:  false,\n    rango:   prep.rango,\n    anio:    prep.anio,\n    semana:  prep.semana,\n    total:   prep.total,\n    porTipo: prep.porTipo,\n    porEntorno: prep.porEntorno,\n    porModulo:  prep.porModulo,\n    tickets:    prep.tickets,\n    resumen_markdown: resumenMd,\n    modelo: 'gpt-4o-mini',\n    _diag: { path: 'generated' }\n  }\n}];"
       },
       "id": "code-format-result",
       "name": "Formatear resultado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1620, 420]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/resumenes_semanales?on_conflict=anio,semana",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "supabaseApi",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Accept",       "value": "application/json" },
-            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=representation" }
-          ]
-        },
-        "sendBody": true,
-        "bodyContentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  anio:            $json.anio,\n  semana:          $json.semana,\n  fecha_desde:     $json.rango.from,\n  fecha_hasta:     $json.rango.to,\n  total_tickets:   $json.total,\n  por_tipo:        $json.porTipo,\n  por_entorno:     $json.porEntorno,\n  por_modulo:      $json.porModulo,\n  tickets:         $json.tickets,\n  resumen_markdown: $json.resumen_markdown,\n  modelo:          $json.modelo,\n  updated_at:      new Date().toISOString()\n}) }}",
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": false,
-              "neverError": true
-            }
-          }
-        }
-      },
-      "id": "supa-guardar-cache",
-      "name": "Guardar cache",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1820, 420],
-      "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIAL_ID",
-          "name": "Supabase Yurest"
-        }
-      },
-      "alwaysOutputData": true,
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Passthrough fire-and-forget. El nodo \"Guardar cache\" intenta\n// persistir la fila a Supabase, pero ya NO inspeccionamos su respuesta.\n// Si el INSERT/UPSERT falla por la razón que sea (RLS, conflicto,\n// PostgREST en modo raro) la próxima petición a esa misma semana\n// volverá a generar el resumen — coste: una llamada extra a OpenAI,\n// pero sin banners de error confusos en la UI.\n//\n// Si MAS ADELANTE queremos volver a auditar el upsert, basta con\n// añadir aquí lo que devuelve $('Guardar cache').first().json y\n// devolverlo al front en _diag.upsert_raw.\nconst payload = $('Formatear resultado').first().json || {};\n\nlet missDiag = {};\ntry {\n  const cm = $('Cache miss').first().json || {};\n  if (cm._diag && typeof cm._diag === 'object') missDiag = cm._diag;\n} catch (_) {}\n\nconst diagFinal = Object.assign({ path: 'generated' }, missDiag);\nreturn [{ json: Object.assign({}, payload, { _diag: diagFinal }) }];"
-      },
-      "id": "code-passthrough",
-      "name": "Passthrough resultado",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2020, 420]
+      "position": [1820, 420]
     },
     {
       "parameters": {
@@ -210,12 +190,12 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [2220, 300]
+      "position": [2020, 300]
     },
     {
       "parameters": {
-        "content": "## Resumen semanal de incidencias (Zendesk + OpenAI + caché Supabase)\n\n**Endpoint:** `GET /webhook/zendesk/resumen-semanal?week=YYYY-Www`\n\nFlujo en dos ramas tras consultar la tabla `resumenes_semanales`:\n\n- **Cache hit** (semana ya generada y `?refresh=1` no presente) → devuelve la fila cacheada SIN tocar Zendesk ni OpenAI. Coste: 0 €.\n- **Cache miss** o `?refresh=1` → Zendesk Search → Preparar prompt → OpenAI → Formatear → UPSERT a Supabase → Respond.\n\n**Tabla:** ver migración `2026-04-28_01_resumenes_semanales.sql`. Clave única `(anio, semana)` ISO; el UPSERT usa `on_conflict=anio,semana`.\n\n**Credenciales:**\n- `Supabase Yurest` (sustituir `SUPABASE_CREDENTIAL_ID` al importar)\n- `Zendesk account`\n- `OpenAi account`",
-        "height": 280,
+        "content": "## Resumen semanal de incidencias (Zendesk + OpenAI + read-through Supabase)\n\n**Endpoint:** `GET /webhook/zendesk/resumen-semanal?week=YYYY-Www`\n\nFlujo simplificado: Buscar cache → Normalizar (aplana a `hasCache:bool`) → **IF**:\n\n- **TRUE** → Format cache hit → Respond. Coste: 0 €.\n- **FALSE** → Get tickets → Preparar prompt → OpenAI → Formatear → Respond.\n\n⚠️ El UPSERT de cache fue eliminado del workflow porque la detección de shape de la respuesta de PostgREST no era fiable. Si quieres pre-poblar la caché en Supabase, hazlo desde otro sitio (manual / job aparte). Si la fila existe, este workflow la usa; si no, regenera y devuelve sin escribir.\n\n**Tabla:** `resumenes_semanales` — clave única `(anio, semana)` ISO.\n\n**Credenciales:**\n- `Supabase Yurest` (sustituir `SUPABASE_CREDENTIAL_ID` al importar)\n- `Zendesk account`\n- `OpenAi account`",
+        "height": 300,
         "width": 480
       },
       "id": "sticky-doc",
@@ -226,20 +206,19 @@
     }
   ],
   "connections": {
-    "Webhook GET resumen":   { "main": [[{ "node": "Validar rango",  "type": "main", "index": 0 }]] },
-    "Validar rango":         { "main": [[{ "node": "Buscar cache",   "type": "main", "index": 0 }]] },
-    "Buscar cache":          { "main": [[
-                                  { "node": "Cache hit",  "type": "main", "index": 0 },
-                                  { "node": "Cache miss", "type": "main", "index": 0 }
-                              ]] },
-    "Cache hit":             { "main": [[{ "node": "Respond",         "type": "main", "index": 0 }]] },
-    "Cache miss":            { "main": [[{ "node": "Get many tickets","type": "main", "index": 0 }]] },
-    "Get many tickets":      { "main": [[{ "node": "Preparar prompt", "type": "main", "index": 0 }]] },
-    "Preparar prompt":       { "main": [[{ "node": "Generar resumen", "type": "main", "index": 0 }]] },
-    "Generar resumen":       { "main": [[{ "node": "Formatear resultado","type": "main","index": 0 }]] },
-    "Formatear resultado":   { "main": [[{ "node": "Guardar cache",   "type": "main", "index": 0 }]] },
-    "Guardar cache":         { "main": [[{ "node": "Passthrough resultado","type": "main","index": 0 }]] },
-    "Passthrough resultado": { "main": [[{ "node": "Respond",         "type": "main", "index": 0 }]] }
+    "Webhook GET resumen":   { "main": [[{ "node": "Validar rango",     "type": "main", "index": 0 }]] },
+    "Validar rango":         { "main": [[{ "node": "Buscar cache",      "type": "main", "index": 0 }]] },
+    "Buscar cache":          { "main": [[{ "node": "Normalizar cache",  "type": "main", "index": 0 }]] },
+    "Normalizar cache":      { "main": [[{ "node": "IF cache",          "type": "main", "index": 0 }]] },
+    "IF cache":              { "main": [
+                                  [{ "node": "Format cache hit",  "type": "main", "index": 0 }],
+                                  [{ "node": "Get many tickets",  "type": "main", "index": 0 }]
+                              ] },
+    "Format cache hit":      { "main": [[{ "node": "Respond",            "type": "main", "index": 0 }]] },
+    "Get many tickets":      { "main": [[{ "node": "Preparar prompt",    "type": "main", "index": 0 }]] },
+    "Preparar prompt":       { "main": [[{ "node": "Generar resumen",    "type": "main", "index": 0 }]] },
+    "Generar resumen":       { "main": [[{ "node": "Formatear resultado","type": "main", "index": 0 }]] },
+    "Formatear resultado":   { "main": [[{ "node": "Respond",            "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,
