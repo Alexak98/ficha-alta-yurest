@@ -260,6 +260,7 @@
             border:1px solid transparent;
         }
         .tk-chip-status  { background:#f1f5f9;color:#475569;border-color:#e2e8f0 }
+        .tk-chip-org     { background:#ecfccb;color:#3f6212;border-color:#d9f99d;font-weight:600 }
         .tk-chip-tipo    { background:#ede9fe;color:#5b21b6;border-color:#ddd6fe }
         .tk-chip-entorno { background:#dbeafe;color:#1e40af;border-color:#bfdbfe }
         .tk-chip-modulo  { background:#fce7f3;color:#9d174d;border-color:#fbcfe8 }
@@ -555,6 +556,11 @@
                 subject: t.subject || t.title || t.descripcion || '(sin título)',
                 status:  t.status  || null,
                 created_at: ts || null,
+                // Organización resuelta por el workflow (Zendesk show_many).
+                // Si el ticket no tiene org asignada, el workflow lo deja en null
+                // y aquí no se pinta el chip.
+                organization_id:   t.organization_id   || null,
+                organization_name: t.organization_name || null,
                 // Custom fields que el workflow extrae de Zendesk
                 // (tipo, entorno, módulo). Pueden venir como null si el
                 // workflow no tiene los IDs configurados todavía.
@@ -843,10 +849,11 @@
                 // el chip vacío. Cada categoría tiene su propio color
                 // para distinguirlos rápidamente en el drawer.
                 const chips = [
-                    t.status  ? `<span class="tk-chip tk-chip-status">${esc(t.status)}</span>` : '',
-                    t.tipo    ? `<span class="tk-chip tk-chip-tipo" title="Tipo de ticket">${esc(t.tipo)}</span>` : '',
-                    t.entorno ? `<span class="tk-chip tk-chip-entorno" title="Entorno">${esc(t.entorno)}</span>` : '',
-                    t.modulo  ? `<span class="tk-chip tk-chip-modulo" title="Módulo">${esc(t.modulo)}</span>` : ''
+                    t.status            ? `<span class="tk-chip tk-chip-status">${esc(t.status)}</span>` : '',
+                    t.organization_name ? `<span class="tk-chip tk-chip-org" title="Organización">${esc(t.organization_name)}</span>` : '',
+                    t.tipo              ? `<span class="tk-chip tk-chip-tipo" title="Tipo de ticket">${esc(t.tipo)}</span>` : '',
+                    t.entorno           ? `<span class="tk-chip tk-chip-entorno" title="Entorno">${esc(t.entorno)}</span>` : '',
+                    t.modulo            ? `<span class="tk-chip tk-chip-modulo" title="Módulo">${esc(t.modulo)}</span>` : ''
                 ].filter(Boolean).join('');
                 // Si en el futuro tenemos URL base de Zendesk en config,
                 // este contenedor pasaría a ser <a href="..."> y abriría

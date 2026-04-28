@@ -47,7 +47,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Agrega los tickets por día de la semana (Lun=0..Dom=6) y hora\n// (0..23) en una matriz 7x24. Devuelve también la lista bruta de\n// tickets etiquetados con su bucket (day,hour) para que el front\n// pueda hacer drill-down al pulsar una celda.\n// Zona horaria: usamos Europe/Madrid (España) para que las horas\n// coincidan con la jornada laboral del equipo.\nconst TZ = 'Europe/Madrid';\n\n// ──────────────────────────────────────────────────────────\n//  Custom fields de Zendesk a extraer\n// ──────────────────────────────────────────────────────────\n// Reemplaza los IDs por los reales de tu cuenta:\n//   Zendesk → Admin Center → Objects and rules → Tickets → Fields\n//   El ID es el numérico que aparece a la derecha del nombre del campo.\n// Los campos cuyo ID quede en null se ignoran (front no los pinta).\n// Si no conoces los IDs ahora, déjalos así y el resto de la respuesta\n// sigue funcionando — el drawer mostrará id + asunto + estado.\nconst CUSTOM_FIELD_IDS = {\n  tipo:    26672700540829,  // \"Tipo de ticket\"\n  entorno: 27376906089629,  // \"Entorno\"\n  modulo:  27243772817053   // \"Módulo\"\n};\n\nfunction extraerCustomField(t, id) {\n  if (id == null) return null;\n  const fuentes = [t.custom_fields, t.fields].filter(Array.isArray);\n  for (const arr of fuentes) {\n    const cf = arr.find(c => c && (c.id === id || String(c.id) === String(id)));\n    if (cf && cf.value != null && cf.value !== '') return cf.value;\n  }\n  return null;\n}\n\nconst items = $input.all();\nconst meta = $('Validar rango').first().json;\n\nconst matrix = Array.from({ length: 7 }, () => Array(24).fill(0));\nconst tickets = [];\nlet total = 0;\n\nfunction bucket(date) {\n  // Intl con timeZone para sacar día de semana y hora en horario de\n  // España, sin tirar de librerías externas.\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone: TZ,\n    weekday: 'short',\n    hour: 'numeric',\n    hour12: false\n  });\n  const parts = fmt.formatToParts(date);\n  const wd  = parts.find(p => p.type === 'weekday').value;   // Mon..Sun\n  const hr  = parseInt(parts.find(p => p.type === 'hour').value, 10) % 24;\n  const idx = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n  return [idx, hr];\n}\n\nfor (const it of items) {\n  const t = it.json || {};\n  // Backup del filtro de la query Zendesk: descartamos tickets que\n  // siguen en el agente IA (asunto \"Conversation with <fulano>\") por\n  // si Zendesk Search no aplicó el NOT. Sin esto contaminan el heatmap.\n  const subj = String(t.subject || '').trim().toLowerCase();\n  if (subj.startsWith('conversation with')) continue;\n  const ts = t.created_at || t.createdAt || t.created;\n  if (!ts) continue;\n  const d = new Date(ts);\n  if (isNaN(d.getTime())) continue;\n  const [dia, hora] = bucket(d);\n  if (dia < 0 || dia > 6 || hora < 0 || hora > 23) continue;\n  matrix[dia][hora]++;\n  total++;\n  // Persistimos los campos que el front pinta en el drill-down.\n  tickets.push({\n    id: t.id != null ? t.id : (t.ticket_id || null),\n    subject: t.subject || t.title || t.descripcion || '(sin título)',\n    status: t.status || null,\n    requester_id:    t.requester_id    || null,\n    organization_id: t.organization_id || null,\n    created_at: ts,\n    day:  dia,\n    hour: hora,\n    // Custom fields configurables — se pintan como chips en el drawer.\n    tipo:    extraerCustomField(t, CUSTOM_FIELD_IDS.tipo),\n    entorno: extraerCustomField(t, CUSTOM_FIELD_IDS.entorno),\n    modulo:  extraerCustomField(t, CUSTOM_FIELD_IDS.modulo)\n  });\n}\n\nreturn [{\n  json: {\n    from: meta.from,\n    to:   meta.to,\n    total,\n    matrix,\n    tickets\n  }\n}];"
+        "jsCode": "// Agrega los tickets por día de la semana (Lun=0..Dom=6) y hora\n// (0..23) en una matriz 7x24. Devuelve también la lista bruta de\n// tickets etiquetados con su bucket (day,hour) para que el front\n// pueda hacer drill-down al pulsar una celda.\n// Zona horaria: usamos Europe/Madrid (España) para que las horas\n// coincidan con la jornada laboral del equipo.\nconst TZ = 'Europe/Madrid';\n\n// ──────────────────────────────────────────────────────────\n//  Custom fields de Zendesk a extraer\n// ──────────────────────────────────────────────────────────\n// Reemplaza los IDs por los reales de tu cuenta:\n//   Zendesk → Admin Center → Objects and rules → Tickets → Fields\n//   El ID es el numérico que aparece a la derecha del nombre del campo.\n// Los campos cuyo ID quede en null se ignoran (front no los pinta).\n// Si no conoces los IDs ahora, déjalos así y el resto de la respuesta\n// sigue funcionando — el drawer mostrará id + asunto + estado.\nconst CUSTOM_FIELD_IDS = {\n  tipo:    26672700540829,  // \"Tipo de ticket\"\n  entorno: 27376906089629,  // \"Entorno\"\n  modulo:  27243772817053   // \"Módulo\"\n};\n\nfunction extraerCustomField(t, id) {\n  if (id == null) return null;\n  const fuentes = [t.custom_fields, t.fields].filter(Array.isArray);\n  for (const arr of fuentes) {\n    const cf = arr.find(c => c && (c.id === id || String(c.id) === String(id)));\n    if (cf && cf.value != null && cf.value !== '') return cf.value;\n  }\n  return null;\n}\n\nconst items = $input.all();\nconst meta = $('Validar rango').first().json;\n\nconst matrix = Array.from({ length: 7 }, () => Array(24).fill(0));\nconst tickets = [];\nlet total = 0;\n\nfunction bucket(date) {\n  // Intl con timeZone para sacar día de semana y hora en horario de\n  // España, sin tirar de librerías externas.\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone: TZ,\n    weekday: 'short',\n    hour: 'numeric',\n    hour12: false\n  });\n  const parts = fmt.formatToParts(date);\n  const wd  = parts.find(p => p.type === 'weekday').value;   // Mon..Sun\n  const hr  = parseInt(parts.find(p => p.type === 'hour').value, 10) % 24;\n  const idx = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n  return [idx, hr];\n}\n\nfor (const it of items) {\n  const t = it.json || {};\n  // Backup del filtro de la query Zendesk: descartamos tickets que\n  // siguen en el agente IA (asunto \"Conversation with <fulano>\") por\n  // si Zendesk Search no aplicó el NOT. Sin esto contaminan el heatmap.\n  const subj = String(t.subject || '').trim().toLowerCase();\n  if (subj.startsWith('conversation with')) continue;\n  const ts = t.created_at || t.createdAt || t.created;\n  if (!ts) continue;\n  const d = new Date(ts);\n  if (isNaN(d.getTime())) continue;\n  const [dia, hora] = bucket(d);\n  if (dia < 0 || dia > 6 || hora < 0 || hora > 23) continue;\n  matrix[dia][hora]++;\n  total++;\n  // Persistimos los campos que el front pinta en el drill-down.\n  tickets.push({\n    id: t.id != null ? t.id : (t.ticket_id || null),\n    subject: t.subject || t.title || t.descripcion || '(sin título)',\n    status: t.status || null,\n    requester_id:    t.requester_id    || null,\n    organization_id: t.organization_id || null,\n    created_at: ts,\n    day:  dia,\n    hour: hora,\n    // Custom fields configurables — se pintan como chips en el drawer.\n    tipo:    extraerCustomField(t, CUSTOM_FIELD_IDS.tipo),\n    entorno: extraerCustomField(t, CUSTOM_FIELD_IDS.entorno),\n    modulo:  extraerCustomField(t, CUSTOM_FIELD_IDS.modulo)\n  });\n}\n\n// Lista única de organization_id no nulos — el siguiente nodo HTTP\n// los manda a Zendesk show_many para resolver los nombres en una sola\n// llamada en vez de N (una por ticket).\nconst __org_ids = [...new Set(tickets.map(t => t.organization_id).filter(Boolean))];\n\nreturn [{\n  json: {\n    from: meta.from,\n    to:   meta.to,\n    total,\n    matrix,\n    tickets,\n    __org_ids\n  }\n}];"
       },
       "id": "code-agregar",
       "name": "Agregar matriz",
@@ -55,6 +55,45 @@
       "typeVersion": 2,
       "position": [900, 320],
       "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/organizations/show_many.json?ids={{ ($json.__org_ids && $json.__org_ids.length) ? $json.__org_ids.join(',') : '0' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "zd-get-orgs",
+      "name": "Get organizations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 320],
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mergea los nombres de organización en cada ticket. Lee la respuesta\n// de \"Get organizations\" (formato Zendesk: { organizations: [{id,name,...}] })\n// y construye un Map id→name para hacer lookup en O(1) por ticket.\n//\n// Si Zendesk devolvió error o array vacío (porque la query iba con ids=0\n// porque ningún ticket tenía org), todos los tickets quedan con\n// organization_name: null sin romper nada.\nconst aggregated = $('Agregar matriz').first().json || {};\nconst orgsResp   = $input.first().json || {};\nconst orgsArr    = Array.isArray(orgsResp.organizations) ? orgsResp.organizations : [];\nconst orgMap     = new Map(orgsArr.map(o => [o.id, o.name]));\n\nconst tickets = (aggregated.tickets || []).map(t => ({\n  ...t,\n  organization_name: t.organization_id ? (orgMap.get(t.organization_id) || null) : null\n}));\n\nreturn [{ json: {\n  from:   aggregated.from,\n  to:     aggregated.to,\n  total:  aggregated.total,\n  matrix: aggregated.matrix,\n  tickets\n} }];"
+      },
+      "id": "code-enrich-orgs",
+      "name": "Enrich con orgs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 320]
     },
     {
       "parameters": {
@@ -75,7 +114,7 @@
       "name": "Respond Heatmap",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1120, 320]
+      "position": [1560, 320]
     },
     {
       "parameters": {
@@ -101,6 +140,12 @@
       "main": [[{ "node": "Agregar matriz", "type": "main", "index": 0 }]]
     },
     "Agregar matriz": {
+      "main": [[{ "node": "Get organizations", "type": "main", "index": 0 }]]
+    },
+    "Get organizations": {
+      "main": [[{ "node": "Enrich con orgs", "type": "main", "index": 0 }]]
+    },
+    "Enrich con orgs": {
       "main": [[{ "node": "Respond Heatmap", "type": "main", "index": 0 }]]
     }
   },
