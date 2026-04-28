@@ -67,17 +67,19 @@
           "conditions": [
             {
               "id": "cond-existe",
-              "leftValue": "={{ $json }}",
+              "leftValue": "={{ $json.semana }}",
               "rightValue": "",
               "operator": {
-                "type": "array",
+                "type": "string",
                 "operation": "notEmpty",
                 "singleValue": true
               }
             }
           ]
         },
-        "options": {}
+        "options": {
+          "looseTypeValidation": true
+        }
       },
       "id": "if-existe",
       "name": "¿Existe en Supabase?",
