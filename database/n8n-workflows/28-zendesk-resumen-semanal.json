@@ -165,6 +165,57 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/resumenes_semanales?on_conflict=anio,semana",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Accept",       "value": "application/json" },
+            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  anio:             $json.anio,\n  semana:           $json.semana,\n  fecha_desde:      $json.rango.from,\n  fecha_hasta:      $json.rango.to,\n  total_tickets:    $json.total,\n  por_tipo:         $json.porTipo,\n  por_entorno:      $json.porEntorno,\n  por_modulo:       $json.porModulo,\n  tickets:          $json.tickets,\n  resumen_markdown: $json.resumen_markdown,\n  modelo:           $json.modelo,\n  updated_at:       new Date().toISOString()\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-guardar",
+      "name": "Guardar resumen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1840, 420],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve el payload de \"Formatear resultado\" al front, ignorando\n// por completo lo que haya respondido \"Guardar resumen\".\n//\n// Filosofía fire-and-forget: si el UPSERT a Supabase falla por la\n// razón que sea (RLS, conflicto, instancia caída), no hacemos saltar\n// nada en la UI — la próxima petición a esta misma semana volverá a\n// regenerar y reintentará el guardado. El log de n8n para ese nodo\n// sigue ahí si hay que depurar a posteriori.\nreturn [{ json: $('Formatear resultado').first().json }];"
+      },
+      "id": "code-pass-result",
+      "name": "Pasar resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2040, 420]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}",
         "options": {
@@ -182,11 +233,11 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1840, 300]
+      "position": [2240, 300]
     },
     {
       "parameters": {
-        "content": "## Resumen semanal de incidencias — versión simplificada\n\n**Endpoint:** `GET /webhook/zendesk/resumen-semanal?week=YYYY-Www`\n\nFlow:\n\n1. **Validar rango** calcula `semana` (número ISO 1-53), `fecha_desde` y `fecha_hasta`.\n2. **Consultar Supabase**: GET `?semana=eq.{{ semana }}` contra `resumenes_semanales`.\n3. **¿Existe en Supabase?** (IF v2.2): condición `Array.isArray($json) ? $json.length : 0 > 0`.\n   - **TRUE** → Format desde Supabase → Respond.\n   - **FALSE** → Get tickets → Preparar prompt → OpenAI → Formatear → Respond.\n\nEl workflow ya **NO** escribe a Supabase. Si quieres pre-poblar el caché, hazlo desde otro sitio (script manual o un job aparte).",
+        "content": "## Resumen semanal de incidencias\n\n**Endpoint:** `GET /webhook/zendesk/resumen-semanal?week=YYYY-Www`\n\nFlow:\n\n1. **Validar rango** calcula `semana` (ISO 1-53), `fecha_desde` y `fecha_hasta`.\n2. **Consultar Supabase**: GET `?semana=eq.{{ semana }}`.\n3. **¿Existe en Supabase?** (IF v2.2): condición `{{ $json.semana }} is not empty`.\n   - **TRUE** → Format desde Supabase → Respond.\n   - **FALSE** → Get tickets → Preparar prompt → OpenAI → Formatear → **Guardar resumen** (UPSERT fire-and-forget) → Pasar resultado → Respond.\n\n**Guardar resumen** hace UPSERT contra `?on_conflict=anio,semana` con `Prefer: resolution=merge-duplicates,return=minimal`. La respuesta se ignora (Code node \"Pasar resultado\" devuelve siempre lo de \"Formatear resultado\"). Si el guardado falla, no se notifica al front — la próxima petición regenerará y reintentará.",
         "height": 280,
         "width": 480
       },
@@ -209,7 +260,9 @@
     "Get many tickets":      { "main": [[{ "node": "Preparar prompt",       "type": "main", "index": 0 }]] },
     "Preparar prompt":       { "main": [[{ "node": "Generar resumen",       "type": "main", "index": 0 }]] },
     "Generar resumen":       { "main": [[{ "node": "Formatear resultado",   "type": "main", "index": 0 }]] },
-    "Formatear resultado":   { "main": [[{ "node": "Respond",               "type": "main", "index": 0 }]] }
+    "Formatear resultado":   { "main": [[{ "node": "Guardar resumen",       "type": "main", "index": 0 }]] },
+    "Guardar resumen":       { "main": [[{ "node": "Pasar resultado",       "type": "main", "index": 0 }]] },
+    "Pasar resultado":       { "main": [[{ "node": "Respond",               "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,
