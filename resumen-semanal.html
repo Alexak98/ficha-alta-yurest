@@ -398,6 +398,15 @@ async function generar(force) {
             const errs = Array.isArray(data.errores) ? data.errores.join('; ') : 'Error desconocido';
             throw new Error(errs);
         }
+        // El workflow incluye un objeto `_diag` con información sobre
+        // por qué pasó por la rama hit/miss y si el UPSERT funcionó.
+        // Lo dejamos en consola para depurar (no contamina la UI).
+        if (data && data._diag) {
+            const d = data._diag;
+            console.info('[resumen-semanal] cache:', d.path,
+                d.path === 'cache_miss' ? '· motivo=' + d.motivo : '',
+                d.upsert_ok === false ? '· upsert FALLÓ: ' + d.upsert_error : '');
+        }
         if (!data.total || data.total === 0) {
             document.getElementById('rs-empty').style.display = 'block';
             return;
