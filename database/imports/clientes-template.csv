@@ -1,0 +1,4 @@
+denominacion,nombre_comercial,cif,email,tipo_cliente,cp,calle,numero,municipio,provincia,comercial,jp_nombre,jp_apellidos,jp_mail,jp_telefono,tpv,comentarios
+Burger del Centro SL,Burger Centro,B12345678,info@burger.com,corporate,28001,Calle Mayor,12,Madrid,Madrid,Alex,Juan,Pérez,juan@burger.com,600111222,Glop,
+Pizzería Los Molinos SL,Pizza Molinos,B98765432,pedidos@molinos.es,planes,46001,Av. del Test,5,Valencia,Valencia,Alex,María,García,maria@molinos.es,600222333,Cashlogy,Cliente desde 2023
+Cocinas García SL,,B11223344,cocinas@garcia.es,corp_cocina,08001,Pg. Industrial,15,Barcelona,Barcelona,Alex,,,,,,

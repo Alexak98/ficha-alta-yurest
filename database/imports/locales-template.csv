@@ -1,0 +1,4 @@
+cliente_cif,nombre,email,cp,calle,numero,municipio,sociedad_cif,sociedad_denominacion,mensualidad,es_cocina_central
+B12345678,Burger Centro Sol,sol@burger.com,28013,Calle Sol,8,Madrid,B12345678,Burger del Centro SL,150,false
+B12345678,Burger Centro Plaza,plaza@burger.com,28014,Plaza Mayor,1,Madrid,B12345678,Burger del Centro SL,150,false
+B11223344,Cocina Central García,cocina@garcia.es,08001,Pg. Industrial,15,Barcelona,B11223344,Cocinas García SL,0,true
