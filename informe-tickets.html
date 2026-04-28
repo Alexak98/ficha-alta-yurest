@@ -261,8 +261,26 @@
     // Lunes-primero (estilo ES). 0=Lun … 6=Dom.
     const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-    // Paleta de azul claro a violeta intenso.
-    const HM_COLORS = ['#eef2ff','#e0e7ff','#c7d2fe','#a5b4fc','#818cf8','#6366f1','#4f46e5','#4338ca','#3730a3'];
+    // Paleta sequential "heat" — intuitiva al nombre del informe y al
+    // ojo (frío/vacío en crema, pico de actividad en rojo intenso). Antes
+    // usábamos una rampa de azul→violeta que se confundía con elementos
+    // de UI corporativa y no comunicaba "intensidad" inmediatamente.
+    //
+    //   crema → amarillo → naranja → rojo coral → rojo intenso
+    //
+    // Los últimos valores conectan con el rojo corporativo (#fc5858),
+    // así el pico del heatmap "encaja" visualmente con la identidad.
+    const HM_COLORS = [
+        '#fff8e1',  // 0/8 — crema casi blanco (muy bajo)
+        '#ffecb3',  // 1/8 — amarillo pálido
+        '#ffd54f',  // 2/8 — amarillo
+        '#ffb74d',  // 3/8 — naranja claro
+        '#ff9800',  // 4/8 — naranja vibrante
+        '#fb6f1c',  // 5/8 — naranja oscuro
+        '#fc5858',  // 6/8 — rojo coral (Yurest)
+        '#c62828',  // 7/8 — rojo intenso
+        '#7f1d1d'   // 8/8 — rojo oscuro (pico de actividad)
+    ];
 
     function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
     function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
@@ -527,7 +545,10 @@
             for (let h = 0; h < 24; h++) {
                 const c   = matrix[d][h];
                 const bg  = colorPara(c, max);
-                const esOscuro = c >= max * 0.6;
+                // Con la paleta "heat" nueva, los valores >= 50% del pico
+                // caen ya en naranjas/rojos saturados donde el texto negro
+                // pierde legibilidad. Bajamos el umbral del flip a blanco.
+                const esOscuro = c >= max * 0.5;
                 const cls = 'hm-cell' + (c ? ' has-data' : '') + (esOscuro ? ' dark' : '');
                 const style = bg ? `background:${bg}` : '';
                 const tip = `${DIAS[d]} ${String(h).padStart(2, '0')}:00 · ${c} ticket${c === 1 ? '' : 's'}`;
