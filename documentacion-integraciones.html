@@ -624,15 +624,16 @@ const INTEGRACIONES = [
         inicial: 'SQ',
         c1: '#0f172a', c2: '#334155',
         doc: {
-            descripcion: 'Square (USA, expandiéndose en EU) tiene una API moderna OAuth 2.0. La integración requiere que el cliente autorice a Yurest desde su panel de Square.',
+            descripcion: 'Square (USA, expandiéndose en EU) expone una API moderna OAuth 2.0. En la práctica, en lugar de lanzar el flujo OAuth contra el cliente final, le pedimos las credenciales (usuario + contraseña) de su consola de Square Developers (https://developer.squareup.com/console/en/apps), entramos nosotros y configuramos la app que emite el access_token.',
             comoConectar: [
-                'Generar el enlace de autorización OAuth desde Yurest.',
-                'El cliente entra y aprueba los permisos solicitados (lectura de catálogo y ventas).',
-                'Square nos devuelve un access_token + refresh_token.',
-                'Yurest los almacena cifrados y refresca el token cada hora.'
+                'Pedir al cliente usuario y contraseña de su cuenta en developer.squareup.com.',
+                'Acceder a la consola y crear / configurar la app de Yurest dentro de su cuenta.',
+                'Generar el access_token + refresh_token desde la consola y guardarlos cifrados en Yurest.',
+                'Validar la primera sincronización en modo "test".'
             ],
             camposRequeridos: [
-                { k: 'access_token (auto)', v: 'Lo recibe Yurest tras OAuth, no hace falta pedir nada.' }
+                { k: 'Usuario Square Developer',    v: 'Email del cliente registrado en developer.squareup.com.' },
+                { k: 'Contraseña Square Developer', v: 'Contraseña asociada a esa cuenta.' }
             ],
             datosSincronizados: [
                 'Catálogo completo (Items, Modifiers).',
@@ -640,9 +641,11 @@ const INTEGRACIONES = [
                 'Empleados (Team Members).'
             ],
             limitaciones: [
-                'Estado BETA — flujo OAuth probado en pocos clientes. Ojo a clientes en países donde Square aún no opera.',
-                'Square cobra por API calls cuando se exceden los límites — vigilar el volumen de polling.'
+                'Estado BETA — pocos clientes en producción. Ojo a clientes en países donde Square aún no opera.',
+                'Square cobra por API calls cuando se exceden los límites — vigilar el volumen de polling.',
+                'Si el cliente cambia la contraseña de su cuenta de developer, perdemos acceso a la consola hasta que nos pase la nueva.'
             ],
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Square. Para ello necesito acceso a la consola de Square Developers:\n\nhttps://developer.squareup.com/console/en/apps\n\nConcretamente:\n\n• Usuario\n• Contraseña\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Square con Yurest.\n\nGracias.`,
             contacto: { nombre: 'Square Developer', web: 'https://developer.squareup.com' }
         }
     },
