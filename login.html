@@ -369,6 +369,21 @@
                 const SHARED_PASS = 'Yurest@46002';
                 const basicAuth = btoa(SHARED_USER + ':' + SHARED_PASS);
                 const u = loginData.user || {};
+                // Permisos: aceptamos los DOS shapes que persistimos en BD:
+                //   · array legacy        ['clientes', 'lista']
+                //   · objeto granular     { read: [], write: [], delete: [] }
+                // Si el backend devuelve cualquier otra cosa (null, número),
+                // caemos a [] para no romper. ANTES esto tenía
+                // `Array.isArray(u.permisos) ? u.permisos : []` y wipeaba
+                // los permisos granulares al loguearse — el usuario sólo
+                // veía items public:true.
+                let permisosLogin = u.permisos;
+                if (
+                    !Array.isArray(permisosLogin) &&
+                    (permisosLogin == null || typeof permisosLogin !== 'object')
+                ) {
+                    permisosLogin = [];
+                }
                 YurestConfig.setSession({
                     id:                  u.id || null,
                     user:                u.username || user,
@@ -376,7 +391,7 @@
                     nombre:              u.nombre || u.username || user,
                     email:               u.email || '',
                     rol:                 u.rol || 'user',
-                    permisos:            Array.isArray(u.permisos) ? u.permisos : [],
+                    permisos:            permisosLogin,
                     sessions_revoked_at: u.sessions_revoked_at || null,
                     token:               loginData.token || 'authenticated',
                     basicAuth,

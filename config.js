@@ -295,6 +295,30 @@
         return true;
     }
 
+    // Stringify estable para comparar dos shapes de permisos. Acepta
+    // los dos formatos que persistimos:
+    //   · array legacy        ['clientes', 'lista']
+    //   · objeto granular     { read: [...], write: [...], delete: [...] }
+    // Ordena los elementos para que un orden distinto no provoque un
+    // update falso en `_validateSessionFresh`. Cualquier otro shape
+    // se normaliza a 'null'.
+    function _stableStringifyPerms(p) {
+        if (p == null) return 'null';
+        if (Array.isArray(p)) {
+            return JSON.stringify([...p].map(String).sort());
+        }
+        if (typeof p === 'object') {
+            const keys = Object.keys(p).sort();
+            const norm = {};
+            for (const k of keys) {
+                const v = p[k];
+                norm[k] = Array.isArray(v) ? [...v].map(String).sort() : v;
+            }
+            return JSON.stringify(norm);
+        }
+        return JSON.stringify(p);
+    }
+
     // Llama al endpoint /auth/verify para ver si la sesión fue revocada por
     // un admin (cambio de permisos, rol, desactivación o borrado). Si sí,
     // forzamos logout con un aviso. Silencioso si el endpoint falla (red
@@ -332,8 +356,23 @@
             // Si no hubo revocación pero los permisos o el rol cambiaron,
             // actualizamos el snapshot en la sesión en silencio para que la
             // UI refleje los cambios en la próxima carga.
-            const permisosNuevos = Array.isArray(data.permisos) ? data.permisos : [];
-            const permisosIguales = JSON.stringify([...s.permisos || []].sort()) === JSON.stringify([...permisosNuevos].sort());
+            //
+            // BUG ANTIGUO: el código sólo aceptaba `Array.isArray(data.permisos)`
+            // y forzaba `[]` para cualquier otro shape. Con el shape granular
+            // nuevo `{read, write, delete}` esto WIPEABA los permisos del
+            // usuario cada vez que la sesión se validaba en background —
+            // dejaba al usuario viendo SÓLO los items con `public: true`.
+            // Ahora aceptamos los dos shapes (array legacy O objeto granular)
+            // y comparamos con stringify estable para no provocar updates
+            // espurios cuando el orden de las keys/elementos cambia.
+            let permisosNuevos = data.permisos;
+            if (
+                !Array.isArray(permisosNuevos) &&
+                (permisosNuevos == null || typeof permisosNuevos !== 'object')
+            ) {
+                permisosNuevos = [];
+            }
+            const permisosIguales = _stableStringifyPerms(s.permisos) === _stableStringifyPerms(permisosNuevos);
             if (data.rol !== s.rol || !permisosIguales) {
                 setSession({ ...s, rol: data.rol, permisos: permisosNuevos });
             }
