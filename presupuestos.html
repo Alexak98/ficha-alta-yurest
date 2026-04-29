@@ -107,6 +107,10 @@
         .chip.cliente      { background:#dbeafe;color:#1e3a8a }
         .chip.aceptado     { background:#dcfce7;color:#15803d }
         .chip.en_espera    { background:#fef3c7;color:#b45309 }
+        /* Estados de pago — degradado: pagado_50 cyan medio, pagado verde
+           profundo. Distinguibles a primera vista del "aceptado" verde claro. */
+        .chip.pagado_50    { background:#cffafe;color:#0e7490 }
+        .chip.pagado       { background:#bbf7d0;color:#166534;font-weight:800 }
         .chip.backoffice   { background:#ede9fe;color:#5b21b6 }
         .chip.app_cliente  { background:#cffafe;color:#0e7490 }
         .chip.pendiente    { background:#f1f5f9;color:#64748b }
@@ -198,6 +202,17 @@
             <div id="chips-entrega" style="display:flex;gap:6px"></div>
             <div class="filter-sep"></div>
             <div class="filter-group">
+                <span class="filter-label">Cliente</span>
+                <!-- Las opciones se rellenan en poblarFiltroClientes() a partir
+                     del array de presupuestos cargados. Es un select normal,
+                     no un autocomplete, porque la lista de clientes en la
+                     práctica son ~50 — un combo cabe perfectamente. -->
+                <select class="filter-select" id="f-cliente" onchange="setFiltroCliente(this)">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="filter-sep"></div>
+            <div class="filter-group">
                 <span class="filter-label">Entorno</span>
                 <select class="filter-select" id="f-entorno" onchange="setFiltroEntorno(this)">
                     <option value="">Todos</option>
@@ -221,30 +236,25 @@
             </button>
         </div>
 
-        <!-- KPI strip: totales agregados sobre el listado filtrado -->
+        <!-- KPI strip — 4 indicadores agregados sobre el listado filtrado:
+             total de desarrollos, coste total para Yurest, coste total
+             facturable al cliente, y pendiente de cobro (sumado según el
+             estado de pago: aceptado=100%, pagado_50=50%, pagado=0%). -->
         <div class="kpi-strip">
             <div class="kpi">
-                <div class="kpi-label">Mostrados</div>
+                <div class="kpi-label">Total desarrollos</div>
                 <div class="kpi-value" id="k-count">—</div>
             </div>
             <div class="kpi">
-                <div class="kpi-label">Horas Yurest</div>
-                <div class="kpi-value amber" id="k-hy">—</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">€ Yurest</div>
+                <div class="kpi-label">Coste € Yurest</div>
                 <div class="kpi-value amber" id="k-cy">—</div>
             </div>
             <div class="kpi">
-                <div class="kpi-label">Horas Cliente</div>
-                <div class="kpi-value indigo" id="k-hc">—</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">€ Cliente</div>
+                <div class="kpi-label">Coste € Cliente</div>
                 <div class="kpi-value indigo" id="k-cc">—</div>
             </div>
-            <div class="kpi">
-                <div class="kpi-label">Pdte. entregar</div>
+            <div class="kpi" title="Suma del coste cliente pendiente de cobrar (aceptado=100%, pagado_50=50%, pagado=0%)">
+                <div class="kpi-label">Pendiente de cobro</div>
                 <div class="kpi-value green" id="k-pdte">—</div>
             </div>
         </div>
@@ -254,6 +264,7 @@
             <table class="presup">
                 <thead>
                     <tr>
+                        <th>Nº doc</th>
                         <th>Cliente</th>
                         <th>Entorno</th>
                         <th>Desarrollo</th>
@@ -263,6 +274,8 @@
                         <th class="num">H. Yurest</th>
                         <th class="num">€ Yurest</th>
                         <th class="num">H. Cliente</th>
+                        <th class="num" title="Coste por hora aplicado al cliente">€/h</th>
+                        <th class="num" title="Descuento aplicado al coste del cliente">Desc.</th>
                         <th class="num">€ Cliente</th>
                         <th>Entrega</th>
                         <th style="text-align:right">Acciones</th>
@@ -335,6 +348,8 @@
                         <select id="mf-estado">
                             <option value="en_espera">En espera</option>
                             <option value="aceptado">Aceptado</option>
+                            <option value="pagado_50">Pagado 50 %</option>
+                            <option value="pagado">Pagado</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -346,25 +361,41 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-row">
+                <!-- Yurest: horas × coste/hora interno. Ambos editables.
+                     El total (€ Yurest) es readonly, sale del producto. -->
+                <div class="form-row-3">
                     <div class="form-group">
                         <label for="mf-hy">Horas Yurest</label>
-                        <input type="number" id="mf-hy" min="0" max="10000" value="0" oninput="autoCosteYurest()">
+                        <input type="number" id="mf-hy" min="0" max="10000" value="0" oninput="recalcular()">
                     </div>
                     <div class="form-group">
-                        <label for="mf-cy">Coste Yurest (€) <span style="color:#94a3b8;font-weight:500">· auto 85 €/h (sin IVA)</span></label>
+                        <label for="mf-chy">€/h interno <span style="color:#94a3b8;font-weight:500">(default 25)</span></label>
+                        <input type="number" id="mf-chy" min="0" step="0.01" value="25" oninput="recalcular()">
+                    </div>
+                    <div class="form-group">
+                        <label for="mf-cy">Coste Yurest (€) <span style="color:#94a3b8;font-weight:500">· auto</span></label>
                         <input type="number" id="mf-cy" min="0" step="0.01" value="0" readonly tabindex="-1" style="background:#f1f5f9;color:#475569;cursor:not-allowed">
                     </div>
                 </div>
-                <div class="form-row">
+                <!-- Cliente: horas × coste/hora cliente × (1 - desc%/100).
+                     Los 3 inputs editables; el total (€ Cliente) readonly. -->
+                <div class="form-row-3">
                     <div class="form-group">
                         <label for="mf-hc">Horas Cliente</label>
-                        <input type="number" id="mf-hc" min="0" max="10000" value="0" oninput="autoCosteCliente()">
+                        <input type="number" id="mf-hc" min="0" max="10000" value="0" oninput="recalcular()">
                     </div>
                     <div class="form-group">
-                        <label for="mf-cc">Coste Cliente (€) <span style="color:#94a3b8;font-weight:500">· editable</span></label>
-                        <input type="number" id="mf-cc" min="0" step="0.01" value="0">
+                        <label for="mf-chc">€/h cliente <span style="color:#94a3b8;font-weight:500">(default 85)</span></label>
+                        <input type="number" id="mf-chc" min="0" step="0.01" value="85" oninput="recalcular()">
                     </div>
+                    <div class="form-group">
+                        <label for="mf-desc">Descuento %</label>
+                        <input type="number" id="mf-desc" min="0" max="100" step="0.01" value="0" oninput="recalcular()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="mf-cc">Coste Cliente (€) <span style="color:#94a3b8;font-weight:500">· auto = horas × €/h × (1 − desc%/100)</span></label>
+                    <input type="number" id="mf-cc" min="0" step="0.01" value="0" readonly tabindex="-1" style="background:#f1f5f9;color:#475569;cursor:not-allowed">
                 </div>
                 <!-- Secciones estructuradas del presupuesto. Todas
                      opcionales — si quedan vacías no aparecen en el PDF. -->
@@ -418,9 +449,13 @@
     function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 
     const EP = YurestConfig.ENDPOINTS.presupuestos;
-    // Tarifa base de Yurest: 85 €/hora, sin IVA. El IVA (21%) se añade
-    // al generar el PDF de presupuesto; en BD guardamos siempre neto.
-    const TARIFA_POR_HORA = 85;
+    // Defaults sólo para el FORMULARIO de alta (el modal nuevo). En BD
+    // cada presupuesto guarda su coste_hora_yurest, coste_hora_cliente y
+    // descuento_pct individuales, así que estos números no son la fuente
+    // de verdad — sólo arrancan los inputs cuando creas un presupuesto
+    // nuevo. La migración 2026-04-30_01 setea los mismos defaults en BD.
+    const DEFAULT_COSTE_HORA_YUREST  = 25;
+    const DEFAULT_COSTE_HORA_CLIENTE = 85;
     const IVA_PCT = 21;
     // Datos sociales del emisor del presupuesto. Misma fuente que el
     // mandato SEPA (solicitud.html → SEPA_ACREEDOR). Si cambian,
@@ -440,10 +475,11 @@
     let totales = { horas_yurest: 0, horas_cliente: 0, coste_yurest: 0, coste_cliente: 0 };
     // Estado de filtros — mantenido fuera del DOM para que repintar los chips
     // no pierda la selección (patrón de clientes.html / promociones).
-    let filtroEstado  = '';   // '' | 'en_espera' | 'aceptado'
+    let filtroEstado  = '';   // '' | 'en_espera' | 'aceptado' | 'pagado_50' | 'pagado'
     let filtroEntrega = '';   // '' | 'pendiente' | 'en_progreso' | 'entregado'
     let filtroEntorno = '';
     let filtroAbona   = '';
+    let filtroCliente = '';   // '' = todos, si no nombre exacto del cliente
     let verArchivadas = false;
 
     async function cargar() {
@@ -473,7 +509,7 @@
     // Rellena los chips con contadores en vivo (mismo patrón que clientes.html).
     function poblarChips() {
         const vivos = presupuestos.filter(p => !p.deleted_at);
-        const cEstado  = { en_espera: 0, aceptado: 0 };
+        const cEstado  = { en_espera: 0, aceptado: 0, pagado_50: 0, pagado: 0 };
         const cEntrega = { pendiente: 0, en_progreso: 0, entregado: 0 };
         vivos.forEach(p => {
             if (cEstado[p.estado]   !== undefined) cEstado[p.estado]++;
@@ -490,7 +526,24 @@
             </button>
             <button class="chip-filter ${filtroEstado === 'aceptado' ? 'active' : ''}" data-v="aceptado" onclick="setFiltroEstado('aceptado')">
                 Aceptado <span class="chip-count">${cEstado.aceptado}</span>
+            </button>
+            <button class="chip-filter ${filtroEstado === 'pagado_50' ? 'active' : ''}" data-v="pagado_50" onclick="setFiltroEstado('pagado_50')">
+                Pagado 50 % <span class="chip-count">${cEstado.pagado_50}</span>
+            </button>
+            <button class="chip-filter ${filtroEstado === 'pagado' ? 'active' : ''}" data-v="pagado" onclick="setFiltroEstado('pagado')">
+                Pagado <span class="chip-count">${cEstado.pagado}</span>
             </button>`;
+
+        // Filtro cliente: lista única de clientes presentes en los datos.
+        // Se reconstruye cada vez para que reflejes altas/bajas sin recargar.
+        const clientesUnicos = [...new Set(vivos.map(p => p.cliente).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        const selCli = document.getElementById('f-cliente');
+        const previo = filtroCliente;
+        selCli.innerHTML = '<option value="">Todos</option>'
+            + clientesUnicos.map(c => `<option value="${YurestConfig.escHtml(c)}">${YurestConfig.escHtml(c)}</option>`).join('');
+        selCli.value = previo;
+        selCli.classList.toggle('active', !!previo);
 
         const chipEntrega = document.getElementById('chips-entrega');
         chipEntrega.innerHTML = `
@@ -521,6 +574,7 @@
     function setFiltroEntrega(v) { filtroEntrega = v; poblarChips(); render(); }
     function setFiltroEntorno(sel) { filtroEntorno = sel.value; sel.classList.toggle('active', !!sel.value); render(); }
     function setFiltroAbona(sel)   { filtroAbona   = sel.value; sel.classList.toggle('active', !!sel.value); render(); }
+    function setFiltroCliente(sel) { filtroCliente = sel.value; sel.classList.toggle('active', !!sel.value); render(); }
     function toggleArchivadas() {
         verArchivadas = !verArchivadas;
         document.getElementById('chip-archivadas').classList.toggle('active', verArchivadas);
@@ -533,6 +587,7 @@
 
         const lista = presupuestos.filter(p => {
             if (q && !(String(p.cliente||'').toLowerCase().includes(q) || String(p.desarrollo||'').toLowerCase().includes(q))) return false;
+            if (filtroCliente && p.cliente !== filtroCliente) return false;
             if (filtroEntorno && p.entorno !== filtroEntorno) return false;
             if (filtroAbona   && p.quien_abona !== filtroAbona) return false;
             if (filtroEstado  && p.estado !== filtroEstado) return false;
@@ -540,22 +595,26 @@
             return true;
         });
 
-        // Totales filtrados (no usamos los del backend porque reflejan sólo el conjunto completo).
+        // KPIs (4): total desarrollos, € Yurest, € Cliente, pendiente de cobro.
+        // Pendiente: aceptado=100% del coste, pagado_50=50%, pagado=0%,
+        // en_espera=0 (aún no comprometido). Sólo cuenta filas vivas.
+        function pendienteFactor(estado) {
+            if (estado === 'aceptado')  return 1.0;
+            if (estado === 'pagado_50') return 0.5;
+            return 0;   // pagado / en_espera / cualquier otro
+        }
         const sum = lista.reduce((acc, p) => {
-            acc.horas_yurest  += Number(p.horas_yurest)  || 0;
-            acc.horas_cliente += Number(p.horas_cliente) || 0;
+            const archivada = !!p.deleted_at;
             acc.coste_yurest  += Number(p.coste_yurest)  || 0;
             acc.coste_cliente += Number(p.coste_cliente) || 0;
+            if (!archivada) acc.pendiente += (Number(p.coste_cliente) || 0) * pendienteFactor(p.estado);
             return acc;
-        }, { horas_yurest: 0, horas_cliente: 0, coste_yurest: 0, coste_cliente: 0 });
-        const pdte = lista.filter(p => !p.deleted_at && p.estado === 'aceptado' && p.estado_entrega !== 'entregado').length;
+        }, { coste_yurest: 0, coste_cliente: 0, pendiente: 0 });
 
         document.getElementById('k-count').textContent = lista.length + (presupuestos.length !== lista.length ? ' / ' + presupuestos.length : '');
-        document.getElementById('k-hy').textContent    = fmtHoras(sum.horas_yurest);
         document.getElementById('k-cy').textContent    = fmtEur(sum.coste_yurest);
-        document.getElementById('k-hc').textContent    = fmtHoras(sum.horas_cliente);
         document.getElementById('k-cc').textContent    = fmtEur(sum.coste_cliente);
-        document.getElementById('k-pdte').textContent  = pdte;
+        document.getElementById('k-pdte').textContent  = fmtEur(sum.pendiente);
 
         actualizarBadge();
 
@@ -571,9 +630,14 @@
             const archivada = !!p.deleted_at;
             const entornoLbl = p.entorno === 'app_cliente' ? 'App' : 'Backoffice';
             const abonaLbl = p.quien_abona === 'yurest' ? 'Yurest' : 'Cliente';
-            const estadoLbl = p.estado === 'aceptado' ? 'Aceptado' : 'En espera';
+            const estadoLbl = p.estado === 'aceptado'  ? 'Aceptado'
+                            : p.estado === 'pagado_50' ? 'Pagado 50 %'
+                            : p.estado === 'pagado'    ? 'Pagado'
+                                                       : 'En espera';
             const entregaLbl = p.estado_entrega === 'entregado' ? 'Entregado'
                              : p.estado_entrega === 'en_progreso' ? 'En progreso' : 'Pendiente';
+            const desc = Number(p.descuento_pct) || 0;
+            const chc  = Number(p.coste_hora_cliente) || 0;
             const pjson = JSON.stringify(p).replace(/'/g,"&#39;");
             const acciones = archivada
                 ? `<button class="ok" onclick="reactivar('${esc(p.id)}')">♻️ Reactivar</button>`
@@ -587,6 +651,7 @@
                 `;
             return `
                 <tr class="${archivada ? 'row-archivada' : ''}">
+                    <td><span style="font-family:var(--font-mono);font-size:.78rem;color:#475569">${esc(p.numero_doc || '—')}</span></td>
                     <td><strong>${esc(p.cliente)}</strong></td>
                     <td><span class="chip ${p.entorno}">${esc(entornoLbl)}</span></td>
                     <td>${esc(p.desarrollo)}</td>
@@ -596,6 +661,8 @@
                     <td class="num">${fmtHoras(p.horas_yurest)}</td>
                     <td class="num">${fmtEur(p.coste_yurest)}</td>
                     <td class="num">${fmtHoras(p.horas_cliente)}</td>
+                    <td class="num">${fmtEur(chc)}</td>
+                    <td class="num" style="${desc > 0 ? 'color:#15803d;font-weight:700' : 'color:#94a3b8'}">${desc.toLocaleString('es-ES', {minimumFractionDigits: 0, maximumFractionDigits: 2})} %</td>
                     <td class="num">${fmtEur(p.coste_cliente)}</td>
                     <td><span class="chip ${p.estado_entrega}">${esc(entregaLbl)}</span></td>
                     <td class="acts">${acciones}</td>
@@ -624,13 +691,11 @@
     }
 
     // ── Modal crear / editar ───────────────────────────────────────────
-    // El coste Yurest es siempre auto-calculado (horas * 85 €/h, sin IVA)
-    // y el input es readonly. El coste Cliente SÍ es editable a mano; si
-    // el usuario lo toca marcamos dataset.manual para que cambiar las
-    // horas no pise la tarifa pactada.
-    function _resetManualFlags() {
-        document.getElementById('mf-cc').dataset.manual = '';
-    }
+    // Coste Yurest  = horas_yurest  × coste_hora_yurest                       (readonly)
+    // Coste Cliente = horas_cliente × coste_hora_cliente × (1 - desc%/100)    (readonly)
+    // Las 3 entradas (horas_y, coste_h_y, horas_c, coste_h_c, desc) son las
+    // editables. Cualquier cambio dispara recalcular() que actualiza ambos
+    // totales. Sin flags manuales — la fórmula es única y siempre se aplica.
     // Mapa campo BD → id de textarea para las secciones estructuradas del
     // presupuesto. Se usa tanto en abrirModal (reset) como en editar
     // (carga) y en guardar (payload).
@@ -652,20 +717,24 @@
         document.getElementById('mf-abona').value  = 'cliente';
         document.getElementById('mf-estado').value = 'en_espera';
         document.getElementById('mf-entrega').value= 'pendiente';
-        document.getElementById('mf-hy').value = '0';
-        document.getElementById('mf-cy').value = '0';
-        document.getElementById('mf-hc').value = '0';
-        document.getElementById('mf-cc').value = '0';
+        document.getElementById('mf-hy').value  = '0';
+        document.getElementById('mf-chy').value = String(DEFAULT_COSTE_HORA_YUREST);
+        document.getElementById('mf-cy').value  = '0';
+        document.getElementById('mf-hc').value  = '0';
+        document.getElementById('mf-chc').value = String(DEFAULT_COSTE_HORA_CLIENTE);
+        document.getElementById('mf-desc').value= '0';
+        document.getElementById('mf-cc').value  = '0';
         document.getElementById('mf-notas').value = '';
         // Secciones del presupuesto vacías al crear.
         Object.values(SECCIONES_TEXTO).forEach(id => { document.getElementById(id).value = ''; });
-        _resetManualFlags();
+        recalcular();
         _hideError();
         document.getElementById('modal-pre').classList.add('open');
         setTimeout(() => document.getElementById('mf-cliente').focus(), 50);
     }
     function editar(p) {
-        document.getElementById('modal-title').textContent = 'Editar presupuesto';
+        document.getElementById('modal-title').textContent = 'Editar presupuesto'
+            + (p.numero_doc ? ' · ' + p.numero_doc : '');
         document.getElementById('f-id').value = p.id;
         document.getElementById('mf-cliente').value = p.cliente || '';
         document.getElementById('mf-entorno').value = p.entorno || 'backoffice';
@@ -673,23 +742,19 @@
         document.getElementById('mf-abona').value  = p.quien_abona || 'cliente';
         document.getElementById('mf-estado').value = p.estado || 'en_espera';
         document.getElementById('mf-entrega').value= p.estado_entrega || 'pendiente';
-        document.getElementById('mf-hy').value = p.horas_yurest ?? 0;
-        // Coste Yurest: re-calculado desde las horas (en caso de que en BD
-        // haya un valor viejo distinto — fuerza consistencia con la tarifa).
-        document.getElementById('mf-cy').value = ((Number(p.horas_yurest) || 0) * TARIFA_POR_HORA).toFixed(2);
-        document.getElementById('mf-hc').value = p.horas_cliente ?? 0;
-        document.getElementById('mf-cc').value = p.coste_cliente ?? 0;
+        // Tarifas: si la fila las trae las usa; si no, defaults.
+        document.getElementById('mf-hy').value  = p.horas_yurest ?? 0;
+        document.getElementById('mf-chy').value = p.coste_hora_yurest  ?? DEFAULT_COSTE_HORA_YUREST;
+        document.getElementById('mf-hc').value  = p.horas_cliente ?? 0;
+        document.getElementById('mf-chc').value = p.coste_hora_cliente ?? DEFAULT_COSTE_HORA_CLIENTE;
+        document.getElementById('mf-desc').value= p.descuento_pct ?? 0;
         document.getElementById('mf-notas').value = p.notas || '';
         // Carga de las secciones estructuradas (si vienen null se deja vacío).
         Object.entries(SECCIONES_TEXTO).forEach(([col, id]) => {
             document.getElementById(id).value = p[col] || '';
         });
-        _resetManualFlags();
-        // Si el coste cliente existente NO coincide con horas*tarifa, lo
-        // marcamos como manual para que cambiar las horas no lo pise.
-        const hc = Number(p.horas_cliente) || 0;
-        const cc = Number(p.coste_cliente) || 0;
-        if (Math.abs(cc - hc * TARIFA_POR_HORA) > 0.01) document.getElementById('mf-cc').dataset.manual = '1';
+        // recalcular() rellena los dos totales readonly desde los inputs cargados.
+        recalcular();
         _hideError();
         document.getElementById('modal-pre').classList.add('open');
     }
@@ -697,26 +762,23 @@
     function _showError(msg) { const el = document.getElementById('f-error'); el.textContent = msg; el.style.display = ''; }
     function _hideError()    { document.getElementById('f-error').style.display = 'none'; }
 
-    // Auto-cálculo de coste Yurest: siempre horas * 85 €/h (readonly,
-    // el usuario no puede tocarlo). El IVA 21% se añade en la generación
-    // del PDF de presupuesto, no en la BD.
-    function autoCosteYurest() {
-        const h = parseInt(document.getElementById('mf-hy').value, 10) || 0;
-        document.getElementById('mf-cy').value = (h * TARIFA_POR_HORA).toFixed(2);
+    // Re-cálculo de los dos costes a partir de los 5 inputs editables.
+    // Coste Yurest  = horas_yurest  × coste_hora_yurest
+    // Coste Cliente = horas_cliente × coste_hora_cliente × (1 - desc%/100)
+    // Llamado desde oninput de los 5 inputs y al abrir/editar.
+    function recalcular() {
+        const hy   = parseFloat(document.getElementById('mf-hy').value)   || 0;
+        const chy  = parseFloat(document.getElementById('mf-chy').value)  || 0;
+        const hc   = parseFloat(document.getElementById('mf-hc').value)   || 0;
+        const chc  = parseFloat(document.getElementById('mf-chc').value)  || 0;
+        const desc = Math.max(0, Math.min(100, parseFloat(document.getElementById('mf-desc').value) || 0));
+        document.getElementById('mf-cy').value = (hy * chy).toFixed(2);
+        document.getElementById('mf-cc').value = (hc * chc * (1 - desc / 100)).toFixed(2);
     }
-    // Coste Cliente SÍ editable: si el usuario no ha tocado el input,
-    // seguimos el auto-cálculo a la tarifa base. En cuanto lo edita a
-    // mano, respetamos la tarifa pactada aunque cambie las horas.
-    function autoCosteCliente() {
-        const h = parseInt(document.getElementById('mf-hc').value, 10) || 0;
-        const cInp = document.getElementById('mf-cc');
-        if (!cInp.dataset.manual) cInp.value = (h * TARIFA_POR_HORA).toFixed(2);
-    }
-    // Marca manual si el usuario edita directamente el input de coste cliente.
-    document.addEventListener('DOMContentLoaded', () => {
-        const cc = document.getElementById('mf-cc');
-        if (cc) cc.addEventListener('input', e => { e.target.dataset.manual = '1'; });
-    });
+    // (El listener de manual override sobre mf-cc se eliminó porque ahora
+    //  el coste cliente es siempre fórmula = h × €/h × (1 - desc%/100). No
+    //  hay tarifa pactada arbitraria — para descuentos puntuales se usa el
+    //  campo de descuento %.)
 
     async function guardar() {
         const id = document.getElementById('f-id').value.trim();
@@ -729,20 +791,29 @@
         // false por defecto; en update, al no enviarse, se preserva el
         // valor actual.
         const horasY = parseInt(document.getElementById('mf-hy').value, 10) || 0;
+        const horasC = parseInt(document.getElementById('mf-hc').value, 10) || 0;
+        const chy    = parseFloat(document.getElementById('mf-chy').value) || 0;
+        const chc    = parseFloat(document.getElementById('mf-chc').value) || 0;
+        const desc   = Math.max(0, Math.min(100, parseFloat(document.getElementById('mf-desc').value) || 0));
+        // Recalcula los totales aquí también para que el payload no dependa
+        // del estado del input readonly (el usuario podría haberlo tocado
+        // por DevTools — defensivo).
+        const costeY = +(horasY * chy).toFixed(2);
+        const costeC = +(horasC * chc * (1 - desc / 100)).toFixed(2);
         const payload = {
             cliente, desarrollo,
-            entorno:        document.getElementById('mf-entorno').value,
-            quien_abona:    document.getElementById('mf-abona').value,
-            estado:         document.getElementById('mf-estado').value,
-            estado_entrega: document.getElementById('mf-entrega').value,
-            horas_yurest:   horasY,
-            horas_cliente:  parseInt(document.getElementById('mf-hc').value, 10) || 0,
-            // coste_yurest se calcula siempre desde las horas — la tarifa
-            // es fija (85 €/h, sin IVA). El input readonly es sólo para
-            // que el usuario vea el número.
-            coste_yurest:   +(horasY * TARIFA_POR_HORA).toFixed(2),
-            coste_cliente:  parseFloat(document.getElementById('mf-cc').value) || 0,
-            notas:          document.getElementById('mf-notas').value.trim() || null
+            entorno:            document.getElementById('mf-entorno').value,
+            quien_abona:        document.getElementById('mf-abona').value,
+            estado:             document.getElementById('mf-estado').value,
+            estado_entrega:     document.getElementById('mf-entrega').value,
+            horas_yurest:       horasY,
+            horas_cliente:      horasC,
+            coste_hora_yurest:  chy,
+            coste_hora_cliente: chc,
+            descuento_pct:      desc,
+            coste_yurest:       costeY,
+            coste_cliente:      costeC,
+            notas:              document.getElementById('mf-notas').value.trim() || null
         };
         // Secciones estructuradas — null si el usuario las dejó vacías
         // para que la BD las guarde como NULL (y el PDF no las imprima).
@@ -892,14 +963,13 @@
     // el popup de impresión.
     function _renderPresupuestoDoc(p) {
         const horasFacturables = Number(p.horas_cliente) || Number(p.horas_yurest) || 0;
-        const ccManual = Number(p.coste_cliente) || 0;
-        const tarifaBase = horasFacturables > 0 ? TARIFA_POR_HORA : 0;
-        const subtotal = ccManual > 0
-            ? ccManual
-            : +(horasFacturables * tarifaBase).toFixed(2);
-        const precioUnit = horasFacturables > 0
-            ? +(subtotal / horasFacturables).toFixed(2)
-            : subtotal;
+        // Subtotal sale del coste_cliente persistido (que ya incluye descuento).
+        // El precio unitario para el PDF se calcula como €/h cliente sin
+        // aplicar descuento — el descuento se muestra como línea aparte si
+        // procede, para que el cliente vea la rebaja explícita.
+        const subtotal = Number(p.coste_cliente) || 0;
+        const tarifaBase = Number(p.coste_hora_cliente) || DEFAULT_COSTE_HORA_CLIENTE;
+        const precioUnit = tarifaBase;
         const iva   = +(subtotal * IVA_PCT / 100).toFixed(2);
         const total = +(subtotal + iva).toFixed(2);
         const fmtE = n => (Number(n) || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1067,8 +1137,8 @@
     window.reactivar = reactivar;
     window.render = render;
     window.cargar = cargar;
-    window.autoCosteYurest = autoCosteYurest;
-    window.autoCosteCliente = autoCosteCliente;
+    window.recalcular = recalcular;
+    window.setFiltroCliente = setFiltroCliente;
     window.generarPresupuestoPDF = generarPresupuestoPDF;
     window.cerrarPresupuestoDoc = cerrarPresupuestoDoc;
     window.descargarPresupuestoPDF = descargarPresupuestoPDF;
