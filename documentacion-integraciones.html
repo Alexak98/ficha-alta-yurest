@@ -357,6 +357,38 @@ const INTEGRACIONES = [
         }
     },
     {
+        id: 'camarero10',
+        nombre: 'Camarero10',
+        desc: 'TPV cloud para hostelería con API por dominio del cliente.',
+        tag: 'estable',
+        inicial: 'C10',
+        c1: '#dc2626', c2: '#7f1d1d',
+        doc: {
+            descripcion: 'Camarero10 es un TPV cloud español. Cada cliente tiene su propio subdominio (ej. cliente.camarero10.com) y la integración con Yurest se autentica con usuario + contraseña sobre ese dominio. Los datos los facilita el distribuidor de Camarero10 si el cliente no los tiene a mano.',
+            comoConectar: [
+                'Pedir al cliente el dominio de su instancia de Camarero10.',
+                'Pedir usuario y contraseña con permisos de API; si no los tiene, debe solicitarlos a su distribuidor de Camarero10.',
+                'Configurar la integración en Yurest y validar catálogo y ventas en sincronización inicial.'
+            ],
+            camposRequeridos: [
+                { k: 'Dominio',    v: 'Subdominio del cliente en Camarero10 (ej. cliente.camarero10.com).' },
+                { k: 'Usuario',    v: 'Usuario con acceso a la API del TPV.' },
+                { k: 'Contraseña', v: 'Contraseña asociada al usuario anterior.' }
+            ],
+            datosSincronizados: [
+                'Catálogo de productos.',
+                'Tickets y pagos.',
+                'Cierres de caja.'
+            ],
+            limitaciones: [
+                'Si el cliente no tiene los datos a mano, debe solicitarlos a su distribuidor de Camarero10.',
+                'Si el cliente cambia la contraseña del usuario integración, la sincronización se cae hasta que nos pase la nueva.'
+            ],
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Camarero10. Por eso, necesito los siguientes datos de conexión:\n\n• Dominio\n• Usuario\n• Contraseña\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Camarero10 con Yurest.\n\nGracias.`,
+            contacto: { nombre: 'Soporte Camarero10', web: 'https://www.camarero10.com' }
+        }
+    },
+    {
         id: 'cuiner',
         nombre: 'Cuiner',
         desc: 'TPV cloud con API REST y token por restaurante.',
