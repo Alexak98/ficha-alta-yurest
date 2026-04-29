@@ -443,10 +443,10 @@
         PERMS.forEach(p => { permsMap[p.id] = p.label; });
 
         document.getElementById('users-tbody').innerHTML = usuarios.map(u => {
-            // permisos puede ser array legacy u objeto granular {read,write,delete}.
-            // Para los chips del listado, mostramos cada página con un sufijo
-            // que indica los niveles concedidos: por ejemplo "Clientes · LEB".
-            // Admin = todos los niveles.
+            // permisos: shape granular {read,write,delete} desde la migración
+            // 2026-04-30_03. Para los chips del listado, mostramos cada página
+            // con un sufijo que indica los niveles concedidos: p.ej. "Clientes
+            // · LEB". Admin = todos los niveles.
             const norm = _normalizarPermisosUsuario(u.permisos);
             const todasIds = new Set([...norm.read, ...norm.write, ...norm.delete]);
             const chips = u.rol === 'admin'
@@ -532,23 +532,15 @@
         `).join('');
     }
 
-    // Convierte el shape almacenado en BD (array legacy u objeto granular)
-    // a { read:Set, write:Set, delete:Set } para alimentar renderPermisos.
+    // Convierte el shape granular almacenado en BD a Sets para alimentar
+    // renderPermisos. Tolerante a `permisos` null o con un shape extraño:
+    // devuelve sets vacíos en lugar de crashear.
     function _normalizarPermisosUsuario(p) {
         const out = { read: new Set(), write: new Set(), delete: new Set() };
-        if (!p) return out;
-        if (Array.isArray(p)) {
-            // Legacy: cada id implica acceso completo (r+w+d).
-            p.forEach(id => {
-                out.read.add(String(id));
-                out.write.add(String(id));
-                out.delete.add(String(id));
-            });
-        } else if (typeof p === 'object') {
-            (p.read   || []).forEach(id => out.read.add(String(id)));
-            (p.write  || []).forEach(id => out.write.add(String(id)));
-            (p.delete || []).forEach(id => out.delete.add(String(id)));
-        }
+        if (!p || typeof p !== 'object' || Array.isArray(p)) return out;
+        (p.read   || []).forEach(id => out.read.add(String(id)));
+        (p.write  || []).forEach(id => out.write.add(String(id)));
+        (p.delete || []).forEach(id => out.delete.add(String(id)));
         return out;
     }
 

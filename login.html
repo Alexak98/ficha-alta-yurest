@@ -369,20 +369,17 @@
                 const SHARED_PASS = 'Yurest@46002';
                 const basicAuth = btoa(SHARED_USER + ':' + SHARED_PASS);
                 const u = loginData.user || {};
-                // Permisos: aceptamos los DOS shapes que persistimos en BD:
-                //   · array legacy        ['clientes', 'lista']
-                //   · objeto granular     { read: [], write: [], delete: [] }
-                // Si el backend devuelve cualquier otra cosa (null, número),
-                // caemos a [] para no romper. ANTES esto tenía
-                // `Array.isArray(u.permisos) ? u.permisos : []` y wipeaba
-                // los permisos granulares al loguearse — el usuario sólo
-                // veía items public:true.
+                // Permisos: shape único `{ read, write, delete }` desde la
+                // migración 2026-04-30_03. Si el backend devuelve cualquier
+                // otra cosa (null, array, escalares) normalizamos al objeto
+                // vacío equivalente para no romper el resto del flujo.
                 let permisosLogin = u.permisos;
                 if (
-                    !Array.isArray(permisosLogin) &&
-                    (permisosLogin == null || typeof permisosLogin !== 'object')
+                    !permisosLogin
+                    || typeof permisosLogin !== 'object'
+                    || Array.isArray(permisosLogin)
                 ) {
-                    permisosLogin = [];
+                    permisosLogin = { read: [], write: [], delete: [] };
                 }
                 YurestConfig.setSession({
                     id:                  u.id || null,

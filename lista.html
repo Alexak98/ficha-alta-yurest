@@ -1514,8 +1514,7 @@
         const paginacionEl   = document.getElementById('paginacion');
         // Permisos granulares: admin siempre los ve; user con sólo `read`
         // en `lista` no ve Editar/Eliminar. Los chequeos están en
-        // YurestConfig.puedeEscribir / puedeBorrar (back-compat con shape
-        // legacy: array → acceso completo).
+        // YurestConfig.puedeEscribir / puedeBorrar.
         const _puedeEditar = YurestConfig.puedeEscribir
             ? YurestConfig.puedeEscribir('lista')
             : true;

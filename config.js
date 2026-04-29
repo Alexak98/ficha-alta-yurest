@@ -35,20 +35,15 @@
  */
 
 /**
- * Shape granular de permisos. Las tres listas son independientes — un
+ * Permisos del usuario. Tres listas independientes de PageIds — un
  * usuario puede tener LECTURA pero no ESCRITURA sobre la misma página.
- * @typedef {Object} PermisosGranulares
+ * Tras la migración 2026-04-30_03_permisos_granulares.sql este es el
+ * único shape válido en BD; el viejo array plano `["clientes", ...]` ya
+ * no existe.
+ * @typedef {Object} Permisos
  * @property {PageId[]} read   IDs de páginas con permiso de lectura
  * @property {PageId[]} write  IDs de páginas con permiso de escritura
  * @property {PageId[]} delete IDs de páginas con permiso de borrado
- */
-
-/**
- * Shape legacy de permisos (DEPRECATED — pendiente de migrar a granular).
- * Cada id en el array implica acceso completo (read+write+delete) a esa
- * página. Se mantiene la rama de código por retro-compat hasta que la
- * migración SQL `2026-04-30_permisos_granulares.sql` se aplique en BD.
- * @typedef {PageId[]} PermisosLegacy
  */
 
 /**
@@ -60,7 +55,7 @@
  * @property {string}         nombre              Nombre completo (saludo)
  * @property {string}         email               Email del usuario
  * @property {RolUsuario}     rol                 Rol asignado
- * @property {PermisosGranulares|PermisosLegacy} permisos Acepta los dos shapes
+ * @property {Permisos}       permisos            Permisos granulares (read/write/delete)
  * @property {string|null}    sessions_revoked_at ISO-8601 si admin revocó
  * @property {string}         token               Token de sesión (o "authenticated")
  * @property {string}         basicAuth           Header Basic auth pre-codificado
@@ -380,28 +375,20 @@
         return true;
     }
 
-    // Stringify estable para comparar dos shapes de permisos. Acepta
-    // los dos formatos que persistimos:
-    //   · array legacy        ['clientes', 'lista']
-    //   · objeto granular     { read: [...], write: [...], delete: [...] }
-    // Ordena los elementos para que un orden distinto no provoque un
-    // update falso en `_validateSessionFresh`. Cualquier otro shape
-    // se normaliza a 'null'.
+    // Stringify estable de permisos para comparar dos snapshots sin que
+    // un orden distinto en read/write/delete provoque un update falso
+    // en `_validateSessionFresh`. Espera el shape granular
+    //   { read: [...], write: [...], delete: [...] }
+    // Cualquier otro tipo se normaliza a 'null'.
     function _stableStringifyPerms(p) {
-        if (p == null) return 'null';
-        if (Array.isArray(p)) {
-            return JSON.stringify([...p].map(String).sort());
+        if (p == null || typeof p !== 'object') return 'null';
+        const keys = Object.keys(p).sort();
+        const norm = {};
+        for (const k of keys) {
+            const v = p[k];
+            norm[k] = Array.isArray(v) ? [...v].map(String).sort() : v;
         }
-        if (typeof p === 'object') {
-            const keys = Object.keys(p).sort();
-            const norm = {};
-            for (const k of keys) {
-                const v = p[k];
-                norm[k] = Array.isArray(v) ? [...v].map(String).sort() : v;
-            }
-            return JSON.stringify(norm);
-        }
-        return JSON.stringify(p);
+        return JSON.stringify(norm);
     }
 
     // Llama al endpoint /auth/verify para ver si la sesión fue revocada por
@@ -440,22 +427,13 @@
 
             // Si no hubo revocación pero los permisos o el rol cambiaron,
             // actualizamos el snapshot en la sesión en silencio para que la
-            // UI refleje los cambios en la próxima carga.
-            //
-            // BUG ANTIGUO: el código sólo aceptaba `Array.isArray(data.permisos)`
-            // y forzaba `[]` para cualquier otro shape. Con el shape granular
-            // nuevo `{read, write, delete}` esto WIPEABA los permisos del
-            // usuario cada vez que la sesión se validaba en background —
-            // dejaba al usuario viendo SÓLO los items con `public: true`.
-            // Ahora aceptamos los dos shapes (array legacy O objeto granular)
-            // y comparamos con stringify estable para no provocar updates
-            // espurios cuando el orden de las keys/elementos cambia.
+            // UI refleje los cambios en la próxima carga. Esperamos el
+            // shape granular `{read, write, delete}` desde la migración
+            // 2026-04-30_03; cualquier otro valor se normaliza al objeto
+            // vacío equivalente para no romper.
             let permisosNuevos = data.permisos;
-            if (
-                !Array.isArray(permisosNuevos) &&
-                (permisosNuevos == null || typeof permisosNuevos !== 'object')
-            ) {
-                permisosNuevos = [];
+            if (permisosNuevos == null || typeof permisosNuevos !== 'object' || Array.isArray(permisosNuevos)) {
+                permisosNuevos = { read: [], write: [], delete: [] };
             }
             const permisosIguales = _stableStringifyPerms(s.permisos) === _stableStringifyPerms(permisosNuevos);
             if (data.rol !== s.rol || !permisosIguales) {
@@ -467,38 +445,33 @@
     }
 
     // ──────────────────────────────────────────────────────────
-    //  PERMISOS — soporta dos shapes en `usuarios.permisos`:
+    //  PERMISOS — shape único `{read, write, delete}` desde la
+    //  migración 2026-04-30_03_permisos_granulares.sql. El array
+    //  plano legacy (`["clientes","lista"]`) ya no existe en BD.
     //
-    //  1) Array plano (LEGACY, retro-compat):
-    //         ["clientes", "lista", "admin"]
-    //     → cada página listada implica acceso completo
-    //       (lectura + escritura + borrado).
-    //
-    //  2) Objeto granular (NUEVO):
-    //         { "read": ["clientes","lista"],
-    //           "write": ["clientes"],
-    //           "delete": ["clientes"] }
-    //     → control fino: poder LEER no implica poder EDITAR ni BORRAR.
+    //  Cada lista contiene PageIds independientes — un usuario
+    //  puede tener LECTURA pero no ESCRITURA sobre la misma página.
     //
     //  Helpers expuestos:
-    //    · getPermisos()      — array plano de pageIds con CUALQUIER acceso.
-    //    · tienePermiso(id)   — TRUE si tiene cualquier acceso (legacy)
-    //                            o si está en read/write/delete (nuevo).
-    //                            Equivale a "puede ENTRAR a la página".
-    //    · puedeLeer(id)      — TRUE si está en read (o en array legacy).
-    //    · puedeEscribir(id)  — TRUE si está en write (o en array legacy).
-    //    · puedeBorrar(id)    — TRUE si está en delete (o en array legacy).
+    //    · getPermisos()      — array plano de PageIds con CUALQUIER acceso.
+    //    · tienePermiso(id)   — TRUE si está en read/write/delete.
+    //                           Equivale a "puede ENTRAR a la página".
+    //    · puedeLeer(id)      — TRUE si está en read.
+    //    · puedeEscribir(id)  — TRUE si está en write.
+    //    · puedeBorrar(id)    — TRUE si está en delete.
     //
     //  Admin (rol='admin') tiene siempre TRUE en todas.
     // ──────────────────────────────────────────────────────────
 
-    // Helper interno: extrae el shape de permisos del usuario actual.
-    // Devuelve siempre { read:Set, write:Set, delete:Set, todos:Set, esLegacy }.
+    // Helper interno: extrae los permisos del usuario actual y los
+    // expone como Sets para lookup O(1). Tolerante a `permisos` null
+    // o con un shape inesperado: devuelve sets vacíos en lugar de
+    // crashear.
     function _normalizarPermisosUsuario(s) {
-        const out = { read: new Set(), write: new Set(), delete: new Set(), todos: new Set(), esLegacy: false };
+        const out = { read: new Set(), write: new Set(), delete: new Set(), todos: new Set() };
         if (!s) return out;
         if (s.rol === 'admin') {
-            // Admin: marcamos todos los pageIds disponibles en las 3 sets.
+            // Admin: marcamos todos los PageIds disponibles en las 3 sets.
             PERMISOS_DISPONIBLES.forEach(p => {
                 out.read.add(p.id);
                 out.write.add(p.id);
@@ -508,18 +481,7 @@
             return out;
         }
         const p = s.permisos;
-        if (Array.isArray(p)) {
-            // Shape legacy: cada id en el array = acceso completo (r+w+d).
-            out.esLegacy = true;
-            p.forEach(id => {
-                const sId = String(id);
-                out.read.add(sId);
-                out.write.add(sId);
-                out.delete.add(sId);
-                out.todos.add(sId);
-            });
-        } else if (p && typeof p === 'object') {
-            // Shape granular nuevo.
+        if (p && typeof p === 'object' && !Array.isArray(p)) {
             (p.read   || []).forEach(id => { out.read.add(String(id));   out.todos.add(String(id)); });
             (p.write  || []).forEach(id => { out.write.add(String(id));  out.todos.add(String(id)); });
             (p.delete || []).forEach(id => { out.delete.add(String(id)); out.todos.add(String(id)); });
@@ -556,7 +518,7 @@
 
     /**
      * TRUE si el usuario tiene permiso de LECTURA sobre la página.
-     * Admin siempre TRUE. Shape legacy: array implica r+w+d.
+     * Admin siempre TRUE.
      * @param {PageId} pageId
      * @returns {boolean}
      */
@@ -570,7 +532,7 @@
 
     /**
      * TRUE si el usuario tiene permiso de ESCRITURA (crear / editar) sobre
-     * la página. Admin siempre TRUE. Shape legacy: array implica r+w+d.
+     * la página. Admin siempre TRUE.
      * @param {PageId} pageId
      * @returns {boolean}
      */
@@ -584,7 +546,7 @@
 
     /**
      * TRUE si el usuario tiene permiso de BORRADO sobre la página.
-     * Admin siempre TRUE. Shape legacy: array implica r+w+d.
+     * Admin siempre TRUE.
      * @param {PageId} pageId
      * @returns {boolean}
      */
@@ -607,9 +569,9 @@
 
     /**
      * Datos del usuario activo o null si no hay sesión. Útil para mostrar
-     * en UI (saludo, header). Devuelve permisos en su shape original sin
-     * normalizar — para chequear acceso usar tienePermiso/puedeLeer/etc.
-     * @returns {{id:string|null,username:string,nombre:string,email:string,rol:RolUsuario,permisos:PermisosGranulares|PermisosLegacy}|null}
+     * en UI (saludo, header). Devuelve los permisos sin normalizar — para
+     * chequear acceso usar tienePermiso/puedeLeer/puedeEscribir/puedeBorrar.
+     * @returns {{id:string|null,username:string,nombre:string,email:string,rol:RolUsuario,permisos:Permisos}|null}
      */
     function getUsuario() {
         const s = getSession();
@@ -620,7 +582,7 @@
             nombre:   s.nombre || s.user || '',
             email:    s.email || '',
             rol:      s.rol || 'user',
-            // permisos en su shape original (array legacy u objeto granular)
+            // permisos granulares { read, write, delete } tal cual los emitió la BD
             permisos: s.permisos
         };
     }
