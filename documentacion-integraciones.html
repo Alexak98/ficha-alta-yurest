@@ -6,7 +6,10 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <title>Documentación de integraciones — Yurest</title>
     <script src="config.js"></script>
-    <script>YurestConfig.requireAuth('documentacion_integraciones');</script>
+    <!-- Sin permiso requerido: la página es documentación interna,
+         todos los usuarios logueados pueden verla. Mismo patrón que
+         churn-tecnico.html y updates.html. -->
+    <script>YurestConfig.requireAuth();</script>
     <link rel="stylesheet" href="style.css">
     <style>
         body { background:#f8fafc }

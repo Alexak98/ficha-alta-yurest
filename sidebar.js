@@ -132,7 +132,7 @@
             icon: 'soporte',
             items: [
                 { id: 'integraciones',     href: 'integraciones.html',  label: 'Integraciones',   icon: 'integraciones' },
-                { id: 'documentacion_integraciones', href: 'documentacion-integraciones.html', label: 'Doc. integraciones', icon: 'documentacion_integraciones' },
+                { id: 'documentacion_integraciones', href: 'documentacion-integraciones.html', label: 'Doc. integraciones', icon: 'documentacion_integraciones', public: true },
                 { id: 'hardware',          href: 'hardware.html',       label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
                 { id: 'stock',             href: 'stock.html',          label: 'Stock',           icon: 'stock' }
                 // 'churn_tecnico' se ha movido al grupo Informes → subgrupo
