@@ -2,6 +2,18 @@
 //  CONFIGURACIÓN CENTRAL — Yurest Portal
 //  Única fuente de verdad para endpoints, constantes y helpers
 //  de sesión/autenticación compartidos entre todas las páginas.
+//  ------------------------------------------------------------
+//  ESTADO (Fase 2.a — Ruta A módulos ES):
+//    Algunas utilidades autocontenidas (escHtml/escAttr/escJsInAttr,
+//    formatDate, generarId, PERMISOS_DISPONIBLES, WEBHOOK_BASE,
+//    ENDPOINTS) están REPLICADAS en /js/lib/*.js como módulos ES
+//    nativos para que páginas nuevas las puedan importar con
+//    `<script type="module">`.
+//
+//    Si tocas una de esas funciones, sincroniza también el archivo
+//    de /js/lib/ correspondiente. La duplicación se eliminará en la
+//    Fase 2.b cuando convirtamos config.js a module wrapper y
+//    migremos los 28 HTMLs a `<script type="module">`.
 // ============================================================
 
 // ──────────────────────────────────────────────────────────────
