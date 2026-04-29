@@ -389,27 +389,32 @@ const INTEGRACIONES = [
         inicial: 'GL',
         c1: '#10b981', c2: '#047857',
         doc: {
-            descripcion: 'Glop es un TPV potente con módulo cloud opcional. La integración usa los servicios web de Glop Cloud cuando el cliente lo tiene activado.',
+            descripcion: 'Glop es un TPV potente con módulo cloud (Glop Connect) que expone los datos del local. Sin Glop Connect instalado, la integración no es posible.',
             comoConectar: [
-                'Verificar que el cliente tiene Glop Cloud contratado.',
-                'Pedir credenciales (usuario API y contraseña) al cliente.',
-                'Indicar el establecimiento concreto si el cliente tiene varios bajo la misma cuenta.',
-                'Conectar y verificar.'
+                'Verificar con el cliente que tiene el módulo **Glop Connect** instalado y activo (sin él no hay API).',
+                'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de Glop.',
+                'El cliente reenvía la respuesta del distribuidor con usuario y contraseña.',
+                'Crear la integración en Yurest introduciendo los datos.',
+                'Verificar el primer pull de catálogo y ventas.'
             ],
             camposRequeridos: [
-                { k: 'Usuario API', v: 'Distinto del usuario humano del backoffice de Glop.' },
-                { k: 'Contraseña',  v: 'La asignada al usuario API.' },
-                { k: 'Establecimiento', v: 'ID del local (si tiene varios bajo la misma licencia).' }
+                { k: 'Usuario',    v: 'Usuario emitido por Glop Connect (no es el usuario humano del backoffice).' },
+                { k: 'Contraseña', v: 'Contraseña asociada al usuario anterior.' }
             ],
             datosSincronizados: [
-                'Catálogo (productos, familias).',
+                'Catálogo (productos, familias, modificadores).',
                 'Ventas y devoluciones.',
                 'Cierres de caja.'
             ],
             limitaciones: [
-                'Sin Glop Cloud no hay integración posible — el TPV aislado no expone API.'
+                'Sin **Glop Connect** instalado no hay integración posible — el TPV aislado no expone API.',
+                'Si el cliente tiene varios establecimientos bajo la misma licencia, las credenciales son por establecimiento.'
             ],
-            contacto: { nombre: 'Soporte Glop', web: 'https://www.glop.es' }
+            contacto: { nombre: 'Soporte Glop', web: 'https://www.glop.es' },
+            // Plantilla pensada para que el CLIENTE la envíe a su distribuidor
+            // de Glop. Marcadores [nombre del distribuidor] y (Nombre de la
+            // empresa) los rellena el cliente al copiar y enviar.
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Glop. Por eso, necesito los siguientes datos:\n\n• Usuario\n• Contraseña\n\nImportante: para obtener estos datos es necesario tener instalado el módulo Glop Connect.\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Glop con Yurest.\n\nGracias.`
         }
     },
     {
