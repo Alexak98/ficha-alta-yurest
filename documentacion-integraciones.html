@@ -158,6 +158,28 @@
         .doc-field-key { flex:0 0 130px;font-size:.78rem;font-weight:700;color:#475569 }
         .doc-field-val { flex:1;font-size:.82rem;color:#0f172a }
 
+        /* Plantilla de email al cliente — bloque tipo "code" con botón
+           de copiar al portapapeles. Estilo monospace para que se note
+           que es texto plano listo para copiar. */
+        .doc-tplmail {
+            position:relative;
+            background:#0f172a;color:#e2e8f0;
+            border-radius:10px;padding:14px 16px 14px 16px;
+            font-family:var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+            font-size:.78rem;line-height:1.5;
+            white-space:pre-wrap;word-break:break-word;
+        }
+        .doc-tplmail-copy {
+            position:absolute;top:10px;right:10px;
+            padding:5px 10px;font-size:.7rem;font-weight:700;
+            background:#1e293b;color:#cbd5e1;border:1px solid #334155;
+            border-radius:7px;cursor:pointer;font-family:inherit;
+            display:inline-flex;align-items:center;gap:5px;
+            transition:background .12s,color .12s,border-color .12s;
+        }
+        .doc-tplmail-copy:hover { background:#334155;color:#fff;border-color:#64748b }
+        .doc-tplmail-copy.copied { background:#15803d;color:#fff;border-color:#15803d }
+
         @media (max-width: 640px) {
             .int-row { flex-wrap:wrap }
             .int-action { width:100%;justify-content:center }
@@ -257,17 +279,18 @@ const INTEGRACIONES = [
         doc: {
             descripcion: 'Ágora es uno de los TPV más extendidos en España. La integración con Yurest permite leer ventas, productos, familias, mesas y empleados directamente de su base de datos.',
             comoConectar: [
-                'Pedir al cliente (o a su distribuidor de Ágora) los datos de conexión a la base de datos: host, puerto, usuario y contraseña con permisos de SOLO lectura.',
+                'Enviar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo).',
+                'El cliente (o su distribuidor de Ágora) responde con los 5 datos de conexión.',
                 'Confirmar que el equipo donde corre Ágora tiene la base de datos accesible desde fuera (puerto abierto en el router del local, o VPN).',
                 'Crear la integración en el panel de Yurest (sección Integraciones → Conectar Ágora) introduciendo los datos.',
                 'Hacer un primer pull de catálogo y verificar que los productos y familias entran sincronizados antes de habilitar el flujo de ventas.'
             ],
             camposRequeridos: [
-                { k: 'Host / IP',   v: 'Dirección del servidor donde corre la BD de Ágora.' },
-                { k: 'Puerto',      v: 'Puerto de la BD (típicamente 3050 o 1433 según versión).' },
-                { k: 'Usuario',     v: 'Usuario con permisos de SELECT sobre las tablas relevantes.' },
-                { k: 'Contraseña',  v: 'Contraseña del usuario anterior.' },
-                { k: 'Base de datos', v: 'Nombre de la BD del cliente (ej. AGORA_RESTAURANTE).' }
+                { k: 'Host',                          v: 'IP o dominio del servidor donde corre la BD de Ágora.' },
+                { k: 'Puerto',                        v: 'Puerto del servicio (típicamente 3050 o 1433 según versión).' },
+                { k: 'Usuario',                       v: 'Usuario con permisos de lectura sobre las tablas del TPV.' },
+                { k: 'Contraseña',                    v: 'Contraseña del usuario anterior.' },
+                { k: 'Clave API para la integración', v: 'Clave que emite Ágora para autenticar la integración externa.' }
             ],
             datosSincronizados: [
                 'Productos, familias y precios.',
@@ -280,7 +303,8 @@ const INTEGRACIONES = [
                 'Sólo soportamos versiones recientes de Ágora (2020+). Versiones más antiguas requieren actualizar primero.',
                 'La integración es de SOLO LECTURA: Yurest no escribe nada en la BD del TPV.'
             ],
-            contacto: { nombre: 'Soporte Ágora', web: 'https://www.agorapos.com', telefono: '+34 91 000 00 00' }
+            contacto: { nombre: 'Soporte Ágora', web: 'https://www.agorapos.com' },
+            plantillaEmail: `¡Hola !,\n\nEstamos preparando la integración con su sistema TPV AGORA, y para ello necesitamos que nos proporcionen los siguientes datos de conexión:\n\nHost:\nPuerto:\nUsuario:\nContraseña:\nClave API para la integración:\n\nEn caso de no disponer de esta información, pueden solicitarla directamente a su distribuidor de AGORA.\nUna vez recibamos estos datos, procederemos con la configuración e integración del sistema.\n\nQuedo a disposición por cualquier consulta adicional,\nGracias`
         }
     },
     {
@@ -749,6 +773,27 @@ function abrirDoc(id) {
             </div>`);
     }
 
+    // Plantilla de email — bloque copiable al portapapeles. Se pinta
+    // ANTES de "Datos sincronizados" porque es el siguiente paso natural
+    // del flujo (ya hemos enumerado qué datos pedir → ahora damos el
+    // texto listo para mandar al cliente).
+    if (d.plantillaEmail) {
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    Plantilla email al cliente
+                </div>
+                <div class="doc-section-content">
+                    <div class="doc-tplmail" id="doc-tplmail-${esc(i.id)}">
+                        <button class="doc-tplmail-copy" onclick="copiarPlantilla('${esc(i.id)}', this)">
+                            <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            Copiar
+                        </button>${esc(d.plantillaEmail)}</div>
+                </div>
+            </div>`);
+    }
+
     if (Array.isArray(d.datosSincronizados) && d.datosSincronizados.length) {
         partes.push(`
             <div class="doc-section">
@@ -830,11 +875,44 @@ document.addEventListener('keydown', e => {
     }
 });
 
-window.openSidebar  = openSidebar;
-window.closeSidebar = closeSidebar;
-window.renderLista  = renderLista;
-window.abrirDoc     = abrirDoc;
-window.cerrarDoc    = cerrarDoc;
+// Copia al portapapeles la plantilla de email de la integración. Llama el
+// botón "Copiar" del bloque .doc-tplmail. Usa navigator.clipboard si está
+// (HTTPS / localhost), si no fallback a un textarea + execCommand.
+async function copiarPlantilla(id, btn) {
+    const integ = INTEGRACIONES.find(x => x.id === id);
+    if (!integ || !integ.doc || !integ.doc.plantillaEmail) return;
+    const txt = integ.doc.plantillaEmail;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(txt);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = txt;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        if (btn) {
+            const old = btn.innerHTML;
+            btn.classList.add('copied');
+            btn.innerHTML = '<svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado';
+            setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = old; }, 1800);
+        }
+    } catch (e) {
+        console.warn('[copiarPlantilla] error:', e);
+        if (btn) btn.textContent = 'Error';
+    }
+}
+
+window.openSidebar       = openSidebar;
+window.closeSidebar      = closeSidebar;
+window.renderLista       = renderLista;
+window.abrirDoc          = abrirDoc;
+window.cerrarDoc         = cerrarDoc;
+window.copiarPlantilla   = copiarPlantilla;
 
 // Render inicial
 renderLista();
