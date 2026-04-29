@@ -592,6 +592,16 @@
         const permisosActivos = _normalizarPermisosUsuario(u ? u.permisos : null);
         document.getElementById('f-permisos').innerHTML = renderPermisos(permisosActivos);
 
+        // Reset defensivo del botón Guardar — por si algún camino edge
+        // (timeout, navegación, error sin catch) lo dejó atascado en
+        // estado "Guardando…". El finally del flujo normal ya lo libera,
+        // pero esto es un seguro extra al abrir.
+        const btnGuardar = document.getElementById('btn-guardar');
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = 'Guardar';
+        }
+
         document.getElementById('modal-editor').classList.add('open');
         // a11y: role=dialog + trap Tab + foco automático al primer input
         // del modal. Sustituye el setTimeout focus() previo.
@@ -683,6 +693,12 @@
             );
         } catch (err) {
             toast('Error: ' + err.message, 'error');
+        } finally {
+            // CRÍTICO: liberar el botón SIEMPRE, también en el camino feliz.
+            // Antes solo se hacía en el catch, así que tras un guardado OK
+            // el botón se quedaba con disabled=true y HTML "Guardando…".
+            // Como #btn-guardar es el mismo elemento DOM al reabrir el
+            // modal, quedaba bloqueado hasta recargar la página.
             release();
         }
     }
