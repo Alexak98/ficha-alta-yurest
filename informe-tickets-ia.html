@@ -252,6 +252,26 @@
         .tk-row-chips {
             display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;
         }
+        /* Botón "Abrir en Zendesk" al pie de cada fila del drawer.
+           Lo separamos visualmente con un margen extra y lo alineamos
+           a la derecha — el subject ya domina la fila, esto va de
+           secundario. Hover usa el rojo corporativo para que se vea
+           claramente que es interactivo. */
+        .tk-row-actions {
+            display:flex;justify-content:flex-end;margin-top:10px;
+        }
+        .tk-row-link {
+            display:inline-flex;align-items:center;gap:5px;
+            font-family:inherit;font-size:.74rem;font-weight:700;
+            color:#fc5858;text-decoration:none;
+            padding:5px 11px;border-radius:8px;
+            border:1.5px solid #fecaca;background:#fff5f5;
+            transition:background .12s,color .12s,border-color .12s;
+        }
+        .tk-row-link:hover {
+            background:#fc5858;color:#fff;border-color:#fc5858;
+        }
+        .tk-row-link svg { stroke:currentColor }
         .tk-chip {
             display:inline-block;font-size:.64rem;font-weight:800;
             padding:2px 8px;border-radius:999px;
@@ -858,9 +878,11 @@
                     t.entorno           ? `<span class="tk-chip tk-chip-entorno" title="Entorno">${esc(t.entorno)}</span>` : '',
                     t.modulo            ? `<span class="tk-chip tk-chip-modulo" title="Módulo">${esc(t.modulo)}</span>` : ''
                 ].filter(Boolean).join('');
-                // Si en el futuro tenemos URL base de Zendesk en config,
-                // este contenedor pasaría a ser <a href="..."> y abriría
-                // el ticket directamente. Por ahora div no-link.
+                // Botón "Abrir en Zendesk" — solo si el id es un entero
+                // válido (defendemos contra drafts/sin id, que existen).
+                const ticketUrl = (id !== '—' && /^\d+$/.test(String(id)))
+                    ? `https://soporteyurest.zendesk.com/agent/tickets/${id}`
+                    : null;
                 return `
                     <div class="tk-row">
                         <div class="tk-row-head">
@@ -869,6 +891,13 @@
                         </div>
                         <div class="tk-row-subject">${esc(subject)}</div>
                         ${chips ? `<div class="tk-row-chips">${chips}</div>` : ''}
+                        ${ticketUrl ? `
+                            <div class="tk-row-actions">
+                                <a class="tk-row-link" href="${ticketUrl}" target="_blank" rel="noopener noreferrer" title="Abrir el ticket en Zendesk">
+                                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                    Abrir en Zendesk
+                                </a>
+                            </div>` : ''}
                     </div>`;
             }).join('');
         }
