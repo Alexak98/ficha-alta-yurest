@@ -518,6 +518,39 @@ const INTEGRACIONES = [
         }
     },
     {
+        id: 'numier',
+        nombre: 'Numier',
+        desc: 'TPV para hostelería con backoffice cloud y API propia.',
+        tag: 'estable',
+        inicial: 'NU',
+        c1: '#0ea5e9', c2: '#075985',
+        doc: {
+            descripcion: 'Numier es un TPV para hostelería con backoffice cloud. La integración con Yurest se realiza vía API expuesta por el TPV, autenticada por usuario/contraseña + clave API. Normalmente los datos los facilita el distribuidor de Numier al cliente.',
+            comoConectar: [
+                'El cliente solicita a su distribuidor de Numier los datos de conexión (host, puerto, usuario, contraseña y clave API).',
+                'El cliente nos pasa los 5 valores.',
+                'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
+            ],
+            camposRequeridos: [
+                { k: 'Host',       v: 'IP o dominio del servidor Numier al que conectar.' },
+                { k: 'Puerto',     v: 'Puerto TCP expuesto por el servidor Numier.' },
+                { k: 'Usuario',    v: 'Usuario de API facilitado por Numier o el distribuidor.' },
+                { k: 'Contraseña', v: 'Contraseña asociada al usuario de API.' },
+                { k: 'Clave API',  v: 'Token / API key adicional emitido por Numier.' }
+            ],
+            datosSincronizados: [
+                'Catálogo de productos.',
+                'Tickets y pagos.',
+                'Cierres de caja.'
+            ],
+            limitaciones: [
+                'Si el cliente no tiene los datos de conexión a mano, debe solicitarlos a su distribuidor de Numier (no se generan en autoservicio).'
+            ],
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Numier. Por eso, necesito los siguientes datos de conexión:\n\n• Host\n• Puerto\n• Usuario\n• Contraseña\n• Clave API\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Numier con Yurest.\n\nGracias.`,
+            contacto: { nombre: 'Soporte Numier', web: 'https://www.numier.com' }
+        }
+    },
+    {
         id: 'revo',
         nombre: 'Revo',
         desc: 'Software de control de sala, cocina y pedidos.',
@@ -637,36 +670,6 @@ const INTEGRACIONES = [
                 'API menos documentada que otras — algunos campos personalizados pueden no llegar.'
             ],
             contacto: { nombre: 'Soporte Yantar', web: 'https://www.yantar.es' }
-        }
-    },
-    {
-        id: 'zonesoft',
-        nombre: 'Zonesoft',
-        desc: 'Ecosistema completo para hostelería (TPV + reservas + delivery).',
-        tag: 'estable',
-        inicial: 'ZO',
-        c1: '#22c55e', c2: '#15803d',
-        doc: {
-            descripcion: 'Zonesoft es un ecosistema portugués/español que incluye TPV, reservas y delivery integrados. La integración con Yurest se centra en el módulo TPV.',
-            comoConectar: [
-                'El cliente solicita acceso API desde su panel de Zonesoft.',
-                'Zonesoft genera credenciales y código de cliente.',
-                'Pasarlos a Yurest.',
-                'Validar el catálogo y ventas en sincronización inicial.'
-            ],
-            camposRequeridos: [
-                { k: 'Código cliente', v: 'Identificador alfanumérico del cliente en Zonesoft.' },
-                { k: 'Token API',      v: 'Generado por Zonesoft.' }
-            ],
-            datosSincronizados: [
-                'Productos y modificadores.',
-                'Ventas (TPV).',
-                'No incluye datos de reservas ni delivery por ahora.'
-            ],
-            limitaciones: [
-                'La integración cubre sólo el módulo TPV. Reservas/delivery requerirían otra integración aparte.'
-            ],
-            contacto: { nombre: 'Soporte Zonesoft', web: 'https://www.zonesoft.org' }
         }
     },
     {
