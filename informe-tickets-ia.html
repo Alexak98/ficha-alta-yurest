@@ -405,20 +405,21 @@
     //
     //   crema → amarillo → naranja → rojo coral → rojo intenso
     //
-    // Paleta violeta/morada: distinta del heatmap normal (rojo) para que
-    // de un vistazo sepas qué informe estás viendo. El degradado sigue
-    // la misma intensidad: bajo (crema) → medio (lila/violeta) → alto
-    // (índigo profundo).
+    // Misma paleta cálida que el heatmap normal (tonos crema → amarillo
+    // → naranja → rojo) para mantener coherencia visual entre ambos
+    // informes — la diferencia entre uno y otro es el conjunto de datos,
+    // no el código de color. Los últimos valores conectan con el rojo
+    // corporativo (#fc5858).
     const HM_COLORS = [
-        '#f5f3ff',  // 0/8 — lila casi blanco
-        '#ede9fe',  // 1/8
-        '#ddd6fe',  // 2/8
-        '#c4b5fd',  // 3/8
-        '#a78bfa',  // 4/8 — violeta medio
-        '#8b5cf6',  // 5/8 — violeta vibrante
-        '#7c3aed',  // 6/8
-        '#5b21b6',  // 7/8 — púrpura profundo
-        '#3b0764'   // 8/8 — pico (índigo casi negro)
+        '#fff8e1',  // 0/8 — crema casi blanco (muy bajo)
+        '#ffecb3',  // 1/8 — amarillo pálido
+        '#ffd54f',  // 2/8 — amarillo
+        '#ffb74d',  // 3/8 — naranja claro
+        '#ff9800',  // 4/8 — naranja vibrante
+        '#fb6f1c',  // 5/8 — naranja oscuro
+        '#fc5858',  // 6/8 — rojo coral (Yurest)
+        '#c62828',  // 7/8 — rojo intenso
+        '#7f1d1d'   // 8/8 — rojo oscuro (pico de actividad)
     ];
 
     function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
