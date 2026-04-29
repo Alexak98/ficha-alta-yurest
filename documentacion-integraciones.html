@@ -256,7 +256,7 @@
             <div class="doc-header">
                 <div class="doc-header-icon" id="doc-icon">
                     <span class="doc-header-icon-letter" id="doc-icon-letter">—</span>
-                    <img class="doc-header-icon-img" id="doc-icon-img" alt="" onload="this.parentNode.classList.add('with-img')" onerror="this.style.display='none'">
+                    <img class="doc-header-icon-img" id="doc-icon-img" alt="" onload="this.parentNode.classList.add('with-img')" onerror="tpvLogoFallback(this)">
                 </div>
                 <div class="doc-header-meta">
                     <h3 class="doc-header-name" id="doc-name">—</h3>
@@ -271,6 +271,28 @@
 <script>
 function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+// ──────────────────────────────────────────────────────────────────────
+// Logos de TPV: probamos varias extensiones en cascada porque el equipo
+// los sube tal cual los recibe del fabricante (svg/png/jpeg/webp). El
+// nombre del archivo siempre coincide con el `id` en minúsculas. Si todo
+// falla, el <img> se elimina y queda visible el gradiente con la
+// inicial (fallback definido en CSS, .with-img no se activa).
+// ──────────────────────────────────────────────────────────────────────
+const TPV_LOGO_EXTS = ['svg', 'png', 'jpeg', 'jpg', 'webp'];
+function tpvLogoFallback(img) {
+    // Probamos la siguiente extensión. Cuando se acaban, ocultamos la
+    // imagen (no la quitamos) para que el modal pueda reutilizar el
+    // mismo <img> en sucesivas aperturas. La fila se re-renderiza
+    // entera cada vez, así que da igual ocultar vs. eliminar.
+    const tried = parseInt(img.dataset.tried || '0', 10) + 1;
+    if (tried >= TPV_LOGO_EXTS.length) {
+        img.style.display = 'none';
+        return;
+    }
+    img.dataset.tried = String(tried);
+    img.src = img.src.replace(/\.[^.\/]+$/, '.' + TPV_LOGO_EXTS[tried]);
+}
 
 // ──────────────────────────────────────────────────────────────────────
 // Catálogo de integraciones. Cada entrada es 100% estática (es
@@ -861,7 +883,7 @@ function renderLista() {
             <div class="int-row">
                 <div class="int-icon" style="${styleVars}">
                     <span class="int-icon-letter">${esc(i.inicial || i.nombre.slice(0,2).toUpperCase())}</span>
-                    <img class="int-icon-img" src="logos/tpv/${esc(i.id)}.svg" alt="" onload="this.parentNode.classList.add('with-img')" onerror="this.remove()">
+                    <img class="int-icon-img" src="logos/tpv/${esc(i.id)}.svg" alt="" onload="this.parentNode.classList.add('with-img')" onerror="tpvLogoFallback(this)">
                 </div>
                 <div class="int-meta">
                     <div class="int-meta-name">${esc(i.nombre)}${tagHtml}</div>
@@ -894,6 +916,7 @@ function abrirDoc(id) {
     docIcon.style.cssText = `--c1:${i.c1 || '#fc5858'};--c2:${i.c2 || '#c62828'}`;
     docIconLetter.textContent = i.inicial || i.nombre.slice(0,2).toUpperCase();
     docIconImg.style.display = '';     // por si quedó oculto del onerror anterior
+    docIconImg.dataset.tried  = '0';   // reset del contador de extensiones
     docIconImg.alt = i.nombre;
     docIconImg.src = `logos/tpv/${i.id}.svg`;
     document.getElementById('doc-name').textContent = i.nombre;
