@@ -1,0 +1,336 @@
+{
+  "name": "Yurest - Zendesk Resumen Mensual de Incidencias",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "zendesk/resumen-mensual",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-resumen-mes",
+      "name": "Webhook GET resumen mensual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "zendesk-resumen-mensual"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Acepta el formato:\n//   ?month=YYYY-MM            (mes natural; obligatorio si no se quiere el actual)\n//   ?refresh=1                (ignora caché y regenera)\n//\n// Default: el mes pasado completo (los días del mes en curso pueden\n// estar incompletos y ensucian el análisis comparativo).\nconst raw = $input.first().json || {};\nconst q = raw.query || raw.params || {};\n\nfunction iso(d) { return d.toISOString().slice(0, 10); }\nfunction lastDayOfMonth(y, m) {\n  // m es 1..12. Truco: día 0 del mes siguiente = último día del mes actual.\n  return new Date(Date.UTC(y, m, 0)).getUTCDate();\n}\n\nconst MES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];\n\nlet anio, mes;\n\nif (q.month && /^\\d{4}-\\d{1,2}$/.test(q.month)) {\n  const [y, m] = String(q.month).split('-').map(Number);\n  if (m < 1 || m > 12) throw new Error('mes fuera de rango (1..12): ' + m);\n  anio = y; mes = m;\n} else {\n  // Default: mes pasado completo\n  const ahora = new Date();\n  ahora.setUTCDate(1);\n  ahora.setUTCMonth(ahora.getUTCMonth() - 1);\n  anio = ahora.getUTCFullYear();\n  mes  = ahora.getUTCMonth() + 1;\n}\n\nconst from  = iso(new Date(Date.UTC(anio, mes - 1, 1)));\nconst to    = iso(new Date(Date.UTC(anio, mes - 1, lastDayOfMonth(anio, mes))));\nconst label = `${MES_NOMBRES[mes - 1]} ${anio}`;\n// Search query: rango de creación del mes. -subject:\"Conversation with\"\n// excluye los tickets que aún están en el agente IA (ver workflow 28 y 25).\nconst zendeskQuery = `type:ticket created>=${from} created<=${to} -subject:\"Conversation with\"`;\n\nconst forceRefresh = String(q.refresh || '') === '1' || q.refresh === 'true';\n\nreturn [{ json: {\n  anio, mes,\n  fecha_desde: from,\n  fecha_hasta: to,\n  label,\n  forceRefresh,\n  zendeskQuery\n} }];"
+      },
+      "id": "code-validar-rango",
+      "name": "Validar rango",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/resumenes_mensuales?anio=eq.{{ $json.anio }}&mes=eq.{{ $json.mes }}&select=*",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-buscar",
+      "name": "Consultar Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [620, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-existe",
+              "leftValue": "={{ $json.mes }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "cond-not-refresh",
+              "leftValue": "={{ $('Validar rango').item.json.forceRefresh }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {
+          "looseTypeValidation": true
+        }
+      },
+      "id": "if-existe",
+      "name": "¿Existe en Supabase?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rama TRUE — fila cacheada en Supabase. Se desempaqueta al shape\n// del front (mismo que el de generación al vuelo).\nconst meta = $('Validar rango').first().json;\nconst raw  = $input.first().json;\nconst row  = Array.isArray(raw) ? raw[0] : raw;\n\nfunction parseArr(v) {\n  if (Array.isArray(v)) return v;\n  if (typeof v === 'string') {\n    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }\n  }\n  return [];\n}\n\nreturn [{ json: {\n  success: true,\n  cached:  true,\n  rango:   { from: row.fecha_desde, to: row.fecha_hasta, label: meta.label },\n  anio:    meta.anio,\n  mes:     meta.mes,\n  total:   row.total_tickets || 0,\n  porTipo:    parseArr(row.por_tipo),\n  porEntorno: parseArr(row.por_entorno),\n  porModulo:  parseArr(row.por_modulo),\n  porDia:     parseArr(row.por_dia),\n  porEstado:  parseArr(row.por_estado),\n  topClientes:parseArr(row.top_clientes),\n  tickets:    parseArr(row.tickets),\n  resumen_markdown: row.resumen_markdown || '',\n  modelo:     row.modelo || null,\n  generado_en:    row.created_at,\n  actualizado_en: row.updated_at\n} }];"
+      },
+      "id": "code-format-supabase",
+      "name": "Format desde Supabase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 180]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "={{ $('Validar rango').item.json.zendeskQuery }}"
+        }
+      },
+      "id": "zd-get-tickets",
+      "name": "Get many tickets",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [1040, 420],
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agregación pesada del análisis mensual:\n//  - normaliza tickets (extrae custom fields tipo/entorno/modulo, defensivo\n//    para multi-select arrays como en workflow 28).\n//  - filtra los de \"Conversation with\" (backup del operador NOT del query).\n//  - calcula breakdowns por tipo/entorno/módulo (todo se cuenta por\n//    elemento, no por combinación, ver cuentaArr).\n//  - distribución diaria 1..31 (para gráfica/heatmap del front).\n//  - distribución por estado (open/pending/solved/closed).\n//  - top clientes por organization_id: cuenta + módulos predominantes\n//    + tipos predominantes (los IDs se resuelven a nombres en el siguiente\n//    nodo, este sólo agrega).\n//  - patrones recurrentes en el subject (frecuencia de keywords / topics)\n//    extraídos como bigramas — útil para que GPT detecte temas.\n\nconst CUSTOM_FIELD_IDS = {\n  tipo:    26672700540829,\n  entorno: 27376906089629,\n  modulo:  27243772817053\n};\n\nfunction extraerCustomFieldArr(t, id) {\n  if (id == null) return [];\n  const fuentes = [t.custom_fields, t.fields].filter(Array.isArray);\n  for (const arr of fuentes) {\n    const cf = arr.find(c => c && (c.id === id || String(c.id) === String(id)));\n    if (!cf) continue;\n    const v = cf.value;\n    if (v == null || v === '') return [];\n    if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);\n    return [String(v).trim()];\n  }\n  return [];\n}\n\nconst meta = $('Validar rango').first().json;\nconst rawTickets = ($input.all() || []).map(it => it.json).filter(Boolean);\n\nconst norm = rawTickets.map(t => {\n  const tipos    = extraerCustomFieldArr(t, CUSTOM_FIELD_IDS.tipo);\n  const entornos = extraerCustomFieldArr(t, CUSTOM_FIELD_IDS.entorno);\n  const modulos  = extraerCustomFieldArr(t, CUSTOM_FIELD_IDS.modulo);\n  return {\n    id:      t.id,\n    subject: t.subject || t.title || t.descripcion || '(sin título)',\n    status:  t.status || null,\n    created_at: t.created_at || t.createdAt || null,\n    organization_id: t.organization_id || null,\n    requester_id:    t.requester_id    || null,\n    tipo:    tipos[0]    || 'Sin tipo',\n    entorno: entornos[0] || 'Sin entorno',\n    modulo:  modulos.length ? modulos.join(' · ') : 'Sin módulo',\n    tipos:    tipos.length    ? tipos    : ['Sin tipo'],\n    entornos: entornos.length ? entornos : ['Sin entorno'],\n    modulos:  modulos.length  ? modulos  : ['Sin módulo']\n  };\n}).filter(t => {\n  const s = String(t.subject || '').trim().toLowerCase();\n  return !s.startsWith('conversation with');\n});\n\nfunction cuentaArr(arr, key) {\n  const map = new Map();\n  for (const x of arr) {\n    for (const v of (x[key] || [])) {\n      map.set(v, (map.get(v) || 0) + 1);\n    }\n  }\n  return [...map.entries()]\n    .map(([nombre, count]) => ({ nombre, count }))\n    .sort((a, b) => b.count - a.count);\n}\n\nconst porTipo    = cuentaArr(norm, 'tipos');\nconst porEntorno = cuentaArr(norm, 'entornos');\nconst porModulo  = cuentaArr(norm, 'modulos');\n\n// Distribución diaria (1..31). Inicializamos a 0 todos los días que el\n// mes natural realmente tiene (último día del mes).\nconst lastDay = new Date(Date.UTC(meta.anio, meta.mes, 0)).getUTCDate();\nconst diaCount = new Array(lastDay + 1).fill(0); // index 0 ignorado, 1..lastDay\nfor (const t of norm) {\n  if (!t.created_at) continue;\n  const d = new Date(t.created_at);\n  if (isNaN(d.getTime())) continue;\n  // Usamos UTC del created_at para no mezclar zonas. Suficiente para\n  // distribución diaria — la diferencia ±1 día por TZ no afecta al\n  // patrón de fondo.\n  if (d.getUTCFullYear() === meta.anio && d.getUTCMonth() + 1 === meta.mes) {\n    const day = d.getUTCDate();\n    if (day >= 1 && day <= lastDay) diaCount[day]++;\n  }\n}\nconst porDia = [];\nfor (let i = 1; i <= lastDay; i++) porDia.push({ dia: i, count: diaCount[i] });\n\n// Por estado (open/pending/solved/closed/etc.)\nconst estadoMap = new Map();\nfor (const t of norm) {\n  const k = t.status || 'sin_estado';\n  estadoMap.set(k, (estadoMap.get(k) || 0) + 1);\n}\nconst porEstado = [...estadoMap.entries()]\n  .map(([estado, count]) => ({ estado, count }))\n  .sort((a, b) => b.count - a.count);\n\n// Top clientes (por organization_id). Aún no tenemos el nombre, sólo el id.\n// El siguiente nodo HTTP los resuelve a nombres.\nconst orgMap = new Map();\nfor (const t of norm) {\n  const orgId = t.organization_id;\n  if (!orgId) continue;\n  let entry = orgMap.get(orgId);\n  if (!entry) {\n    entry = {\n      organization_id: orgId,\n      count: 0,\n      modulos: new Map(),  // modulo → count\n      tipos:   new Map(),\n      entornos:new Map(),\n      ejemplos: []\n    };\n    orgMap.set(orgId, entry);\n  }\n  entry.count++;\n  for (const m of t.modulos) entry.modulos.set(m, (entry.modulos.get(m) || 0) + 1);\n  for (const ti of t.tipos)  entry.tipos.set(ti, (entry.tipos.get(ti) || 0) + 1);\n  for (const e of t.entornos)entry.entornos.set(e, (entry.entornos.get(e) || 0) + 1);\n  if (entry.ejemplos.length < 3) entry.ejemplos.push(t.subject);\n}\nconst TOP_N = 15;\nconst topClientesRaw = [...orgMap.values()]\n  .sort((a, b) => b.count - a.count)\n  .slice(0, TOP_N)\n  .map(e => ({\n    organization_id: e.organization_id,\n    organization_name: null,  // se rellena en el siguiente nodo\n    count: e.count,\n    modulos:  [...e.modulos].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n,c])=>({nombre:n,count:c})),\n    tipos:    [...e.tipos].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n,c])=>({nombre:n,count:c})),\n    entornos: [...e.entornos].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n,c])=>({nombre:n,count:c})),\n    ejemplos: e.ejemplos\n  }));\n\n// Lista única de organization_id no nulos para el batch a Zendesk.\nconst __org_ids = [...new Set(topClientesRaw.map(c => c.organization_id))];\n\nreturn [{ json: {\n  anio: meta.anio,\n  mes:  meta.mes,\n  rango: { from: meta.fecha_desde, to: meta.fecha_hasta, label: meta.label },\n  total: norm.length,\n  porTipo, porEntorno, porModulo,\n  porDia, porEstado,\n  topClientesRaw,   // sin nombres aún\n  tickets: norm,\n  __org_ids\n} }];"
+      },
+      "id": "code-agregar",
+      "name": "Agregar datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 420],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/organizations/show_many.json?ids={{ ($json.__org_ids && $json.__org_ids.length) ? $json.__org_ids.join(',') : '0' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "zd-get-orgs",
+      "name": "Get organizations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 420],
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mergea los nombres de organización en topClientes y en la lista de\n// tickets. Mismo patrón que el workflow 25 (heatmap).\nconst aggregated = $('Agregar datos').first().json || {};\nconst orgsResp   = $input.first().json || {};\nconst orgsArr    = Array.isArray(orgsResp.organizations) ? orgsResp.organizations : [];\nconst orgMap     = new Map(orgsArr.map(o => [o.id, o.name]));\n\nconst topClientes = (aggregated.topClientesRaw || []).map(c => ({\n  ...c,\n  organization_name: orgMap.get(c.organization_id) || `(org ${c.organization_id})`\n}));\n\nconst tickets = (aggregated.tickets || []).map(t => ({\n  ...t,\n  organization_name: t.organization_id ? (orgMap.get(t.organization_id) || null) : null\n}));\n\nreturn [{ json: {\n  anio:   aggregated.anio,\n  mes:    aggregated.mes,\n  rango:  aggregated.rango,\n  total:  aggregated.total,\n  porTipo:    aggregated.porTipo,\n  porEntorno: aggregated.porEntorno,\n  porModulo:  aggregated.porModulo,\n  porDia:     aggregated.porDia,\n  porEstado:  aggregated.porEstado,\n  topClientes,\n  tickets\n} }];"
+      },
+      "id": "code-enrich-orgs",
+      "name": "Enrich con orgs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye el prompt MENSUAL con todo el material agregado.\n// Estrategia para no reventar tokens: pasamos las TABLAS agregadas al\n// completo (cuestan poco) y de los tickets brutos sólo una muestra\n// representativa por módulo. GPT puede entonces detectar patrones reales\n// con ejemplos concretos en mano sin que le tengamos que dar 300 líneas.\n\nconst d = $input.first().json;\n\nfunction listaBreakdown(arr, n) {\n  return (arr || []).slice(0, n || 10)\n    .map(x => `  - ${x.nombre || x.estado}: ${x.count}`).join('\\n');\n}\nfunction listaTopClientes(arr, n) {\n  return (arr || []).slice(0, n || 10).map((c, i) => {\n    const mods = (c.modulos || []).map(m => `${m.nombre} (${m.count})`).join(', ');\n    const tips = (c.tipos   || []).map(t => `${t.nombre} (${t.count})`).join(', ');\n    const ejs  = (c.ejemplos || []).slice(0, 2).map(s => `      · ${s}`).join('\\n');\n    return `  ${i+1}. **${c.organization_name}** — ${c.count} tickets\\n       Módulos: ${mods || '—'}\\n       Tipos: ${tips || '—'}\\n${ejs}`;\n  }).join('\\n');\n}\nfunction listaPorDia(arr) {\n  return (arr || []).map(x => `${String(x.dia).padStart(2,'0')}=${x.count}`).join(', ');\n}\nfunction muestraTickets(tickets, porModulo) {\n  // Para cada uno de los top 5 módulos, sacamos hasta 5 tickets de ejemplo.\n  // Total máximo: 25 ejemplos, suficiente para que GPT vea casos concretos.\n  const out = [];\n  const topMods = (porModulo || []).slice(0, 5).map(m => m.nombre);\n  for (const m of topMods) {\n    const sample = (tickets || []).filter(t => (t.modulos || []).includes(m)).slice(0, 5);\n    if (!sample.length) continue;\n    out.push(`\\n### Ejemplos de \"${m}\":`);\n    for (const t of sample) {\n      const org = t.organization_name ? ` [${t.organization_name}]` : '';\n      out.push(`- [#${t.id}]${org} ${t.subject}`);\n    }\n  }\n  return out.join('\\n');\n}\n\nconst superPrompt = `Eres un Senior Support Manager + Product Analyst en Yurest, una\\\nplataforma SaaS de gestión integral para hostelería. Te paso TODOS los\\\ntickets cerrados del MES y agregados ya calculados (por tipo, entorno,\\\nmódulo, día, cliente). Tu trabajo es producir un INFORME MENSUAL\\\nejecutivo profundo y accionable para la dirección de Producto + Soporte.\\\n\\n\\\nNo te limites a enumerar. ANALIZA: detecta patrones, identifica clientes\\\nen riesgo, módulos en mal estado, errores recurrentes, oportunidades\\\nde mejora. Sé directo y útil — esto se va a leer en una reunión de\\\ndirección.\\n\\n\\\n## DATOS DEL PERIODO\\n\\\n- **Periodo**: ${d.rango.label} (${d.rango.from} → ${d.rango.to})\\n\\\n- **Tickets totales**: ${d.total}\\n\\n\\\n### Distribución por tipo (top 10)\\n${listaBreakdown(d.porTipo, 10)}\\n\\n\\\n### Distribución por entorno (top 10)\\n${listaBreakdown(d.porEntorno, 10)}\\n\\n\\\n### Distribución por módulo (top 12) — los multi-módulo cuentan en cada uno\\n${listaBreakdown(d.porModulo, 12)}\\n\\n\\\n### Distribución por estado al cierre del mes\\n${listaBreakdown(d.porEstado, 10)}\\n\\n\\\n### Volumen diario (día=count) — ¿hay picos?\\n${listaPorDia(d.porDia)}\\n\\n\\\n### Top clientes con más tickets este mes (top 10)\\n${listaTopClientes(d.topClientes, 10)}\\n\\n\\\n### Muestra de tickets por módulo más activo (para que veas casos reales)${muestraTickets(d.tickets, d.porModulo)}\\n\\n\\\n## ESTRUCTURA DEL INFORME\\n\\\nResponde **en español**, en formato Markdown, siguiendo este esquema\\\nexacto. No te saltes ninguna sección:\\n\\n\\\n### 🩺 Diagnóstico ejecutivo\\n\\\nUn párrafo (4-6 líneas) con la lectura de fondo del mes — volumen,\\\nsalud general del producto, cuál fue la métrica más preocupante,\\\ncuál la más positiva. Trata el mes como un todo, no enumeres aún.\\n\\n\\\n### 📊 Métricas clave\\n\\\nLista de 5-7 bullets cuantitativos: volumen total, top tipo y %,\\\ntop módulo y %, % de tickets resueltos vs abiertos, día/rango con\\\nmás actividad, etc. Cada bullet con un dato concreto.\\n\\n\\\n### 🔥 Patrones recurrentes\\n\\\nIdentifica 4-6 patrones reales que VES en los datos (no inventes —\\\nbasados en los asuntos de muestra). Cada uno: **negrita el patrón**,\\\n2-3 líneas explicando, ejemplo de cliente afectado si aplica, y\\\nentre paréntesis cuántos tickets aproximados lo tocan.\\n\\n\\\n### 🧩 Salud por módulo\\n\\\nPara los TOP 5 módulos: **negrita el módulo**, una línea con su\\\nvolumen y un veredicto (🟢 estable / 🟡 atención / 🔴 crítico) +\\\nuna frase explicando POR QUÉ ese veredicto basándote en el tipo de\\\nincidencias y los clientes afectados.\\n\\n\\\n### 🏢 Top clientes — clientes en foco\\n\\\nTabla markdown de los 10 clientes con más tickets:\\n\\\n| Cliente | Tickets | Módulos calientes | ¿Riesgo de churn? |\\n\\\n| --- | ---: | --- | :---: |\\n\\\n[10 filas]\\n\\\n\\\nLa columna \"Riesgo de churn\" es tu juicio: ⚪️ ninguno / 🟡 vigilar /\\\n🔴 alto. Justifícalo con un comentario corto debajo de la tabla\\\npara los que marques 🔴.\\n\\n\\\n### ⚠️ Errores e incidencias críticas\\n\\\nDe los tipos \\`incidencia_dev\\` y \\`incidencia_soporte\\`, identifica\\\n3-5 errores que se REPITEN en varios clientes (no son casos puntuales).\\\nDescríbelos con un nombre cortito + 1-2 líneas explicando + clientes\\\nafectados.\\n\\n\\\n### 🎯 Recomendaciones\\n\\\n3-4 acciones concretas y accionables, una por área:\\n\\\n- 🛠️ **Soporte**: qué hacer la próxima semana.\\n\\\n- 💻 **Producto**: qué bug arreglar o feature revisar.\\n\\\n- 📚 **Documentación**: qué FAQ o guía actualizar.\\n\\\n- 🤝 **Customer Success**: qué clientes contactar proactivamente.\\n\\n\\\n### 📈 Tendencia y comparativa\\n\\\nSi detectas patrones que sugieren tendencia (un módulo creciendo en\\\nincidencias, un cliente que está empeorando, picos en ciertos días),\\\nseñálalo aquí en 2-3 bullets. Si no hay tendencia clara, di\\\nexplícitamente \"sin tendencia significativa con un solo mes de datos\".\\n\\n\\\n### Tono\\n\\\nClaro, ejecutivo, directo. Cero relleno. Si una sección no tiene\\\nmaterial real (ej: 0 incidencias_dev), di \"sin material\" en vez de\\\ninventar. Usa los emojis sólo en los headings y en los chips de\\\nveredicto (🟢🟡🔴⚪️).`;\n\nreturn [{ json: {\n  prompt_final: superPrompt,\n  anio: d.anio,\n  mes:  d.mes,\n  rango: d.rango,\n  total: d.total,\n  porTipo: d.porTipo,\n  porEntorno: d.porEntorno,\n  porModulo: d.porModulo,\n  porDia: d.porDia,\n  porEstado: d.porEstado,\n  topClientes: d.topClientes,\n  tickets: d.tickets\n} }];"
+      },
+      "id": "code-preparar-prompt",
+      "name": "Preparar prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, 420]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            { "content": "={{ $json.prompt_final }}" }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 3500
+        }
+      },
+      "id": "openai-resumen",
+      "name": "Generar resumen",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.6,
+      "position": [2040, 420],
+      "credentials": {
+        "openAiApi": {
+          "id": "w2doUpVdPofPaHNg",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combina la respuesta de GPT con los datos estructurados ya calculados.\nconst prep   = $('Preparar prompt').first().json;\nconst aiResp = $input.first().json || {};\n\nfunction extractText(c) {\n  if (c == null) return '';\n  if (typeof c === 'string') return c;\n  if (Array.isArray(c)) return c.map(extractText).filter(Boolean).join('');\n  if (typeof c === 'object') {\n    if (typeof c.text === 'string')    return c.text;\n    if (typeof c.content === 'string') return c.content;\n    if (typeof c.output === 'string')  return c.output;\n    if (typeof c.value === 'string')   return c.value;\n    if (c.text)    return extractText(c.text);\n    if (c.content) return extractText(c.content);\n    if (c.output)  return extractText(c.output);\n  }\n  return '';\n}\n\nlet resumenMd = '';\nif (typeof aiResp === 'string') {\n  resumenMd = aiResp;\n} else if (Array.isArray(aiResp.choices) && aiResp.choices[0]?.message?.content) {\n  resumenMd = extractText(aiResp.choices[0].message.content);\n} else if (aiResp.message && aiResp.message.content) {\n  resumenMd = extractText(aiResp.message.content);\n} else if (aiResp.content) {\n  resumenMd = extractText(aiResp.content);\n} else if (aiResp.text) {\n  resumenMd = extractText(aiResp.text);\n} else if (aiResp.output) {\n  resumenMd = extractText(aiResp.output);\n}\n\nif (!resumenMd || typeof resumenMd !== 'string') {\n  try {\n    resumenMd = '⚠️ Respuesta inesperada de OpenAI:\\n```json\\n' +\n      JSON.stringify(aiResp, null, 2).slice(0, 800) + '\\n```';\n  } catch (_) { resumenMd = '(sin resumen)'; }\n}\nresumenMd = resumenMd\n  .replace(/^```(?:markdown|md)?\\s*\\n?/i, '')\n  .replace(/\\n?```\\s*$/i, '')\n  .trim();\n\nreturn [{ json: {\n  success: true,\n  cached:  false,\n  rango:   prep.rango,\n  anio:    prep.anio,\n  mes:     prep.mes,\n  total:   prep.total,\n  porTipo:    prep.porTipo,\n  porEntorno: prep.porEntorno,\n  porModulo:  prep.porModulo,\n  porDia:     prep.porDia,\n  porEstado:  prep.porEstado,\n  topClientes:prep.topClientes,\n  tickets:    prep.tickets,\n  resumen_markdown: resumenMd,\n  modelo: 'gpt-4o'\n} }];"
+      },
+      "id": "code-format-result",
+      "name": "Formatear resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/resumenes_mensuales?on_conflict=anio,mes",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Accept",       "value": "application/json" },
+            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  anio:             $json.anio,\n  mes:              $json.mes,\n  fecha_desde:      $json.rango.from,\n  fecha_hasta:      $json.rango.to,\n  total_tickets:    $json.total,\n  por_tipo:         $json.porTipo,\n  por_entorno:      $json.porEntorno,\n  por_modulo:       $json.porModulo,\n  por_dia:          $json.porDia,\n  por_estado:       $json.porEstado,\n  top_clientes:     $json.topClientes,\n  tickets:          $json.tickets,\n  resumen_markdown: $json.resumen_markdown,\n  modelo:           $json.modelo,\n  updated_at:       new Date().toISOString()\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-guardar",
+      "name": "Guardar resumen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2440, 420],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve el payload de Formatear resultado al front, ignorando la\n// respuesta del UPSERT (fire-and-forget). Mismo patrón que el workflow 28.\nreturn [{ json: $('Formatear resultado').first().json }];"
+      },
+      "id": "code-pass-result",
+      "name": "Pasar resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-resumen",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2840, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Resumen MENSUAL de incidencias (Zendesk + GPT-4o + cache Supabase)\n\n**Endpoint:** `GET /webhook/zendesk/resumen-mensual?month=YYYY-MM[&refresh=1]`\n\nFlow:\n\n1. **Validar rango** parsea YYYY-MM, calcula primer y último día del mes.\n2. **Consultar Supabase**: GET `?anio=eq.{{anio}}&mes=eq.{{mes}}` contra `resumenes_mensuales`.\n3. **¿Existe en Supabase?** (IF v2.2): `existe Y NO refresh`\n   - **TRUE** → Format desde Supabase → Respond.\n   - **FALSE** → Get tickets → Agregar datos → Get organizations → Enrich con orgs → Preparar prompt → Generar resumen (gpt-4o) → Formatear → Guardar (UPSERT) → Respond.\n\n**Diferencias con el semanal (workflow 28)**:\n- Modelo: gpt-4o (no mini) para análisis profundo. ~3500 tokens output.\n- Agregación añade: por_dia, por_estado, top_clientes (con módulos+tipos predominantes y ejemplos de subject).\n- Llama a Zendesk show_many.json para resolver organization_id → name.\n- Prompt mucho más largo y estructurado: 8 secciones obligatorias.\n\n**Caché:** UPSERT por (anio, mes). Con `?refresh=1` se ignora la fila existente y se regenera (sobrescribe).",
+        "height": 360,
+        "width": 480
+      },
+      "id": "sticky-doc",
+      "name": "Doc",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 60]
+    }
+  ],
+  "connections": {
+    "Webhook GET resumen mensual": { "main": [[{ "node": "Validar rango",         "type": "main", "index": 0 }]] },
+    "Validar rango":               { "main": [[{ "node": "Consultar Supabase",    "type": "main", "index": 0 }]] },
+    "Consultar Supabase":          { "main": [[{ "node": "¿Existe en Supabase?", "type": "main", "index": 0 }]] },
+    "¿Existe en Supabase?":       { "main": [
+                                        [{ "node": "Format desde Supabase", "type": "main", "index": 0 }],
+                                        [{ "node": "Get many tickets",      "type": "main", "index": 0 }]
+                                    ] },
+    "Format desde Supabase":       { "main": [[{ "node": "Respond",              "type": "main", "index": 0 }]] },
+    "Get many tickets":            { "main": [[{ "node": "Agregar datos",        "type": "main", "index": 0 }]] },
+    "Agregar datos":               { "main": [[{ "node": "Get organizations",    "type": "main", "index": 0 }]] },
+    "Get organizations":           { "main": [[{ "node": "Enrich con orgs",      "type": "main", "index": 0 }]] },
+    "Enrich con orgs":             { "main": [[{ "node": "Preparar prompt",      "type": "main", "index": 0 }]] },
+    "Preparar prompt":             { "main": [[{ "node": "Generar resumen",      "type": "main", "index": 0 }]] },
+    "Generar resumen":             { "main": [[{ "node": "Formatear resultado", "type": "main", "index": 0 }]] },
+    "Formatear resultado":         { "main": [[{ "node": "Guardar resumen",      "type": "main", "index": 0 }]] },
+    "Guardar resumen":             { "main": [[{ "node": "Pasar resultado",      "type": "main", "index": 0 }]] },
+    "Pasar resultado":             { "main": [[{ "node": "Respond",              "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

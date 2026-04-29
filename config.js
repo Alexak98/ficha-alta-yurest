@@ -134,7 +134,14 @@
         // de la semana, los manda a ChatGPT con tipo/entorno/módulo y
         // devuelve un resumen ejecutivo + top stats + lista bruta.
         // Acepta `?week=actual|anterior` o `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
-        zendeskResumenSemanal: `${WEBHOOK_BASE}/zendesk/resumen-semanal`
+        zendeskResumenSemanal: `${WEBHOOK_BASE}/zendesk/resumen-semanal`,
+
+        // Resumen MENSUAL (workflow 29). Análisis profundo: top clientes
+        // con módulos predominantes, distribución diaria, por estado,
+        // patrones, recomendaciones, riesgos de churn. Modelo gpt-4o
+        // (no mini) por la profundidad. Cache por (anio, mes) en
+        // tabla resumenes_mensuales con UPSERT. Acepta `?refresh=1`.
+        zendeskResumenMensual: `${WEBHOOK_BASE}/zendesk/resumen-mensual`
     };
 
     // Permisos disponibles (IDs de página). Debe coincidir con el CHECK de la
@@ -158,7 +165,8 @@
         { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
         { id: 'hardware',      label: 'Hardware envíos',      grupo: 'Soporte'          },
         { id: 'stock',         label: 'Stock hardware',       grupo: 'Soporte'          },
-        { id: 'resumen_semanal',           label: 'Resumen semanal',                grupo: 'Soporte' },
+        { id: 'resumen_semanal',             label: 'Resumen semanal',                grupo: 'Soporte' },
+        { id: 'resumen_mensual',             label: 'Resumen mensual',                grupo: 'Soporte' },
         { id: 'documentacion_integraciones', label: 'Documentación de integraciones', grupo: 'Soporte' },
         { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
         { id: 'docs',          label: 'Documentación',        grupo: 'Otros'            }
