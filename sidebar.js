@@ -73,7 +73,8 @@
                 { id: 'distribucion',     href: 'distribucion.html',    label: 'Implementadores',          icon: 'implementadores', subgrupo: 'Implementación' },
                 { id: 'informe_tickets',     href: 'informe-tickets.html',    label: 'Mapa de calor de tickets', icon: 'informe_tickets', subgrupo: 'Soporte' },
                 { id: 'informe_tickets_ia',  href: 'informe-tickets-ia.html', label: 'Heatmap — Agente IA',      icon: 'informe_tickets', subgrupo: 'Soporte' },
-                { id: 'resumen_semanal',     href: 'resumen-semanal.html',    label: 'Resumen semanal',          icon: 'resumen_semanal', subgrupo: 'Soporte' }
+                { id: 'resumen_semanal',     href: 'resumen-semanal.html',    label: 'Resumen semanal',          icon: 'resumen_semanal', subgrupo: 'Soporte' },
+                { id: 'churn_tecnico',       href: 'churn-tecnico.html',      label: 'Churn técnico',            icon: 'churn_tecnico',   subgrupo: 'Soporte', public: true }
             ]
         },
         {
@@ -130,8 +131,11 @@
             items: [
                 { id: 'integraciones',     href: 'integraciones.html',  label: 'Integraciones',   icon: 'integraciones' },
                 { id: 'hardware',          href: 'hardware.html',       label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
-                { id: 'stock',             href: 'stock.html',          label: 'Stock',           icon: 'stock' },
-                { id: 'churn_tecnico',     href: 'churn-tecnico.html',  label: 'Churn Técnico',   icon: 'churn_tecnico', public: true }
+                { id: 'stock',             href: 'stock.html',          label: 'Stock',           icon: 'stock' }
+                // 'churn_tecnico' se ha movido al grupo Informes → subgrupo
+                // Soporte para que comparta espacio con el resto de informes
+                // de soporte (heatmap, resumen semanal). Se sigue marcando
+                // como public:true allí.
             ]
         },
         {
