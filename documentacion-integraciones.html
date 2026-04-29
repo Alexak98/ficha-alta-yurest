@@ -561,6 +561,38 @@ const INTEGRACIONES = [
         }
     },
     {
+        id: 'neo',
+        nombre: 'Neo',
+        desc: 'TPV con API expuesta vía host/puerto y token de autenticación.',
+        tag: 'estable',
+        inicial: 'NE',
+        c1: '#14b8a6', c2: '#115e59',
+        doc: {
+            descripcion: 'Neo es un TPV de hostelería que expone una API en host/puerto del local. La integración con Yurest se autentica con un token. Los datos los facilita el distribuidor de Neo si el cliente no los tiene a mano.',
+            comoConectar: [
+                'El cliente solicita a su distribuidor de Neo los datos de conexión (token, host y puerto).',
+                'El cliente nos pasa los 3 valores.',
+                'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
+            ],
+            camposRequeridos: [
+                { k: 'Token',  v: 'Token de autenticación emitido por Neo / el distribuidor.' },
+                { k: 'Host',   v: 'IP pública o dominio del servidor Neo del local.' },
+                { k: 'Puerto', v: 'Puerto TCP expuesto por el servidor.' }
+            ],
+            datosSincronizados: [
+                'Catálogo de productos.',
+                'Tickets y pagos.',
+                'Cierres de caja.'
+            ],
+            limitaciones: [
+                'Si la IP del local no es fija, la integración se cae cuando cambie y hay que actualizar el host.',
+                'Los datos no son autoservicio: si el cliente no los tiene, debe solicitarlos a su distribuidor de Neo.'
+            ],
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Neo. Por eso, necesito los siguientes datos de conexión:\n\n• Token\n• Host\n• Puerto\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Neo con Yurest.\n\nGracias.`,
+            contacto: { nombre: 'Soporte Neo', web: '' }
+        }
+    },
+    {
         id: 'numier',
         nombre: 'Numier',
         desc: 'TPV para hostelería con backoffice cloud y API propia.',
