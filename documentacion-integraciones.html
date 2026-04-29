@@ -51,7 +51,17 @@
             display:flex;align-items:center;justify-content:center;
             letter-spacing:.02em;
             user-select:none;
+            position:relative;overflow:hidden;
+            border:1px solid transparent;
         }
+        /* Soporte de logos opcional: si logos/tpv/<id>.svg existe, la img
+           hace onload, marca with-img en el contenedor y oculta la letra.
+           Si falla (onerror), el img se elimina y queda el gradiente como
+           antes. Así no hace falta tocar el HTML al añadir un logo nuevo. */
+        .int-icon-img    { display:none;width:100%;height:100%;object-fit:contain;padding:6px;box-sizing:border-box }
+        .int-icon.with-img                  { background:#fff;border-color:#e2e8f0 }
+        .int-icon.with-img .int-icon-letter { display:none }
+        .int-icon.with-img .int-icon-img    { display:block }
         .int-meta { flex:1;min-width:0 }
         .int-meta-name {
             display:flex;align-items:center;gap:8px;flex-wrap:wrap;
@@ -109,7 +119,13 @@
             background:linear-gradient(135deg, var(--c1, #fc5858), var(--c2, #c62828));
             color:#fff;font-weight:800;font-size:1.4rem;
             display:flex;align-items:center;justify-content:center;
+            position:relative;overflow:hidden;
+            border:1px solid transparent;
         }
+        .doc-header-icon-img { display:none;width:100%;height:100%;object-fit:contain;padding:8px;box-sizing:border-box }
+        .doc-header-icon.with-img                       { background:#fff;border-color:#e2e8f0 }
+        .doc-header-icon.with-img .doc-header-icon-letter { display:none }
+        .doc-header-icon.with-img .doc-header-icon-img    { display:block }
         .doc-header-meta { flex:1;min-width:0 }
         .doc-header-name { font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 }
         .doc-header-desc { font-size:.84rem;color:#64748b;margin:3px 0 0;line-height:1.4 }
@@ -238,7 +254,10 @@
     <div class="doc-overlay" id="doc-overlay" onclick="if (event.target === this) cerrarDoc()">
         <div class="doc-modal" role="dialog" aria-modal="true" aria-labelledby="doc-name">
             <div class="doc-header">
-                <div class="doc-header-icon" id="doc-icon">—</div>
+                <div class="doc-header-icon" id="doc-icon">
+                    <span class="doc-header-icon-letter" id="doc-icon-letter">—</span>
+                    <img class="doc-header-icon-img" id="doc-icon-img" alt="" onload="this.parentNode.classList.add('with-img')" onerror="this.style.display='none'">
+                </div>
                 <div class="doc-header-meta">
                     <h3 class="doc-header-name" id="doc-name">—</h3>
                     <p class="doc-header-desc" id="doc-desc">—</p>
@@ -840,7 +859,10 @@ function renderLista() {
         const styleVars = `--c1:${esc(i.c1 || '#fc5858')};--c2:${esc(i.c2 || '#c62828')}`;
         return `
             <div class="int-row">
-                <div class="int-icon" style="${styleVars}">${esc(i.inicial || i.nombre.slice(0,2).toUpperCase())}</div>
+                <div class="int-icon" style="${styleVars}">
+                    <span class="int-icon-letter">${esc(i.inicial || i.nombre.slice(0,2).toUpperCase())}</span>
+                    <img class="int-icon-img" src="logos/tpv/${esc(i.id)}.svg" alt="" onload="this.parentNode.classList.add('with-img')" onerror="this.remove()">
+                </div>
                 <div class="int-meta">
                     <div class="int-meta-name">${esc(i.nombre)}${tagHtml}</div>
                     <div class="int-meta-desc">${esc(i.desc)}</div>
@@ -862,8 +884,18 @@ function abrirDoc(id) {
     const esc = YurestConfig.escHtml;
     const d = i.doc || {};
 
-    document.getElementById('doc-icon').textContent = i.inicial || i.nombre.slice(0,2).toUpperCase();
-    document.getElementById('doc-icon').style.cssText = `--c1:${i.c1 || '#fc5858'};--c2:${i.c2 || '#c62828'}`;
+    // Icono del modal: letra + intento de cargar logos/tpv/<id>.svg.
+    // Si la imagen carga, onload añade `with-img` y oculta la letra. Si
+    // falla, el `<img>` queda oculto y se ve el gradiente con la letra.
+    const docIcon       = document.getElementById('doc-icon');
+    const docIconLetter = document.getElementById('doc-icon-letter');
+    const docIconImg    = document.getElementById('doc-icon-img');
+    docIcon.classList.remove('with-img');
+    docIcon.style.cssText = `--c1:${i.c1 || '#fc5858'};--c2:${i.c2 || '#c62828'}`;
+    docIconLetter.textContent = i.inicial || i.nombre.slice(0,2).toUpperCase();
+    docIconImg.style.display = '';     // por si quedó oculto del onerror anterior
+    docIconImg.alt = i.nombre;
+    docIconImg.src = `logos/tpv/${i.id}.svg`;
     document.getElementById('doc-name').textContent = i.nombre;
     document.getElementById('doc-desc').textContent = i.desc || '';
 
