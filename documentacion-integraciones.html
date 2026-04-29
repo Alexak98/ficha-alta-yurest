@@ -328,17 +328,19 @@ const INTEGRACIONES = [
         inicial: 'BD',
         c1: '#0ea5e9', c2: '#0369a1',
         doc: {
-            descripcion: 'BDP expone una API HTTP para que sistemas externos consulten los datos del TPV. Yurest la consume periódicamente para mantener catálogo y ventas al día.',
+            descripcion: 'BDP expone su API a través del módulo Weblink Rest API. Yurest la consume periódicamente para mantener catálogo y ventas al día. Requiere infraestructura de red en el local del cliente: IP pública fija, puerto abierto en router y firewall de Windows.',
             comoConectar: [
-                'Verificar con el cliente que su contrato de BDP incluye acceso API (no todos los planes lo tienen).',
-                'Pedir host, puerto y clave API al cliente o a su distribuidor.',
-                'Comprobar que la IP pública del local responde al puerto indicado (suele ser 8110). Si no, suele ser una IP dinámica que cambió: pedir la actual.',
+                'Verificar con el cliente / distribuidor que tiene contratado el módulo Weblink Rest API en BDP.',
+                'Pedir IP pública FIJA del local (no dinámica) y un puerto abierto en el router para acceso externo.',
+                'Habilitar ese mismo puerto en el firewall de Windows del equipo donde corre BDP.',
+                'Pedir Usuario y Contraseña de Weblink al cliente o al distribuidor.',
                 'Configurar la integración en Yurest y lanzar la primera sincronización en modo "test" para verificar.'
             ],
             camposRequeridos: [
-                { k: 'Host',        v: 'IP pública o dominio del servidor BDP del cliente.' },
-                { k: 'Puerto',      v: 'Habitualmente 8110.' },
-                { k: 'Clave API',   v: 'Cadena alfanumérica (sólo letras/números, sin símbolos).' }
+                { k: 'IP pública fija', v: 'IP pública FIJA contratada del local. Si es dinámica la integración se cae cada vez que cambie.' },
+                { k: 'Puerto',          v: 'Puerto abierto en el router y habilitado en el firewall de Windows.' },
+                { k: 'Usuario Weblink', v: 'Usuario del módulo Weblink Rest API.' },
+                { k: 'Contraseña Weblink', v: 'Contraseña del usuario Weblink.' }
             ],
             datosSincronizados: [
                 'Productos y precios.',
@@ -346,9 +348,11 @@ const INTEGRACIONES = [
                 'Movimientos de caja.'
             ],
             limitaciones: [
-                'IP dinámica: cuando el cliente reinicia el router puede cambiar y la integración deja de pingear. Hay que pedirle la nueva IP.',
+                'Requiere IP pública FIJA — con IP dinámica la integración deja de pingear cada vez que el router renueva.',
+                'Requiere abrir puerto en router + firewall de Windows: si el cliente cambia de equipo o reinstala Windows hay que rehacer la apertura.',
                 'Sin webhook: la sincronización es por polling (cada 5-15 min según volumen).'
             ],
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV BDP. Para ello necesito lo siguiente:\n\n• Tener contratado el módulo Weblink Rest API.\n• IP pública fija contratada.\n• Puerto de acceso abierto en el router.\n• Ese mismo puerto habilitado también en el firewall de Windows.\n• Usuario de Weblink.\n• Contraseña de Weblink.\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes BDP con Yurest.\n\nGracias.`,
             contacto: { nombre: 'Soporte BDP', web: 'https://www.bdpsoftware.com' }
         }
     },
