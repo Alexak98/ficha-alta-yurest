@@ -279,18 +279,16 @@ const INTEGRACIONES = [
         doc: {
             descripcion: 'Ágora es uno de los TPV más extendidos en España. La integración con Yurest permite leer ventas, productos, familias, mesas y empleados directamente de su base de datos.',
             comoConectar: [
-                'Enviar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo).',
-                'El cliente (o su distribuidor de Ágora) responde con los 5 datos de conexión.',
-                'Confirmar que el equipo donde corre Ágora tiene la base de datos accesible desde fuera (puerto abierto en el router del local, o VPN).',
+                'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de Ágora.',
+                'El cliente reenvía la respuesta del distribuidor con los 3 bloques de datos (clave API, URL del servidor con IP+puerto, usuario y contraseña).',
+                'Confirmar que la IP fija del local responde desde fuera al puerto indicado (sin firewall que lo bloquee).',
                 'Crear la integración en el panel de Yurest (sección Integraciones → Conectar Ágora) introduciendo los datos.',
                 'Hacer un primer pull de catálogo y verificar que los productos y familias entran sincronizados antes de habilitar el flujo de ventas.'
             ],
             camposRequeridos: [
-                { k: 'Host',                          v: 'IP o dominio del servidor donde corre la BD de Ágora.' },
-                { k: 'Puerto',                        v: 'Puerto del servicio (típicamente 3050 o 1433 según versión).' },
-                { k: 'Usuario',                       v: 'Usuario con permisos de lectura sobre las tablas del TPV.' },
-                { k: 'Contraseña',                    v: 'Contraseña del usuario anterior.' },
-                { k: 'Clave API para la integración', v: 'Clave que emite Ágora para autenticar la integración externa.' }
+                { k: 'Clave de acceso / API token', v: 'Se obtiene desde **Ágora → Módulos Adicionales**.' },
+                { k: 'URL del servidor',            v: 'IP fija del local + puerto (ej. `192.168.1.10:3050`).' },
+                { k: 'Usuario y contraseña',        v: 'Credenciales con permisos de lectura sobre la BD del TPV.' }
             ],
             datosSincronizados: [
                 'Productos, familias y precios.',
@@ -301,10 +299,14 @@ const INTEGRACIONES = [
             ],
             limitaciones: [
                 'Sólo soportamos versiones recientes de Ágora (2020+). Versiones más antiguas requieren actualizar primero.',
-                'La integración es de SOLO LECTURA: Yurest no escribe nada en la BD del TPV.'
+                'La integración es de SOLO LECTURA: Yurest no escribe nada en la BD del TPV.',
+                'Requiere IP fija del local — si el cliente tiene IP dinámica, hay que configurar DDNS o VPN.'
             ],
             contacto: { nombre: 'Soporte Ágora', web: 'https://www.agorapos.com' },
-            plantillaEmail: `¡Hola !,\n\nEstamos preparando la integración con su sistema TPV AGORA, y para ello necesitamos que nos proporcionen los siguientes datos de conexión:\n\nHost:\nPuerto:\nUsuario:\nContraseña:\nClave API para la integración:\n\nEn caso de no disponer de esta información, pueden solicitarla directamente a su distribuidor de AGORA.\nUna vez recibamos estos datos, procederemos con la configuración e integración del sistema.\n\nQuedo a disposición por cualquier consulta adicional,\nGracias`
+            // Plantilla pensada para que el CLIENTE la envíe a su distribuidor
+            // de Ágora. Marcadores [nombre del distribuidor] y (Nombre de la
+            // empresa) los rellena el cliente al copiar y enviar.
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Ágora. Por eso, necesito los siguientes datos:\n\n• Clave de acceso / API token (Ágora - Módulos Adicionales)\n• URL del servidor (IP fija del local e incluir puerto)\n• Usuario y contraseña\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Ágora con Yurest.\n\nGracias.`
         }
     },
     {
