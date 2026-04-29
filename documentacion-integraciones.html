@@ -461,17 +461,20 @@ const INTEGRACIONES = [
         inicial: 'HI',
         c1: '#a855f7', c2: '#6b21a8',
         doc: {
-            descripcion: 'Hiopos (de ICG Software) es uno de los TPV más extendidos. La integración usa su API cloud Hiopos Analytics + acceso opcional a base de datos local cuando hace falta más detalle.',
+            descripcion: 'Hiopos (de ICG Software) es uno de los TPV más extendidos. La integración con Yurest se autentica con un usuario/contraseña del TPV + 4 códigos de exportación que el cliente o su distribuidor configura previamente en Hiopos para indicar qué entidades exponer (artículos, tickets, empleados y establecimiento).',
             comoConectar: [
-                'Pedir al cliente las credenciales de Hiopos Analytics (cuenta administrador del cloud).',
-                'Si el cliente quiere sincronizar a nivel línea de ticket, además hay que acceder a la BD local — pedir host/puerto/usuario/contraseña.',
-                'Configurar la integración en Yurest.',
-                'Validar la primera carga de catálogo.'
+                'Pedir al cliente o a su distribuidor que configure en Hiopos las exportaciones de Artículos, Tickets, Empleados y Establecimiento, anotando el código que asigne a cada una.',
+                'Pedir el user id y la contraseña con permiso para consumir esas exportaciones.',
+                'El cliente nos pasa los 6 valores (user, pass, 4 códigos).',
+                'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
             ],
             camposRequeridos: [
-                { k: 'Usuario cloud', v: 'Email del administrador de Hiopos Analytics.' },
-                { k: 'Contraseña',    v: 'La de la cuenta cloud.' },
-                { k: 'Host BD (opcional)', v: 'Sólo si se requiere acceso al detalle de líneas.' }
+                { k: 'User ID',                 v: 'Usuario del TPV / del módulo de exportación de Hiopos.' },
+                { k: 'Password',                v: 'Contraseña asociada al user id anterior.' },
+                { k: 'Código exportación Artículos',     v: 'Identificador de la exportación de catálogo en Hiopos.' },
+                { k: 'Código exportación Tickets',       v: 'Identificador de la exportación de tickets.' },
+                { k: 'Código exportación Empleados',     v: 'Identificador de la exportación de empleados.' },
+                { k: 'Código exportación Establecimiento', v: 'Identificador de la exportación a nivel de establecimiento.' }
             ],
             datosSincronizados: [
                 'Productos y familias.',
@@ -479,8 +482,10 @@ const INTEGRACIONES = [
                 'Empleados y centros de trabajo.'
             ],
             limitaciones: [
-                'Algunos campos personalizados (modificadores complejos) sólo llegan completos por BD local, no por cloud.'
+                'Si el cliente no tiene los códigos de exportación a mano, debe solicitarlos a su distribuidor o al administrador del sistema.',
+                'Si el distribuidor reconfigura las exportaciones en Hiopos, los códigos pueden cambiar y la sincronización deja de pingear hasta que nos pasen los nuevos.'
             ],
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Hiopos. Por eso, necesito los siguientes datos de conexión:\n\n• User ID\n• Password\n\nY los siguientes códigos de exportación:\n\n• Artículos\n• Tickets\n• Empleados\n• Establecimiento\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Hiopos con Yurest.\n\nGracias.`,
             contacto: { nombre: 'Soporte ICG / Hiopos', web: 'https://www.icg.es' }
         }
     },
