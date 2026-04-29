@@ -546,12 +546,15 @@
 <script src="sidebar.js"></script>
 <script>YurestSidebar.render('integraciones');</script>
 
-<!-- Header -->
+<!-- Header — logo eliminado a propósito (vive sólo dentro del sidebar
+     desde el rediseño de marca). Esta página tiene su propia hoja de
+     estilos inline (no carga style.css) así que la regla global
+     .page-header img { display:none } no llega — había que borrar el
+     <img> a mano. -->
 <div class="page-header">
     <button class="btn-menu" onclick="openSidebar()" title="Menú" aria-label="Abrir menú lateral">
         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
     <h1>Integraciones</h1>
 </div>
 
