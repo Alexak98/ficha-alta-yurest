@@ -279,7 +279,11 @@ function closeSidebar() { document.getElementById('sidebar').classList.remove('o
 // falla, el <img> se elimina y queda visible el gradiente con la
 // inicial (fallback definido en CSS, .with-img no se activa).
 // ──────────────────────────────────────────────────────────────────────
-const TPV_LOGO_EXTS = ['svg', 'png', 'jpeg', 'jpg', 'webp'];
+// Orden de probada: PNG primero porque la mayoría de logos del catálogo
+// son raster (los SVG con raster embebido los reemplazamos por PNG real
+// para ahorrar ~270 KB en la página). Sólo camarero10 y lastapp siguen
+// siendo SVG vectorial — ahí pagamos un 404 inicial pero son ligeros.
+const TPV_LOGO_EXTS = ['png', 'svg', 'jpeg', 'jpg', 'webp'];
 function tpvLogoFallback(img) {
     // Probamos la siguiente extensión. Cuando se acaban, ocultamos la
     // imagen (no la quitamos) para que el modal pueda reutilizar el
@@ -895,7 +899,7 @@ function renderLista() {
             <div class="int-row">
                 <div class="int-icon" style="${styleVars}">
                     <span class="int-icon-letter">${esc(i.inicial || i.nombre.slice(0,2).toUpperCase())}</span>
-                    <img class="int-icon-img" src="logos/tpv/${esc(i.id)}.svg" alt="" onload="this.parentNode.classList.add('with-img')" onerror="tpvLogoFallback(this)">
+                    <img class="int-icon-img" src="logos/tpv/${esc(i.id)}.png" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add('with-img')" onerror="tpvLogoFallback(this)">
                 </div>
                 <div class="int-meta">
                     <div class="int-meta-name">${esc(i.nombre)}${tagHtml}</div>
@@ -930,7 +934,7 @@ function abrirDoc(id) {
     docIconImg.style.display = '';     // por si quedó oculto del onerror anterior
     docIconImg.dataset.tried  = '0';   // reset del contador de extensiones
     docIconImg.alt = i.nombre;
-    docIconImg.src = `logos/tpv/${i.id}.svg`;
+    docIconImg.src = `logos/tpv/${i.id}.png`;
     document.getElementById('doc-name').textContent = i.nombre;
     document.getElementById('doc-desc').textContent = i.desc || '';
 

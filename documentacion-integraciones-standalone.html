@@ -272,7 +272,8 @@ function escHtml(s) {
 }
 
 // Fallback de logos: cicla por extensiones cuando .svg falla.
-const TPV_LOGO_EXTS = ['svg', 'png', 'jpeg', 'jpg', 'webp'];
+// PNG primero (la mayoría de logos del catálogo son raster).
+const TPV_LOGO_EXTS = ['png', 'svg', 'jpeg', 'jpg', 'webp'];
 function tpvLogoFallback(img) {
     const tried = parseInt(img.dataset.tried || '0', 10) + 1;
     if (tried >= TPV_LOGO_EXTS.length) {
@@ -852,7 +853,7 @@ function renderLista() {
             <div class="int-row">
                 <div class="int-icon" style="${styleVars}">
                     <span class="int-icon-letter">${esc(i.inicial || i.nombre.slice(0,2).toUpperCase())}</span>
-                    <img class="int-icon-img" src="logos/tpv/${esc(i.id)}.svg" alt="" onload="this.parentNode.classList.add('with-img')" onerror="tpvLogoFallback(this)">
+                    <img class="int-icon-img" src="logos/tpv/${esc(i.id)}.png" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add('with-img')" onerror="tpvLogoFallback(this)">
                 </div>
                 <div class="int-meta">
                     <div class="int-meta-name">${esc(i.nombre)}${tagHtml}</div>
@@ -885,7 +886,7 @@ function abrirDoc(id) {
     docIconImg.style.display = '';
     docIconImg.dataset.tried  = '0';
     docIconImg.alt = i.nombre;
-    docIconImg.src = `logos/tpv/${i.id}.svg`;
+    docIconImg.src = `logos/tpv/${i.id}.png`;
 
     document.getElementById('doc-name').textContent = i.nombre;
     document.getElementById('doc-desc').textContent = i.desc || '';

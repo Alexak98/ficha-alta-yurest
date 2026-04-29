@@ -26,3 +26,8 @@ tmp/
 .cache/
 dist/
 build/
+
+# Backups locales de assets optimizados (logos originales sin redimensionar).
+# Se mantienen en disco por si hay que regenerar a partir del original, pero
+# no se commitean: pesan mucho y la versión optimizada ya está versionada.
+logos/tpv/_originales/
