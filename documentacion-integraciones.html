@@ -555,6 +555,38 @@ const INTEGRACIONES = [
         }
     },
     {
+        id: 'pi_electronique',
+        nombre: 'Pi Electronique',
+        desc: 'TPV francés para hostelería con API expuesta vía host/puerto y clave API.',
+        tag: 'estable',
+        inicial: 'PI',
+        c1: '#f97316', c2: '#9a3412',
+        doc: {
+            descripcion: 'Pi Electronique es un TPV de origen francés muy presente en hostelería. La integración con Yurest se realiza vía API expuesta por el TPV en una IP/puerto del local, autenticada con una clave API. Los datos los facilita el distribuidor de Pi Electronique.',
+            comoConectar: [
+                'El cliente solicita a su distribuidor de Pi Electronique los datos de conexión (host, puerto y clave API).',
+                'El cliente nos pasa los 3 valores.',
+                'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
+            ],
+            camposRequeridos: [
+                { k: 'Host',      v: 'IP pública o dominio del servidor Pi Electronique del local.' },
+                { k: 'Puerto',    v: 'Puerto TCP expuesto por el servidor.' },
+                { k: 'Clave API', v: 'Token / API key emitido por Pi Electronique para autenticar las llamadas.' }
+            ],
+            datosSincronizados: [
+                'Catálogo de productos.',
+                'Tickets y pagos.',
+                'Cierres de caja.'
+            ],
+            limitaciones: [
+                'Si la IP del local no es fija, la integración se cae cuando cambie y hay que actualizar el host.',
+                'Los datos no son autoservicio: si el cliente no los tiene, debe solicitarlos a su distribuidor de Pi Electronique.'
+            ],
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Pi Electronique. Por eso, necesito los siguientes datos de conexión:\n\n• Host\n• Puerto\n• Clave API para la integración\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Pi Electronique con Yurest.\n\nGracias.`,
+            contacto: { nombre: 'Soporte Pi Electronique', web: 'https://www.pielectronique.com' }
+        }
+    },
+    {
         id: 'revo',
         nombre: 'Revo',
         desc: 'Software de control de sala, cocina y pedidos.',
