@@ -12,6 +12,32 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
     <style>
+        /* Header (.header) — estilos inline porque proyectos.html no
+           carga style.css (es self-contained). Misma estética que el
+           resto del portal: sticky, fondo blanco, h1 compacto. */
+        .header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;background:#fff;
+            border-bottom:1px solid #e2e8f0;
+            position:sticky;top:0;z-index:50;
+            justify-content:space-between;
+        }
+        .header-left {
+            display:flex;align-items:center;gap:14px;flex:1;min-width:0;
+        }
+        .header h1 {
+            font-size:1.1rem;font-weight:800;color:#0f172a;
+            line-height:1.25;margin:0;
+        }
+        .btn-sidebar-toggle {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;border:1.5px solid #e2e8f0;
+            background:#fff;color:#475569;cursor:pointer;
+            transition:background .15s,border-color .15s,color .15s;
+            flex:0 0 36px;
+        }
+        .btn-sidebar-toggle:hover { background:#fff5f5;border-color:#fecaca;color:#fc5858 }
+
         .sidebar-group { margin: 2px 0; }
         .sidebar-group-header {
             display: flex; align-items: center; gap: 12px;

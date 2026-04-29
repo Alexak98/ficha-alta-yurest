@@ -11,6 +11,28 @@
     <style>
         * { margin:0;padding:0;box-sizing:border-box }
         body { font-family:var(--font-sans);background:#f8fafc;color:#1e293b }
+
+        /* Header de página — estos estilos viven aquí porque integraciones.html
+           no carga style.css (es self-contained). Misma estética que el resto
+           del portal: sticky, fondo blanco, border-bottom y h1 compacto. */
+        .page-header {
+            display:flex;align-items:center;gap:14px;
+            padding:20px 24px;background:#fff;
+            border-bottom:1px solid #e2e8f0;
+            position:sticky;top:0;z-index:50;
+        }
+        .page-header h1 {
+            font-size:1.1rem;font-weight:800;color:#0f172a;
+            line-height:1.25;margin:0;
+        }
+        .btn-menu {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;border:1.5px solid #e2e8f0;
+            background:#fff;color:#475569;cursor:pointer;
+            transition:background .15s,border-color .15s,color .15s;
+            flex:0 0 36px;
+        }
+        .btn-menu:hover { background:#fff5f5;border-color:#fecaca;color:#fc5858 }
         .sidebar-overlay { position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:40;display:none }
         .sidebar-overlay.open { display:block }
         .sidebar { position:fixed;left:0;top:0;bottom:0;width:260px;background:#fff;z-index:50;transform:translateX(-100%);transition:transform 0.2s;display:flex;flex-direction:column;border-right:1.5px solid #f1f5f9 }
