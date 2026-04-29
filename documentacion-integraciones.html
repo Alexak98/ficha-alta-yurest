@@ -531,15 +531,15 @@ const INTEGRACIONES = [
         inicial: 'LA',
         c1: '#6366f1', c2: '#3730a3',
         doc: {
-            descripcion: 'Last.app es 100 % cloud y tiene una API REST pública. La integración con Yurest usa un token de acceso por cliente.',
+            descripcion: 'Last.app es 100 % cloud y tiene una API REST pública. La integración con Yurest usa un token de acceso por cliente. Para emitir ese token, Yurest envía un correo a integrations@last.app solicitándolo y pone al cliente final en copia para que autorice expresamente la entrega.',
             comoConectar: [
-                'El cliente solicita el token a Last.app desde su área de cliente.',
+                'Yurest envía un correo a integrations@last.app solicitando el token, con el cliente final en CC para que autorice la clave.',
                 'Last.app revisa la solicitud (puede tardar 24-48 h) y emite el token.',
-                'El cliente nos pasa el token; lo introducimos en Yurest.',
+                'Last.app nos hace llegar el token; lo introducimos en Yurest.',
                 'Sincronización automática a partir de ahí.'
             ],
             camposRequeridos: [
-                { k: 'Token API', v: 'Generado por Last.app a petición del cliente.' }
+                { k: 'Token API', v: 'Generado por Last.app tras solicitarlo a integrations@last.app con el cliente en copia.' }
             ],
             datosSincronizados: [
                 'Productos y combos.',
@@ -548,9 +548,11 @@ const INTEGRACIONES = [
                 'Empleados.'
             ],
             limitaciones: [
-                'Cuando el cliente modifica un combo, los IDs de los productos del combo cambian y la integración pierde la trazabilidad histórica del producto. Last.app está trabajando en arreglarlo desde Q1 2026.'
+                'Cuando el cliente modifica un combo, los IDs de los productos del combo cambian y la integración pierde la trazabilidad histórica del producto. Last.app está trabajando en arreglarlo desde Q1 2026.',
+                'El token sólo se entrega tras autorización expresa del cliente final por correo — sin ese OK, integrations@last.app no lo emite.'
             ],
-            contacto: { nombre: 'Soporte Last.app', email: 'soporte@last.app', web: 'https://last.app' }
+            plantillaEmail: `Para: integrations@last.app\nCC: [email del cliente final]\nAsunto: Solicitud de Token Last.app — [Nombre del cliente]\n\nBuenos días,\n\nSolicitamos Token para el cliente [Nombre del cliente]. Adjunto en copia al cliente para que autorice la clave.\n\nGracias.`,
+            contacto: { nombre: 'Last.app Integrations', email: 'integrations@last.app', web: 'https://last.app' }
         }
     },
     {
@@ -684,7 +686,7 @@ const INTEGRACIONES = [
         id: 'square',
         nombre: 'Square',
         desc: 'TPV global de Block, Inc. Integración por OAuth.',
-        tag: 'beta',
+        tag: 'estable',
         inicial: 'SQ',
         c1: '#0f172a', c2: '#334155',
         doc: {
@@ -705,7 +707,7 @@ const INTEGRACIONES = [
                 'Empleados (Team Members).'
             ],
             limitaciones: [
-                'Estado BETA — pocos clientes en producción. Ojo a clientes en países donde Square aún no opera.',
+                'Ojo a clientes en países donde Square aún no opera.',
                 'Square cobra por API calls cuando se exceden los límites — vigilar el volumen de polling.',
                 'Si el cliente cambia la contraseña de su cuenta de developer, perdemos acceso a la consola hasta que nos pase la nueva.'
             ],
