@@ -35,7 +35,10 @@
         .btn-menu:hover { background:#fff5f5;border-color:#fecaca;color:#fc5858 }
         .sidebar-overlay { position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:40;display:none }
         .sidebar-overlay.open { display:block }
-        .sidebar { position:fixed;left:0;top:0;bottom:0;width:260px;background:#fff;z-index:50;transform:translateX(-100%);transition:transform 0.2s;display:flex;flex-direction:column;border-right:1.5px solid #f1f5f9 }
+        /* overflow-y:auto añadido — sin esto, cuando el menú lateral
+           tiene muchos items (informes + comercial + soporte + …) los
+           de abajo se quedan ocultos sin posibilidad de scroll. */
+        .sidebar { position:fixed;left:0;top:0;bottom:0;width:260px;background:#fff;z-index:50;transform:translateX(-100%);transition:transform 0.2s;display:flex;flex-direction:column;border-right:1.5px solid #f1f5f9;overflow-y:auto }
         .sidebar.open { transform:translateX(0) }
         .sidebar-hd { display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1.5px solid #f1f5f9 }
         .sidebar-brand { display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:800;letter-spacing:0.15em;color:#fc5858 }
