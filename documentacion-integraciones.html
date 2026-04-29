@@ -657,17 +657,16 @@ const INTEGRACIONES = [
         inicial: 'YA',
         c1: '#84cc16', c2: '#3f6212',
         doc: {
-            descripcion: 'Yantar es un TPV español. La integración va por su API privada con credenciales por restaurante.',
+            descripcion: 'Yantar es un TPV español. La integración funciona al revés que las pull: Yurest expone un endpoint WebSocket (wss://cliente.yurest.com/ws/) y emite un token vinculado al local, y el distribuidor de Yantar configura el TPV para que empuje los datos contra ese endpoint con ese token.',
             comoConectar: [
-                'Pedir al distribuidor de Yantar las credenciales de la API.',
-                'Indicar el código de establecimiento del cliente.',
-                'Configurar en Yurest.',
-                'Validar.'
+                'Generar en Yurest un token nuevo, vinculado al local del cliente.',
+                'Enviar al cliente (o directamente a su distribuidor de Yantar) los datos de integración: URL del WebSocket + token.',
+                'El distribuidor de Yantar configura el TPV para empujar contra ese endpoint con ese token.',
+                'Validar la primera sincronización en modo "test".'
             ],
             camposRequeridos: [
-                { k: 'Usuario API', v: 'Generado por el distribuidor.' },
-                { k: 'Contraseña',  v: 'La emparejada con el usuario.' },
-                { k: 'Establecimiento', v: 'Código alfanumérico del local.' }
+                { k: 'ws',    v: 'URL del WebSocket de Yurest, p.ej. wss://cliente.yurest.com/ws/. Igual para todos los locales.' },
+                { k: 'token', v: 'Token único por local, generado por Yurest y vinculado a ese establecimiento.' }
             ],
             datosSincronizados: [
                 'Catálogo de productos.',
@@ -675,8 +674,10 @@ const INTEGRACIONES = [
                 'Cierres.'
             ],
             limitaciones: [
-                'API menos documentada que otras — algunos campos personalizados pueden no llegar.'
+                'Cada local requiere su propio token: si el cliente abre un nuevo establecimiento hay que generar y enviar un token nuevo.',
+                'Si el distribuidor pierde el token, hay que revocar y emitir uno nuevo.'
             ],
+            plantillaEmail: `Hola [nombre del cliente / distribuidor],\n\nOs envío los datos de integración de producción para conectar el TPV Yantar con Yurest. El token ya está vinculado al local [Nombre del local]. Para cada local nuevo que requiera integración hará falta un token nuevo, que se solicita a Yurest.\n\nDatos de integración producción:\n\n• ws: wss://cliente.yurest.com/ws/\n• token: [token generado por Yurest]\n\nCualquier consulta adicional, quedamos a disposición.\n\nGracias.`,
             contacto: { nombre: 'Soporte Yantar', web: 'https://www.yantar.es' }
         }
     },
