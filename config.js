@@ -111,6 +111,11 @@
         // pre-agregado, una matriz [day_of_week 0-6][hour 0-23] con counts).
         zendeskTicketsHeatmap: `${WEBHOOK_BASE}/zendesk/tickets-heatmap`,
 
+        // Misma página que el heatmap normal pero INVERTIDA: solo
+        // tickets que aún están en el agente IA de Zendesk (asunto
+        // "Conversation with"). Sirve para medir cobertura del bot.
+        zendeskTicketsHeatmapIA: `${WEBHOOK_BASE}/zendesk/tickets-heatmap-ia`,
+
         // Escalados de clientes (departamento Comercial): ampliaciones
         // contractuales sobre clientes existentes (módulos nuevos o nuevos
         // locales). GET lista los registros, POST crea uno nuevo en estado
@@ -137,7 +142,8 @@
     const PERMISOS_DISPONIBLES = [
         { id: 'ventas',          label: 'Ventas',                  grupo: 'Informes'         },
         { id: 'distribucion',    label: 'Implementadores',         grupo: 'Informes'         },
-        { id: 'informe_tickets', label: 'Mapa de calor de tickets', grupo: 'Informes'        },
+        { id: 'informe_tickets',    label: 'Mapa de calor de tickets',     grupo: 'Informes'        },
+        { id: 'informe_tickets_ia', label: 'Mapa de calor — Agente IA',    grupo: 'Informes'        },
         { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'        },
         { id: 'escalados',     label: 'Escalados de clientes', grupo: 'Comercial'       },
         { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación'   },

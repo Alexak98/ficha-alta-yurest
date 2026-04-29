@@ -71,8 +71,9 @@
             items: [
                 { id: 'ventas',           href: 'ventas.html',          label: 'Ventas',                   icon: 'ventas',          subgrupo: 'Comercial' },
                 { id: 'distribucion',     href: 'distribucion.html',    label: 'Implementadores',          icon: 'implementadores', subgrupo: 'Implementación' },
-                { id: 'informe_tickets',  href: 'informe-tickets.html', label: 'Mapa de calor de tickets', icon: 'informe_tickets', subgrupo: 'Soporte' },
-                { id: 'resumen_semanal',  href: 'resumen-semanal.html', label: 'Resumen semanal',          icon: 'resumen_semanal', subgrupo: 'Soporte' }
+                { id: 'informe_tickets',     href: 'informe-tickets.html',    label: 'Mapa de calor de tickets', icon: 'informe_tickets', subgrupo: 'Soporte' },
+                { id: 'informe_tickets_ia',  href: 'informe-tickets-ia.html', label: 'Heatmap — Agente IA',      icon: 'informe_tickets', subgrupo: 'Soporte' },
+                { id: 'resumen_semanal',     href: 'resumen-semanal.html',    label: 'Resumen semanal',          icon: 'resumen_semanal', subgrupo: 'Soporte' }
             ]
         },
         {

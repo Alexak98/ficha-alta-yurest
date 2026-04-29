@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Mapa de calor — Agente IA — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('informe_tickets_ia');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f8fafc; }
+
+        .page-content { padding:24px;max-width:1200px;margin:0 auto }
+
+        .filters {
+            background: linear-gradient(135deg, #ffffff 0%, #fafaff 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+        }
+        .filters-row {
+            display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+        .filter-group label {
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+            text-transform: uppercase; color: #64748b;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .filter-group label svg { width: 13px; height: 13px; opacity: 0.6 }
+
+        .date-input {
+            position: relative;
+        }
+        .filter-group input[type=date] {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-family: inherit; font-size: 0.88rem;
+            background: #fff; color: #0f172a;
+            min-width: 150px;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .filter-group input[type=date]:hover { border-color: #c7d2fe }
+        .filter-group input[type=date]:focus {
+            outline: none; border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+        }
+
+        .filter-divider {
+            width: 1px; align-self: stretch; background: #e2e8f0; margin: 0 4px;
+        }
+
+        .preset-btns {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 5px;
+        }
+        .preset-btn {
+            border: none; background: transparent; color: #475569;
+            border-radius: 8px;
+            padding: 7px 13px;
+            font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; font-family: inherit;
+            transition: background .15s, color .15s, box-shadow .15s;
+            white-space: nowrap;
+        }
+        .preset-btn:hover { background: #fff; color: #4338ca }
+        .preset-btn.active {
+            background: #fff; color: #4338ca;
+            box-shadow: 0 1px 3px rgba(67,56,202,0.18), 0 0 0 1px rgba(67,56,202,0.18);
+        }
+
+        .filter-actions { margin-left: auto; display: flex; gap: 10px; align-items: flex-end }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+            color: #fff; border: none; border-radius: 10px;
+            padding: 10px 20px;
+            font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; font-family: inherit;
+            box-shadow: 0 1px 3px rgba(67,56,202,0.3);
+            transition: transform .12s, box-shadow .15s, opacity .15s;
+            display: inline-flex; align-items: center; gap: 7px;
+        }
+        .btn-primary:hover { box-shadow: 0 4px 14px rgba(67,56,202,0.35); transform: translateY(-1px) }
+        .btn-primary:active { transform: translateY(0) }
+        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; transform: none; opacity: 0.7 }
+        .btn-primary svg { width: 14px; height: 14px }
+
+        @media (max-width: 720px) {
+            .filter-actions { margin-left: 0; width: 100% }
+            .filter-actions .btn-primary { width: 100% }
+        }
+
+        .summary {
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+            gap:12px;margin-bottom:20px;
+        }
+        .summary-card {
+            background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+            padding:14px 18px;
+        }
+        .summary-card .label { font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b }
+        .summary-card .value { font-size:1.5rem;font-weight:800;color:#0f172a;margin-top:4px }
+        .summary-card .sub   { font-size:0.78rem;color:#94a3b8;margin-top:2px }
+
+        .heatmap-card {
+            background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+            padding:18px;
+        }
+        .heatmap-title { font-size:0.92rem;font-weight:700;color:#0f172a;margin:0 0 4px }
+        .heatmap-sub   { font-size:0.78rem;color:#94a3b8;margin:0 0 16px }
+
+        .heatmap-wrap {
+            overflow-x:auto;
+            -webkit-overflow-scrolling:touch;
+            padding:8px 4px 4px;
+        }
+        .heatmap-table {
+            border-collapse:separate;
+            border-spacing:4px;
+            font-size:0.72rem;color:#475569;
+            margin:0 auto;  /* centra el grid si sobra ancho */
+        }
+        .heatmap-table th, .heatmap-table td { padding:0 }
+        .heatmap-table th.hour {
+            font-weight:600;font-size:0.7rem;color:#94a3b8;
+            text-align:center;
+            width:34px;height:24px;
+            font-variant-numeric:tabular-nums;
+        }
+        .heatmap-table th.day {
+            font-weight:700;font-size:.78rem;color:#475569;
+            text-align:right;padding-right:12px;white-space:nowrap;
+            min-width:48px;
+        }
+        /* Cabecera de día clicable: muestra TODOS los tickets de ese día */
+        .heatmap-table th.day.clickable {
+            cursor:pointer;
+            transition:color .12s;
+        }
+        .heatmap-table th.day.clickable:hover { color:#fc5858 }
+        .heatmap-table th.day.clickable:focus-visible {
+            outline:2px solid #fc5858;outline-offset:2px;border-radius:4px;
+        }
+        /* Banda zebra para filas pares — ayuda a seguir días con la vista */
+        .heatmap-table tr.day-even td > .hm-cell:not(.has-data) {
+            background:#f8fafc;
+        }
+        .hm-cell {
+            width:34px;height:34px;border-radius:7px;
+            background:#f1f5f9;cursor:default;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.78rem;color:rgba(15,23,42,.65);font-weight:700;
+            transition:transform .14s, box-shadow .14s;
+            border:1px solid transparent;
+        }
+        .hm-cell.has-data {
+            cursor:pointer;
+            box-shadow:0 1px 1px rgba(15,23,42,.04);
+        }
+        .hm-cell.has-data:hover {
+            transform:scale(1.16);
+            box-shadow:0 6px 16px rgba(15,23,42,.20);
+            z-index:2;position:relative;
+        }
+        .hm-cell.has-data:focus-visible {
+            outline:2px solid #fc5858;outline-offset:2px;z-index:2;position:relative;
+        }
+        /* Texto en cellas oscuras: blanco para contraste */
+        .hm-cell.dark { color:rgba(255,255,255,0.96);text-shadow:0 1px 2px rgba(0,0,0,.18); }
+
+        .hm-hint {
+            font-size:.72rem;color:#94a3b8;margin-top:10px;font-style:italic;
+        }
+
+        /* ── Drawer lista de tickets ─────────────────────────────────── */
+        .tk-overlay {
+            position:fixed;inset:0;z-index:700;
+            background:rgba(15,23,42,.5);
+            opacity:0;pointer-events:none;
+            transition:opacity .2s;
+        }
+        .tk-overlay.open { opacity:1;pointer-events:all }
+        .tk-panel {
+            position:fixed;top:0;right:0;bottom:0;
+            width:min(480px, 100%);
+            background:#fff;z-index:701;
+            transform:translateX(100%);
+            transition:transform .26s cubic-bezier(.4,0,.2,1);
+            display:flex;flex-direction:column;
+            box-shadow:-4px 0 24px rgba(0,0,0,.10);
+        }
+        .tk-panel.open { transform:translateX(0) }
+        .tk-panel-head {
+            padding:18px 22px;
+            border-bottom:1.5px solid #e2e8f0;
+            display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+        }
+        .tk-panel-head h2 {
+            margin:0;font-size:16px;font-weight:800;color:#0f172a;
+        }
+        .tk-panel-head p {
+            margin:3px 0 0;font-size:12px;color:#64748b;
+        }
+        .tk-panel-close {
+            width:32px;height:32px;flex-shrink:0;
+            background:none;border:none;cursor:pointer;
+            color:#94a3b8;font-size:22px;border-radius:8px;
+            font-family:inherit;
+        }
+        .tk-panel-close:hover { background:#f1f5f9;color:#0f172a }
+        .tk-panel-body {
+            flex:1;overflow-y:auto;
+            padding:14px 18px 24px;
+        }
+        .tk-row {
+            display:flex;flex-direction:column;gap:4px;
+            padding:12px 14px;
+            border:1.5px solid #e2e8f0;border-radius:10px;
+            background:#fff;margin-bottom:8px;
+            text-decoration:none;color:inherit;
+            transition:border-color .12s, box-shadow .12s, transform .12s;
+        }
+        .tk-row:hover {
+            border-color:#fc5858;box-shadow:0 4px 14px rgba(252,88,88,.10);
+            transform:translateY(-1px);
+        }
+        .tk-row-head {
+            display:flex;align-items:baseline;gap:8px;justify-content:space-between;
+        }
+        .tk-row-id {
+            font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+            color:#fc5858;
+        }
+        .tk-row-when {
+            font-size:.72rem;color:#94a3b8;font-variant-numeric:tabular-nums;
+        }
+        .tk-row-subject {
+            font-size:.88rem;color:#0f172a;font-weight:500;line-height:1.35;
+        }
+        .tk-row-meta {
+            display:flex;gap:8px;font-size:.7rem;color:#64748b;
+            margin-top:2px;
+        }
+        .tk-row-chips {
+            display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;
+        }
+        .tk-chip {
+            display:inline-block;font-size:.64rem;font-weight:800;
+            padding:2px 8px;border-radius:999px;
+            text-transform:uppercase;letter-spacing:.04em;
+            white-space:nowrap;
+            border:1px solid transparent;
+        }
+        .tk-chip-status  { background:#f1f5f9;color:#475569;border-color:#e2e8f0 }
+        .tk-chip-org     { background:#ecfccb;color:#3f6212;border-color:#d9f99d;font-weight:600 }
+        .tk-chip-tipo    { background:#ede9fe;color:#5b21b6;border-color:#ddd6fe }
+        .tk-chip-entorno { background:#dbeafe;color:#1e40af;border-color:#bfdbfe }
+        .tk-chip-modulo  { background:#fce7f3;color:#9d174d;border-color:#fbcfe8 }
+        .tk-empty {
+            text-align:center;padding:32px 18px;color:#94a3b8;font-size:.85rem;
+        }
+
+        .legend {
+            display:flex;align-items:center;gap:10px;margin-top:14px;
+            font-size:0.72rem;color:#94a3b8;
+        }
+        .legend-bar {
+            display:flex;height:14px;border-radius:4px;overflow:hidden;
+            box-shadow:inset 0 0 0 1px rgba(0,0,0,0.05);
+        }
+        .legend-bar span { display:block;width:24px;height:100% }
+
+        .empty, .error {
+            text-align:center;padding:48px 24px;color:#64748b;
+        }
+        .error { color:#dc2626 }
+
+        .loader {
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            padding:60px;gap:14px;color:#64748b;
+        }
+        .spinner {
+            width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#4338ca;
+            border-radius:50%;animation:spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform:rotate(360deg) } }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <nav class="sidebar" id="sidebar"></nav>
+    <script src="sidebar.js"></script>
+    <script>YurestSidebar.render('informe_tickets_ia');</script>
+    <script src="notifications.js"></script>
+
+    <div class="page-header">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <h1>Mapa de calor — Agente IA</h1>
+    </div>
+
+    <div class="page-content">
+        <div class="filters">
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label for="f-from">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Desde
+                    </label>
+                    <input type="date" id="f-from" onchange="onFechaManual()">
+                </div>
+                <div class="filter-group">
+                    <label for="f-to">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Hasta
+                    </label>
+                    <input type="date" id="f-to" onchange="onFechaManual()">
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="filter-group" style="flex:1;min-width:280px">
+                    <label>Rangos rápidos</label>
+                    <div class="preset-btns" id="preset-btns">
+                        <button class="preset-btn" data-preset="hoy"          onclick="aplicarPreset('hoy')">Hoy</button>
+                        <button class="preset-btn" data-preset="ayer"         onclick="aplicarPreset('ayer')">Ayer</button>
+                        <button class="preset-btn" data-preset="semana"       onclick="aplicarPreset('semana')">Esta semana</button>
+                        <button class="preset-btn" data-preset="semanaAnt"    onclick="aplicarPreset('semanaAnt')">Semana pasada</button>
+                        <button class="preset-btn" data-preset="mes"          onclick="aplicarPreset('mes')">Este mes</button>
+                        <button class="preset-btn" data-preset="mesAnt"       onclick="aplicarPreset('mesAnt')">Mes pasado</button>
+                        <button class="preset-btn" data-preset="d30"          onclick="aplicarPreset('d30')">30 días</button>
+                        <button class="preset-btn" data-preset="d90"          onclick="aplicarPreset('d90')">90 días</button>
+                        <button class="preset-btn" data-preset="anio"         onclick="aplicarPreset('anio')">Este año</button>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn-primary" id="btn-refresh" onclick="cargar()">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refrescar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary" id="summary" style="display:none"></div>
+
+        <div class="heatmap-card">
+            <h2 class="heatmap-title">Tickets en el agente IA por hora y día de la semana</h2>
+            <p class="heatmap-sub" id="hm-sub">Selecciona un rango y pulsa Refrescar.</p>
+
+            <div id="hm-loading" class="loader" style="display:none">
+                <div class="spinner"></div>
+                <p>Cargando tickets de Zendesk…</p>
+            </div>
+            <div id="hm-error" class="error" style="display:none"></div>
+            <div id="hm-empty" class="empty" style="display:none">No hay tickets en el agente IA en el rango seleccionado.</div>
+
+            <div id="hm-content" class="heatmap-wrap" style="display:none">
+                <table class="heatmap-table" id="hm-table"></table>
+                <div class="legend">
+                    <span>Menos</span>
+                    <div class="legend-bar" id="legend-bar"></div>
+                    <span>Más</span>
+                    <span id="legend-max" style="margin-left:auto;color:#475569;font-weight:600"></span>
+                </div>
+                <p class="hm-hint" id="hm-hint">Pulsa una celda para ver los tickets de ese día y hora. Pulsa la cabecera de un día para ver todos los del día.</p>
+            </div>
+        </div>
+    </div>
+
+<!-- Drawer lateral: lista de tickets del bucket pulsado -->
+<div id="tk-overlay" class="tk-overlay" onclick="cerrarPanel()"></div>
+<aside id="tk-panel" class="tk-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="tk-panel-title">
+    <div class="tk-panel-head">
+        <div>
+            <h2 id="tk-panel-title">Tickets</h2>
+            <p id="tk-panel-sub">—</p>
+        </div>
+        <button class="tk-panel-close" type="button" onclick="cerrarPanel()" aria-label="Cerrar panel">&times;</button>
+    </div>
+    <div class="tk-panel-body" id="tk-panel-body"></div>
+</aside>
+
+<script>
+    const EP = YurestConfig.ENDPOINTS.zendeskTicketsHeatmapIA;
+
+    // Lunes-primero (estilo ES). 0=Lun … 6=Dom.
+    const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    // Paleta sequential "heat" — intuitiva al nombre del informe y al
+    // ojo (frío/vacío en crema, pico de actividad en rojo intenso). Antes
+    // usábamos una rampa de azul→violeta que se confundía con elementos
+    // de UI corporativa y no comunicaba "intensidad" inmediatamente.
+    //
+    //   crema → amarillo → naranja → rojo coral → rojo intenso
+    //
+    // Paleta violeta/morada: distinta del heatmap normal (rojo) para que
+    // de un vistazo sepas qué informe estás viendo. El degradado sigue
+    // la misma intensidad: bajo (crema) → medio (lila/violeta) → alto
+    // (índigo profundo).
+    const HM_COLORS = [
+        '#f5f3ff',  // 0/8 — lila casi blanco
+        '#ede9fe',  // 1/8
+        '#ddd6fe',  // 2/8
+        '#c4b5fd',  // 3/8
+        '#a78bfa',  // 4/8 — violeta medio
+        '#8b5cf6',  // 5/8 — violeta vibrante
+        '#7c3aed',  // 6/8
+        '#5b21b6',  // 7/8 — púrpura profundo
+        '#3b0764'   // 8/8 — pico (índigo casi negro)
+    ];
+
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+    // Convierte Date local a YYYY-MM-DD sin saltar de día por la zona
+    // horaria (toISOString siempre usa UTC y nos pifia el día en CET).
+    function ymd(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+    }
+
+    // Devuelve un Date al inicio de la semana (lunes 00:00) de `d`.
+    function inicioSemana(d) {
+        const x = new Date(d);
+        const js = x.getDay();           // 0=Dom..6=Sáb
+        const offset = js === 0 ? 6 : js - 1;
+        x.setDate(x.getDate() - offset);
+        x.setHours(0, 0, 0, 0);
+        return x;
+    }
+
+    function rangoPreset(id) {
+        const hoy = new Date();
+        let from, to;
+        switch (id) {
+            case 'hoy':       from = new Date(hoy); to = new Date(hoy); break;
+            case 'ayer':
+                from = new Date(hoy); from.setDate(hoy.getDate() - 1);
+                to   = new Date(from); break;
+            case 'semana':
+                from = inicioSemana(hoy); to = new Date(hoy); break;
+            case 'semanaAnt':
+                from = inicioSemana(hoy); from.setDate(from.getDate() - 7);
+                to   = new Date(from);    to.setDate(from.getDate() + 6); break;
+            case 'mes':
+                from = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+                to   = new Date(hoy); break;
+            case 'mesAnt':
+                from = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+                to   = new Date(hoy.getFullYear(), hoy.getMonth(), 0); break;
+            case 'd30':
+                from = new Date(hoy); from.setDate(hoy.getDate() - 29);
+                to   = new Date(hoy); break;
+            case 'd90':
+                from = new Date(hoy); from.setDate(hoy.getDate() - 89);
+                to   = new Date(hoy); break;
+            case 'anio':
+                from = new Date(hoy.getFullYear(), 0, 1);
+                to   = new Date(hoy); break;
+            default:
+                from = new Date(hoy); from.setDate(hoy.getDate() - 29);
+                to   = new Date(hoy);
+        }
+        return { from, to };
+    }
+
+    function aplicarPreset(id) {
+        const { from, to } = rangoPreset(id);
+        document.getElementById('f-from').value = ymd(from);
+        document.getElementById('f-to').value   = ymd(to);
+        marcarPresetActivo(id);
+        cargar();
+    }
+
+    function marcarPresetActivo(id) {
+        document.querySelectorAll('#preset-btns .preset-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.preset === id);
+        });
+    }
+
+    // Editar las fechas a mano desmarca el preset activo y dispara la
+    // recarga con un pequeño debounce, para que no saltemos en cada
+    // pulsación del calendario nativo.
+    let _fechaManualTO = null;
+    function onFechaManual() {
+        marcarPresetActivo(null);
+        clearTimeout(_fechaManualTO);
+        _fechaManualTO = setTimeout(() => {
+            const from = document.getElementById('f-from').value;
+            const to   = document.getElementById('f-to').value;
+            if (from && to && from <= to) cargar();
+        }, 350);
+    }
+
+    // Por defecto: este mes
+    (function init() {
+        const { from, to } = rangoPreset('mes');
+        document.getElementById('f-from').value = ymd(from);
+        document.getElementById('f-to').value   = ymd(to);
+        marcarPresetActivo('mes');
+    })();
+
+    // Convierte la fecha de Date a [diaSemana 0..6 lunes-primero, hora 0..23]
+    function bucketFor(date) {
+        // getDay(): 0=Dom..6=Sáb; reordenamos a 0=Lun..6=Dom
+        const js = date.getDay();
+        const dia = js === 0 ? 6 : js - 1;
+        return [dia, date.getHours()];
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  Drill-down: lista de tickets cacheada en memoria
+    // ──────────────────────────────────────────────────────────
+    // Se rellena en cada `cargar()` si el endpoint envía la lista bruta
+    // (`data.tickets[]`). Cuando viene un formato pre-agregado sin
+    // tickets, queda en [] y los handlers de click son no-op.
+    let _tickets = [];
+
+    // Extrae la lista de tickets del payload, normalizando los campos
+    // (id, subject, day, hour, created_at). Devuelve [] si el formato
+    // no la incluye.
+    function recopilarTickets(data) {
+        const out = [];
+        const fuente = Array.isArray(data?.tickets) ? data.tickets
+                     : Array.isArray(data) ? data
+                     : Array.isArray(data?.data) ? data.data : null;
+        if (!fuente) return out;
+        for (const t of fuente) {
+            if (!t) continue;
+            const ts = t.created_at || t.createdAt || t.created || t.fecha;
+            // El workflow ya nos manda day/hour calculados en TZ Madrid.
+            // Si no vienen (formato crudo), los calculamos local.
+            let day  = (typeof t.day  === 'number') ? t.day  : null;
+            let hour = (typeof t.hour === 'number') ? t.hour : null;
+            if ((day == null || hour == null) && ts) {
+                const dt = new Date(ts);
+                if (!isNaN(dt.getTime())) {
+                    [day, hour] = bucketFor(dt);
+                }
+            }
+            if (day == null || hour == null) continue;
+            out.push({
+                id:      t.id != null ? t.id : t.ticket_id,
+                subject: t.subject || t.title || t.descripcion || '(sin título)',
+                status:  t.status  || null,
+                created_at: ts || null,
+                // Organización resuelta por el workflow (Zendesk show_many).
+                // Si el ticket no tiene org asignada, el workflow lo deja en null
+                // y aquí no se pinta el chip.
+                organization_id:   t.organization_id   || null,
+                organization_name: t.organization_name || null,
+                // Custom fields que el workflow extrae de Zendesk
+                // (tipo, entorno, módulo). Pueden venir como null si el
+                // workflow no tiene los IDs configurados todavía.
+                tipo:    t.tipo    || null,
+                entorno: t.entorno || null,
+                modulo:  t.modulo  || null,
+                day, hour
+            });
+        }
+        return out;
+    }
+
+    function colorPara(count, max) {
+        if (!count) return null;
+        if (max <= 0) return HM_COLORS[0];
+        // Escala logarítmica: para datos típicos de tickets (long tail) la
+        // lineal aplasta todo en los buckets bajos.
+        const t = Math.log(1 + count) / Math.log(1 + max);
+        const idx = Math.min(HM_COLORS.length - 1, Math.max(0, Math.floor(t * HM_COLORS.length)));
+        return HM_COLORS[idx];
+    }
+
+    let _cargaCtrl = null;
+    async function cargar() {
+        const from = document.getElementById('f-from').value;
+        const to   = document.getElementById('f-to').value;
+        if (!from || !to) {
+            mostrarError('Selecciona un rango de fechas.');
+            return;
+        }
+        if (from > to) {
+            mostrarError('La fecha "Desde" no puede ser posterior a "Hasta".');
+            return;
+        }
+
+        // Cancela cualquier petición previa: si el usuario cambió de
+        // preset rápido, no queremos que la respuesta antigua sobreescriba
+        // la nueva al llegar tarde.
+        if (_cargaCtrl) _cargaCtrl.abort();
+        _cargaCtrl = new AbortController();
+        const signal = _cargaCtrl.signal;
+
+        const btn = document.getElementById('btn-refresh');
+        btn.disabled = true;
+
+        document.getElementById('hm-loading').style.display = 'flex';
+        document.getElementById('hm-error').style.display   = 'none';
+        document.getElementById('hm-empty').style.display   = 'none';
+        document.getElementById('hm-content').style.display = 'none';
+        document.getElementById('summary').style.display    = 'none';
+        document.getElementById('hm-sub').textContent       = `Rango: ${from} → ${to}`;
+
+        try {
+            const url = EP + (EP.includes('?') ? '&' : '?') +
+                'from=' + encodeURIComponent(from) +
+                '&to='  + encodeURIComponent(to) +
+                '&_='   + Date.now();
+            const res = await YurestConfig.apiFetch(url, { method: 'GET', signal });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+
+            // Acepta dos formatos:
+            //  · Array de tickets con created_at (fechamos cada uno).
+            //  · { matrix: [[7][24]] } o { buckets: [{day,hour,count}] } pre-agregado.
+            const matrix = construirMatriz(data);
+            // Para el drill-down (click en celda/día) guardamos la lista
+            // de tickets si el endpoint la devolvió. Si no llegó (workflow
+            // viejo), simplemente no se podrá pulsar — el front detecta
+            // que _tickets es [] y no monta los handlers.
+            _tickets = recopilarTickets(data);
+            renderHeatmap(matrix, from, to);
+        } catch (err) {
+            // Aborts: el usuario disparó otra carga; ignoramos sin ruido.
+            if (err && (err.name === 'AbortError' || signal.aborted)) return;
+            console.warn('[informe-tickets]', err);
+            mostrarError('No se pudieron cargar los tickets: ' + err.message);
+        } finally {
+            // Solo restablecemos UI si esta carga sigue siendo la activa.
+            if (_cargaCtrl && _cargaCtrl.signal === signal) {
+                btn.disabled = false;
+                document.getElementById('hm-loading').style.display = 'none';
+            }
+        }
+    }
+
+    function construirMatriz(data) {
+        // Inicializa matriz [7][24] con ceros.
+        const m = Array.from({ length: 7 }, () => Array(24).fill(0));
+
+        if (Array.isArray(data?.matrix) && data.matrix.length === 7) {
+            for (let d = 0; d < 7; d++) {
+                for (let h = 0; h < 24; h++) {
+                    m[d][h] = parseInt(data.matrix[d][h], 10) || 0;
+                }
+            }
+            return m;
+        }
+
+        if (Array.isArray(data?.buckets)) {
+            for (const b of data.buckets) {
+                const d = parseInt(b.day ?? b.dia, 10);
+                const h = parseInt(b.hour ?? b.hora, 10);
+                const c = parseInt(b.count ?? b.total, 10) || 0;
+                if (d >= 0 && d < 7 && h >= 0 && h < 24) m[d][h] += c;
+            }
+            return m;
+        }
+
+        const lista = Array.isArray(data) ? data
+                    : Array.isArray(data?.tickets) ? data.tickets
+                    : Array.isArray(data?.data)    ? data.data : [];
+        for (const t of lista) {
+            const ts = t.created_at || t.createdAt || t.created || t.fecha;
+            if (!ts) continue;
+            const d = new Date(ts);
+            if (isNaN(d.getTime())) continue;
+            const [dia, hora] = bucketFor(d);
+            m[dia][hora]++;
+        }
+        return m;
+    }
+
+    function renderHeatmap(matrix, from, to) {
+        let total = 0, max = 0;
+        for (let d = 0; d < 7; d++) {
+            for (let h = 0; h < 24; h++) {
+                total += matrix[d][h];
+                if (matrix[d][h] > max) max = matrix[d][h];
+            }
+        }
+
+        if (total === 0) {
+            document.getElementById('hm-empty').style.display = 'block';
+            return;
+        }
+
+        // Resumen
+        const totalesDia = matrix.map(row => row.reduce((a, b) => a + b, 0));
+        const totalesHora = Array(24).fill(0);
+        for (let d = 0; d < 7; d++) for (let h = 0; h < 24; h++) totalesHora[h] += matrix[d][h];
+
+        const diaPico  = totalesDia.indexOf(Math.max(...totalesDia));
+        const horaPico = totalesHora.indexOf(Math.max(...totalesHora));
+        const diasRango = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+
+        const sum = document.getElementById('summary');
+        sum.style.display = 'grid';
+        sum.innerHTML = `
+            <div class="summary-card">
+                <div class="label">Total tickets</div>
+                <div class="value">${total.toLocaleString('es-ES')}</div>
+                <div class="sub">en ${diasRango} día${diasRango === 1 ? '' : 's'}</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Media diaria</div>
+                <div class="value">${(total / diasRango).toFixed(1).replace('.', ',')}</div>
+                <div class="sub">tickets/día</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Día pico</div>
+                <div class="value">${DIAS[diaPico]}</div>
+                <div class="sub">${totalesDia[diaPico]} tickets</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Hora pico</div>
+                <div class="value">${String(horaPico).padStart(2, '0')}:00</div>
+                <div class="sub">${totalesHora[horaPico]} tickets</div>
+            </div>
+        `;
+
+        // Tabla
+        // Sólo activamos drill-down si tenemos la lista bruta (el workflow
+        // nuevo la envía como `data.tickets`). Workflows antiguos siguen
+        // funcionando — el heatmap se ve igual pero sin clicks.
+        const hayDrillDown = _tickets.length > 0;
+        const dayClass = hayDrillDown ? 'day clickable' : 'day';
+
+        let html = '<thead><tr><th></th>';
+        for (let h = 0; h < 24; h++) html += `<th class="hour">${h}</th>`;
+        html += '</tr></thead><tbody>';
+        for (let d = 0; d < 7; d++) {
+            const thAttrs = hayDrillDown
+                ? ` tabindex="0" role="button" onclick="abrirPanelDia(${d})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirPanelDia(${d})}"`
+                : '';
+            // zebra: filas pares (Mar, Jue, Sáb) con celdas vacías un punto
+            // más oscuras para guiar la vista a través de la fila.
+            const trClass = (d % 2 === 1) ? 'day-even' : '';
+            html += `<tr class="${trClass}"><th class="${dayClass}"${thAttrs}>${DIAS[d]}</th>`;
+            for (let h = 0; h < 24; h++) {
+                const c   = matrix[d][h];
+                const bg  = colorPara(c, max);
+                // Con la paleta "heat" nueva, los valores >= 50% del pico
+                // caen ya en naranjas/rojos saturados donde el texto negro
+                // pierde legibilidad. Bajamos el umbral del flip a blanco.
+                const esOscuro = c >= max * 0.5;
+                const cls = 'hm-cell' + (c ? ' has-data' : '') + (esOscuro ? ' dark' : '');
+                const style = bg ? `background:${bg}` : '';
+                const tip = `${DIAS[d]} ${String(h).padStart(2, '0')}:00 · ${c} ticket${c === 1 ? '' : 's'}`;
+                const txt = c >= 1 ? c : '';
+                // Activamos click + foco por teclado sólo en celdas con datos
+                // y cuando hay lista de tickets disponible. Sin ambas, queda
+                // como un cuadradito decorativo.
+                const cellAttrs = (c >= 1 && hayDrillDown)
+                    ? ` tabindex="0" role="button" aria-label="${tip} — ver tickets" onclick="abrirPanelCelda(${d},${h})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirPanelCelda(${d},${h})}"`
+                    : '';
+                html += `<td><div class="${cls}" style="${style}" title="${tip}"${cellAttrs}>${txt}</div></td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody>';
+        document.getElementById('hm-table').innerHTML = html;
+        // Si no hay drill-down, ocultamos la pista de "Pulsa una celda…".
+        const hint = document.getElementById('hm-hint');
+        if (hint) hint.style.display = hayDrillDown ? '' : 'none';
+
+        // Leyenda
+        document.getElementById('legend-bar').innerHTML =
+            HM_COLORS.map(c => `<span style="background:${c}"></span>`).join('');
+        document.getElementById('legend-max').textContent = `Máx. ${max} tickets/hora`;
+
+        document.getElementById('hm-content').style.display = 'block';
+        document.getElementById('hm-sub').textContent =
+            `Rango: ${from} → ${to} · ${total} tickets`;
+    }
+
+    function mostrarError(msg) {
+        document.getElementById('hm-error').textContent   = msg;
+        document.getElementById('hm-error').style.display = 'block';
+        document.getElementById('hm-content').style.display = 'none';
+        document.getElementById('hm-empty').style.display   = 'none';
+        document.getElementById('summary').style.display    = 'none';
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  Drawer: lista de tickets de un bucket
+    // ──────────────────────────────────────────────────────────
+
+    // Abre el drawer con los tickets del bucket (día d, hora h).
+    function abrirPanelCelda(d, h) {
+        const filtrados = _tickets
+            .filter(t => t.day === d && t.hour === h)
+            .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+        const titulo = `${DIAS[d]} · ${String(h).padStart(2, '0')}:00`;
+        const sub = `${filtrados.length} ticket${filtrados.length === 1 ? '' : 's'} en esa franja`;
+        _renderPanel(titulo, sub, filtrados);
+    }
+    window.abrirPanelCelda = abrirPanelCelda;
+
+    // Abre el drawer con todos los tickets del día (cualquier hora).
+    function abrirPanelDia(d) {
+        const DIAS_LARGOS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+        const filtrados = _tickets
+            .filter(t => t.day === d)
+            .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+        const titulo = `${DIAS_LARGOS[d]} (todo el día)`;
+        const sub = `${filtrados.length} ticket${filtrados.length === 1 ? '' : 's'}`;
+        _renderPanel(titulo, sub, filtrados);
+    }
+    window.abrirPanelDia = abrirPanelDia;
+
+    function _renderPanel(titulo, sub, tickets) {
+        const overlay = document.getElementById('tk-overlay');
+        const panel   = document.getElementById('tk-panel');
+        const titleEl = document.getElementById('tk-panel-title');
+        const subEl   = document.getElementById('tk-panel-sub');
+        const body    = document.getElementById('tk-panel-body');
+
+        titleEl.textContent = titulo;
+        subEl.textContent   = sub;
+
+        if (!tickets.length) {
+            body.innerHTML = '<div class="tk-empty">No hay tickets en este filtro.</div>';
+        } else {
+            const esc = YurestConfig.escHtml;
+            body.innerHTML = tickets.map(t => {
+                const id = t.id != null ? t.id : '—';
+                const subject = t.subject || '(sin título)';
+                const when = t.created_at
+                    ? new Date(t.created_at).toLocaleString('es-ES', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                      })
+                    : '';
+                // Chips de los custom fields. Cada uno se pinta sólo si
+                // tiene valor — un ticket sin entorno asignado no muestra
+                // el chip vacío. Cada categoría tiene su propio color
+                // para distinguirlos rápidamente en el drawer.
+                const chips = [
+                    t.status            ? `<span class="tk-chip tk-chip-status">${esc(t.status)}</span>` : '',
+                    t.organization_name ? `<span class="tk-chip tk-chip-org" title="Organización">${esc(t.organization_name)}</span>` : '',
+                    t.tipo              ? `<span class="tk-chip tk-chip-tipo" title="Tipo de ticket">${esc(t.tipo)}</span>` : '',
+                    t.entorno           ? `<span class="tk-chip tk-chip-entorno" title="Entorno">${esc(t.entorno)}</span>` : '',
+                    t.modulo            ? `<span class="tk-chip tk-chip-modulo" title="Módulo">${esc(t.modulo)}</span>` : ''
+                ].filter(Boolean).join('');
+                // Si en el futuro tenemos URL base de Zendesk en config,
+                // este contenedor pasaría a ser <a href="..."> y abriría
+                // el ticket directamente. Por ahora div no-link.
+                return `
+                    <div class="tk-row">
+                        <div class="tk-row-head">
+                            <span class="tk-row-id">#${esc(String(id))}</span>
+                            <span class="tk-row-when">${esc(when)}</span>
+                        </div>
+                        <div class="tk-row-subject">${esc(subject)}</div>
+                        ${chips ? `<div class="tk-row-chips">${chips}</div>` : ''}
+                    </div>`;
+            }).join('');
+        }
+
+        overlay.classList.add('open');
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        // a11y: foco al título cuando se abre, devuélvelo al cerrar.
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('tk-overlay', 'tk-panel');
+    }
+
+    function cerrarPanel() {
+        const overlay = document.getElementById('tk-overlay');
+        const panel   = document.getElementById('tk-panel');
+        overlay.classList.remove('open');
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('tk-overlay');
+    }
+    window.cerrarPanel = cerrarPanel;
+
+    // Cerrar con Escape — el helper a11yAbrirModal añade trap pero no
+    // Escape; ese listener lo gestionamos aquí.
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && document.getElementById('tk-panel').classList.contains('open')) {
+            cerrarPanel();
+        }
+    });
+
+    // Carga inicial
+    cargar();
+</script>
+</body>
+</html>

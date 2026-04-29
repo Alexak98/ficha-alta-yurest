@@ -1,0 +1,157 @@
+{
+  "name": "Yurest - Zendesk Tickets Heatmap (Agente IA)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "zendesk/tickets-heatmap-ia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-zd-heatmap-ia",
+      "name": "Webhook GET Heatmap IA",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 320],
+      "webhookId": "zendesk-tickets-heatmap-ia"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lee from / to de la query del webhook. Si no llegan, defecto a\n// los últimos 30 días. Devolvemos también la query de Zendesk Search\n// que se le pasa al nodo \"Get many tickets\".\nconst q = $input.first().json.query || {};\n\nfunction ymd(d) {\n  return d.toISOString().slice(0, 10);\n}\nfunction parseYmd(s) {\n  const m = String(s || '').match(/^\\d{4}-\\d{2}-\\d{2}$/);\n  return m ? s : null;\n}\n\nconst now = new Date();\nconst defaultTo   = ymd(now);\nconst defaultFrom = ymd(new Date(now.getTime() - 29 * 86400000));\n\nlet from = parseYmd(q.from) || defaultFrom;\nlet to   = parseYmd(q.to)   || defaultTo;\nif (from > to) { const t = from; from = to; to = t; }\n\n// Zendesk Search: \"created>=YYYY-MM-DD created<=YYYY-MM-DD type:ticket\".\n// Usamos < (estricto) sobre el día siguiente a `to` para incluir el\n// día completo (Search es por fecha, no por timestamp).\nfunction nextDay(s) {\n  const d = new Date(s + 'T00:00:00Z');\n  d.setUTCDate(d.getUTCDate() + 1);\n  return ymd(d);\n}\n// Filtro Zendesk Search (versión IA — INVERSO del heatmap normal):\n//  - type:ticket → solo tickets\n//  - created>=X created<Y → rango (Y exclusivo, día completo de `to`)\n//  - subject:\"Conversation with\" → SOLO tickets que SIGUEN en el agente\n//    IA de Zendesk. Estos llegan con asunto \"Conversation with <fulano>\"\n//    porque aún no se han derivado a un humano. El heatmap normal los\n//    descarta; este informe los aísla para medir volumen de bot vs.\n//    incidencias reales y la cobertura del agente IA.\nconst zdQuery = `type:ticket created>=${from} created<${nextDay(to)} subject:\"Conversation with\"`;\n\nreturn [{ json: { from, to, zdQuery } }];"
+      },
+      "id": "code-validar-rango",
+      "name": "Validar rango",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "={{ $json.zdQuery }}"
+        }
+      },
+      "id": "zd-get-tickets",
+      "name": "Get many tickets",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [680, 320],
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agrega los tickets por día de la semana (Lun=0..Dom=6) y hora\n// (0..23) en una matriz 7x24. Devuelve también la lista bruta de\n// tickets etiquetados con su bucket (day,hour) para que el front\n// pueda hacer drill-down al pulsar una celda.\n// Zona horaria: usamos Europe/Madrid (España) para que las horas\n// coincidan con la jornada laboral del equipo.\nconst TZ = 'Europe/Madrid';\n\n// ──────────────────────────────────────────────────────────\n//  Custom fields de Zendesk a extraer\n// ──────────────────────────────────────────────────────────\n// Reemplaza los IDs por los reales de tu cuenta:\n//   Zendesk → Admin Center → Objects and rules → Tickets → Fields\n//   El ID es el numérico que aparece a la derecha del nombre del campo.\n// Los campos cuyo ID quede en null se ignoran (front no los pinta).\n// Si no conoces los IDs ahora, déjalos así y el resto de la respuesta\n// sigue funcionando — el drawer mostrará id + asunto + estado.\nconst CUSTOM_FIELD_IDS = {\n  tipo:    26672700540829,  // \"Tipo de ticket\"\n  entorno: 27376906089629,  // \"Entorno\"\n  modulo:  27243772817053   // \"Módulo\"\n};\n\n// Devuelve SIEMPRE un array de strings (vacío si no hay valor). Los\n// custom fields multi-select de Zendesk llegan como cf.value array, los\n// dropdown sencillos como string. Sin normalizar a array, el chip del\n// drawer pintaría un literal de array al hacer toString.\nfunction extraerCustomFieldArr(t, id) {\n  if (id == null) return [];\n  const fuentes = [t.custom_fields, t.fields].filter(Array.isArray);\n  for (const arr of fuentes) {\n    const cf = arr.find(c => c && (c.id === id || String(c.id) === String(id)));\n    if (!cf) continue;\n    const v = cf.value;\n    if (v == null || v === '') return [];\n    if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);\n    return [String(v).trim()];\n  }\n  return [];\n}\nfunction extraerCustomField(t, id) {\n  // Wrapper que devuelve string única para chips simples (primer valor,\n  // o todos unidos con \" · \" si son varios). null si no hay nada.\n  const arr = extraerCustomFieldArr(t, id);\n  if (!arr.length) return null;\n  return arr.length === 1 ? arr[0] : arr.join(' · ');\n}\n\nconst items = $input.all();\nconst meta = $('Validar rango').first().json;\n\nconst matrix = Array.from({ length: 7 }, () => Array(24).fill(0));\nconst tickets = [];\nlet total = 0;\n\nfunction bucket(date) {\n  // Intl con timeZone para sacar día de semana y hora en horario de\n  // España, sin tirar de librerías externas.\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone: TZ,\n    weekday: 'short',\n    hour: 'numeric',\n    hour12: false\n  });\n  const parts = fmt.formatToParts(date);\n  const wd  = parts.find(p => p.type === 'weekday').value;   // Mon..Sun\n  const hr  = parseInt(parts.find(p => p.type === 'hour').value, 10) % 24;\n  const idx = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n  return [idx, hr];\n}\n\nfor (const it of items) {\n  const t = it.json || {};\n  // Backup del filtro Zendesk (INVERTIDO en este informe): mantenemos\n  // SOLO los tickets que siguen en el agente IA — los que tienen\n  // \"Conversation with\" en el asunto. Si por algún motivo se cuelan\n  // tickets normales (Zendesk Search ignora el filtro), los descartamos.\n  const subj = String(t.subject || '').trim().toLowerCase();\n  if (!subj.startsWith('conversation with')) continue;\n  const ts = t.created_at || t.createdAt || t.created;\n  if (!ts) continue;\n  const d = new Date(ts);\n  if (isNaN(d.getTime())) continue;\n  const [dia, hora] = bucket(d);\n  if (dia < 0 || dia > 6 || hora < 0 || hora > 23) continue;\n  matrix[dia][hora]++;\n  total++;\n  // Persistimos los campos que el front pinta en el drill-down.\n  tickets.push({\n    id: t.id != null ? t.id : (t.ticket_id || null),\n    subject: t.subject || t.title || t.descripcion || '(sin título)',\n    status: t.status || null,\n    requester_id:    t.requester_id    || null,\n    organization_id: t.organization_id || null,\n    created_at: ts,\n    day:  dia,\n    hour: hora,\n    // Custom fields configurables — se pintan como chips en el drawer.\n    tipo:    extraerCustomField(t, CUSTOM_FIELD_IDS.tipo),\n    entorno: extraerCustomField(t, CUSTOM_FIELD_IDS.entorno),\n    modulo:  extraerCustomField(t, CUSTOM_FIELD_IDS.modulo)\n  });\n}\n\n// Lista única de organization_id no nulos — el siguiente nodo HTTP\n// los manda a Zendesk show_many para resolver los nombres en una sola\n// llamada en vez de N (una por ticket).\nconst __org_ids = [...new Set(tickets.map(t => t.organization_id).filter(Boolean))];\n\nreturn [{\n  json: {\n    from: meta.from,\n    to:   meta.to,\n    total,\n    matrix,\n    tickets,\n    __org_ids\n  }\n}];"
+      },
+      "id": "code-agregar",
+      "name": "Agregar matriz",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 320],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/organizations/show_many.json?ids={{ ($json.__org_ids && $json.__org_ids.length) ? $json.__org_ids.join(',') : '0' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "zd-get-orgs",
+      "name": "Get organizations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 320],
+      "credentials": {
+        "zendeskApi": {
+          "id": "KagVdQFawJyTOzEO",
+          "name": "Zendesk account"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mergea los nombres de organización en cada ticket. Lee la respuesta\n// de \"Get organizations\" (formato Zendesk: { organizations: [{id,name,...}] })\n// y construye un Map id→name para hacer lookup en O(1) por ticket.\n//\n// Si Zendesk devolvió error o array vacío (porque la query iba con ids=0\n// porque ningún ticket tenía org), todos los tickets quedan con\n// organization_name: null sin romper nada.\nconst aggregated = $('Agregar matriz').first().json || {};\nconst orgsResp   = $input.first().json || {};\nconst orgsArr    = Array.isArray(orgsResp.organizations) ? orgsResp.organizations : [];\nconst orgMap     = new Map(orgsArr.map(o => [o.id, o.name]));\n\nconst tickets = (aggregated.tickets || []).map(t => ({\n  ...t,\n  organization_name: t.organization_id ? (orgMap.get(t.organization_id) || null) : null\n}));\n\nreturn [{ json: {\n  from:   aggregated.from,\n  to:     aggregated.to,\n  total:  aggregated.total,\n  matrix: aggregated.matrix,\n  tickets\n} }];"
+      },
+      "id": "code-enrich-orgs",
+      "name": "Enrich con orgs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-heatmap",
+      "name": "Respond Heatmap",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 320]
+    },
+    {
+      "parameters": {
+        "content": "## Mapa de calor — Tickets en Agente IA\n\n**Endpoint:** `GET /webhook/zendesk/tickets-heatmap-ia?from=YYYY-MM-DD&to=YYYY-MM-DD`\n\nVersión INVERSA del heatmap normal (workflow 25): aquí solo medimos los tickets que aún están en el agente IA de Zendesk — asunto empieza por `Conversation with`. Útil para medir el volumen que está absorbiendo el bot vs. lo que termina escalando a un humano.\n\nResponde con `{ from, to, total, matrix[7][24], tickets, ... }` igual que el otro heatmap, en zona horaria Europe/Madrid.\n\nLa página `informe-tickets-ia.html` consume este endpoint.",
+        "height": 220,
+        "width": 420
+      },
+      "id": "sticky-doc",
+      "name": "Doc",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, 80]
+    }
+  ],
+  "connections": {
+    "Webhook GET Heatmap": {
+      "main": [[{ "node": "Validar rango", "type": "main", "index": 0 }]]
+    },
+    "Validar rango": {
+      "main": [[{ "node": "Get many tickets", "type": "main", "index": 0 }]]
+    },
+    "Get many tickets": {
+      "main": [[{ "node": "Agregar matriz", "type": "main", "index": 0 }]]
+    },
+    "Agregar matriz": {
+      "main": [[{ "node": "Get organizations", "type": "main", "index": 0 }]]
+    },
+    "Get organizations": {
+      "main": [[{ "node": "Enrich con orgs", "type": "main", "index": 0 }]]
+    },
+    "Enrich con orgs": {
+      "main": [[{ "node": "Respond Heatmap", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "1",
+  "meta": { "instanceId": "yurest-zendesk-heatmap" },
+  "tags": []
+}
