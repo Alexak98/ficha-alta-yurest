@@ -4,6 +4,65 @@
 //  de sesión/autenticación compartidos entre todas las páginas.
 // ============================================================
 
+// ──────────────────────────────────────────────────────────────
+//  Typedefs JSDoc — sirven a VSCode/Cursor para autocompletar y
+//  detectar errores en TODOS los HTMLs que cargan config.js, sin
+//  necesidad de TypeScript ni paso de compilación. Si añades un
+//  campo a la sesión, actualízalo aquí también.
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Identificador de página, p.ej. "clientes", "lista", "informe-tickets".
+ * Coincide con `id` en PERMISOS_DISPONIBLES y con la entrada en sidebar.js.
+ * @typedef {string} PageId
+ */
+
+/**
+ * Rol del usuario en el portal. 'admin' equivale a "todos los permisos".
+ * @typedef {'admin'|'user'} RolUsuario
+ */
+
+/**
+ * Shape granular de permisos. Las tres listas son independientes — un
+ * usuario puede tener LECTURA pero no ESCRITURA sobre la misma página.
+ * @typedef {Object} PermisosGranulares
+ * @property {PageId[]} read   IDs de páginas con permiso de lectura
+ * @property {PageId[]} write  IDs de páginas con permiso de escritura
+ * @property {PageId[]} delete IDs de páginas con permiso de borrado
+ */
+
+/**
+ * Shape legacy de permisos (DEPRECATED — pendiente de migrar a granular).
+ * Cada id en el array implica acceso completo (read+write+delete) a esa
+ * página. Se mantiene la rama de código por retro-compat hasta que la
+ * migración SQL `2026-04-30_permisos_granulares.sql` se aplique en BD.
+ * @typedef {PageId[]} PermisosLegacy
+ */
+
+/**
+ * Sesión persistida en localStorage bajo la clave `yurest_auth`.
+ * @typedef {Object} Session
+ * @property {string|null}    id                  PK numérico del usuario
+ * @property {string}         user                Username
+ * @property {string|null}    user_id             Alias compatibilidad
+ * @property {string}         nombre              Nombre completo (saludo)
+ * @property {string}         email               Email del usuario
+ * @property {RolUsuario}     rol                 Rol asignado
+ * @property {PermisosGranulares|PermisosLegacy} permisos Acepta los dos shapes
+ * @property {string|null}    sessions_revoked_at ISO-8601 si admin revocó
+ * @property {string}         token               Token de sesión (o "authenticated")
+ * @property {string}         basicAuth           Header Basic auth pre-codificado
+ */
+
+/**
+ * Datos de contacto técnico de fabricante / soporte.
+ * @typedef {Object} ContactoSoporte
+ * @property {string} [nombre]
+ * @property {string} [email]
+ * @property {string} [telefono]
+ * @property {string} [web]
+ */
+
 (function (global) {
     'use strict';
 
@@ -196,9 +255,14 @@
     // ──────────────────────────────────────────────────────────
     //  SESIÓN — helpers de autenticación
     // ──────────────────────────────────────────────────────────
-    // Devuelve la sesión activa. Busca primero en sessionStorage (sesión
-    // efímera, ventana actual) y si no hay, en localStorage (persistente,
-    // 30 días, si el usuario marcó "Recordar sesión").
+    /**
+     * Devuelve la sesión activa. Busca primero en sessionStorage (sesión
+     * efímera, ventana actual) y si no hay, en localStorage (persistente,
+     * 30 días, si el usuario marcó "Recordar sesión"). Devuelve null si
+     * no hay sesión, si la versión es antigua, si está caducada o si la
+     * BD ha registrado un sessions_revoked_at posterior al login.
+     * @returns {Session|null}
+     */
     function getSession() {
         try {
             // Intentar ambas ubicaciones. Si hay sesión en las dos, gana la
@@ -232,9 +296,14 @@
         }
     }
 
-    // Guarda la sesión. Si `data.persistent === true`, se almacena en
-    // localStorage (dura 30 días, sobrevive a cerrar el navegador). En
-    // caso contrario, sessionStorage (dura hasta cerrar la pestaña + 8 h).
+    /**
+     * Guarda la sesión. Si `data.persistent === true`, se almacena en
+     * localStorage (dura 30 días, sobrevive a cerrar el navegador). En
+     * caso contrario, sessionStorage (dura hasta cerrar la pestaña + 8 h).
+     * Añade automáticamente `ts` (timestamp) y `v` (SESSION_VERSION).
+     * @param {Session & {persistent?: boolean, username?: string}} data
+     * @returns {void}
+     */
     function setSession(data) {
         const payload = { ...data, ts: Date.now(), v: SESSION_VERSION };
         const raw = JSON.stringify(payload);
@@ -271,14 +340,18 @@
         try { localStorage.removeItem(LAST_USER_KEY); } catch (_) {}
     }
 
-    // Verifica que haya sesión activa. Si se pasa `permisoRequerido` (el ID
-    // de la página actual), además comprueba que el usuario tiene acceso —
-    // si no lo tiene, lo redirige a home en vez de a login.
-    //
-    // Además (asíncrono, sin bloquear): valida contra el backend que la
-    // sesión no haya sido revocada por un admin. Si `sessions_revoked_at`
-    // es más reciente que el snapshot de la sesión, o el usuario está
-    // desactivado/borrado, forzamos logout.
+    /**
+     * Verifica que haya sesión activa. Si se pasa `permisoRequerido` (el ID
+     * de la página actual), además comprueba que el usuario tiene acceso —
+     * si no lo tiene, lo redirige a home en vez de a login.
+     *
+     * Además (asíncrono, sin bloquear): valida contra el backend que la
+     * sesión no haya sido revocada por un admin. Si `sessions_revoked_at`
+     * es más reciente que el snapshot de la sesión, o el usuario está
+     * desactivado/borrado, forzamos logout.
+     * @param {PageId} [permisoRequerido] PageId requerido para entrar
+     * @returns {boolean} true si pasa todas las comprobaciones síncronas
+     */
     function requireAuth(permisoRequerido) {
         const s = getSession();
         if (!s) {
@@ -442,12 +515,25 @@
         return out;
     }
 
+    /**
+     * Devuelve la lista de PageIds a los que el usuario tiene CUALQUIER
+     * tipo de acceso (read OR write OR delete). Útil para filtrar el
+     * sidebar / dashboard. Para admin devuelve todos los PageIds disponibles.
+     * @returns {PageId[]}
+     */
     function getPermisos() {
         const s = getSession();
         if (!s) return [];
         return [...(_normalizarPermisosUsuario(s).todos)];
     }
 
+    /**
+     * TRUE si el usuario tiene CUALQUIER tipo de acceso a esa página
+     * (equivale a "puede entrar"). Para chequear permiso fino usar
+     * puedeLeer / puedeEscribir / puedeBorrar.
+     * @param {PageId} pageId
+     * @returns {boolean}
+     */
     function tienePermiso(pageId) {
         if (!pageId) return false;
         const s = getSession();
@@ -456,6 +542,12 @@
         return _normalizarPermisosUsuario(s).todos.has(String(pageId));
     }
 
+    /**
+     * TRUE si el usuario tiene permiso de LECTURA sobre la página.
+     * Admin siempre TRUE. Shape legacy: array implica r+w+d.
+     * @param {PageId} pageId
+     * @returns {boolean}
+     */
     function puedeLeer(pageId) {
         if (!pageId) return false;
         const s = getSession();
@@ -464,6 +556,12 @@
         return _normalizarPermisosUsuario(s).read.has(String(pageId));
     }
 
+    /**
+     * TRUE si el usuario tiene permiso de ESCRITURA (crear / editar) sobre
+     * la página. Admin siempre TRUE. Shape legacy: array implica r+w+d.
+     * @param {PageId} pageId
+     * @returns {boolean}
+     */
     function puedeEscribir(pageId) {
         if (!pageId) return false;
         const s = getSession();
@@ -472,6 +570,12 @@
         return _normalizarPermisosUsuario(s).write.has(String(pageId));
     }
 
+    /**
+     * TRUE si el usuario tiene permiso de BORRADO sobre la página.
+     * Admin siempre TRUE. Shape legacy: array implica r+w+d.
+     * @param {PageId} pageId
+     * @returns {boolean}
+     */
     function puedeBorrar(pageId) {
         if (!pageId) return false;
         const s = getSession();
@@ -480,13 +584,21 @@
         return _normalizarPermisosUsuario(s).delete.has(String(pageId));
     }
 
-    // ¿Es admin?
+    /**
+     * TRUE si el usuario actual tiene rol 'admin'.
+     * @returns {boolean}
+     */
     function esAdmin() {
         const s = getSession();
         return !!(s && s.rol === 'admin');
     }
 
-    // Devuelve info del usuario actual (o null si no hay sesión).
+    /**
+     * Datos del usuario activo o null si no hay sesión. Útil para mostrar
+     * en UI (saludo, header). Devuelve permisos en su shape original sin
+     * normalizar — para chequear acceso usar tienePermiso/puedeLeer/etc.
+     * @returns {{id:string|null,username:string,nombre:string,email:string,rol:RolUsuario,permisos:PermisosGranulares|PermisosLegacy}|null}
+     */
     function getUsuario() {
         const s = getSession();
         if (!s) return null;
@@ -501,6 +613,13 @@
         };
     }
 
+    /**
+     * Headers HTTP para llamadas al backend. Incluye Content-Type JSON +
+     * Basic auth con las credenciales compartidas n8n. Mezcla extras al
+     * final para permitir override.
+     * @param {Record<string,string>} [extra] Headers adicionales / overrides
+     * @returns {Record<string,string>}
+     */
     function getAuthHeaders(extra) {
         const s = getSession();
         const headers = { 'Content-Type': 'application/json', ...(extra || {}) };
@@ -649,20 +768,24 @@
     //  UTILIDADES COMUNES
     // ──────────────────────────────────────────────────────────
 
-    // Formatea una fecha para los listados de UI con un par de modos
-    // estandarizados — antes cada página tenía su propio toLocaleDateString
-    // con opciones distintas (mezcla de "23 abr 2026" y "23/04/2026" y
-    // "Sábado, 23 de abril..."), lo que rompía la consistencia visual de
-    // las tablas. Ahora todo el portal pasa por aquí.
-    //
-    // Modos:
-    //   'short'    → "23 abr 2026"           (default — listados generales)
-    //   'numeric'  → "23/04/2026"            (tablas densas, columnas estrechas)
-    //   'datetime' → "23 abr 2026, 13:45"    (auditoría, audit log, timestamps)
-    //   'long'     → "sábado, 23 de abril de 2026"  (encabezados destacados)
-    //
-    // Devuelve '—' si la entrada es null/undefined/'' o no parsea como
-    // fecha válida — el listado nunca debería pintar "Invalid Date".
+    /**
+     * Formatea una fecha para los listados de UI con un par de modos
+     * estandarizados — antes cada página tenía su propio toLocaleDateString
+     * con opciones distintas (mezcla de "23 abr 2026" y "23/04/2026" y
+     * "Sábado, 23 de abril..."), lo que rompía la consistencia visual de
+     * las tablas. Ahora todo el portal pasa por aquí.
+     *
+     * Devuelve '—' si la entrada es null/undefined/'' o no parsea como
+     * fecha válida — el listado nunca debería pintar "Invalid Date".
+     *
+     * @param {Date|string|number|null|undefined} v Valor a formatear
+     * @param {'short'|'numeric'|'datetime'|'long'} [modo] Modo de salida
+     *   - 'short'    → "23 abr 2026"           (default — listados generales)
+     *   - 'numeric'  → "23/04/2026"            (tablas densas)
+     *   - 'datetime' → "23 abr 2026, 13:45"    (auditoría, timestamps)
+     *   - 'long'     → "sábado, 23 de abril de 2026"  (encabezados)
+     * @returns {string}
+     */
     function formatDate(v, modo) {
         if (v == null || v === '') return '—';
         const d = (v instanceof Date) ? v : new Date(v);
@@ -686,7 +809,12 @@
         return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
-    // Escapa texto para insertar como contenido HTML. Seguro frente a XSS.
+    /**
+     * Escapa texto para insertar como contenido HTML. Seguro frente a XSS.
+     * Convierte null/undefined a string vacío.
+     * @param {*} text
+     * @returns {string}
+     */
     function escHtml(text) {
         return String(text == null ? '' : text)
             .replace(/&/g, '&amp;')
