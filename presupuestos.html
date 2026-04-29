@@ -84,8 +84,12 @@
         .kpi-value.amber  { color:#b45309 }
         .kpi-value.green  { color:#15803d }
 
-        /* Tabla */
-        .wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden }
+        /* Tabla. Tras añadir Nº doc + €/h + Desc% pasa de 12 a 15 columnas
+           y se sale del viewport. Solución: el wrapper es scrollable en X
+           y dejamos las dos columnas críticas (Nº doc a la izquierda y
+           Acciones a la derecha) en position:sticky para que siempre se
+           vean al hacer scroll horizontal. */
+        .wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow-x:auto }
         table.presup { width:100%;border-collapse:collapse;font-size:.84rem }
         table.presup thead th {
             background:#f1f5f9;color:#334155;font-weight:700;font-size:.74rem;
@@ -98,6 +102,31 @@
         table.presup tbody tr:last-child td { border-bottom:0 }
         table.presup tbody tr:hover { background:#fafafa }
         table.presup td.num { text-align:right;font-variant-numeric:tabular-nums }
+
+        /* Columnas sticky: la primera (Nº doc) a la izquierda, la última
+           (Acciones) a la derecha. Box-shadow lateral marca el borde
+           cuando hay scroll oculto. background-color explícito para que
+           la fila por debajo no se transparente. */
+        table.presup thead th:first-child,
+        table.presup tbody td:first-child {
+            position:sticky;left:0;z-index:2;
+            background:#f1f5f9;
+            box-shadow:1px 0 0 #e2e8f0;
+        }
+        table.presup tbody td:first-child { background:#fff }
+        table.presup tbody tr:hover td:first-child { background:#fafafa }
+        table.presup thead th:last-child,
+        table.presup tbody td:last-child {
+            position:sticky;right:0;z-index:2;
+            background:#f1f5f9;
+            box-shadow:-1px 0 0 #e2e8f0;
+        }
+        table.presup tbody td:last-child { background:#fff }
+        table.presup tbody tr:hover td:last-child { background:#fafafa }
+        /* Filas archivadas: mantener el tono atenuado también en las
+           columnas sticky para que no se vean fuera de paleta. */
+        table.presup tbody tr.row-archivada td:first-child,
+        table.presup tbody tr.row-archivada td:last-child { background:#f8fafc }
 
         /* Badges */
         .chip { display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap }
