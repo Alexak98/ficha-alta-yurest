@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Documentación de integraciones — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('documentacion_integraciones');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background:#f8fafc }
+
+        .page-content { padding:24px;max-width:1200px;margin:0 auto }
+        .page-toolbar h2 { font-size:1.35rem;font-weight:700;color:#0f172a;margin:0 }
+        .page-toolbar p  { font-size:.85rem;color:#64748b;margin:4px 0 0 }
+
+        /* Buscador de integraciones — patrón filter-bar/search-input
+           consistente con el resto del portal. */
+        .toolbar-search {
+            margin:18px 0 16px;
+        }
+        .search-wrap { position:relative;max-width:380px }
+        .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+        .search-input {
+            width:100%;padding:9px 36px;font-family:inherit;font-size:.88rem;color:#1e293b;
+            background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;
+            transition:border-color .15s;
+        }
+        .search-input:focus { outline:none;border-color:#fc5858 }
+
+        /* Lista de integraciones — estilo card por fila como en el ejemplo
+           de haddock: icono cuadrado + nombre/descripción a la izquierda,
+           botón a la derecha. Hover sutil para señalar interactividad. */
+        .integraciones-wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden }
+        .int-row {
+            display:flex;align-items:center;gap:14px;
+            padding:14px 18px;
+            border-bottom:1px solid #f1f5f9;
+            transition:background .12s;
+        }
+        .int-row:last-child { border-bottom:0 }
+        .int-row:hover      { background:#fafafa }
+        .int-icon {
+            flex:0 0 44px;width:44px;height:44px;border-radius:10px;
+            background:linear-gradient(135deg, var(--c1, #fc5858), var(--c2, #c62828));
+            color:#fff;font-weight:800;font-size:1.05rem;
+            display:flex;align-items:center;justify-content:center;
+            letter-spacing:.02em;
+            user-select:none;
+        }
+        .int-meta { flex:1;min-width:0 }
+        .int-meta-name {
+            display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+            font-size:.95rem;font-weight:700;color:#0f172a;
+        }
+        .int-meta-tag {
+            font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+            padding:2px 7px;border-radius:999px;
+            background:#dcfce7;color:#15803d;
+        }
+        .int-meta-tag.beta { background:#fef3c7;color:#b45309 }
+        .int-meta-tag.no   { background:#fee2e2;color:#991b1b }
+        .int-meta-desc {
+            font-size:.82rem;color:#64748b;margin-top:2px;line-height:1.4;
+        }
+        .int-action {
+            flex:0 0 auto;padding:8px 16px;font-size:.84rem;font-weight:700;
+            border-radius:9px;cursor:pointer;font-family:inherit;
+            background:#fff;color:#334155;border:1.5px solid #e2e8f0;
+            display:inline-flex;align-items:center;gap:6px;
+            transition:background .12s,border-color .12s,color .12s;
+        }
+        .int-action:hover { background:#fc5858;border-color:#fc5858;color:#fff }
+        .int-action svg   { transition:transform .12s }
+        .int-action:hover svg { transform:translateX(2px) }
+
+        .empty-search { padding:40px 20px;text-align:center;color:#94a3b8;font-size:.88rem }
+
+        /* ──────────────────────────────────────────────────────────────
+           Modal de documentación — diseño tipo "drawer-light" centrado.
+           Cabecera con icono grande + nombre + descripción; cuerpo con
+           secciones (Cómo conectar, Datos sincronizados, Limitaciones,
+           Contacto soporte). Diseño consistente con otros modales del
+           portal.
+           ────────────────────────────────────────────────────────────── */
+        .doc-overlay {
+            position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:900;
+            display:none;align-items:center;justify-content:center;padding:20px;
+        }
+        .doc-overlay.open { display:flex }
+        .doc-modal {
+            background:#fff;border-radius:14px;width:100%;max-width:760px;
+            max-height:88vh;display:flex;flex-direction:column;
+            box-shadow:0 20px 60px rgba(0,0,0,.22);
+            overflow:hidden;
+        }
+        .doc-header {
+            padding:20px 24px;
+            display:flex;align-items:center;gap:14px;
+            border-bottom:1px solid #f1f5f9;
+            background:linear-gradient(180deg, #fff, #f8fafc);
+        }
+        .doc-header-icon {
+            flex:0 0 56px;width:56px;height:56px;border-radius:14px;
+            background:linear-gradient(135deg, var(--c1, #fc5858), var(--c2, #c62828));
+            color:#fff;font-weight:800;font-size:1.4rem;
+            display:flex;align-items:center;justify-content:center;
+        }
+        .doc-header-meta { flex:1;min-width:0 }
+        .doc-header-name { font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 }
+        .doc-header-desc { font-size:.84rem;color:#64748b;margin:3px 0 0;line-height:1.4 }
+        .doc-close {
+            flex:0 0 36px;width:36px;height:36px;border-radius:10px;
+            border:1.5px solid #e2e8f0;background:#fff;color:#64748b;
+            font-size:1.1rem;font-family:inherit;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            transition:background .12s, color .12s, border-color .12s;
+        }
+        .doc-close:hover { background:#fee2e2;border-color:#fecaca;color:#dc2626 }
+
+        .doc-body {
+            flex:1;overflow-y:auto;padding:20px 24px 24px;
+        }
+        .doc-section { margin-bottom:18px }
+        .doc-section:last-child { margin-bottom:0 }
+        .doc-section-title {
+            display:flex;align-items:center;gap:7px;
+            font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+            color:#64748b;margin-bottom:8px;
+        }
+        .doc-section-title svg { stroke:#94a3b8 }
+        .doc-section-content {
+            font-size:.88rem;color:#334155;line-height:1.55;
+        }
+        .doc-section-content p { margin:0 0 8px }
+        .doc-section-content p:last-child { margin-bottom:0 }
+        .doc-section-content ul { margin:0;padding-left:20px }
+        .doc-section-content li { margin-bottom:4px }
+        .doc-section-content strong { color:#0f172a }
+        .doc-section-content code {
+            font-family:var(--font-mono);font-size:.78rem;
+            background:#f1f5f9;color:#475569;padding:1px 6px;border-radius:5px;
+        }
+        .doc-section-content a { color:#fc5858;text-decoration:none;font-weight:600 }
+        .doc-section-content a:hover { text-decoration:underline }
+
+        /* Tarjeta de "campos requeridos" — layout key/value compacto. */
+        .doc-fields {
+            background:#fafbfc;border:1.5px solid #e2e8f0;border-radius:10px;
+            padding:10px 14px;
+        }
+        .doc-field { display:flex;gap:12px;padding:6px 0;border-bottom:1px dashed #e2e8f0 }
+        .doc-field:last-child { border-bottom:0 }
+        .doc-field-key { flex:0 0 130px;font-size:.78rem;font-weight:700;color:#475569 }
+        .doc-field-val { flex:1;font-size:.82rem;color:#0f172a }
+
+        @media (max-width: 640px) {
+            .int-row { flex-wrap:wrap }
+            .int-action { width:100%;justify-content:center }
+            .doc-modal { max-height:96vh }
+            .doc-header { padding:16px 18px }
+            .doc-body   { padding:16px 18px 20px }
+            .doc-field-key { flex-basis:100px }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <nav class="sidebar" id="sidebar"></nav>
+    <script src="sidebar.js"></script>
+    <script>YurestSidebar.render('documentacion_integraciones');</script>
+    <script src="notifications.js"></script>
+
+    <div class="page-header">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1>Documentación de integraciones</h1>
+    </div>
+
+    <div class="page-content">
+        <div class="page-toolbar">
+            <div>
+                <h2>Catálogo de integraciones TPV</h2>
+                <p>Documentación de cómo conectar Yurest con cada TPV. Pulsa cualquier integración para ver los pasos, datos requeridos y contacto de soporte.</p>
+            </div>
+        </div>
+
+        <div class="toolbar-search">
+            <div class="search-wrap">
+                <svg aria-hidden="true" class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="f-q" class="search-input" type="search" placeholder="Buscar integración…" oninput="renderLista()">
+            </div>
+        </div>
+
+        <div class="integraciones-wrap" id="lista-wrap"></div>
+    </div>
+
+    <!-- Modal de documentación — se llena dinámicamente al pulsar
+         "Ver documentación" en una integración. -->
+    <div class="doc-overlay" id="doc-overlay" onclick="if (event.target === this) cerrarDoc()">
+        <div class="doc-modal" role="dialog" aria-modal="true" aria-labelledby="doc-name">
+            <div class="doc-header">
+                <div class="doc-header-icon" id="doc-icon">—</div>
+                <div class="doc-header-meta">
+                    <h3 class="doc-header-name" id="doc-name">—</h3>
+                    <p class="doc-header-desc" id="doc-desc">—</p>
+                </div>
+                <button class="doc-close" onclick="cerrarDoc()" aria-label="Cerrar">×</button>
+            </div>
+            <div class="doc-body" id="doc-body"></div>
+        </div>
+    </div>
+
+<script>
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+// ──────────────────────────────────────────────────────────────────────
+// Catálogo de integraciones. Cada entrada es 100% estática (es
+// documentación interna, no hay BD detrás). Estructura:
+//
+//   id        — identificador único, slug
+//   nombre    — texto que se muestra en la lista y en la cabecera del modal
+//   tag       — opcional. 'estable' | 'beta' | 'no_disponible'. Se pinta
+//               como pill al lado del nombre.
+//   desc      — descripción corta (una línea, ~80 caracteres) para la lista
+//   inicial   — letra/dos letras del icono cuadrado (placeholder del logo)
+//   c1, c2    — colores del gradiente del icono (opcional, defaults al rojo)
+//   doc       — objeto con las secciones del modal:
+//       descripcion       — párrafo introductorio largo (1-3 frases)
+//       comoConectar      — pasos numerados que sigue el equipo de Yurest
+//                           para conectar la integración con el TPV.
+//       camposRequeridos  — lista de pares clave/valor de credenciales que
+//                           hay que pedir al cliente.
+//       datosSincronizados — qué datos viajan del TPV a Yurest.
+//       limitaciones      — array de strings con caveats conocidos.
+//       contacto          — { nombre, email, telefono?, web? } del soporte
+//                           del fabricante del TPV (cuando aplica).
+//       notas             — opcional. Texto libre extra al final.
+//
+// Si quieres añadir una integración nueva, copia un objeto de los de abajo
+// y rellena. La página la coge automáticamente. No hay que tocar el resto.
+// ──────────────────────────────────────────────────────────────────────
+const INTEGRACIONES = [
+    {
+        id: 'agora',
+        nombre: 'Ágora',
+        desc: 'Software de gestión integral para hostelería.',
+        tag: 'estable',
+        inicial: 'AG',
+        c1: '#ef4444', c2: '#7f1d1d',
+        doc: {
+            descripcion: 'Ágora es uno de los TPV más extendidos en España. La integración con Yurest permite leer ventas, productos, familias, mesas y empleados directamente de su base de datos.',
+            comoConectar: [
+                'Pedir al cliente (o a su distribuidor de Ágora) los datos de conexión a la base de datos: host, puerto, usuario y contraseña con permisos de SOLO lectura.',
+                'Confirmar que el equipo donde corre Ágora tiene la base de datos accesible desde fuera (puerto abierto en el router del local, o VPN).',
+                'Crear la integración en el panel de Yurest (sección Integraciones → Conectar Ágora) introduciendo los datos.',
+                'Hacer un primer pull de catálogo y verificar que los productos y familias entran sincronizados antes de habilitar el flujo de ventas.'
+            ],
+            camposRequeridos: [
+                { k: 'Host / IP',   v: 'Dirección del servidor donde corre la BD de Ágora.' },
+                { k: 'Puerto',      v: 'Puerto de la BD (típicamente 3050 o 1433 según versión).' },
+                { k: 'Usuario',     v: 'Usuario con permisos de SELECT sobre las tablas relevantes.' },
+                { k: 'Contraseña',  v: 'Contraseña del usuario anterior.' },
+                { k: 'Base de datos', v: 'Nombre de la BD del cliente (ej. AGORA_RESTAURANTE).' }
+            ],
+            datosSincronizados: [
+                'Productos, familias y precios.',
+                'Tickets de venta con líneas y forma de pago.',
+                'Empleados / camareros (para imputación de ventas).',
+                'Mesas y zonas (cuando aplica).',
+                'Cierres de caja diarios.'
+            ],
+            limitaciones: [
+                'Sólo soportamos versiones recientes de Ágora (2020+). Versiones más antiguas requieren actualizar primero.',
+                'La integración es de SOLO LECTURA: Yurest no escribe nada en la BD del TPV.'
+            ],
+            contacto: { nombre: 'Soporte Ágora', web: 'https://www.agorapos.com', telefono: '+34 91 000 00 00' }
+        }
+    },
+    {
+        id: 'bdp',
+        nombre: 'BDP',
+        desc: 'TPV con sincronización vía API privada del fabricante.',
+        tag: 'estable',
+        inicial: 'BD',
+        c1: '#0ea5e9', c2: '#0369a1',
+        doc: {
+            descripcion: 'BDP expone una API HTTP para que sistemas externos consulten los datos del TPV. Yurest la consume periódicamente para mantener catálogo y ventas al día.',
+            comoConectar: [
+                'Verificar con el cliente que su contrato de BDP incluye acceso API (no todos los planes lo tienen).',
+                'Pedir host, puerto y clave API al cliente o a su distribuidor.',
+                'Comprobar que la IP pública del local responde al puerto indicado (suele ser 8110). Si no, suele ser una IP dinámica que cambió: pedir la actual.',
+                'Configurar la integración en Yurest y lanzar la primera sincronización en modo "test" para verificar.'
+            ],
+            camposRequeridos: [
+                { k: 'Host',        v: 'IP pública o dominio del servidor BDP del cliente.' },
+                { k: 'Puerto',      v: 'Habitualmente 8110.' },
+                { k: 'Clave API',   v: 'Cadena alfanumérica (sólo letras/números, sin símbolos).' }
+            ],
+            datosSincronizados: [
+                'Productos y precios.',
+                'Tickets cerrados.',
+                'Movimientos de caja.'
+            ],
+            limitaciones: [
+                'IP dinámica: cuando el cliente reinicia el router puede cambiar y la integración deja de pingear. Hay que pedirle la nueva IP.',
+                'Sin webhook: la sincronización es por polling (cada 5-15 min según volumen).'
+            ],
+            contacto: { nombre: 'Soporte BDP', web: 'https://www.bdpsoftware.com' }
+        }
+    },
+    {
+        id: 'cuiner',
+        nombre: 'Cuiner',
+        desc: 'TPV cloud con API REST y token por restaurante.',
+        tag: 'estable',
+        inicial: 'CU',
+        c1: '#f59e0b', c2: '#b45309',
+        doc: {
+            descripcion: 'Cuiner es un TPV cloud, así que la integración va por API REST autenticada con un token único por restaurante. No hace falta acceso al equipo físico del cliente.',
+            comoConectar: [
+                'El cliente entra en su área de Cuiner → Integraciones y genera un token nuevo dándole permisos de lectura.',
+                'Nos lo pasa por canal seguro (no por email plano).',
+                'Lo introducimos en la configuración de la integración en Yurest.',
+                'Sincronización inicial automática.'
+            ],
+            camposRequeridos: [
+                { k: 'Token API', v: 'Cadena larga generada por el cliente desde su dashboard de Cuiner.' }
+            ],
+            datosSincronizados: [
+                'Productos y modificadores.',
+                'Tickets, pagos y propinas.',
+                'Empleados.'
+            ],
+            limitaciones: [
+                'El token se puede revocar en cualquier momento desde el panel del cliente — si lo hace sin avisar, la integración se cae.'
+            ],
+            contacto: { nombre: 'Soporte Cuiner', email: 'soporte@cuiner.com' }
+        }
+    },
+    {
+        id: 'glop',
+        nombre: 'Glop',
+        desc: 'Software de control de sala, cocina, pedidos y delivery.',
+        tag: 'estable',
+        inicial: 'GL',
+        c1: '#10b981', c2: '#047857',
+        doc: {
+            descripcion: 'Glop es un TPV potente con módulo cloud opcional. La integración usa los servicios web de Glop Cloud cuando el cliente lo tiene activado.',
+            comoConectar: [
+                'Verificar que el cliente tiene Glop Cloud contratado.',
+                'Pedir credenciales (usuario API y contraseña) al cliente.',
+                'Indicar el establecimiento concreto si el cliente tiene varios bajo la misma cuenta.',
+                'Conectar y verificar.'
+            ],
+            camposRequeridos: [
+                { k: 'Usuario API', v: 'Distinto del usuario humano del backoffice de Glop.' },
+                { k: 'Contraseña',  v: 'La asignada al usuario API.' },
+                { k: 'Establecimiento', v: 'ID del local (si tiene varios bajo la misma licencia).' }
+            ],
+            datosSincronizados: [
+                'Catálogo (productos, familias).',
+                'Ventas y devoluciones.',
+                'Cierres de caja.'
+            ],
+            limitaciones: [
+                'Sin Glop Cloud no hay integración posible — el TPV aislado no expone API.'
+            ],
+            contacto: { nombre: 'Soporte Glop', web: 'https://www.glop.es' }
+        }
+    },
+    {
+        id: 'hiopos',
+        nombre: 'Hiopos',
+        desc: 'Solución global para restaurantes (ICG Software).',
+        tag: 'estable',
+        inicial: 'HI',
+        c1: '#a855f7', c2: '#6b21a8',
+        doc: {
+            descripcion: 'Hiopos (de ICG Software) es uno de los TPV más extendidos. La integración usa su API cloud Hiopos Analytics + acceso opcional a base de datos local cuando hace falta más detalle.',
+            comoConectar: [
+                'Pedir al cliente las credenciales de Hiopos Analytics (cuenta administrador del cloud).',
+                'Si el cliente quiere sincronizar a nivel línea de ticket, además hay que acceder a la BD local — pedir host/puerto/usuario/contraseña.',
+                'Configurar la integración en Yurest.',
+                'Validar la primera carga de catálogo.'
+            ],
+            camposRequeridos: [
+                { k: 'Usuario cloud', v: 'Email del administrador de Hiopos Analytics.' },
+                { k: 'Contraseña',    v: 'La de la cuenta cloud.' },
+                { k: 'Host BD (opcional)', v: 'Sólo si se requiere acceso al detalle de líneas.' }
+            ],
+            datosSincronizados: [
+                'Productos y familias.',
+                'Tickets y formas de pago.',
+                'Empleados y centros de trabajo.'
+            ],
+            limitaciones: [
+                'Algunos campos personalizados (modificadores complejos) sólo llegan completos por BD local, no por cloud.'
+            ],
+            contacto: { nombre: 'Soporte ICG / Hiopos', web: 'https://www.icg.es' }
+        }
+    },
+    {
+        id: 'hosteltactil',
+        nombre: 'Hosteltactil',
+        desc: 'TPV con base de datos en SQL Server. Integración por servidor + BD.',
+        tag: 'estable',
+        inicial: 'HT',
+        c1: '#f97316', c2: '#9a3412',
+        doc: {
+            descripcion: 'Hosteltactil corre típicamente con SQL Server por debajo. La integración accede a esa BD para leer ventas y catálogo.',
+            comoConectar: [
+                'Pedir al distribuidor de Hosteltactil del cliente los datos de conexión.',
+                'Configurar acceso desde el VPS de Yurest al SQL Server del cliente (firewall, VPN o port forwarding).',
+                'Crear la integración en Yurest con servidor, puerto, BD, usuario y contraseña.',
+                'Verificar primer pull.'
+            ],
+            camposRequeridos: [
+                { k: 'Servidor',     v: 'IP o nombre del SQL Server.' },
+                { k: 'Puerto',       v: 'Habitualmente 1433.' },
+                { k: 'Base de datos', v: 'Nombre de la BD del local.' },
+                { k: 'Usuario',      v: 'Usuario SQL con permisos de SELECT.' },
+                { k: 'Contraseña',   v: 'La del usuario SQL.' }
+            ],
+            datosSincronizados: [
+                'Productos, familias, precios.',
+                'Tickets con líneas.',
+                'Movimientos de caja.'
+            ],
+            limitaciones: [
+                'Acceso al SQL Server depende del distribuidor — algunos no lo dan o lo cobran aparte.'
+            ],
+            contacto: { nombre: 'Soporte Hosteltactil', web: 'https://www.hosteltactil.com' }
+        }
+    },
+    {
+        id: 'lastapp',
+        nombre: 'Last.app',
+        desc: 'Plataforma SaaS de TPV con API REST documentada.',
+        tag: 'estable',
+        inicial: 'LA',
+        c1: '#6366f1', c2: '#3730a3',
+        doc: {
+            descripcion: 'Last.app es 100 % cloud y tiene una API REST pública. La integración con Yurest usa un token de acceso por cliente.',
+            comoConectar: [
+                'El cliente solicita el token a Last.app desde su área de cliente.',
+                'Last.app revisa la solicitud (puede tardar 24-48 h) y emite el token.',
+                'El cliente nos pasa el token; lo introducimos en Yurest.',
+                'Sincronización automática a partir de ahí.'
+            ],
+            camposRequeridos: [
+                { k: 'Token API', v: 'Generado por Last.app a petición del cliente.' }
+            ],
+            datosSincronizados: [
+                'Productos y combos.',
+                'Pedidos (sala, delivery, QR, shop).',
+                'Modificadores.',
+                'Empleados.'
+            ],
+            limitaciones: [
+                'Cuando el cliente modifica un combo, los IDs de los productos del combo cambian y la integración pierde la trazabilidad histórica del producto. Last.app está trabajando en arreglarlo desde Q1 2026.'
+            ],
+            contacto: { nombre: 'Soporte Last.app', email: 'soporte@last.app', web: 'https://last.app' }
+        }
+    },
+    {
+        id: 'revo',
+        nombre: 'Revo',
+        desc: 'Software de control de sala, cocina y pedidos.',
+        tag: 'estable',
+        inicial: 'RE',
+        c1: '#ec4899', c2: '#9d174d',
+        doc: {
+            descripcion: 'Revo es un TPV cloud con API REST. La integración requiere user_id y password de un usuario con acceso al área de gestión.',
+            comoConectar: [
+                'Pedir al cliente que cree un usuario dedicado para la integración (no usar uno humano que pueda cambiar de contraseña).',
+                'El usuario debe tener permisos de "Gestionar Cuenta".',
+                'Pasarnos user_id y password.',
+                'Configurar y validar.'
+            ],
+            camposRequeridos: [
+                { k: 'User ID',    v: 'Numérico, generado por Revo al crear el usuario.' },
+                { k: 'Contraseña', v: 'La del usuario anterior.' }
+            ],
+            datosSincronizados: [
+                'Catálogo de productos y modificadores.',
+                'Pedidos cerrados.',
+                'Empleados.'
+            ],
+            limitaciones: [
+                'Si el cliente cambia la contraseña del usuario integración, la sincronización se cae.'
+            ],
+            contacto: { nombre: 'Soporte Revo', web: 'https://revo.works' }
+        }
+    },
+    {
+        id: 'sofyman',
+        nombre: 'Sofyman',
+        desc: 'Familia TAHC4, Sicax, Easy POS, Winex.',
+        tag: 'estable',
+        inicial: 'SY',
+        c1: '#facc15', c2: '#854d0e',
+        doc: {
+            descripcion: 'Sofyman engloba varias marcas (TAHC4, Sicax, Easy POS, Winex). La integración varía ligeramente según el producto pero comparten BD subyacente.',
+            comoConectar: [
+                'Confirmar con el cliente cuál de las 4 variantes usa.',
+                'Pedir credenciales de acceso a la BD según la variante.',
+                'Configurar en Yurest indicando la variante (afecta a queries usadas).',
+                'Validar primer pull.'
+            ],
+            camposRequeridos: [
+                { k: 'Variante', v: 'TAHC4 / Sicax / Easy POS / Winex' },
+                { k: 'Servidor / IP', v: 'Donde corre la BD del producto.' },
+                { k: 'Usuario',  v: 'Usuario con permisos de lectura.' },
+                { k: 'Contraseña', v: 'La asignada por el distribuidor.' }
+            ],
+            datosSincronizados: [
+                'Productos y familias.',
+                'Ventas y formas de pago.'
+            ],
+            limitaciones: [
+                'Documentación oficial de Sofyman es escasa — apoyarse en su soporte directo si surgen rarezas.'
+            ],
+            contacto: { nombre: 'Soporte Sofyman', web: 'https://www.sofyman.com' }
+        }
+    },
+    {
+        id: 'square',
+        nombre: 'Square',
+        desc: 'TPV global de Block, Inc. Integración por OAuth.',
+        tag: 'beta',
+        inicial: 'SQ',
+        c1: '#0f172a', c2: '#334155',
+        doc: {
+            descripcion: 'Square (USA, expandiéndose en EU) tiene una API moderna OAuth 2.0. La integración requiere que el cliente autorice a Yurest desde su panel de Square.',
+            comoConectar: [
+                'Generar el enlace de autorización OAuth desde Yurest.',
+                'El cliente entra y aprueba los permisos solicitados (lectura de catálogo y ventas).',
+                'Square nos devuelve un access_token + refresh_token.',
+                'Yurest los almacena cifrados y refresca el token cada hora.'
+            ],
+            camposRequeridos: [
+                { k: 'access_token (auto)', v: 'Lo recibe Yurest tras OAuth, no hace falta pedir nada.' }
+            ],
+            datosSincronizados: [
+                'Catálogo completo (Items, Modifiers).',
+                'Ventas (Orders, Payments).',
+                'Empleados (Team Members).'
+            ],
+            limitaciones: [
+                'Estado BETA — flujo OAuth probado en pocos clientes. Ojo a clientes en países donde Square aún no opera.',
+                'Square cobra por API calls cuando se exceden los límites — vigilar el volumen de polling.'
+            ],
+            contacto: { nombre: 'Square Developer', web: 'https://developer.squareup.com' }
+        }
+    },
+    {
+        id: 'yantar',
+        nombre: 'Yantar',
+        desc: 'Solución global para restaurantes.',
+        tag: 'estable',
+        inicial: 'YA',
+        c1: '#84cc16', c2: '#3f6212',
+        doc: {
+            descripcion: 'Yantar es un TPV español. La integración va por su API privada con credenciales por restaurante.',
+            comoConectar: [
+                'Pedir al distribuidor de Yantar las credenciales de la API.',
+                'Indicar el código de establecimiento del cliente.',
+                'Configurar en Yurest.',
+                'Validar.'
+            ],
+            camposRequeridos: [
+                { k: 'Usuario API', v: 'Generado por el distribuidor.' },
+                { k: 'Contraseña',  v: 'La emparejada con el usuario.' },
+                { k: 'Establecimiento', v: 'Código alfanumérico del local.' }
+            ],
+            datosSincronizados: [
+                'Catálogo de productos.',
+                'Tickets y pagos.',
+                'Cierres.'
+            ],
+            limitaciones: [
+                'API menos documentada que otras — algunos campos personalizados pueden no llegar.'
+            ],
+            contacto: { nombre: 'Soporte Yantar', web: 'https://www.yantar.es' }
+        }
+    },
+    {
+        id: 'zonesoft',
+        nombre: 'Zonesoft',
+        desc: 'Ecosistema completo para hostelería (TPV + reservas + delivery).',
+        tag: 'estable',
+        inicial: 'ZO',
+        c1: '#22c55e', c2: '#15803d',
+        doc: {
+            descripcion: 'Zonesoft es un ecosistema portugués/español que incluye TPV, reservas y delivery integrados. La integración con Yurest se centra en el módulo TPV.',
+            comoConectar: [
+                'El cliente solicita acceso API desde su panel de Zonesoft.',
+                'Zonesoft genera credenciales y código de cliente.',
+                'Pasarlos a Yurest.',
+                'Validar el catálogo y ventas en sincronización inicial.'
+            ],
+            camposRequeridos: [
+                { k: 'Código cliente', v: 'Identificador alfanumérico del cliente en Zonesoft.' },
+                { k: 'Token API',      v: 'Generado por Zonesoft.' }
+            ],
+            datosSincronizados: [
+                'Productos y modificadores.',
+                'Ventas (TPV).',
+                'No incluye datos de reservas ni delivery por ahora.'
+            ],
+            limitaciones: [
+                'La integración cubre sólo el módulo TPV. Reservas/delivery requerirían otra integración aparte.'
+            ],
+            contacto: { nombre: 'Soporte Zonesoft', web: 'https://www.zonesoft.org' }
+        }
+    },
+    {
+        id: 'api_generica',
+        nombre: 'API genérica para TPVs',
+        desc: 'Endpoint propio de Yurest para TPVs sin integración nativa.',
+        tag: 'estable',
+        inicial: 'API',
+        c1: '#0284c7', c2: '#0c4a6e',
+        doc: {
+            descripcion: 'Para TPVs que no tienen integración nativa, Yurest expone un endpoint REST al que el cliente (o su distribuidor) puede empujar tickets, productos y cierres en el formato definido en la documentación pública.',
+            comoConectar: [
+                'Generar credenciales (api_key + api_secret) para el cliente desde el admin de Yurest.',
+                'Pasar al distribuidor del cliente la documentación pública del endpoint.',
+                'El distribuidor implementa el push desde el TPV.',
+                'Yurest valida los datos al recibirlos y rechaza los mal formados.'
+            ],
+            camposRequeridos: [
+                { k: 'api_key',     v: 'Identificador público del cliente.' },
+                { k: 'api_secret',  v: 'Secreto compartido para firmar las requests.' }
+            ],
+            datosSincronizados: [
+                'Lo que el TPV decida pushear según la documentación: tickets, productos, cierres, etc.'
+            ],
+            limitaciones: [
+                'La calidad de los datos depende de la implementación del distribuidor — es responsabilidad suya validar antes del push.',
+                'Sin push automático no hay datos. No es polling, es push-only.'
+            ],
+            contacto: { nombre: 'Soporte Yurest', email: 'sat@yurest.com' }
+        }
+    }
+];
+
+// ──────────────────────────────────────────────────────────────────────
+// Render de la lista
+// ──────────────────────────────────────────────────────────────────────
+function renderLista() {
+    const q = document.getElementById('f-q').value.trim().toLowerCase();
+    const lista = INTEGRACIONES.filter(i =>
+        !q
+        || i.nombre.toLowerCase().includes(q)
+        || i.desc.toLowerCase().includes(q)
+        || (i.id || '').toLowerCase().includes(q)
+    );
+    const wrap = document.getElementById('lista-wrap');
+    if (lista.length === 0) {
+        wrap.innerHTML = '<div class="empty-search">No hay ninguna integración que coincida con esa búsqueda.</div>';
+        return;
+    }
+    const esc = YurestConfig.escHtml;
+    wrap.innerHTML = lista.map(i => {
+        const tagHtml = i.tag === 'beta'           ? '<span class="int-meta-tag beta">Beta</span>'
+                      : i.tag === 'no_disponible'  ? '<span class="int-meta-tag no">No disponible</span>'
+                      : i.tag === 'estable'        ? '<span class="int-meta-tag">Operativa</span>'
+                                                   : '';
+        const styleVars = `--c1:${esc(i.c1 || '#fc5858')};--c2:${esc(i.c2 || '#c62828')}`;
+        return `
+            <div class="int-row">
+                <div class="int-icon" style="${styleVars}">${esc(i.inicial || i.nombre.slice(0,2).toUpperCase())}</div>
+                <div class="int-meta">
+                    <div class="int-meta-name">${esc(i.nombre)}${tagHtml}</div>
+                    <div class="int-meta-desc">${esc(i.desc)}</div>
+                </div>
+                <button class="int-action" onclick="abrirDoc('${esc(i.id)}')">
+                    Ver documentación
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+            </div>`;
+    }).join('');
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Modal de documentación
+// ──────────────────────────────────────────────────────────────────────
+function abrirDoc(id) {
+    const i = INTEGRACIONES.find(x => x.id === id);
+    if (!i) return;
+    const esc = YurestConfig.escHtml;
+    const d = i.doc || {};
+
+    document.getElementById('doc-icon').textContent = i.inicial || i.nombre.slice(0,2).toUpperCase();
+    document.getElementById('doc-icon').style.cssText = `--c1:${i.c1 || '#fc5858'};--c2:${i.c2 || '#c62828'}`;
+    document.getElementById('doc-name').textContent = i.nombre;
+    document.getElementById('doc-desc').textContent = i.desc || '';
+
+    const partes = [];
+
+    if (d.descripcion) {
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    Descripción
+                </div>
+                <div class="doc-section-content">${escMd(d.descripcion)}</div>
+            </div>`);
+    }
+
+    if (Array.isArray(d.comoConectar) && d.comoConectar.length) {
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h4"/><path d="M15 11h4a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-4"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                    Cómo conectarla
+                </div>
+                <div class="doc-section-content"><ol style="margin:0;padding-left:20px">${
+                    d.comoConectar.map(p => `<li>${escMd(p)}</li>`).join('')
+                }</ol></div>
+            </div>`);
+    }
+
+    if (Array.isArray(d.camposRequeridos) && d.camposRequeridos.length) {
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Datos a pedir al cliente
+                </div>
+                <div class="doc-section-content">
+                    <div class="doc-fields">${
+                        d.camposRequeridos.map(c => `
+                            <div class="doc-field">
+                                <div class="doc-field-key">${esc(c.k)}</div>
+                                <div class="doc-field-val">${esc(c.v)}</div>
+                            </div>`).join('')
+                    }</div>
+                </div>
+            </div>`);
+    }
+
+    if (Array.isArray(d.datosSincronizados) && d.datosSincronizados.length) {
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    Datos que se sincronizan
+                </div>
+                <div class="doc-section-content"><ul>${
+                    d.datosSincronizados.map(x => `<li>${escMd(x)}</li>`).join('')
+                }</ul></div>
+            </div>`);
+    }
+
+    if (Array.isArray(d.limitaciones) && d.limitaciones.length) {
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Limitaciones conocidas
+                </div>
+                <div class="doc-section-content"><ul>${
+                    d.limitaciones.map(x => `<li>${escMd(x)}</li>`).join('')
+                }</ul></div>
+            </div>`);
+    }
+
+    if (d.contacto) {
+        const c = d.contacto;
+        const items = [];
+        if (c.nombre)   items.push(`<strong>${esc(c.nombre)}</strong>`);
+        if (c.email)    items.push(`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`);
+        if (c.telefono) items.push(`<a href="tel:${esc(c.telefono).replace(/\s/g,'')}">${esc(c.telefono)}</a>`);
+        if (c.web)      items.push(`<a href="${esc(c.web)}" target="_blank" rel="noopener noreferrer">${esc(c.web.replace(/^https?:\/\//,''))}</a>`);
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    Contacto soporte fabricante
+                </div>
+                <div class="doc-section-content">${items.join(' · ')}</div>
+            </div>`);
+    }
+
+    if (d.notas) {
+        partes.push(`
+            <div class="doc-section">
+                <div class="doc-section-title">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Notas
+                </div>
+                <div class="doc-section-content">${escMd(d.notas)}</div>
+            </div>`);
+    }
+
+    document.getElementById('doc-body').innerHTML = partes.join('') || '<div class="empty-search">Esta integración aún no tiene documentación detallada.</div>';
+
+    document.getElementById('doc-overlay').classList.add('open');
+    if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('doc-overlay');
+}
+function cerrarDoc() {
+    document.getElementById('doc-overlay').classList.remove('open');
+    if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('doc-overlay');
+}
+
+// Mini-helper de escape + permitir **negrita** y `código` en líneas de
+// texto. No se mezcla con marked porque sería overkill para textos cortos.
+function escMd(s) {
+    if (s == null) return '';
+    let out = YurestConfig.escHtml(String(s));
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return out;
+}
+
+// Atajos de teclado: Esc cierra el modal.
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('doc-overlay').classList.contains('open')) {
+        cerrarDoc();
+    }
+});
+
+window.openSidebar  = openSidebar;
+window.closeSidebar = closeSidebar;
+window.renderLista  = renderLista;
+window.abrirDoc     = abrirDoc;
+window.cerrarDoc    = cerrarDoc;
+
+// Render inicial
+renderLista();
+</script>
+</body>
+</html>

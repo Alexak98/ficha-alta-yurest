@@ -158,7 +158,8 @@
         { id: 'integraciones', label: 'Integraciones',        grupo: 'Soporte'          },
         { id: 'hardware',      label: 'Hardware envíos',      grupo: 'Soporte'          },
         { id: 'stock',         label: 'Stock hardware',       grupo: 'Soporte'          },
-        { id: 'resumen_semanal', label: 'Resumen semanal',    grupo: 'Soporte'          },
+        { id: 'resumen_semanal',           label: 'Resumen semanal',                grupo: 'Soporte' },
+        { id: 'documentacion_integraciones', label: 'Documentación de integraciones', grupo: 'Soporte' },
         { id: 'admin',         label: 'Administración',       grupo: 'Admin'            },
         { id: 'docs',          label: 'Documentación',        grupo: 'Otros'            }
     ];

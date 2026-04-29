@@ -50,7 +50,9 @@
         // Kanban CS → tres columnas verticales (tablero kanban)
         cs_kanban:     '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="11" rx="1"/><rect x="17" y="3" width="4" height="14" rx="1"/></svg>',
         // Resumen semanal → bocadillo de chat (resumen IA)
-        resumen_semanal: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>'
+        resumen_semanal: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>',
+        // Documentación de integraciones → libro abierto (manual / docs)
+        documentacion_integraciones: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
     };
 
     // Estructura del menú. Cada item tiene:
@@ -130,6 +132,7 @@
             icon: 'soporte',
             items: [
                 { id: 'integraciones',     href: 'integraciones.html',  label: 'Integraciones',   icon: 'integraciones' },
+                { id: 'documentacion_integraciones', href: 'documentacion-integraciones.html', label: 'Doc. integraciones', icon: 'documentacion_integraciones' },
                 { id: 'hardware',          href: 'hardware.html',       label: 'Hardware envíos', icon: 'hardware', badgeId: 'badge-hardware' },
                 { id: 'stock',             href: 'stock.html',          label: 'Stock',           icon: 'stock' }
                 // 'churn_tecnico' se ha movido al grupo Informes → subgrupo
