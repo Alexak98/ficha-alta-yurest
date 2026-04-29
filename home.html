@@ -472,17 +472,19 @@
         {
             id: 'soporte',
             nombre: 'Soporte',
-            descripcion: 'Integraciones TPV, envíos de hardware y stock.',
+            descripcion: 'Integraciones TPV, documentación, envíos de hardware, stock y churn técnico.',
             icon: 'soporte',
             colorA: '#0ea5e9', colorB: '#0369a1',
             paginas: [
                 { id: 'integraciones',               href: 'integraciones.html',               label: 'Integraciones',     sub: 'Tareas Asana + avisos semanales',          icon: 'integraciones'  },
                 { id: 'documentacion_integraciones', href: 'documentacion-integraciones.html', label: 'Doc. integraciones', sub: 'Cómo conectar cada TPV: pasos y datos',    icon: 'documentacion_integraciones', public: true },
                 { id: 'hardware',                    href: 'hardware.html',                    label: 'Hardware envíos',   sub: 'Pedidos listos para envío al cliente',     icon: 'hardware',         badgeId: 'badge-hardware' },
-                { id: 'stock',                       href: 'stock.html',                       label: 'Stock',             sub: 'Catálogo de artículos y movimientos',      icon: 'stock'             }
-                // 'churn_tecnico' se ha movido a Informes → Soporte
-                // (junto al heatmap y el resumen semanal). Sigue marcado
-                // como public:true allí.
+                { id: 'stock',                       href: 'stock.html',                       label: 'Stock',             sub: 'Catálogo de artículos y movimientos',      icon: 'stock'             },
+                // Churn técnico vive principalmente en Informes → Soporte
+                // (sidebar), pero también lo dejamos como tarjeta en el
+                // dashboard de Soporte porque conceptualmente cubre ambos
+                // ángulos: es un informe Y es una herramienta de soporte.
+                { id: 'churn_tecnico',               href: 'churn-tecnico.html',               label: 'Churn técnico',     sub: 'Clientes Zendesk + resumen de actividad',  icon: 'churn_tecnico',    public: true }
             ]
         },
         {
