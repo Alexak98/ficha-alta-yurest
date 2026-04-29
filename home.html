@@ -317,7 +317,7 @@
     <!-- Vista 1: Grid de departamentos ─────────────────────────────────── -->
     <section id="view-grid">
         <div class="home-hero">
-            <h1>Bienvenid<span class="accent">@</span> al portal, <span class="accent" id="hero-user">—</span></h1>
+            <h1><span id="hero-greeting">Hola</span>, <span class="accent" id="hero-user">—</span></h1>
             <p>Selecciona un departamento para acceder a sus secciones.</p>
         </div>
         <section class="todo-section" id="todo-section" aria-label="Cosas por hacer"></section>
@@ -784,6 +784,14 @@
         // finalmente a 'Usuario'.
         const nombreCompleto = (session && (session.nombre || session.user)) || 'Usuario';
         document.getElementById('hero-user').textContent = nombreCompleto;
+
+        // Saludo según hora local del cliente: < 14:00 → "Buenos días",
+        // ≥ 14:00 → "Buenas tardes". Sin "buenas noches" — el portal lo
+        // usa el equipo en horario laboral, no merece la pena meter una
+        // tercera franja que casi nadie verá.
+        const hora = new Date().getHours();
+        const saludo = hora < 14 ? 'Buenos días' : 'Buenas tardes';
+        document.getElementById('hero-greeting').textContent = saludo;
 
         renderGrid();
 
