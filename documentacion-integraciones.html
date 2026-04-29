@@ -159,23 +159,35 @@
         .doc-field-val { flex:1;font-size:.82rem;color:#0f172a }
 
         /* Plantilla de email al cliente — bloque tipo "code" con botón
-           de copiar al portapapeles. Estilo monospace para que se note
-           que es texto plano listo para copiar. */
-        .doc-tplmail {
+           de copiar al portapapeles. Wrapper relativo para anclar el
+           botón; el <pre> interno se ocupa del texto con pre-wrap.
+           Es CRÍTICO que el botón NO esté dentro de un elemento con
+           white-space:pre-wrap, porque los saltos/espacios de la
+           indentación del template literal se renderizarían como texto
+           y descolocarían el contenido. */
+        .doc-tplmail-wrap {
             position:relative;
-            background:#0f172a;color:#e2e8f0;
-            border-radius:10px;padding:14px 16px 14px 16px;
+            background:#0f172a;
+            border-radius:10px;
+            overflow:hidden;
+        }
+        .doc-tplmail {
+            color:#e2e8f0;
+            margin:0;
+            padding:36px 16px 14px;       /* top más alto para no chocar con el botón */
             font-family:var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
             font-size:.78rem;line-height:1.5;
             white-space:pre-wrap;word-break:break-word;
+            background:transparent;border:0;
         }
         .doc-tplmail-copy {
-            position:absolute;top:10px;right:10px;
+            position:absolute;top:8px;right:8px;
             padding:5px 10px;font-size:.7rem;font-weight:700;
             background:#1e293b;color:#cbd5e1;border:1px solid #334155;
             border-radius:7px;cursor:pointer;font-family:inherit;
             display:inline-flex;align-items:center;gap:5px;
             transition:background .12s,color .12s,border-color .12s;
+            z-index:1;
         }
         .doc-tplmail-copy:hover { background:#334155;color:#fff;border-color:#64748b }
         .doc-tplmail-copy.copied { background:#15803d;color:#fff;border-color:#15803d }
@@ -787,11 +799,12 @@ function abrirDoc(id) {
                     Plantilla email al cliente
                 </div>
                 <div class="doc-section-content">
-                    <div class="doc-tplmail" id="doc-tplmail-${esc(i.id)}">
+                    <div class="doc-tplmail-wrap">
                         <button class="doc-tplmail-copy" onclick="copiarPlantilla('${esc(i.id)}', this)">
                             <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             Copiar
-                        </button>${esc(d.plantillaEmail)}</div>
+                        </button><pre class="doc-tplmail" id="doc-tplmail-${esc(i.id)}">${esc(d.plantillaEmail)}</pre>
+                    </div>
                 </div>
             </div>`);
     }
