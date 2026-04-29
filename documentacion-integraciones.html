@@ -445,25 +445,26 @@ const INTEGRACIONES = [
     },
     {
         id: 'hosteltactil',
-        nombre: 'Hosteltactil',
+        nombre: 'Hosteltáctil',
         desc: 'TPV con base de datos en SQL Server. Integración por servidor + BD.',
         tag: 'estable',
         inicial: 'HT',
         c1: '#f97316', c2: '#9a3412',
         doc: {
-            descripcion: 'Hosteltactil corre típicamente con SQL Server por debajo. La integración accede a esa BD para leer ventas y catálogo.',
+            descripcion: 'Hosteltáctil corre típicamente con SQL Server por debajo. La integración accede a esa BD para leer ventas y catálogo.',
             comoConectar: [
-                'Pedir al distribuidor de Hosteltactil del cliente los datos de conexión.',
-                'Configurar acceso desde el VPS de Yurest al SQL Server del cliente (firewall, VPN o port forwarding).',
-                'Crear la integración en Yurest con servidor, puerto, BD, usuario y contraseña.',
-                'Verificar primer pull.'
+                'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de Hosteltáctil.',
+                'El cliente reenvía la respuesta del distribuidor con los 5 datos de conexión.',
+                'Configurar el acceso al SQL Server del local desde fuera (firewall, VPN o port forwarding).',
+                'Crear la integración en Yurest con servidor, puerto, BD, user ID y password.',
+                'Verificar el primer pull de catálogo y ventas.'
             ],
             camposRequeridos: [
-                { k: 'Servidor',     v: 'IP o nombre del SQL Server.' },
-                { k: 'Puerto',       v: 'Habitualmente 1433.' },
-                { k: 'Base de datos', v: 'Nombre de la BD del local.' },
-                { k: 'Usuario',      v: 'Usuario SQL con permisos de SELECT.' },
-                { k: 'Contraseña',   v: 'La del usuario SQL.' }
+                { k: 'Servidor',     v: 'IP fija o nombre del host donde corre el SQL Server.' },
+                { k: 'Puerto',       v: 'Puerto del SQL Server (habitualmente `1433`).' },
+                { k: 'Base de datos', v: 'Nombre de la BD del local en Hosteltáctil.' },
+                { k: 'User ID',      v: 'Usuario SQL con permisos de lectura (SELECT) sobre las tablas del TPV.' },
+                { k: 'Password',     v: 'Contraseña del usuario anterior.' }
             ],
             datosSincronizados: [
                 'Productos, familias, precios.',
@@ -471,9 +472,14 @@ const INTEGRACIONES = [
                 'Movimientos de caja.'
             ],
             limitaciones: [
-                'Acceso al SQL Server depende del distribuidor — algunos no lo dan o lo cobran aparte.'
+                'Acceso al SQL Server depende del distribuidor — algunos no lo dan o lo cobran aparte.',
+                'Requiere IP fija del local — si el cliente tiene IP dinámica, hay que configurar DDNS o VPN.'
             ],
-            contacto: { nombre: 'Soporte Hosteltactil', web: 'https://www.hosteltactil.com' }
+            contacto: { nombre: 'Soporte Hosteltáctil', web: 'https://www.hosteltactil.com' },
+            // Plantilla pensada para que el CLIENTE la envíe a su distribuidor
+            // de Hosteltáctil. Marcadores [nombre del distribuidor] y
+            // (Nombre de la empresa) los rellena el cliente al copiar y enviar.
+            plantillaEmail: `Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Hosteltáctil. Por eso, necesito los siguientes datos:\n\n• Servidor\n• Puerto\n• Base de datos\n• User ID\n• Password\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Hosteltáctil con Yurest.\n\nGracias.`
         }
     },
     {
