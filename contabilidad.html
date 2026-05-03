@@ -572,11 +572,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             </p>
         `;
         document.getElementById('sepa-modal').classList.add('open');
+        // a11y: foco trap + aria-hidden al resto de la página
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('sepa-modal');
     }
     window.abrirSepaModal = abrirSepaModal;
 
     function cerrarSepaModal() {
         document.getElementById('sepa-modal').classList.remove('open');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('sepa-modal');
     }
     window.cerrarSepaModal = cerrarSepaModal;
 

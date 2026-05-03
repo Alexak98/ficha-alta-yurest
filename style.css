@@ -1604,3 +1604,29 @@ select option { color: var(--text); }
     font-family: inherit; cursor: pointer; transition: background 0.15s;
 }
 .sidebar-ft button:hover { background: #fee2e2; }
+
+/* ──────────────────────────────────────────────────────────
+ * Tablas responsive — auto-scroll horizontal en móvil
+ * ──────────────────────────────────────────────────────────
+ * Antes muchas páginas (admin, distribucion, presupuestos,
+ * informe-tickets, contabilidad…) tenían tablas que reventaban
+ * el viewport en <640px porque la suma de columnas superaba el
+ * ancho disponible y no había overflow definido en su contenedor.
+ *
+ * Aplicamos un wrapper implícito vía display:block + overflow-x
+ * sólo bajo el breakpoint móvil. En escritorio mantenemos el
+ * comportamiento normal (display:table) para no romper layouts
+ * que dependen de table-layout para distribuir columnas.
+ *
+ * Las tablas de impresión/PDF (.print-table, .pdf-table, en
+ * elementos con display:none cuando no estás imprimiendo) quedan
+ * exentas porque el media query no aplica al @media print.
+ */
+@media (max-width: 640px) {
+    table:not(.no-mobile-scroll) {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+    }
+}

@@ -568,7 +568,7 @@
         // Si el usuario tiene permiso sobre 'lista' (fichas de cliente),
         // abre el formulario completo en modo edición. Si no, le avisamos.
         if (!YurestConfig.tienePermiso('lista')) {
-            alert('No tienes permiso para abrir la ficha completa. Contacta con un administrador.');
+            YurestConfig.toast('No tienes permiso para abrir la ficha completa. Contacta con un administrador.', 'warning');
             return;
         }
         try {

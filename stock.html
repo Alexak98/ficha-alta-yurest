@@ -617,6 +617,7 @@
         document.getElementById('mf-notas').value = '';
         document.getElementById('f-error').style.display = 'none';
         document.getElementById('modal-art').classList.add('open');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-art');
         setTimeout(() => document.getElementById('mf-nombre').focus(), 50);
     }
 
@@ -641,10 +642,11 @@
         document.getElementById('mf-notas').value = a.notas || '';
         document.getElementById('f-error').style.display = 'none';
         document.getElementById('modal-art').classList.add('open');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-art');
         setTimeout(() => document.getElementById('mf-nombre').focus(), 50);
     }
 
-    function cerrarModal() { document.getElementById('modal-art').classList.remove('open'); }
+    function cerrarModal() { document.getElementById('modal-art').classList.remove('open'); if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('modal-art'); }
 
     async function guardar() {
         const id = document.getElementById('f-id').value.trim();
@@ -699,10 +701,11 @@
         document.getElementById('mov-error').style.display = 'none';
         _movTipoChanged();
         document.getElementById('modal-mov').classList.add('open');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-mov');
         setTimeout(() => document.getElementById('mov-cantidad').focus(), 50);
     }
 
-    function cerrarMov() { document.getElementById('modal-mov').classList.remove('open'); }
+    function cerrarMov() { document.getElementById('modal-mov').classList.remove('open'); if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('modal-mov'); }
 
     function _movTipoChanged() {
         const tipo = document.getElementById('mov-tipo').value;
@@ -783,9 +786,10 @@
                 </table>`;
         }
         document.getElementById('modal-hist').classList.add('open');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-hist');
     }
 
-    function cerrarHist() { document.getElementById('modal-hist').classList.remove('open'); }
+    function cerrarHist() { document.getElementById('modal-hist').classList.remove('open'); if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('modal-hist'); }
 
     // ─────────────────────────────────────────────────────────────────────
     //  ACCIONES SIMPLES (archivar / reactivar)

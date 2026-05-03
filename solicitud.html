@@ -877,6 +877,11 @@
     // y sustituyendo {i} por el índice real en todos los id/onXxx. Preserva
     // los valores ya introducidos por el usuario si reduce N, para que no
     // pierda trabajo si toca el selector de número.
+    // Stash de valores de formularios SEPA que se han ocultado al bajar N.
+    // Vive entre re-renders para que un round-trip 3→2→3 no pierda los datos
+    // del formulario #3. Sólo se limpia al enviar el formulario completo.
+    const _sepaStash = {};
+
     function renderSepaForms(n) {
         n = Math.max(1, Math.min(10, parseInt(n, 10) || 1));
         const container = document.getElementById('sepa-forms-container');
@@ -884,8 +889,9 @@
         if (!container || !template) return;
 
         // Snapshot de los valores actuales para preservar lo rellenado cuando
-        // se añaden o quitan sociedades.
-        const snapshot = _snapshotSepaForms();
+        // se añaden o quitan sociedades. Combinamos con el stash para
+        // recuperar también los formularios que fueron ocultados antes.
+        const snapshot = { ..._sepaStash, ..._snapshotSepaForms() };
         container.innerHTML = '';
 
         const templHtml = template.innerHTML;
@@ -898,9 +904,17 @@
             _sepaForms[i].configured = false;
         }
 
-        // Descarta el estado de formularios eliminados (si N baja).
+        // Si N baja, mueve el estado de los índices ≥ N al stash en lugar
+        // de borrarlo — así si N vuelve a subir, recuperamos los datos.
         Object.keys(_sepaForms).forEach(k => {
-            if (parseInt(k, 10) >= n) delete _sepaForms[k];
+            const ki = parseInt(k, 10);
+            if (ki >= n) {
+                if (snapshot[ki]) _sepaStash[ki] = snapshot[ki];
+                delete _sepaForms[k];
+            } else {
+                // Para los visibles, ya no hace falta tener stash duplicado.
+                delete _sepaStash[ki];
+            }
         });
 
         // Pre-rellenar fecha con hoy + restaurar valores previos.

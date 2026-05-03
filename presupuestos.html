@@ -737,6 +737,7 @@
         recalcular();
         _hideError();
         document.getElementById('modal-pre').classList.add('open');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-pre');
         setTimeout(() => document.getElementById('mf-cliente').focus(), 50);
     }
     function editar(p) {
@@ -764,8 +765,9 @@
         recalcular();
         _hideError();
         document.getElementById('modal-pre').classList.add('open');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-pre');
     }
-    function cerrarModal() { document.getElementById('modal-pre').classList.remove('open'); }
+    function cerrarModal() { document.getElementById('modal-pre').classList.remove('open'); if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('modal-pre'); }
     function _showError(msg) { const el = document.getElementById('f-error'); el.textContent = msg; el.style.display = ''; }
     function _hideError()    { document.getElementById('f-error').style.display = 'none'; }
 
@@ -854,18 +856,18 @@
         if (r && r.success === false) throw new Error((r.errores || ['Error']).join('; '));
         return r;
     }
-    async function aceptar(id)     { try { await _post('aceptar', id);  await cargar(); } catch (e) { alert('Error: ' + e.message); } }
-    async function entregar(id)    { try { await _post('entregar', id); await cargar(); } catch (e) { alert('Error: ' + e.message); } }
-    async function toggleEnviado(id, nuevo) { try { await _post('marcar_enviado', id, { enviado: nuevo }); await cargar(); } catch (e) { alert('Error: ' + e.message); } }
+    async function aceptar(id)     { try { await _post('aceptar', id);  await cargar(); } catch (e) { YurestConfig.toast('Error: ' + e.message, 'error'); } }
+    async function entregar(id)    { try { await _post('entregar', id); await cargar(); } catch (e) { YurestConfig.toast('Error: ' + e.message, 'error'); } }
+    async function toggleEnviado(id, nuevo) { try { await _post('marcar_enviado', id, { enviado: nuevo }); await cargar(); } catch (e) { YurestConfig.toast('Error: ' + e.message, 'error'); } }
     async function archivar(id, cliente) {
         if (!(await YurestConfig.confirmDelete({
             titulo: 'Archivar presupuesto',
             mensaje: `¿Archivar el presupuesto de "${cliente}"? No se borra; se marca como eliminado y puedes recuperarlo con "Archivadas".`,
             confirmTexto: 'Archivar'
         }))) return;
-        try { await _post('archivar', id); await cargar(); } catch (e) { alert('Error: ' + e.message); }
+        try { await _post('archivar', id); await cargar(); } catch (e) { YurestConfig.toast('Error: ' + e.message, 'error'); }
     }
-    async function reactivar(id) { try { await _post('reactivar', id); await cargar(); } catch (e) { alert('Error: ' + e.message); } }
+    async function reactivar(id) { try { await _post('reactivar', id); await cargar(); } catch (e) { YurestConfig.toast('Error: ' + e.message, 'error'); } }
 
     // ── Generar presupuesto PDF (modal preview + auto-print) ──────────
     // Mismo patrón que el mandato SEPA en contabilidad.html: primero se
@@ -1123,7 +1125,7 @@
         const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title><style>${printCss}</style></head><body>${docHtml}${autoprintScript}</body></html>`;
         const w = window.open('', '_blank', 'width=900,height=1100');
         if (!w) {
-            alert('El navegador bloqueó el popup. Permite ventanas emergentes para descargar el PDF.');
+            YurestConfig.toast('El navegador bloqueó el popup. Permite ventanas emergentes para descargar el PDF.', 'warning');
             return;
         }
         w.document.open();

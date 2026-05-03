@@ -270,7 +270,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar
             a.click();
             a.remove();
         } catch (err) {
-            alert('No se pudo abrir el ' + tipo + ': ' + (err.message || err));
+            YurestConfig.toast('No se pudo abrir el ' + tipo + ': ' + (err.message || err), 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = labelOrig;

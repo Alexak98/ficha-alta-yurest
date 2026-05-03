@@ -1603,7 +1603,7 @@
     function abrirDrive(idx) {
         const ficha   = fichasFiltradas[idx];
         const carpeta = (ficha['Carpeta Drive'] || ficha['carpeta_drive'] || '').toString().trim();
-        if (!carpeta) { alert('Esta ficha no tiene carpeta de Drive asignada.'); return; }
+        if (!carpeta) { YurestConfig.toast('Esta ficha no tiene carpeta de Drive asignada.', 'warning'); return; }
         const driveUrl = carpeta.startsWith('http')
             ? carpeta
             : 'https://drive.google.com/drive/u/1/folders/' + carpeta;
@@ -2055,6 +2055,7 @@
         btn.disabled    = true;
         btn.textContent = 'Eliminar';
         document.getElementById('confirm-del-overlay').classList.add('active');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('confirm-del-overlay');
         setTimeout(() => document.getElementById('del-confirm-input').focus(), 50);
     }
 
@@ -2089,6 +2090,7 @@
 
     function cerrarModalEliminar() {
         document.getElementById('confirm-del-overlay').classList.remove('active');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('confirm-del-overlay');
         fichaParaEliminar     = null;
         solicitudParaEliminar = null;
     }
@@ -2793,7 +2795,7 @@
     let _reenvioData = {};
 
     function reenviarSolicitud(solId, nombre, email, comercial, sociedad = '', accessToken = '') {
-        if (!email) { alert('Esta solicitud no tiene email registrado.'); return; }
+        if (!email) { YurestConfig.toast('Esta solicitud no tiene email registrado.', 'warning'); return; }
         _reenvioData = { solId, nombre, email, comercial, sociedad, accessToken };
 
         document.getElementById('reenvio-email-label').textContent = email;
@@ -2802,6 +2804,7 @@
         altInput.style.display = 'none';
         altInput.value = '';
         document.getElementById('reenvio-modal-overlay').classList.add('active');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('reenvio-modal-overlay');
     }
 
     function toggleReenvioInput(show) {
@@ -2812,6 +2815,7 @@
 
     function cerrarModalReenvio() {
         document.getElementById('reenvio-modal-overlay').classList.remove('active');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('reenvio-modal-overlay');
     }
 
     async function confirmarReenvio() {
@@ -2821,7 +2825,7 @@
             ? document.getElementById('reenvio-email-alt').value.trim()
             : email;
 
-        if (!emailDestino) { alert('Introduce un email alternativo.'); return; }
+        if (!emailDestino) { YurestConfig.toast('Introduce un email alternativo.', 'warning'); return; }
 
         cerrarModalReenvio();
 
@@ -2857,9 +2861,9 @@
                 })
             });
             if (!res.ok) throw new Error('Error ' + res.status);
-            alert(`✓ Email reenviado a ${emailDestino}`);
+            YurestConfig.toast(`✓ Email reenviado a ${emailDestino}`, 'success');
         } catch (err) {
-            alert('No se pudo reenviar el email: ' + err.message);
+            YurestConfig.toast('No se pudo reenviar el email: ' + err.message, 'error');
         }
     }
 

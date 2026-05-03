@@ -181,8 +181,16 @@
     const _pdfCache = new Map(); // pedidoId+tipo → { data, nombre }
     async function abrirPdfPedido(btn, pedidoId, tipo) {
         if (!pedidoId || !tipo) return;
+        // Re-entrancy guard: doble-click llamaba a la 2ª invocación cuando
+        // textContent ya era "Descargando…" → labelOrig se quedaba pegado y
+        // el finally restauraba el botón a "Descargando…" para siempre.
+        if (btn.dataset.busy === '1') return;
+        btn.dataset.busy = '1';
         const key = pedidoId + ':' + tipo;
-        const labelOrig = btn.dataset.label || btn.textContent;
+        // Solo capturamos el label original la PRIMERA vez (lo guardamos
+        // en dataset.label para sobrevivir a futuras llamadas).
+        if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+        const labelOrig = btn.dataset.label;
         try {
             let blob = _pdfCache.get(key);
             if (!blob || !blob.data) {
@@ -210,10 +218,11 @@
             a.click();
             a.remove();
         } catch (err) {
-            alert('No se pudo abrir el ' + tipo + ': ' + (err.message || err));
+            YurestConfig.toast('No se pudo abrir el ' + tipo + ': ' + (err.message || err), 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = labelOrig;
+            delete btn.dataset.busy;
         }
     }
     window.abrirPdfPedido = abrirPdfPedido;
@@ -391,7 +400,7 @@
             if (body && body.success === false) throw new Error((body.errores || ['Error']).join('; '));
             await cargar();
         } catch (err) {
-            alert('No se pudo marcar como enviado: ' + err.message);
+            YurestConfig.toast('No se pudo marcar como enviado: ' + err.message, 'error');
         }
     }
     window.confirmarMarcarEnviado = confirmarMarcarEnviado;

@@ -1143,13 +1143,18 @@
     }
     window.onMarcarCocinaCentral = onMarcarCocinaCentral;
 
-    function eliminarLocal(btn) {
+    async function eliminarLocal(btn) {
         const card = btn.closest('.local-card');
         // Comprobar si el local tiene algún dato relleno antes de pedir confirmación
         const tieneDatos = [...card.querySelectorAll('[data-field]')]
             .some(input => (input.type === 'checkbox' ? input.checked : (input.value || '').trim()));
-        if (tieneDatos && !confirm('Este local tiene datos rellenos. ¿Seguro que quieres eliminarlo?')) {
-            return;
+        if (tieneDatos) {
+            const ok = await YurestConfig.confirmDelete({
+                titulo: 'Eliminar local',
+                mensaje: 'Este local tiene datos rellenos. ¿Seguro que quieres eliminarlo?',
+                confirmTexto: 'Eliminar'
+            });
+            if (!ok) return;
         }
         card.remove();
         actualizarNumeracion();
@@ -2570,11 +2575,18 @@
         if (typeof actualizarEstadoNavSecciones === 'function') {
             setTimeout(actualizarEstadoNavSecciones, 0);
         }
-        if (_fichaAdjuntos.length === 0) {
+        // Tombstones: las marcadas _deleted no se enseñan, pero se conservan
+        // en el array hasta que la guardada del backend confirme. Si la
+        // guardada falla, el adjunto sigue en memoria — sólo se purga en
+        // el éxito (ver _purgarAdjuntosBorrados tras res.ok).
+        const visibles = _fichaAdjuntos
+            .map((adj, i) => ({ adj, i }))
+            .filter(p => !p.adj._deleted);
+        if (visibles.length === 0) {
             list.innerHTML = '<div class="ficha-adjuntos-empty">Sin documentos adjuntos</div>';
             return;
         }
-        list.innerHTML = _fichaAdjuntos.map((adj, i) => {
+        list.innerHTML = visibles.map(({ adj, i }) => {
             const isImg = adj.tipo && adj.tipo.startsWith('image/');
             const isPdf = adj.tipo === 'application/pdf';
             const icon  = isPdf
@@ -2607,12 +2619,12 @@
 
         Array.from(files).forEach(file => {
             if (!allowed.includes(file.type)) {
-                alert(`${file.name}: formato no admitido (solo PDF, PNG o JPG).`);
+                YurestConfig.toast(`${file.name}: formato no admitido (solo PDF, PNG o JPG).`, 'warning');
                 if (--pendientes === 0) event.target.value = '';
                 return;
             }
             if (file.size > maxSize) {
-                alert(`${file.name}: supera 5 MB y se omite.`);
+                YurestConfig.toast(`${file.name}: supera 5 MB y se omite.`, 'warning');
                 if (--pendientes === 0) event.target.value = '';
                 return;
             }
@@ -2632,7 +2644,7 @@
                 }
             };
             reader.onerror = () => {
-                alert(`No se pudo leer ${file.name}.`);
+                YurestConfig.toast(`No se pudo leer ${file.name}.`, 'error');
                 if (--pendientes === 0) event.target.value = '';
             };
             reader.readAsDataURL(file);
@@ -2641,15 +2653,22 @@
     window.agregarAdjuntosFicha = agregarAdjuntosFicha;
 
     async function eliminarFichaAdjunto(idx) {
-        if (!_fichaAdjuntos[idx]) return;
+        if (!_fichaAdjuntos[idx] || _fichaAdjuntos[idx]._deleted) return;
         const ok = await YurestConfig.confirmDelete({
             titulo: 'Eliminar adjunto',
             mensaje: `¿Eliminar el adjunto "${_fichaAdjuntos[idx].nombre}"?`,
             confirmTexto: 'Eliminar'
         });
         if (!ok) return;
-        _fichaAdjuntos.splice(idx, 1);
+        // Tombstone: marcamos en lugar de splice. Si la próxima guardada
+        // de ficha falla, el adjunto sigue en memoria y el render lo
+        // recuperará si el usuario reintenta. La purga real es en
+        // _purgarAdjuntosBorrados tras res.ok confirmado.
+        _fichaAdjuntos[idx]._deleted = true;
         _renderFichaAdjuntos();
+    }
+    function _purgarAdjuntosBorrados() {
+        _fichaAdjuntos = _fichaAdjuntos.filter(a => !a._deleted);
     }
     window.eliminarFichaAdjunto = eliminarFichaAdjunto;
 
@@ -2764,7 +2783,7 @@
 
             'Baja':           'No',
             'Estado':         'Rellenado',
-            'Adjuntos':       _fichaAdjuntos.slice(),
+            'Adjuntos':       _fichaAdjuntos.filter(a => !a._deleted),
             locales: [],
             'Módulos': []
         };
@@ -3080,7 +3099,12 @@
                     const storedId = stored['ID'] || stored['id'] || stored['ID Solicitud'] || stored['id_solicitud'] || null;
                     const trackedId = document.body.dataset.editingId || '';
                     if (storedId && trackedId && String(storedId) !== trackedId) {
-                        const ok = confirm('Otra pestaña abrió una ficha distinta. Si guardas ahora se sobrescribirán los datos de esta pestaña. ¿Continuar?');
+                        const ok = await YurestConfig.confirmDelete({
+                            titulo: 'Conflicto entre pestañas',
+                            mensaje: 'Otra pestaña abrió una ficha distinta. Si guardas ahora se sobrescribirán los datos de esta pestaña.',
+                            confirmTexto: 'Sobrescribir y guardar',
+                            cancelTexto: 'Cancelar'
+                        });
                         if (!ok) {
                             btn.disabled = false;
                             btn.textContent = 'Guardar';
@@ -3123,6 +3147,10 @@
                     btn.textContent = 'Guardar';
                     return;
                 }
+
+                // Backend confirmó: ahora sí podemos descartar los adjuntos
+                // marcados como tombstone — su borrado en BD ya está hecho.
+                _purgarAdjuntosBorrados();
 
                 const msg = _editId ? '✅ Ficha actualizada — pasa a la pestaña “Fichas”. Redirigiendo…'
                                     : '✅ Ficha guardada correctamente. Redirigiendo al listado…';
@@ -3278,10 +3306,13 @@
         document.getElementById('locales-container').innerHTML = '';
     }
 
-    function cancelar() {
-        if (confirm('¿Descartar todos los datos del formulario?')) {
-            window.location.href = 'lista.html';
-        }
+    async function cancelar() {
+        const ok = await YurestConfig.confirmDelete({
+            titulo: 'Descartar formulario',
+            mensaje: '¿Descartar todos los datos del formulario? Se perderá todo lo no guardado.',
+            confirmTexto: 'Descartar'
+        });
+        if (ok) window.location.href = 'lista.html';
     }
 
     function showStatus(msg, type) {

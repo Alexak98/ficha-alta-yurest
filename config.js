@@ -1103,6 +1103,65 @@
     }
 
     // ──────────────────────────────────────────────────────────
+    //  TOAST CENTRAL — sustituye alert() nativos en todo el portal
+    // ──────────────────────────────────────────────────────────
+    // Pintamos un host fijo en la esquina inferior derecha y apilamos
+    // toasts. Cada uno se desvanece a los `ms` ms (default 3500). Los de
+    // tipo 'error' duran 5500 por defecto. Llamada típica:
+    //     YurestConfig.toast('Pedido enviado', 'success');
+    //     YurestConfig.toast('No se pudo conectar', 'error');
+    function _injectToastStyles() {
+        if (document.getElementById('yurest-toast-style')) return;
+        const st = document.createElement('style');
+        st.id = 'yurest-toast-style';
+        st.textContent = `
+            #yurest-toast-host {
+                position: fixed; right: 16px; bottom: 16px; z-index: 100000;
+                display: flex; flex-direction: column; gap: 8px;
+                pointer-events: none;
+                font-family: var(--font-sans, 'Bw Modelica', system-ui, sans-serif);
+            }
+            .yurest-toast {
+                pointer-events: auto;
+                min-width: 240px; max-width: 380px;
+                padding: 11px 14px;
+                border-radius: 10px;
+                font-size: 13px; line-height: 1.4;
+                color: #0f172a; background: #fff;
+                border: 1.5px solid #e2e8f0;
+                box-shadow: 0 6px 24px rgba(15, 23, 42, .12);
+                opacity: 0; transform: translateY(8px);
+                transition: opacity .2s ease, transform .2s ease;
+            }
+            .yurest-toast.show { opacity: 1; transform: translateY(0); }
+            .yurest-toast.success { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
+            .yurest-toast.error   { border-color: #fecaca; background: #fff5f5; color: #b91c1c; }
+            .yurest-toast.warning { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+        `;
+        document.head.appendChild(st);
+    }
+    function toast(msg, tipo, ms) {
+        if (typeof document === 'undefined') return;
+        _injectToastStyles();
+        let host = document.getElementById('yurest-toast-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'yurest-toast-host';
+            document.body.appendChild(host);
+        }
+        const el = document.createElement('div');
+        el.className = 'yurest-toast' + (tipo ? ' ' + tipo : '');
+        el.textContent = String(msg == null ? '' : msg);
+        host.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        const dur = typeof ms === 'number' ? ms : (tipo === 'error' ? 5500 : 3500);
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 220);
+        }, dur);
+    }
+
+    // ──────────────────────────────────────────────────────────
     //  CACHÉ TTL DE BADGES (reduce egress de Supabase)
     // ──────────────────────────────────────────────────────────
     // actualizarBadgeX y los counters de notifications.js se llaman en
@@ -1543,6 +1602,7 @@
         limpiarTombstonesFichas,
         debugSinAsignar,
         actualizarBadgeA3,
+        toast,
         _badgeCacheGet,
         _badgeCacheSet,
         _badgeCacheInvalidateAll,
