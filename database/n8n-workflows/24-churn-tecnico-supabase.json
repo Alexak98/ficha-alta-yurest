@@ -454,13 +454,20 @@
     },
     {
       "parameters": {
-        "operation": "getAll",
-        "tableId": "churn_tecnico",
-        "returnAll": true,
-        "filterType": "none"
+        "method": "GET",
+        "url": "https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/churn_tecnico?select=id_organizacion,nivel,fecha_resumen",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
       "position": [
         128,
         1968
@@ -490,7 +497,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(item => {\n  delete item.json.respuesta_ia; // Eliminamos el campo específico\n  return item;\n});"
+        "jsCode": "// HTTP Request a PostgREST devuelve el body en el json del primer item\n// como un array ([row1, row2, ...]). Lo aplanamos a un item por fila\n// para que Respond to Webhook (allIncomingItems) reconstruya el array.\n// Antes este nodo borraba respuesta_ia — ahora la query ya no la pide.\nconst first = $input.first();\nconst body = first ? first.json : null;\nconst rows = Array.isArray(body) ? body : (body && Array.isArray(body.data) ? body.data : []);\nreturn rows.map(r => ({ json: r }));\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
