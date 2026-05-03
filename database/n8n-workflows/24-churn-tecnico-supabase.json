@@ -497,7 +497,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// HTTP Request a PostgREST devuelve el body en el json del primer item\n// como un array ([row1, row2, ...]). Lo aplanamos a un item por fila\n// para que Respond to Webhook (allIncomingItems) reconstruya el array.\n// Antes este nodo borraba respuesta_ia — ahora la query ya no la pide.\nconst first = $input.first();\nconst body = first ? first.json : null;\nconst rows = Array.isArray(body) ? body : (body && Array.isArray(body.data) ? body.data : []);\nreturn rows.map(r => ({ json: r }));\n"
+        "jsCode": "// Aplana los items entrantes a un item por fila — sea cual sea el shape\n// que entrega HTTP Request a PostgREST en esta versión de n8n:\n//   · A) un único item cuyo json es el array entero  → flatten\n//   · B) un único item cuyo json tiene { data:[...] } → flatten data\n//   · C) varios items ya splitados (uno por fila)    → as-is\n// Respond to Webhook (allIncomingItems) reconstruye el array para el front.\nconst items = $input.all();\nlet rows;\nif (items.length === 1 && Array.isArray(items[0].json)) {\n  rows = items[0].json;\n} else if (items.length === 1 && items[0].json && Array.isArray(items[0].json.data)) {\n  rows = items[0].json.data;\n} else {\n  rows = items.map(it => it.json).filter(j => j && typeof j === 'object');\n}\nreturn rows.map(r => ({ json: r }));\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
