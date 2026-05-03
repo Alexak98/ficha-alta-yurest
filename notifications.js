@@ -98,6 +98,10 @@
     // — solo necesitamos la longitud del array.
     async function countHardwareEnvios() {
         const YC = global.YurestConfig;
+        if (YC && YC._badgeCacheGet) {
+            const cached = YC._badgeCacheGet('hw_envios');
+            if (cached !== null) return cached;
+        }
         if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
         try {
             const url = YC.ENDPOINTS.hardwarePedidos
@@ -107,7 +111,9 @@
             if (!res.ok) return 0;
             const data = await res.json();
             const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
-            return lista.filter(p => p && p.estado === 'lista_envio').length;
+            const count = lista.filter(p => p && p.estado === 'lista_envio').length;
+            if (YC._badgeCacheSet) YC._badgeCacheSet('hw_envios', count);
+            return count;
         } catch (_) { return 0; }
     }
 
@@ -135,6 +141,10 @@
     // bajar varios MB a unos pocos KB en cada arranque de página.
     async function countProformasPendientes() {
         const YC = global.YurestConfig;
+        if (YC && YC._badgeCacheGet) {
+            const cached = YC._badgeCacheGet('pf_pend');
+            if (cached !== null) return cached;
+        }
         if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
         try {
             const url = YC.ENDPOINTS.hardwarePedidos
@@ -146,7 +156,9 @@
             const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
             // El workflow ya filtró por estado; pero por defensa filtramos
             // en cliente igualmente (workflows no actualizados verían 0).
-            return lista.filter(p => p && (p.estado === 'solicitada' || p.estado === 'pendiente_confirmar')).length;
+            const count = lista.filter(p => p && (p.estado === 'solicitada' || p.estado === 'pendiente_confirmar')).length;
+            if (YC._badgeCacheSet) YC._badgeCacheSet('pf_pend', count);
+            return count;
         } catch (_) { return 0; }
     }
 
@@ -611,7 +623,18 @@
     }
     function _onRefresh(fn) { if (typeof fn === 'function') _refreshHandlers.push(fn); }
 
-    global.YurestNotifications = { fetchAll, mountHeaderBell, renderInto, refresh, _onRefresh };
+    // Invalida la caché TTL de badges. Llamar tras acciones que cambian
+    // estado (grabar A3, marcar pedido enviado, crear/borrar proyecto…)
+    // para que la próxima lectura golpee la red en vez de servir un
+    // valor cacheado de hasta 60s.
+    function invalidate() {
+        const YC = global.YurestConfig;
+        if (YC && typeof YC._badgeCacheInvalidateAll === 'function') {
+            YC._badgeCacheInvalidateAll();
+        }
+    }
+
+    global.YurestNotifications = { fetchAll, mountHeaderBell, renderInto, refresh, invalidate, _onRefresh };
 
     // Auto-montaje cuando el DOM esté listo (sidebar.js lo referencia también).
     function autoMount() {

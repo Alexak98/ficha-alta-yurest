@@ -1103,6 +1103,45 @@
     }
 
     // ──────────────────────────────────────────────────────────
+    //  CACHÉ TTL DE BADGES (reduce egress de Supabase)
+    // ──────────────────────────────────────────────────────────
+    // actualizarBadgeX y los counters de notifications.js se llaman en
+    // cada navegación, golpeando /altas, /proyectos y /hardware/pedidos
+    // hasta 7 veces por carga. Con TTL en sessionStorage el badge se
+    // mantiene fresco y la red solo se golpea ~1 vez/minuto por cuenta.
+    // Tras una acción que cambia estado (grabar A3, mover proyecto…) el
+    // caller puede invocar YurestNotifications.invalidate() para forzar
+    // refetch en la próxima lectura.
+    const BADGE_CACHE_PREFIX = 'yurest_badge_v1_';
+    const BADGE_CACHE_TTL_MS = 60 * 1000;
+
+    function _badgeCacheGet(key) {
+        try {
+            const raw = sessionStorage.getItem(BADGE_CACHE_PREFIX + key);
+            if (!raw) return null;
+            const obj = JSON.parse(raw);
+            if (!obj || typeof obj.ts !== 'number') return null;
+            if (Date.now() - obj.ts > BADGE_CACHE_TTL_MS) return null;
+            return obj.value;
+        } catch (_) { return null; }
+    }
+    function _badgeCacheSet(key, value) {
+        try {
+            sessionStorage.setItem(BADGE_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), value }));
+        } catch (_) { /* quota llena: no crítico */ }
+    }
+    function _badgeCacheInvalidateAll() {
+        try {
+            const toRemove = [];
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const k = sessionStorage.key(i);
+                if (k && k.indexOf(BADGE_CACHE_PREFIX) === 0) toRemove.push(k);
+            }
+            toRemove.forEach(k => sessionStorage.removeItem(k));
+        } catch (_) {}
+    }
+
+    // ──────────────────────────────────────────────────────────
     //  BADGE "GRABAR EN A3" — pendientes de Contabilidad
     // ──────────────────────────────────────────────────────────
     // Cuenta fichas con mandato SEPA firmado pendientes de grabar en A3.
@@ -1111,6 +1150,12 @@
         try {
             const badge = document.getElementById('badge-a3');
             if (!badge) return;
+            const cached = _badgeCacheGet('a3');
+            if (cached !== null) {
+                badge.textContent = cached > 0 ? cached : '';
+                if (typeof window._actualizarSidebarBadgesGrupos === 'function') window._actualizarSidebarBadgesGrupos();
+                return;
+            }
             const res = await apiFetch(ENDPOINTS.altas, { method: 'GET' });
             if (!res.ok) return;
             const data = await res.json();
@@ -1127,6 +1172,7 @@
                 }
                 return !!(sepa && sepa.firma_base64);
             }).length;
+            _badgeCacheSet('a3', count);
             badge.textContent = count > 0 ? count : '';
             if (typeof window._actualizarSidebarBadgesGrupos === 'function') window._actualizarSidebarBadgesGrupos();
         } catch (_) { /* silencioso */ }
@@ -1251,6 +1297,12 @@
         try {
             const badge = document.getElementById('badge-sinasignar');
             if (!badge) return;
+            const cached = _badgeCacheGet('sinasignar');
+            if (cached !== null) {
+                badge.textContent = cached > 0 ? cached : '';
+                if (typeof window._actualizarSidebarBadgesGrupos === 'function') window._actualizarSidebarBadgesGrupos();
+                return;
+            }
 
             // Cache-bust para evitar que el navegador devuelva respuestas
             // viejas tras borrar una ficha.
@@ -1298,6 +1350,7 @@
                 const nombre = _extraerNombreFicha(a);
                 return nombre && !existentes.has(_normNombre(nombre));
             }).length;
+            _badgeCacheSet('sinasignar', count);
             badge.textContent = count > 0 ? count : '';
             if (typeof window._actualizarSidebarBadgesGrupos === 'function') window._actualizarSidebarBadgesGrupos();
         } catch (_) { /* silencioso: badge informativo */ }
@@ -1490,6 +1543,9 @@
         limpiarTombstonesFichas,
         debugSinAsignar,
         actualizarBadgeA3,
+        _badgeCacheGet,
+        _badgeCacheSet,
+        _badgeCacheInvalidateAll,
         a11yAbrirModal,
         a11yCerrarModal,
         logHistorial,
