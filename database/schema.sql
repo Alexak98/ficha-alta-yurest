@@ -169,26 +169,11 @@ CREATE TABLE locales (
 );
 
 -- =============================================
--- 3. PLANTILLAS DE PROYECTO
--- =============================================
-CREATE TABLE plantillas (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    nombre TEXT NOT NULL,
-    descripcion TEXT,
-    secciones JSONB NOT NULL DEFAULT '[]',
-    -- Estructura: [{ "nombre": "Sección", "tareas": ["Tarea 1", "Tarea 2"] }]
-
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- =============================================
--- 4. PROYECTOS DE IMPLEMENTACIÓN
+-- 3. PROYECTOS DE IMPLEMENTACIÓN
 -- =============================================
 CREATE TABLE proyectos (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ficha_id UUID REFERENCES fichas_alta(id) ON DELETE SET NULL,
-    plantilla_id UUID REFERENCES plantillas(id) ON DELETE SET NULL,
 
     cliente TEXT NOT NULL,
     implementador TEXT NOT NULL,
@@ -240,7 +225,7 @@ CREATE TABLE proyectos (
 );
 
 -- =============================================
--- 5. BAJAS (desvinculaciones de clientes)
+-- 4. BAJAS (desvinculaciones de clientes)
 -- =============================================
 CREATE TABLE bajas (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -261,7 +246,7 @@ CREATE TABLE bajas (
 );
 
 -- =============================================
--- 6. SOLICITUDES DE SERVICIO
+-- 5. SOLICITUDES DE SERVICIO
 -- =============================================
 CREATE TABLE solicitudes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -288,7 +273,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_solicitudes_access_token
     ON solicitudes(access_token) WHERE access_token IS NOT NULL;
 
 -- =============================================
--- 7. DISTRIBUCIÓN (asignaciones implementador → ficha)
+-- 6. DISTRIBUCIÓN (asignaciones implementador → ficha)
 -- =============================================
 CREATE TABLE distribucion (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -301,7 +286,7 @@ CREATE TABLE distribucion (
 );
 
 -- =============================================
--- 8. USUARIOS (autenticación)
+-- 7. USUARIOS (autenticación)
 -- =============================================
 CREATE TABLE usuarios (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -372,7 +357,6 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_fichas_updated      BEFORE UPDATE ON fichas_alta  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_proyectos_updated   BEFORE UPDATE ON proyectos    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_plantillas_updated  BEFORE UPDATE ON plantillas   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_bajas_updated       BEFORE UPDATE ON bajas        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_solicitudes_updated BEFORE UPDATE ON solicitudes  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
@@ -424,7 +408,6 @@ CREATE TRIGGER trg_solicitud_propagar_fecha
 -- =============================================
 ALTER TABLE fichas_alta  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE locales      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE plantillas   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE proyectos    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bajas        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE solicitudes  ENABLE ROW LEVEL SECURITY;
@@ -434,7 +417,6 @@ ALTER TABLE usuarios     ENABLE ROW LEVEL SECURITY;
 -- service_role (usado por n8n) mantiene acceso completo.
 CREATE POLICY "service_role_all" ON fichas_alta  FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all" ON locales      FOR ALL TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "service_role_all" ON plantillas   FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all" ON proyectos    FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all" ON bajas        FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_role_all" ON solicitudes  FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -445,22 +427,3 @@ CREATE POLICY "service_role_all" ON usuarios     FOR ALL TO service_role USING (
 -- (Por ausencia de políticas TO anon, RLS bloquea automáticamente.)
 -- Si en el futuro se necesita acceso de lectura limitado, añadir políticas
 -- explícitas TO anon con filtros USING (...) cuidadosos.
-
--- =============================================
--- DATOS INICIALES
--- =============================================
-
--- Plantilla default (coincide con data.js del frontend)
-INSERT INTO plantillas (id, nombre, descripcion, secciones) VALUES (
-    '00000000-0000-0000-0000-000000000001',
-    'Default',
-    'Plantilla estándar con sesiones, puesta en marcha y carga de datos',
-    '[
-        {"nombre": "Puesta en Marcha / Finalización", "tareas": ["Llamada de contacto", "Creación de Grupo Whatsapp", "Eliminar grupo de Whatsapp"]},
-        {"nombre": "Hardware", "tareas": []},
-        {"nombre": "Carga de Datos Yuload", "tareas": ["Carga - Cliente - OCR - Corp"]},
-        {"nombre": "Planificación de sesiones", "tareas": ["Planificacion", "Sesión de Bienvenida", "Modulo Compras", "Modulo Cocina", "Modulo Stock", "Modulo Financiero", "Modulo Checklist", "Modulo APPCC", "Modulo Auditorias", "Modulo Comunicación", "Modulo RRHH", "Modulo Cocina Produccion", "Modulo Almacén Central", "Modulo Gestor documental", "Módulo Analítica de ventas", "Módulo Dashboard dinamicos", "Módulo Firmas Digitales", "Sesiones Extra"]},
-        {"nombre": "Módulos terminados de implementar", "tareas": []}
-    ]'::jsonb
-)
-ON CONFLICT (id) DO NOTHING;
