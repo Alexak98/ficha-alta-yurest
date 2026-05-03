@@ -914,9 +914,15 @@ function showClientModal(client) {
       // El summary viene del webhook IA (n8n). Aunque el contenido se
       // genera por GPT, no lo tratamos como confiable: lo pasamos por
       // DOMPurify para neutralizar cualquier <img onerror>, <script>, etc.
+      // Si el CDN de DOMPurify no cargó (offline/CSP/blackout), pintamos
+      // texto plano — preferimos formato roto a XSS ejecutable.
       const limpio = limpiarMarkdownIA(result.summary);
-      const rawHtml = marked.parse(limpio);
-      el.innerHTML = (window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml);
+      if (window.DOMPurify) {
+        const rawHtml = marked.parse(limpio);
+        el.innerHTML = DOMPurify.sanitize(rawHtml);
+      } else {
+        el.textContent = limpio;
+      }
     }
     if (btn) {
       btn.setAttribute('data-summary', limpiarMarkdownIA(result.summary));

@@ -2591,7 +2591,19 @@
         return false;
     }
 
+    let _enviandoSolicitud = false;
     async function enviarSolicitud() {
+        // Lock re-entrante: el doble-click podía colar 2 envíos antes de
+        // llegar a btn.disabled = true (que se ejecuta tras varias
+        // validaciones con awaits intermedios). Crea 2 filas en BD con el
+        // mismo CIF y N+1 / N+2 de id. El finally libera siempre — sea
+        // validación fallida, error de red, o éxito.
+        if (_enviandoSolicitud) return;
+        _enviandoSolicitud = true;
+        try { await _enviarSolicitudImpl(); }
+        finally { _enviandoSolicitud = false; }
+    }
+    async function _enviarSolicitudImpl() {
         const sociedad  = document.getElementById('sol-sociedad').value.trim();
         const cif       = document.getElementById('sol-cif').value.trim().toUpperCase();
         const nombre    = document.getElementById('sol-nombre').value.trim();
