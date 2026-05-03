@@ -109,7 +109,42 @@ async function fetchClients() {
 }
 
 // Mapa id_organizacion → { nivel, fecha_resumen } desde la tabla churn_tecnico.
+//
+// Caché TTL en sessionStorage: el endpoint devuelve TODA la tabla (~150-200
+// filas) y, por cómo está hecho el workflow de n8n hoy, incluye la columna
+// respuesta_ia (texto markdown de GPT, varios KB por fila). Cada apertura
+// de la página descargaba ~1 MB sin razón — el front sólo usa nivel y
+// fecha_resumen para los chips del grid. Cacheamos 10 min: los niveles
+// sólo cambian cuando alguien regenera un resumen, y en ese caso
+// invalidamos manualmente desde applySummaryToClient().
+const CHURN_LEVELS_CACHE_KEY = 'yurest_churn_levels_v1';
+const CHURN_LEVELS_TTL_MS = 10 * 60 * 1000;
+
+function _readChurnLevelsCache() {
+  try {
+    const raw = sessionStorage.getItem(CHURN_LEVELS_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj.ts !== 'number' || !Array.isArray(obj.entries)) return null;
+    if (Date.now() - obj.ts > CHURN_LEVELS_TTL_MS) return null;
+    return new Map(obj.entries);
+  } catch { return null; }
+}
+function _writeChurnLevelsCache(map) {
+  try {
+    sessionStorage.setItem(CHURN_LEVELS_CACHE_KEY, JSON.stringify({
+      ts: Date.now(),
+      entries: [...map.entries()]
+    }));
+  } catch { /* quota: no crítico */ }
+}
+function invalidateChurnLevelsCache() {
+  try { sessionStorage.removeItem(CHURN_LEVELS_CACHE_KEY); } catch {}
+}
+
 async function fetchChurnLevels() {
+  const cached = _readChurnLevelsCache();
+  if (cached) return cached;
   try {
     const res = await fetch(CHURN_LEVELS_URL, { credentials: 'omit', cache: 'no-store' });
     if (!res.ok) return new Map();
@@ -123,6 +158,7 @@ async function fetchChurnLevels() {
         fechaResumen: r.fecha_resumen || null
       });
     }
+    _writeChurnLevelsCache(map);
     return map;
   } catch (e) {
     console.warn('No se pudo cargar churn levels:', e);
@@ -191,6 +227,9 @@ function renderChurnSummaryBlock(client) {
 function applySummaryToClient(client, result) {
   if (result.nivel != null && !Number.isNaN(result.nivel)) client.nivel = result.nivel;
   if (result.fechaResumen) client.fechaResumen = result.fechaResumen;
+  // Acabamos de cambiar (o confirmar) el nivel del cliente en BD: el caché
+  // local de churn_levels deja de ser fuente válida para futuras navegaciones.
+  invalidateChurnLevelsCache();
   // Refleja en la lista maestra (clients) para que futuros renders del grid
   // mantengan el valor aunque se vuelvan a aplicar filtros.
   const master = clients.find(c => c.id === client.id);

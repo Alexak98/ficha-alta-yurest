@@ -430,6 +430,27 @@ const EP = YurestConfig.ENDPOINTS.zendeskResumenMensual;
 const esc = YurestConfig.escHtml;
 const MES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+// Caché TTL en sessionStorage por mes — la respuesta es JSON grande
+// (resumen GPT + listado de tickets del mes). 30 min de TTL: suficiente
+// para que un usuario cambie de preset varias veces sin pegar a n8n.
+// El botón "Regenerar" (force=true) salta la caché y la sobrescribe.
+const RM_CACHE_PREFIX = 'yurest_resumen_mensual_v1_';
+const RM_CACHE_TTL_MS = 30 * 60 * 1000;
+function _rmCacheGet(month) {
+    try {
+        const raw = sessionStorage.getItem(RM_CACHE_PREFIX + month);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || typeof obj.ts !== 'number') return null;
+        if (Date.now() - obj.ts > RM_CACHE_TTL_MS) return null;
+        return obj.data;
+    } catch { return null; }
+}
+function _rmCacheSet(month, data) {
+    try { sessionStorage.setItem(RM_CACHE_PREFIX + month, JSON.stringify({ ts: Date.now(), data })); }
+    catch { /* quota: no crítico */ }
+}
+
 function openSidebar()  { document.getElementById('sidebar').classList.add('open');  document.getElementById('sidebar-overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 window.openSidebar = openSidebar; window.closeSidebar = closeSidebar;
@@ -492,11 +513,26 @@ async function generar(force) {
     document.getElementById('rs-empty').style.display   = 'none';
     document.getElementById('rs-content').style.display = 'none';
 
+    // Cache hit (sólo si no es regeneración forzada): pintamos sin red.
+    if (!force) {
+        const cached = _rmCacheGet(month);
+        if (cached) {
+            if (!cached.total || cached.total === 0) {
+                document.getElementById('rs-empty').style.display = 'block';
+            } else {
+                renderResumen(cached);
+            }
+            document.getElementById('rs-loading').style.display = 'none';
+            btn.disabled = false;
+            if (btnRegen) btnRegen.disabled = false;
+            return;
+        }
+    }
+
     try {
         const url = EP + (EP.includes('?') ? '&' : '?') +
             'month=' + encodeURIComponent(month) +
-            (force ? '&refresh=1' : '') +
-            '&_=' + Date.now();
+            (force ? '&refresh=1' : '');
         const res = await YurestConfig.apiFetch(url, { method: 'GET', signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
@@ -504,6 +540,7 @@ async function generar(force) {
             const errs = Array.isArray(data.errores) ? data.errores.join('; ') : 'Error desconocido';
             throw new Error(errs);
         }
+        _rmCacheSet(month, data);
         if (!data.total || data.total === 0) {
             document.getElementById('rs-empty').style.display = 'block';
             return;

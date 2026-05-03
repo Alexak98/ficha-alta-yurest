@@ -297,6 +297,29 @@
 const EP = YurestConfig.ENDPOINTS.zendeskResumenSemanal;
 const esc = YurestConfig.escHtml;
 
+// Caché TTL en sessionStorage por semana — la respuesta incluye el JSON
+// completo (resumen GPT + listado de tickets) y suele rondar 5-50 KB. Sin
+// caché cada cambio de preset disparaba un fetch nuevo a n8n y, vía caché
+// del propio workflow, una lectura completa de la fila en Supabase.
+// 30 min basta: las semanas cerradas no cambian, y la semana actual se
+// regenera al refrescar manualmente con F5 (no hay botón Regenerar aquí).
+const RS_CACHE_PREFIX = 'yurest_resumen_semanal_v1_';
+const RS_CACHE_TTL_MS = 30 * 60 * 1000;
+function _rsCacheGet(week) {
+    try {
+        const raw = sessionStorage.getItem(RS_CACHE_PREFIX + week);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || typeof obj.ts !== 'number') return null;
+        if (Date.now() - obj.ts > RS_CACHE_TTL_MS) return null;
+        return obj.data;
+    } catch { return null; }
+}
+function _rsCacheSet(week, data) {
+    try { sessionStorage.setItem(RS_CACHE_PREFIX + week, JSON.stringify({ ts: Date.now(), data })); }
+    catch { /* quota: no crítico */ }
+}
+
 function openSidebar()  { document.getElementById('sidebar').classList.add('open');  document.getElementById('sidebar-overlay').classList.add('open'); }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 window.openSidebar = openSidebar; window.closeSidebar = closeSidebar;
@@ -378,10 +401,24 @@ async function generar() {
     const _wOld = document.getElementById('rs-cache-warn');
     if (_wOld) _wOld.remove();
 
+    // Cache hit: servimos sin tocar la red.
+    const cached = _rsCacheGet(week);
+    if (cached) {
+        if (!cached.total || cached.total === 0) {
+            document.getElementById('rs-empty').style.display = 'block';
+            document.getElementById('rs-loading').style.display = 'none';
+            btn.disabled = false;
+            return;
+        }
+        renderResumen(cached);
+        document.getElementById('rs-loading').style.display = 'none';
+        btn.disabled = false;
+        return;
+    }
+
     try {
         const url = EP + (EP.includes('?') ? '&' : '?') +
-            'week=' + encodeURIComponent(week) +
-            '&_='   + Date.now();
+            'week=' + encodeURIComponent(week);
         const res = await YurestConfig.apiFetch(url, { method: 'GET', signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
@@ -389,6 +426,7 @@ async function generar() {
             const errs = Array.isArray(data.errores) ? data.errores.join('; ') : 'Error desconocido';
             throw new Error(errs);
         }
+        _rsCacheSet(week, data);
         if (!data.total || data.total === 0) {
             document.getElementById('rs-empty').style.display = 'block';
             return;
