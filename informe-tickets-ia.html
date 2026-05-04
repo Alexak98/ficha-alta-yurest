@@ -527,12 +527,12 @@
         }, 350);
     }
 
-    // Por defecto: este mes
+    // Por defecto: esta semana
     (function init() {
-        const { from, to } = rangoPreset('mes');
+        const { from, to } = rangoPreset('semana');
         document.getElementById('f-from').value = ymd(from);
         document.getElementById('f-to').value   = ymd(to);
-        marcarPresetActivo('mes');
+        marcarPresetActivo('semana');
     })();
 
     // Convierte la fecha de Date a [diaSemana 0..6 lunes-primero, hora 0..23]
