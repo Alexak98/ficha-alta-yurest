@@ -475,6 +475,39 @@ const INTEGRACIONES = [
         }
     },
     {
+        id: 'dstnet',
+        nombre: 'DSTnet',
+        desc: 'TPV para hostelería con API expuesta vía host/puerto y credenciales por restaurante.',
+        tag: 'estable',
+        inicial: 'DS',
+        c1: '#8b5cf6', c2: '#5b21b6',
+        doc: {
+            descripcion: 'DSTnet es un TPV para hostelería que expone su API en un host/puerto del local autenticado por usuario y contraseña. Los datos los facilita el distribuidor / administrador del sistema cuando el cliente no los tiene a mano.',
+            comoConectar: [
+                'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de DSTnet o al administrador del sistema.',
+                'El cliente reenvía la respuesta con los 4 datos de conexión (host, puerto, user id y password).',
+                'Configurar la integración en Yurest y validar catálogo y ventas en sincronización inicial.'
+            ],
+            camposRequeridos: [
+                { k: 'Host',     v: 'IP pública o dominio del servidor DSTnet del local.' },
+                { k: 'Puerto',   v: 'Puerto TCP expuesto por el servidor.' },
+                { k: 'User ID',  v: 'Usuario con permisos de API sobre el TPV.' },
+                { k: 'Password', v: 'Contraseña asociada al user id anterior.' }
+            ],
+            datosSincronizados: [
+                'Catálogo de productos.',
+                'Tickets y pagos.',
+                'Cierres de caja.'
+            ],
+            limitaciones: [
+                'Si la IP del local no es fija, la integración se cae cuando cambie y hay que actualizar el host.',
+                'Los datos no son autoservicio: si el cliente no los tiene, debe solicitarlos a su distribuidor de DSTnet o al administrador del sistema.'
+            ],
+            plantillaEmail: 'Buenos días,\n\nDesde el área de Soporte Técnico de Yurest, estaremos realizando una integración con su TPV DSTnet. Para avanzar con este proceso, necesitamos que nos proporcionen la siguiente información de conexión:\n\n• Host:\n• Puerto:\n• user id:\n• password:\n\nEn caso de no contar con estos datos, pueden solicitarlos directamente a su distribuidor o al administrador del sistema correspondiente.\nUna vez recibida esta información, procederemos con la conexión de forma inmediata.\n\nQuedamos atentos a su respuesta,\nGracias',
+            contacto: { nombre: 'Soporte DSTnet', web: 'https://www.dstnet.es' }
+        }
+    },
+    {
         id: 'glop',
         nombre: 'Glop',
         desc: 'Software de control de sala, cocina, pedidos y delivery.',

@@ -1,0 +1,985 @@
+<zd-html-block>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentación de integraciones</title>
+<style>
+    *, *::before, *::after { box-sizing:border-box }
+    .yu-int-root { margin:0;padding:0;color:#1e293b;background:#f8fafc;font-size:14px;line-height:1.45;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    }
+    .yu-int-root a { color:inherit }
+
+    .page-header {
+        background:#fff;border-bottom:1.5px solid #e2e8f0;
+        padding:18px 24px;display:flex;align-items:center;gap:14px;
+    }
+    .page-header h1 { font-size:1.05rem;font-weight:800;color:#0f172a;margin:0;letter-spacing:-.01em }
+
+    .page-content { padding:24px;max-width:1200px;margin:0 auto }
+    .page-sub { font-size:.86rem;color:#64748b;margin:0 0 14px }
+
+    .toolbar-search { margin:18px 0 16px }
+    .search-wrap { position:relative;max-width:380px }
+    .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+    .search-input {
+        width:100%;padding:9px 36px;font-family:inherit;font-size:.88rem;color:#1e293b;
+        background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;transition:border-color .15s;
+    }
+    .search-input:focus { outline:none;border-color:#fc5858 }
+
+    .integraciones-wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden }
+    .int-row {
+        display:flex;align-items:center;gap:14px;
+        padding:14px 18px;border-bottom:1px solid #f1f5f9;transition:background .12s;
+    }
+    .int-row:last-child { border-bottom:0 }
+    .int-row:hover      { background:#fafafa }
+    .int-icon {
+        flex:0 0 44px;width:44px;height:44px;border-radius:10px;
+        background:linear-gradient(135deg, var(--c1, #fc5858), var(--c2, #c62828));
+        color:#fff;font-weight:800;font-size:1.05rem;
+        display:flex;align-items:center;justify-content:center;
+        letter-spacing:.02em;user-select:none;
+        position:relative;overflow:hidden;border:1px solid transparent;
+    }
+    .int-icon-img { display:none;width:100%;height:100%;object-fit:contain;padding:6px }
+    .int-icon.with-img                  { background:#fff;border-color:#e2e8f0 }
+    .int-icon.with-img .int-icon-letter { display:none }
+    .int-icon.with-img .int-icon-img    { display:block }
+    .int-meta { flex:1;min-width:0 }
+    .int-meta-name { display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.95rem;font-weight:700;color:#0f172a }
+    .int-meta-tag {
+        font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+        padding:2px 7px;border-radius:999px;background:#dcfce7;color:#15803d;
+    }
+    .int-meta-tag.beta { background:#fef3c7;color:#b45309 }
+    .int-meta-tag.no   { background:#fee2e2;color:#991b1b }
+    .int-meta-desc { font-size:.82rem;color:#64748b;margin-top:2px;line-height:1.4 }
+    .int-action {
+        flex:0 0 auto;padding:8px 16px;font-size:.84rem;font-weight:700;
+        border-radius:9px;cursor:pointer;font-family:inherit;
+        background:#fff;color:#334155;border:1.5px solid #e2e8f0;
+        display:inline-flex;align-items:center;gap:6px;
+        transition:background .12s,border-color .12s,color .12s;
+    }
+    .int-action:hover { background:#fc5858;border-color:#fc5858;color:#fff }
+    .int-action svg   { transition:transform .12s }
+    .int-action:hover svg { transform:translateX(2px) }
+
+    .empty-search { padding:40px 20px;text-align:center;color:#94a3b8;font-size:.88rem }
+
+    .doc-overlay {
+        position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:900;
+        display:none;align-items:center;justify-content:center;padding:20px;
+    }
+    .doc-overlay.open { display:flex }
+    .doc-modal {
+        background:#fff;border-radius:14px;width:100%;max-width:760px;
+        max-height:88vh;display:flex;flex-direction:column;
+        box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;
+    }
+    .doc-header {
+        padding:20px 24px;display:flex;align-items:center;gap:14px;
+        border-bottom:1px solid #f1f5f9;background:linear-gradient(180deg, #fff, #f8fafc);
+    }
+    .doc-header-icon {
+        flex:0 0 56px;width:56px;height:56px;border-radius:14px;
+        background:linear-gradient(135deg, var(--c1, #fc5858), var(--c2, #c62828));
+        color:#fff;font-weight:800;font-size:1.4rem;
+        display:flex;align-items:center;justify-content:center;
+        position:relative;overflow:hidden;border:1px solid transparent;
+    }
+    .doc-header-icon-img { display:none;width:100%;height:100%;object-fit:contain;padding:8px }
+    .doc-header-icon.with-img                         { background:#fff;border-color:#e2e8f0 }
+    .doc-header-icon.with-img .doc-header-icon-letter { display:none }
+    .doc-header-icon.with-img .doc-header-icon-img    { display:block }
+    .doc-header-meta { flex:1;min-width:0 }
+    .doc-header-name { font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 }
+    .doc-header-desc { font-size:.84rem;color:#64748b;margin:3px 0 0;line-height:1.4 }
+    .doc-close {
+        flex:0 0 36px;width:36px;height:36px;border-radius:10px;
+        border:1.5px solid #e2e8f0;background:#fff;color:#64748b;
+        font-size:1.1rem;font-family:inherit;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;
+        transition:background .12s, color .12s, border-color .12s;
+    }
+    .doc-close:hover { background:#fee2e2;border-color:#fecaca;color:#dc2626 }
+
+    .doc-body { flex:1;overflow-y:auto;padding:20px 24px 24px }
+    .doc-section { margin-bottom:18px }
+    .doc-section:last-child { margin-bottom:0 }
+    .doc-section-title {
+        display:flex;align-items:center;gap:7px;
+        font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+        color:#64748b;margin-bottom:8px;
+    }
+    .doc-section-title svg { stroke:#94a3b8 }
+    .doc-section-content { font-size:.88rem;color:#334155;line-height:1.55 }
+    .doc-section-content p { margin:0 0 8px }
+    .doc-section-content p:last-child { margin-bottom:0 }
+    .doc-section-content ul { margin:0;padding-left:20px }
+    .doc-section-content li { margin-bottom:4px }
+    .doc-section-content strong { color:#0f172a }
+    .doc-section-content code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size:.78rem;background:#f1f5f9;color:#475569;padding:1px 6px;border-radius:5px;
+    }
+    .doc-section-content a { color:#fc5858;text-decoration:none;font-weight:600 }
+    .doc-section-content a:hover { text-decoration:underline }
+
+    .doc-fields { background:#fafbfc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px }
+    .doc-field { display:flex;gap:12px;padding:6px 0;border-bottom:1px dashed #e2e8f0 }
+    .doc-field:last-child { border-bottom:0 }
+    .doc-field-key { flex:0 0 130px;font-size:.78rem;font-weight:700;color:#475569 }
+    .doc-field-val { flex:1;font-size:.82rem;color:#0f172a }
+
+    .doc-tplmail-wrap { position:relative;background:#0f172a;border-radius:10px;overflow:hidden }
+    .doc-tplmail {
+        color:#e2e8f0;margin:0;padding:36px 16px 14px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size:.78rem;line-height:1.5;
+        white-space:pre-wrap;word-break:break-word;background:transparent;border:0;
+    }
+    .doc-tplmail-copy {
+        position:absolute;top:8px;right:8px;
+        padding:5px 10px;font-size:.7rem;font-weight:700;
+        background:#1e293b;color:#cbd5e1;border:1px solid #334155;
+        border-radius:7px;cursor:pointer;font-family:inherit;
+        display:inline-flex;align-items:center;gap:5px;
+        transition:background .12s,color .12s,border-color .12s;z-index:1;
+    }
+    .doc-tplmail-copy:hover { background:#334155;color:#fff;border-color:#64748b }
+    .doc-tplmail-copy.copied { background:#15803d;color:#fff;border-color:#15803d }
+
+    @media (max-width: 640px) {
+        .int-row { flex-wrap:wrap }
+        .int-action { width:100%;justify-content:center }
+        .doc-modal { max-height:96vh }
+        .doc-header { padding:16px 18px }
+        .doc-body   { padding:16px 18px 20px }
+        .doc-field-key { flex-basis:100px }
+    }
+</style>
+
+<div class="yu-int-root">
+    <div class="page-header">
+        <h1>Documentación de integraciones — Yurest</h1>
+    </div>
+    <div class="page-content">
+        <p class="page-sub">
+            Cómo conectar Yurest con cada TPV. Pulsa cualquier integración para ver los pasos, datos requeridos y contacto de soporte.
+        </p>
+        <div class="toolbar-search">
+            <div class="search-wrap">
+                <svg aria-hidden="true" class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="f-q" class="search-input" type="search" placeholder="Buscar integración…" oninput="renderLista()">
+            </div>
+        </div>
+        <div class="integraciones-wrap" id="lista-wrap"></div>
+    </div>
+
+    <div class="doc-overlay" id="doc-overlay" onclick="if (event.target === this) cerrarDoc()">
+        <div class="doc-modal" role="dialog" aria-modal="true" aria-labelledby="doc-name">
+            <div class="doc-header">
+                <div class="doc-header-icon" id="doc-icon">
+                    <span class="doc-header-icon-letter" id="doc-icon-letter">—</span>
+                    <img class="doc-header-icon-img" id="doc-icon-img" alt="" onload="this.parentNode.classList.add('with-img')" onerror="tpvLogoFallback(this)">
+                </div>
+                <div class="doc-header-meta">
+                    <h3 class="doc-header-name" id="doc-name">—</h3>
+                    <p class="doc-header-desc" id="doc-desc">—</p>
+                </div>
+                <button class="doc-close" onclick="cerrarDoc()" aria-label="Cerrar">×</button>
+            </div>
+            <div class="doc-body" id="doc-body"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    function escHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Si quieres logos: sube los archivos al CDN/host de tu portal y cambia
+    // LOGO_BASE por la URL absoluta donde estén (ej. "https://files.yurest.com/logos/tpv/").
+    // Si lo dejas vacío, todos los TPV se renderizan con el avatar de iniciales.
+    const LOGO_BASE = '';
+    const LOGO_EXTS = ['png', 'svg', 'jpeg', 'jpg', 'webp'];
+
+    function tpvLogoFallback(img) {
+        const tried = parseInt(img.dataset.tried || '0', 10) + 1;
+        if (!LOGO_BASE || tried >= LOGO_EXTS.length) {
+            img.style.display = 'none';
+            return;
+        }
+        img.dataset.tried = String(tried);
+        img.src = img.src.replace(/\.[^.\/]+$/, '.' + LOGO_EXTS[tried]);
+    }
+
+    const INTEGRACIONES = [
+        {
+            id: 'agora', nombre: 'Ágora',
+            desc: 'Software de gestión integral para hostelería.',
+            tag: 'estable', inicial: 'AG', c1: '#ef4444', c2: '#7f1d1d',
+            doc: {
+                descripcion: 'Ágora es uno de los TPV más extendidos en España. La integración con Yurest permite leer ventas, productos, familias, mesas y empleados directamente de su base de datos.',
+                comoConectar: [
+                    'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de Ágora.',
+                    'El cliente reenvía la respuesta del distribuidor con los 3 bloques de datos (clave API, URL del servidor con IP+puerto, usuario y contraseña).',
+                    'Confirmar que la IP fija del local responde desde fuera al puerto indicado (sin firewall que lo bloquee).',
+                    'Crear la integración en el panel de Yurest (sección Integraciones → Conectar Ágora) introduciendo los datos.',
+                    'Hacer un primer pull de catálogo y verificar que los productos y familias entran sincronizados antes de habilitar el flujo de ventas.'
+                ],
+                camposRequeridos: [
+                    { k: 'Clave de acceso / API token', v: 'Se obtiene desde **Ágora → Módulos Adicionales**.' },
+                    { k: 'URL del servidor',            v: 'IP fija del local + puerto (ej. `192.168.1.10:3050`).' },
+                    { k: 'Usuario y contraseña',        v: 'Credenciales con permisos de lectura sobre la BD del TPV.' }
+                ],
+                datosSincronizados: [
+                    'Productos, familias y precios.',
+                    'Tickets de venta con líneas y forma de pago.',
+                    'Empleados / camareros (para imputación de ventas).',
+                    'Mesas y zonas (cuando aplica).',
+                    'Cierres de caja diarios.'
+                ],
+                limitaciones: [
+                    'Sólo soportamos versiones recientes de Ágora (2020+). Versiones más antiguas requieren actualizar primero.',
+                    'La integración es de SOLO LECTURA: Yurest no escribe nada en la BD del TPV.',
+                    'Requiere IP fija del local — si el cliente tiene IP dinámica, hay que configurar DDNS o VPN.'
+                ],
+                contacto: { nombre: 'Soporte Ágora', web: 'https://www.agorapos.com' },
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Ágora. Por eso, necesito los siguientes datos:\n\n• Clave de acceso / API token (Ágora - Módulos Adicionales)\n• URL del servidor (IP fija del local e incluir puerto)\n• Usuario y contraseña\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Ágora con Yurest.\n\nGracias.'
+            }
+        },
+        {
+            id: 'bdp', nombre: 'BDP',
+            desc: 'TPV con sincronización vía API privada del fabricante.',
+            tag: 'estable', inicial: 'BD', c1: '#0ea5e9', c2: '#0369a1',
+            doc: {
+                descripcion: 'BDP expone su API a través del módulo Weblink Rest API. Yurest la consume periódicamente para mantener catálogo y ventas al día. Requiere infraestructura de red en el local del cliente: IP pública fija, puerto abierto en router y firewall de Windows.',
+                comoConectar: [
+                    'Verificar con el cliente / distribuidor que tiene contratado el módulo Weblink Rest API en BDP.',
+                    'Pedir IP pública FIJA del local (no dinámica) y un puerto abierto en el router para acceso externo.',
+                    'Habilitar ese mismo puerto en el firewall de Windows del equipo donde corre BDP.',
+                    'Pedir Usuario y Contraseña de Weblink al cliente o al distribuidor.',
+                    'Configurar la integración en Yurest y lanzar la primera sincronización en modo "test" para verificar.'
+                ],
+                camposRequeridos: [
+                    { k: 'IP pública fija',    v: 'IP pública FIJA contratada del local. Si es dinámica la integración se cae cada vez que cambie.' },
+                    { k: 'Puerto',             v: 'Puerto abierto en el router y habilitado en el firewall de Windows.' },
+                    { k: 'Usuario Weblink',    v: 'Usuario del módulo Weblink Rest API.' },
+                    { k: 'Contraseña Weblink', v: 'Contraseña del usuario Weblink.' }
+                ],
+                datosSincronizados: [
+                    'Productos y precios.',
+                    'Tickets cerrados.',
+                    'Movimientos de caja.'
+                ],
+                limitaciones: [
+                    'Requiere IP pública FIJA — con IP dinámica la integración deja de pingear cada vez que el router renueva.',
+                    'Requiere abrir puerto en router + firewall de Windows: si el cliente cambia de equipo o reinstala Windows hay que rehacer la apertura.',
+                    'Sin webhook: la sincronización es por polling (cada 5-15 min según volumen).'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV BDP. Para ello necesito lo siguiente:\n\n• Tener contratado el módulo Weblink Rest API.\n• IP pública fija contratada.\n• Puerto de acceso abierto en el router.\n• Ese mismo puerto habilitado también en el firewall de Windows.\n• Usuario de Weblink.\n• Contraseña de Weblink.\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes BDP con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Soporte BDP', web: 'https://www.bdpsoftware.com' }
+            }
+        },
+        {
+            id: 'camarero10', nombre: 'Camarero10',
+            desc: 'TPV cloud para hostelería con API por dominio del cliente.',
+            tag: 'estable', inicial: 'C10', c1: '#dc2626', c2: '#7f1d1d',
+            doc: {
+                descripcion: 'Camarero10 es un TPV cloud español. Cada cliente tiene su propio subdominio (ej. cliente.camarero10.com) y la integración con Yurest se autentica con usuario + contraseña sobre ese dominio. Los datos los facilita el distribuidor de Camarero10 si el cliente no los tiene a mano.',
+                comoConectar: [
+                    'Pedir al cliente el dominio de su instancia de Camarero10.',
+                    'Pedir usuario y contraseña con permisos de API; si no los tiene, debe solicitarlos a su distribuidor de Camarero10.',
+                    'Configurar la integración en Yurest y validar catálogo y ventas en sincronización inicial.'
+                ],
+                camposRequeridos: [
+                    { k: 'Dominio',    v: 'Subdominio del cliente en Camarero10 (ej. cliente.camarero10.com).' },
+                    { k: 'Usuario',    v: 'Usuario con acceso a la API del TPV.' },
+                    { k: 'Contraseña', v: 'Contraseña asociada al usuario anterior.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo de productos.',
+                    'Tickets y pagos.',
+                    'Cierres de caja.'
+                ],
+                limitaciones: [
+                    'Si el cliente no tiene los datos a mano, debe solicitarlos a su distribuidor de Camarero10.',
+                    'Si el cliente cambia la contraseña del usuario integración, la sincronización se cae hasta que nos pase la nueva.'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Camarero10. Por eso, necesito los siguientes datos de conexión:\n\n• Dominio\n• Usuario\n• Contraseña\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Camarero10 con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Soporte Camarero10', web: 'https://www.camarero10.com' }
+            }
+        },
+        {
+            id: 'central_cash', nombre: 'Central Cash',
+            desc: 'TPV en catálogo, documentación pendiente de detallar.',
+            tag: 'estable', inicial: 'CC', c1: '#0891b2', c2: '#155e75',
+            doc: {
+                descripcion: 'Central Cash forma parte del catálogo de TPV con los que Yurest se integra. La ficha técnica (campos requeridos, flujo de conexión y plantilla de email al distribuidor) queda pendiente de detallar — se actualizará en cuanto se documente.',
+                contacto: { nombre: 'Soporte Central Cash', web: 'https://www.centralcash.com' }
+            }
+        },
+        {
+            id: 'cuiner', nombre: 'Cuiner',
+            desc: 'TPV cloud con API REST y token por restaurante.',
+            tag: 'estable', inicial: 'CU', c1: '#f59e0b', c2: '#b45309',
+            doc: {
+                descripcion: 'Cuiner es un TPV cloud, así que la integración va por API REST autenticada con un token único por restaurante. No hace falta acceso al equipo físico del cliente.',
+                comoConectar: [
+                    'El cliente entra en su área de Cuiner → Integraciones y genera un token nuevo dándole permisos de lectura.',
+                    'Nos lo pasa por canal seguro (no por email plano).',
+                    'Lo introducimos en la configuración de la integración en Yurest.',
+                    'Sincronización inicial automática.'
+                ],
+                camposRequeridos: [
+                    { k: 'Token API', v: 'Cadena larga generada por el cliente desde su dashboard de Cuiner.' }
+                ],
+                datosSincronizados: [
+                    'Productos y modificadores.',
+                    'Tickets, pagos y propinas.',
+                    'Empleados.'
+                ],
+                limitaciones: [
+                    'El token se puede revocar en cualquier momento desde el panel del cliente — si lo hace sin avisar, la integración se cae.'
+                ],
+                contacto: { nombre: 'Soporte Cuiner', email: 'soporte@cuiner.com' }
+            }
+        },
+        {
+            id: 'dstnet', nombre: 'DSTnet',
+            desc: 'TPV para hostelería con API expuesta vía host/puerto y credenciales por restaurante.',
+            tag: 'estable', inicial: 'DS', c1: '#8b5cf6', c2: '#5b21b6',
+            doc: {
+                descripcion: 'DSTnet es un TPV para hostelería que expone su API en un host/puerto del local autenticado por usuario y contraseña. Los datos los facilita el distribuidor / administrador del sistema cuando el cliente no los tiene a mano.',
+                comoConectar: [
+                    'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de DSTnet o al administrador del sistema.',
+                    'El cliente reenvía la respuesta con los 4 datos de conexión (host, puerto, user id y password).',
+                    'Configurar la integración en Yurest y validar catálogo y ventas en sincronización inicial.'
+                ],
+                camposRequeridos: [
+                    { k: 'Host',     v: 'IP pública o dominio del servidor DSTnet del local.' },
+                    { k: 'Puerto',   v: 'Puerto TCP expuesto por el servidor.' },
+                    { k: 'User ID',  v: 'Usuario con permisos de API sobre el TPV.' },
+                    { k: 'Password', v: 'Contraseña asociada al user id anterior.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo de productos.',
+                    'Tickets y pagos.',
+                    'Cierres de caja.'
+                ],
+                limitaciones: [
+                    'Si la IP del local no es fija, la integración se cae cuando cambie y hay que actualizar el host.',
+                    'Los datos no son autoservicio: si el cliente no los tiene, debe solicitarlos a su distribuidor de DSTnet o al administrador del sistema.'
+                ],
+                plantillaEmail: 'Buenos días,\n\nDesde el área de Soporte Técnico de Yurest, estaremos realizando una integración con su TPV DSTnet. Para avanzar con este proceso, necesitamos que nos proporcionen la siguiente información de conexión:\n\n• Host:\n• Puerto:\n• user id:\n• password:\n\nEn caso de no contar con estos datos, pueden solicitarlos directamente a su distribuidor o al administrador del sistema correspondiente.\nUna vez recibida esta información, procederemos con la conexión de forma inmediata.\n\nQuedamos atentos a su respuesta,\nGracias',
+                contacto: { nombre: 'Soporte DSTnet', web: 'https://www.dstnet.es' }
+            }
+        },
+        {
+            id: 'glop', nombre: 'Glop',
+            desc: 'Software de control de sala, cocina, pedidos y delivery.',
+            tag: 'estable', inicial: 'GL', c1: '#10b981', c2: '#047857',
+            doc: {
+                descripcion: 'Glop es un TPV potente con módulo cloud (Glop Connect) que expone los datos del local. Sin Glop Connect instalado, la integración no es posible.',
+                comoConectar: [
+                    'Verificar con el cliente que tiene el módulo **Glop Connect** instalado y activo (sin él no hay API).',
+                    'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de Glop.',
+                    'El cliente reenvía la respuesta del distribuidor con usuario y contraseña.',
+                    'Crear la integración en Yurest introduciendo los datos.',
+                    'Verificar el primer pull de catálogo y ventas.'
+                ],
+                camposRequeridos: [
+                    { k: 'Usuario',    v: 'Usuario emitido por Glop Connect (no es el usuario humano del backoffice).' },
+                    { k: 'Contraseña', v: 'Contraseña asociada al usuario anterior.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo (productos, familias, modificadores).',
+                    'Ventas y devoluciones.',
+                    'Cierres de caja.'
+                ],
+                limitaciones: [
+                    'Sin **Glop Connect** instalado no hay integración posible — el TPV aislado no expone API.',
+                    'Si el cliente tiene varios establecimientos bajo la misma licencia, las credenciales son por establecimiento.'
+                ],
+                contacto: { nombre: 'Soporte Glop', web: 'https://www.glop.es' },
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Glop. Por eso, necesito los siguientes datos:\n\n• Usuario\n• Contraseña\n\nImportante: para obtener estos datos es necesario tener instalado el módulo Glop Connect.\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Glop con Yurest.\n\nGracias.'
+            }
+        },
+        {
+            id: 'hiopos', nombre: 'Hiopos',
+            desc: 'Solución global para restaurantes (ICG Software).',
+            tag: 'estable', inicial: 'HI', c1: '#a855f7', c2: '#6b21a8',
+            doc: {
+                descripcion: 'Hiopos (de ICG Software) es uno de los TPV más extendidos. La integración con Yurest se autentica con un usuario/contraseña del TPV + 4 códigos de exportación que el cliente o su distribuidor configura previamente en Hiopos para indicar qué entidades exponer (artículos, tickets, empleados y establecimiento).',
+                comoConectar: [
+                    'Pedir al cliente o a su distribuidor que configure en Hiopos las exportaciones de Artículos, Tickets, Empleados y Establecimiento, anotando el código que asigne a cada una.',
+                    'Pedir el user id y la contraseña con permiso para consumir esas exportaciones.',
+                    'El cliente nos pasa los 6 valores (user, pass, 4 códigos).',
+                    'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
+                ],
+                camposRequeridos: [
+                    { k: 'User ID',                            v: 'Usuario del TPV / del módulo de exportación de Hiopos.' },
+                    { k: 'Password',                           v: 'Contraseña asociada al user id anterior.' },
+                    { k: 'Código exportación Artículos',       v: 'Identificador de la exportación de catálogo en Hiopos.' },
+                    { k: 'Código exportación Tickets',         v: 'Identificador de la exportación de tickets.' },
+                    { k: 'Código exportación Empleados',       v: 'Identificador de la exportación de empleados.' },
+                    { k: 'Código exportación Establecimiento', v: 'Identificador de la exportación a nivel de establecimiento.' }
+                ],
+                datosSincronizados: [
+                    'Productos y familias.',
+                    'Tickets y formas de pago.',
+                    'Empleados y centros de trabajo.'
+                ],
+                limitaciones: [
+                    'Si el cliente no tiene los códigos de exportación a mano, debe solicitarlos a su distribuidor o al administrador del sistema.',
+                    'Si el distribuidor reconfigura las exportaciones en Hiopos, los códigos pueden cambiar y la sincronización deja de pingear hasta que nos pasen los nuevos.'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Hiopos. Por eso, necesito los siguientes datos de conexión:\n\n• User ID\n• Password\n\nY los siguientes códigos de exportación:\n\n• Artículos\n• Tickets\n• Empleados\n• Establecimiento\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Hiopos con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Soporte ICG / Hiopos', web: 'https://www.icg.es' }
+            }
+        },
+        {
+            id: 'hosteltactil', nombre: 'Hosteltáctil',
+            desc: 'TPV con base de datos en SQL Server. Integración por servidor + BD.',
+            tag: 'estable', inicial: 'HT', c1: '#f97316', c2: '#9a3412',
+            doc: {
+                descripcion: 'Hosteltáctil corre típicamente con SQL Server por debajo. La integración accede a esa BD para leer ventas y catálogo.',
+                comoConectar: [
+                    'Pasar al cliente la plantilla de email (sección "Plantilla email al cliente" más abajo) para que la envíe a su distribuidor de Hosteltáctil.',
+                    'El cliente reenvía la respuesta del distribuidor con los 5 datos de conexión.',
+                    'Configurar el acceso al SQL Server del local desde fuera (firewall, VPN o port forwarding).',
+                    'Crear la integración en Yurest con servidor, puerto, BD, user ID y password.',
+                    'Verificar el primer pull de catálogo y ventas.'
+                ],
+                camposRequeridos: [
+                    { k: 'Servidor',      v: 'IP fija o nombre del host donde corre el SQL Server.' },
+                    { k: 'Puerto',        v: 'Puerto del SQL Server (habitualmente `1433`).' },
+                    { k: 'Base de datos', v: 'Nombre de la BD del local en Hosteltáctil.' },
+                    { k: 'User ID',       v: 'Usuario SQL con permisos de lectura (SELECT) sobre las tablas del TPV.' },
+                    { k: 'Password',      v: 'Contraseña del usuario anterior.' }
+                ],
+                datosSincronizados: [
+                    'Productos, familias, precios.',
+                    'Tickets con líneas.',
+                    'Movimientos de caja.'
+                ],
+                limitaciones: [
+                    'Acceso al SQL Server depende del distribuidor — algunos no lo dan o lo cobran aparte.',
+                    'Requiere IP fija del local — si el cliente tiene IP dinámica, hay que configurar DDNS o VPN.'
+                ],
+                contacto: { nombre: 'Soporte Hosteltáctil', web: 'https://www.hosteltactil.com' },
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Hosteltáctil. Por eso, necesito los siguientes datos:\n\n• Servidor\n• Puerto\n• Base de datos\n• User ID\n• Password\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Hosteltáctil con Yurest.\n\nGracias.'
+            }
+        },
+        {
+            id: 'lastapp', nombre: 'Last.app',
+            desc: 'Plataforma SaaS de TPV con API REST documentada.',
+            tag: 'estable', inicial: 'LA', c1: '#6366f1', c2: '#3730a3',
+            doc: {
+                descripcion: 'Last.app es 100 % cloud y tiene una API REST pública. La integración con Yurest usa un token de acceso por cliente. Para emitir ese token, Yurest envía un correo a integrations@last.app solicitándolo y pone al cliente final en copia para que autorice expresamente la entrega.',
+                comoConectar: [
+                    'Yurest envía un correo a integrations@last.app solicitando el token, con el cliente final en CC para que autorice la clave.',
+                    'Last.app revisa la solicitud (puede tardar 24-48 h) y emite el token.',
+                    'Last.app nos hace llegar el token; lo introducimos en Yurest.',
+                    'Sincronización automática a partir de ahí.'
+                ],
+                camposRequeridos: [
+                    { k: 'Token API', v: 'Generado por Last.app tras solicitarlo a integrations@last.app con el cliente en copia.' }
+                ],
+                datosSincronizados: [
+                    'Productos y combos.',
+                    'Pedidos (sala, delivery, QR, shop).',
+                    'Modificadores.',
+                    'Empleados.'
+                ],
+                limitaciones: [
+                    'Cuando el cliente modifica un combo, los IDs de los productos del combo cambian y la integración pierde la trazabilidad histórica del producto. Last.app está trabajando en arreglarlo desde Q1 2026.',
+                    'El token sólo se entrega tras autorización expresa del cliente final por correo — sin ese OK, integrations@last.app no lo emite.'
+                ],
+                plantillaEmail: 'Para: integrations@last.app\nCC: [email del cliente final]\nAsunto: Solicitud de Token Last.app — [Nombre del cliente]\n\nBuenos días,\n\nSolicitamos Token para el cliente [Nombre del cliente]. Adjunto en copia al cliente para que autorice la clave.\n\nGracias.',
+                contacto: { nombre: 'Last.app Integrations', email: 'integrations@last.app', web: 'https://last.app' }
+            }
+        },
+        {
+            id: 'neo', nombre: 'Neo',
+            desc: 'TPV con API expuesta vía host/puerto y token de autenticación.',
+            tag: 'estable', inicial: 'NE', c1: '#14b8a6', c2: '#115e59',
+            doc: {
+                descripcion: 'Neo es un TPV de hostelería que expone una API en host/puerto del local. La integración con Yurest se autentica con un token. Los datos los facilita el distribuidor de Neo si el cliente no los tiene a mano.',
+                comoConectar: [
+                    'El cliente solicita a su distribuidor de Neo los datos de conexión (token, host y puerto).',
+                    'El cliente nos pasa los 3 valores.',
+                    'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
+                ],
+                camposRequeridos: [
+                    { k: 'Token',  v: 'Token de autenticación emitido por Neo / el distribuidor.' },
+                    { k: 'Host',   v: 'IP pública o dominio del servidor Neo del local.' },
+                    { k: 'Puerto', v: 'Puerto TCP expuesto por el servidor.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo de productos.',
+                    'Tickets y pagos.',
+                    'Cierres de caja.'
+                ],
+                limitaciones: [
+                    'Si la IP del local no es fija, la integración se cae cuando cambie y hay que actualizar el host.',
+                    'Los datos no son autoservicio: si el cliente no los tiene, debe solicitarlos a su distribuidor de Neo.'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Neo. Por eso, necesito los siguientes datos de conexión:\n\n• Token\n• Host\n• Puerto\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Neo con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Soporte Neo' }
+            }
+        },
+        {
+            id: 'numier', nombre: 'Numier',
+            desc: 'TPV para hostelería con backoffice cloud y API propia.',
+            tag: 'estable', inicial: 'NU', c1: '#0ea5e9', c2: '#075985',
+            doc: {
+                descripcion: 'Numier es un TPV para hostelería con backoffice cloud. La integración con Yurest se realiza vía API expuesta por el TPV, autenticada por usuario/contraseña + clave API. Normalmente los datos los facilita el distribuidor de Numier al cliente.',
+                comoConectar: [
+                    'El cliente solicita a su distribuidor de Numier los datos de conexión (host, puerto, usuario, contraseña y clave API).',
+                    'El cliente nos pasa los 5 valores.',
+                    'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
+                ],
+                camposRequeridos: [
+                    { k: 'Host',       v: 'IP o dominio del servidor Numier al que conectar.' },
+                    { k: 'Puerto',     v: 'Puerto TCP expuesto por el servidor Numier.' },
+                    { k: 'Usuario',    v: 'Usuario de API facilitado por Numier o el distribuidor.' },
+                    { k: 'Contraseña', v: 'Contraseña asociada al usuario de API.' },
+                    { k: 'Clave API',  v: 'Token / API key adicional emitido por Numier.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo de productos.',
+                    'Tickets y pagos.',
+                    'Cierres de caja.'
+                ],
+                limitaciones: [
+                    'Si el cliente no tiene los datos de conexión a mano, debe solicitarlos a su distribuidor de Numier (no se generan en autoservicio).'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Numier. Por eso, necesito los siguientes datos de conexión:\n\n• Host\n• Puerto\n• Usuario\n• Contraseña\n• Clave API\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Numier con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Soporte Numier', web: 'https://www.numier.com' }
+            }
+        },
+        {
+            id: 'pi_electronique', nombre: 'Pi Electronique',
+            desc: 'TPV francés para hostelería con API expuesta vía host/puerto y clave API.',
+            tag: 'estable', inicial: 'PI', c1: '#f97316', c2: '#9a3412',
+            doc: {
+                descripcion: 'Pi Electronique es un TPV de origen francés muy presente en hostelería. La integración con Yurest se realiza vía API expuesta por el TPV en una IP/puerto del local, autenticada con una clave API. Los datos los facilita el distribuidor de Pi Electronique.',
+                comoConectar: [
+                    'El cliente solicita a su distribuidor de Pi Electronique los datos de conexión (host, puerto y clave API).',
+                    'El cliente nos pasa los 3 valores.',
+                    'Configuramos la integración en Yurest y validamos catálogo y ventas en sincronización inicial.'
+                ],
+                camposRequeridos: [
+                    { k: 'Host',      v: 'IP pública o dominio del servidor Pi Electronique del local.' },
+                    { k: 'Puerto',    v: 'Puerto TCP expuesto por el servidor.' },
+                    { k: 'Clave API', v: 'Token / API key emitido por Pi Electronique para autenticar las llamadas.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo de productos.',
+                    'Tickets y pagos.',
+                    'Cierres de caja.'
+                ],
+                limitaciones: [
+                    'Si la IP del local no es fija, la integración se cae cuando cambie y hay que actualizar el host.',
+                    'Los datos no son autoservicio: si el cliente no los tiene, debe solicitarlos a su distribuidor de Pi Electronique.'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Pi Electronique. Por eso, necesito los siguientes datos de conexión:\n\n• Host\n• Puerto\n• Clave API para la integración\n\nAgradecería que en cuanto los tengas me los hicieras llegar para poder conectar cuanto antes Pi Electronique con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Soporte Pi Electronique', web: 'https://www.pielectronique.com' }
+            }
+        },
+        {
+            id: 'revo', nombre: 'Revo',
+            desc: 'Software de control de sala, cocina y pedidos.',
+            tag: 'estable', inicial: 'RE', c1: '#ec4899', c2: '#9d174d',
+            doc: {
+                descripcion: 'Revo es un TPV cloud con API REST. La integración requiere user_id y password de un usuario con acceso al área de gestión.',
+                comoConectar: [
+                    'Pedir al cliente que cree un usuario dedicado para la integración (no usar uno humano que pueda cambiar de contraseña).',
+                    'El usuario debe tener permisos de "Gestionar Cuenta".',
+                    'Pasarnos user_id y password.',
+                    'Configurar y validar.'
+                ],
+                camposRequeridos: [
+                    { k: 'User ID',    v: 'Numérico, generado por Revo al crear el usuario.' },
+                    { k: 'Contraseña', v: 'La del usuario anterior.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo de productos y modificadores.',
+                    'Pedidos cerrados.',
+                    'Empleados.'
+                ],
+                limitaciones: [
+                    'Si el cliente cambia la contraseña del usuario integración, la sincronización se cae.'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Revo. Por eso, necesito los siguientes datos:\n\n• User ID\n• Contraseña\n\nImportante: el usuario debe tener acceso a "Gestionar Cuenta" para que podamos realizar las conexiones necesarias.\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Revo con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Soporte Revo', web: 'https://revo.works' }
+            }
+        },
+        {
+            id: 'sofyman', nombre: 'Sofyman',
+            desc: 'Familia TAHC4, Sicax, Easy POS, Winex.',
+            tag: 'estable', inicial: 'SY', c1: '#facc15', c2: '#854d0e',
+            doc: {
+                descripcion: 'Sofyman engloba varias marcas (TAHC4, Sicax, Easy POS, Winex). La integración varía ligeramente según el producto pero comparten BD subyacente.',
+                comoConectar: [
+                    'Confirmar con el cliente cuál de las 4 variantes usa.',
+                    'Pedir credenciales de acceso a la BD según la variante.',
+                    'Configurar en Yurest indicando la variante (afecta a queries usadas).',
+                    'Validar primer pull.'
+                ],
+                camposRequeridos: [
+                    { k: 'Variante',      v: 'TAHC4 / Sicax / Easy POS / Winex' },
+                    { k: 'Servidor / IP', v: 'Donde corre la BD del producto.' },
+                    { k: 'Usuario',       v: 'Usuario con permisos de lectura.' },
+                    { k: 'Contraseña',    v: 'La asignada por el distribuidor.' }
+                ],
+                datosSincronizados: [
+                    'Productos y familias.',
+                    'Ventas y formas de pago.'
+                ],
+                limitaciones: [
+                    'Documentación oficial de Sofyman es escasa — apoyarse en su soporte directo si surgen rarezas.'
+                ],
+                contacto: { nombre: 'Soporte Sofyman', web: 'https://www.sofyman.com' }
+            }
+        },
+        {
+            id: 'square', nombre: 'Square',
+            desc: 'TPV global de Block, Inc. Integración por OAuth.',
+            tag: 'estable', inicial: 'SQ', c1: '#0f172a', c2: '#334155',
+            doc: {
+                descripcion: 'Square (USA, expandiéndose en EU) expone una API moderna OAuth 2.0. En la práctica, en lugar de lanzar el flujo OAuth contra el cliente final, le pedimos las credenciales (usuario + contraseña) de su consola de Square Developers (https://developer.squareup.com/console/en/apps), entramos nosotros y configuramos la app que emite el access_token.',
+                comoConectar: [
+                    'Pedir al cliente usuario y contraseña de su cuenta en developer.squareup.com.',
+                    'Acceder a la consola y crear / configurar la app de Yurest dentro de su cuenta.',
+                    'Generar el access_token + refresh_token desde la consola y guardarlos cifrados en Yurest.',
+                    'Validar la primera sincronización en modo "test".'
+                ],
+                camposRequeridos: [
+                    { k: 'Usuario Square Developer',    v: 'Email del cliente registrado en developer.squareup.com.' },
+                    { k: 'Contraseña Square Developer', v: 'Contraseña asociada a esa cuenta.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo completo (Items, Modifiers).',
+                    'Ventas (Orders, Payments).',
+                    'Empleados (Team Members).'
+                ],
+                limitaciones: [
+                    'Ojo a clientes en países donde Square aún no opera.',
+                    'Square cobra por API calls cuando se exceden los límites — vigilar el volumen de polling.',
+                    'Si el cliente cambia la contraseña de su cuenta de developer, perdemos acceso a la consola hasta que nos pase la nueva.'
+                ],
+                plantillaEmail: 'Hola [nombre del distribuidor],\n\nUtilizo Yurest en mi negocio (Nombre de la empresa) y quiero integrarlo con el TPV Square. Para ello necesito acceso a la consola de Square Developers:\n\nhttps://developer.squareup.com/console/en/apps\n\nConcretamente:\n\n• Usuario\n• Contraseña\n\nAgradecería que en cuanto lo tengas me lo hicieras llegar para poder conectar cuanto antes Square con Yurest.\n\nGracias.',
+                contacto: { nombre: 'Square Developer', web: 'https://developer.squareup.com' }
+            }
+        },
+        {
+            id: 'yantar', nombre: 'Yantar',
+            desc: 'Solución global para restaurantes.',
+            tag: 'estable', inicial: 'YA', c1: '#84cc16', c2: '#3f6212',
+            doc: {
+                descripcion: 'Yantar es un TPV español. La integración funciona al revés que las pull: Yurest expone un endpoint WebSocket (wss://cliente.yurest.com/ws/) y emite un token vinculado al local, y el distribuidor de Yantar configura el TPV para que empuje los datos contra ese endpoint con ese token.',
+                comoConectar: [
+                    'Generar en Yurest un token nuevo, vinculado al local del cliente.',
+                    'Enviar al cliente (o directamente a su distribuidor de Yantar) los datos de integración: URL del WebSocket + token.',
+                    'El distribuidor de Yantar configura el TPV para empujar contra ese endpoint con ese token.',
+                    'Validar la primera sincronización en modo "test".'
+                ],
+                camposRequeridos: [
+                    { k: 'ws',    v: 'URL del WebSocket de Yurest, p.ej. wss://cliente.yurest.com/ws/. Igual para todos los locales.' },
+                    { k: 'token', v: 'Token único por local, generado por Yurest y vinculado a ese establecimiento.' }
+                ],
+                datosSincronizados: [
+                    'Catálogo de productos.',
+                    'Tickets y pagos.',
+                    'Cierres.'
+                ],
+                limitaciones: [
+                    'Cada local requiere su propio token: si el cliente abre un nuevo establecimiento hay que generar y enviar un token nuevo.',
+                    'Si el distribuidor pierde el token, hay que revocar y emitir uno nuevo.'
+                ],
+                plantillaEmail: 'Hola [nombre del cliente / distribuidor],\n\nOs envío los datos de integración de producción para conectar el TPV Yantar con Yurest. El token ya está vinculado al local [Nombre del local]. Para cada local nuevo que requiera integración hará falta un token nuevo, que se solicita a Yurest.\n\nDatos de integración producción:\n\n• ws: wss://cliente.yurest.com/ws/\n• token: [token generado por Yurest]\n\nCualquier consulta adicional, quedamos a disposición.\n\nGracias.',
+                contacto: { nombre: 'Soporte Yantar', web: 'https://www.yantar.es' }
+            }
+        },
+        {
+            id: 'api_generica', nombre: 'API genérica para TPVs',
+            desc: 'Endpoint propio de Yurest para TPVs sin integración nativa.',
+            tag: 'estable', inicial: 'API', c1: '#0284c7', c2: '#0c4a6e',
+            doc: {
+                descripcion: 'Para TPVs que no tienen integración nativa, Yurest expone un endpoint REST al que el cliente (o su distribuidor) puede empujar tickets, productos y cierres en el formato definido en la documentación pública.',
+                comoConectar: [
+                    'Generar credenciales (api_key + api_secret) para el cliente desde el admin de Yurest.',
+                    'Pasar al distribuidor del cliente la documentación pública del endpoint.',
+                    'El distribuidor implementa el push desde el TPV.',
+                    'Yurest valida los datos al recibirlos y rechaza los mal formados.'
+                ],
+                camposRequeridos: [
+                    { k: 'api_key',    v: 'Identificador público del cliente.' },
+                    { k: 'api_secret', v: 'Secreto compartido para firmar las requests.' }
+                ],
+                datosSincronizados: [
+                    'Lo que el TPV decida pushear según la documentación: tickets, productos, cierres, etc.'
+                ],
+                limitaciones: [
+                    'La calidad de los datos depende de la implementación del distribuidor — es responsabilidad suya validar antes del push.',
+                    'Sin push automático no hay datos. No es polling, es push-only.'
+                ],
+                contacto: { nombre: 'Soporte Yurest', email: 'sat@yurest.com' }
+            }
+        }
+    ];
+
+    function escMd(s) {
+        if (s == null) return '';
+        let out = escHtml(String(s));
+        out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+        return out;
+    }
+
+    function renderLista() {
+        const inp  = document.getElementById('f-q');
+        const wrap = document.getElementById('lista-wrap');
+        if (!inp || !wrap) return;
+        const q = (inp.value || '').trim().toLowerCase();
+        const lista = INTEGRACIONES.filter(i =>
+            !q
+            || (i.nombre || '').toLowerCase().includes(q)
+            || (i.desc   || '').toLowerCase().includes(q)
+            || (i.id     || '').toLowerCase().includes(q)
+        );
+        if (lista.length === 0) {
+            wrap.innerHTML = '<div class="empty-search">No hay ninguna integración que coincida con esa búsqueda.</div>';
+            return;
+        }
+        wrap.innerHTML = lista.map(i => {
+            const tagHtml = i.tag === 'beta'           ? '<span class="int-meta-tag beta">Beta</span>'
+                          : i.tag === 'no_disponible'  ? '<span class="int-meta-tag no">No disponible</span>'
+                          : i.tag === 'estable'        ? '<span class="int-meta-tag">Operativa</span>'
+                                                       : '';
+            const styleVars = '--c1:' + escHtml(i.c1 || '#fc5858') + ';--c2:' + escHtml(i.c2 || '#c62828');
+            const imgTag = LOGO_BASE
+                ? '<img class="int-icon-img" src="' + escHtml(LOGO_BASE) + escHtml(i.id) + '.png" alt="" loading="lazy" decoding="async" onload="this.parentNode.classList.add(\'with-img\')" onerror="tpvLogoFallback(this)">'
+                : '';
+            return ''
+                + '<div class="int-row">'
+                +   '<div class="int-icon" style="' + styleVars + '">'
+                +     '<span class="int-icon-letter">' + escHtml(i.inicial || i.nombre.slice(0,2).toUpperCase()) + '</span>'
+                +     imgTag
+                +   '</div>'
+                +   '<div class="int-meta">'
+                +     '<div class="int-meta-name">' + escHtml(i.nombre) + tagHtml + '</div>'
+                +     '<div class="int-meta-desc">' + escHtml(i.desc) + '</div>'
+                +   '</div>'
+                +   '<button class="int-action" onclick="abrirDoc(\'' + escHtml(i.id) + '\')">'
+                +     'Ver documentación'
+                +     '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+                +   '</button>'
+                + '</div>';
+        }).join('');
+    }
+
+    function abrirDoc(id) {
+        const i = INTEGRACIONES.find(x => x.id === id);
+        if (!i) return;
+        const d = i.doc || {};
+
+        const docIcon       = document.getElementById('doc-icon');
+        const docIconLetter = document.getElementById('doc-icon-letter');
+        const docIconImg    = document.getElementById('doc-icon-img');
+        docIcon.classList.remove('with-img');
+        docIcon.style.cssText = '--c1:' + (i.c1 || '#fc5858') + ';--c2:' + (i.c2 || '#c62828');
+        docIconLetter.textContent = i.inicial || i.nombre.slice(0,2).toUpperCase();
+        if (LOGO_BASE) {
+            docIconImg.style.display = '';
+            docIconImg.dataset.tried = '0';
+            docIconImg.alt = i.nombre;
+            docIconImg.src = LOGO_BASE + i.id + '.png';
+        } else {
+            docIconImg.style.display = 'none';
+            docIconImg.removeAttribute('src');
+        }
+
+        document.getElementById('doc-name').textContent = i.nombre;
+        document.getElementById('doc-desc').textContent = i.desc || '';
+
+        const partes = [];
+
+        if (d.descripcion) {
+            partes.push(
+                '<div class="doc-section">'
+              +   '<div class="doc-section-title">'
+              +     '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+              +     'Descripción'
+              +   '</div>'
+              +   '<div class="doc-section-content">' + escMd(d.descripcion) + '</div>'
+              + '</div>'
+            );
+        }
+
+        if (Array.isArray(d.comoConectar) && d.comoConectar.length) {
+            partes.push(
+                '<div class="doc-section">'
+              +   '<div class="doc-section-title">'
+              +     '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h4"/><path d="M15 11h4a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-4"/><line x1="9" y1="14" x2="15" y2="14"/></svg>'
+              +     'Cómo conectarla'
+              +   '</div>'
+              +   '<div class="doc-section-content"><ol style="margin:0;padding-left:20px">'
+              +     d.comoConectar.map(p => '<li>' + escMd(p) + '</li>').join('')
+              +   '</ol></div>'
+              + '</div>'
+            );
+        }
+
+        if (Array.isArray(d.camposRequeridos) && d.camposRequeridos.length) {
+            partes.push(
+                '<div class="doc-section">'
+              +   '<div class="doc-section-title">'
+              +     '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+              +     'Datos a pedir al cliente'
+              +   '</div>'
+              +   '<div class="doc-section-content"><div class="doc-fields">'
+              +     d.camposRequeridos.map(c =>
+                        '<div class="doc-field">'
+                      +   '<div class="doc-field-key">' + escHtml(c.k) + '</div>'
+                      +   '<div class="doc-field-val">' + escMd(c.v) + '</div>'
+                      + '</div>'
+                    ).join('')
+              +   '</div></div>'
+              + '</div>'
+            );
+        }
+
+        if (d.plantillaEmail) {
+            partes.push(
+                '<div class="doc-section">'
+              +   '<div class="doc-section-title">'
+              +     '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>'
+              +     'Plantilla email al cliente'
+              +   '</div>'
+              +   '<div class="doc-section-content">'
+              +     '<div class="doc-tplmail-wrap">'
+              +       '<button class="doc-tplmail-copy" onclick="copiarPlantilla(\'' + escHtml(i.id) + '\', this)">'
+              +         '<svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+              +         'Copiar'
+              +       '</button>'
+              +       '<pre class="doc-tplmail" id="doc-tplmail-' + escHtml(i.id) + '">' + escHtml(d.plantillaEmail) + '</pre>'
+              +     '</div>'
+              +   '</div>'
+              + '</div>'
+            );
+        }
+
+        if (Array.isArray(d.datosSincronizados) && d.datosSincronizados.length) {
+            partes.push(
+                '<div class="doc-section">'
+              +   '<div class="doc-section-title">'
+              +     '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>'
+              +     'Datos que se sincronizan'
+              +   '</div>'
+              +   '<div class="doc-section-content"><ul>'
+              +     d.datosSincronizados.map(x => '<li>' + escMd(x) + '</li>').join('')
+              +   '</ul></div>'
+              + '</div>'
+            );
+        }
+
+        if (Array.isArray(d.limitaciones) && d.limitaciones.length) {
+            partes.push(
+                '<div class="doc-section">'
+              +   '<div class="doc-section-title">'
+              +     '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+              +     'Limitaciones conocidas'
+              +   '</div>'
+              +   '<div class="doc-section-content"><ul>'
+              +     d.limitaciones.map(x => '<li>' + escMd(x) + '</li>').join('')
+              +   '</ul></div>'
+              + '</div>'
+            );
+        }
+
+        if (d.contacto) {
+            const c = d.contacto;
+            const items = [];
+            if (c.nombre)   items.push('<strong>' + escHtml(c.nombre) + '</strong>');
+            if (c.email)    items.push('<a href="mailto:' + escHtml(c.email) + '">' + escHtml(c.email) + '</a>');
+            if (c.telefono) items.push('<a href="tel:' + escHtml(c.telefono).replace(/\s/g,'') + '">' + escHtml(c.telefono) + '</a>');
+            if (c.web)      items.push('<a href="' + escHtml(c.web) + '" target="_blank" rel="noopener noreferrer">' + escHtml(c.web.replace(/^https?:\/\//,'')) + '</a>');
+            partes.push(
+                '<div class="doc-section">'
+              +   '<div class="doc-section-title">'
+              +     '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+              +     'Contacto soporte fabricante'
+              +   '</div>'
+              +   '<div class="doc-section-content">' + items.join(' · ') + '</div>'
+              + '</div>'
+            );
+        }
+
+        document.getElementById('doc-body').innerHTML = partes.join('') || '<div class="empty-search">Esta integración aún no tiene documentación detallada.</div>';
+        document.getElementById('doc-overlay').classList.add('open');
+    }
+
+    function cerrarDoc() {
+        const ov = document.getElementById('doc-overlay');
+        if (ov) ov.classList.remove('open');
+    }
+
+    async function copiarPlantilla(id, btn) {
+        const integ = INTEGRACIONES.find(x => x.id === id);
+        if (!integ || !integ.doc || !integ.doc.plantillaEmail) return;
+        const txt = integ.doc.plantillaEmail;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(txt);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = txt;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            if (btn) {
+                const old = btn.innerHTML;
+                btn.classList.add('copied');
+                btn.innerHTML = '<svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado';
+                setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = old; }, 1800);
+            }
+        } catch (e) {
+            console.warn('[copiarPlantilla] error:', e);
+            if (btn) btn.textContent = 'Error';
+        }
+    }
+
+    document.addEventListener('keydown', e => {
+        const ov = document.getElementById('doc-overlay');
+        if (e.key === 'Escape' && ov && ov.classList.contains('open')) cerrarDoc();
+    });
+
+    window.renderLista     = renderLista;
+    window.abrirDoc        = abrirDoc;
+    window.cerrarDoc       = cerrarDoc;
+    window.copiarPlantilla = copiarPlantilla;
+    window.tpvLogoFallback = tpvLogoFallback;
+
+    renderLista();
+})();
+</script>
+</zd-html-block>
