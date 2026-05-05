@@ -12,10 +12,7 @@
       "name": "Webhook GET resumen",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        200,
-        300
-      ],
+      "position": [200, 300],
       "webhookId": "zendesk-resumen-semanal"
     },
     {
@@ -26,10 +23,7 @@
       "name": "Validar rango",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        400,
-        300
-      ]
+      "position": [400, 300]
     },
     {
       "parameters": {
@@ -50,10 +44,7 @@
       "name": "Consultar Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        620,
-        300
-      ],
+      "position": [620, 300],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -103,10 +94,7 @@
       "name": "¿Existe en Supabase?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        820,
-        300
-      ]
+      "position": [820, 300]
     },
     {
       "parameters": {
@@ -116,10 +104,7 @@
       "name": "Format desde Supabase",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1040,
-        180
-      ]
+      "position": [1040, 180]
     },
     {
       "parameters": {
@@ -133,10 +118,7 @@
       "name": "Get many tickets",
       "type": "n8n-nodes-base.zendesk",
       "typeVersion": 1,
-      "position": [
-        1040,
-        420
-      ],
+      "position": [1040, 420],
       "credentials": {
         "zendeskApi": {
           "id": "KagVdQFawJyTOzEO",
@@ -152,10 +134,7 @@
       "name": "Preparar prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1240,
-        420
-      ]
+      "position": [1240, 420]
     },
     {
       "parameters": {
@@ -177,10 +156,7 @@
       "name": "Generar resumen",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [
-        1440,
-        420
-      ],
+      "position": [1440, 420],
       "credentials": {
         "openAiApi": {
           "id": "w2doUpVdPofPaHNg",
@@ -196,10 +172,7 @@
       "name": "Formatear resultado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1640,
-        420
-      ]
+      "position": [1640, 420]
     },
     {
       "parameters": {
@@ -241,10 +214,7 @@
       "name": "Guardar resumen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        1840,
-        420
-      ],
+      "position": [1840, 420],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -262,10 +232,7 @@
       "name": "Pasar resultado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        2040,
-        420
-      ]
+      "position": [2040, 420]
     },
     {
       "parameters": {
@@ -298,10 +265,7 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        2240,
-        300
-      ]
+      "position": [2240, 300]
     },
     {
       "parameters": {
@@ -313,10 +277,7 @@
       "name": "Doc",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [
-        200,
-        60
-      ]
+      "position": [200, 60]
     }
   ],
   "connections": {
