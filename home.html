@@ -821,28 +821,12 @@
         if (YurestConfig.actualizarBadgeSinAsignar) await YurestConfig.actualizarBadgeSinAsignar();
         if (YurestConfig.actualizarBadgeA3)         await YurestConfig.actualizarBadgeA3();
 
-        // Hardware: usa la misma fuente que la sección "Cosas por hacer"
-        // (YurestNotifications.fetchAll → countHardwareEnvios). Esperamos
-        // brevemente a que notifications.js (defer) esté disponible.
-        await actualizarBadgeHardware();
+        // Hardware: lo rellena countHardwareEnvios() en notifications.js
+        // como side-effect del fetchAll que dispara la sección "Cosas por
+        // hacer" (paint → renderInto). Aquí solo nos aseguramos de que el
+        // span puente exista; no disparamos un segundo fetchAll.
 
         sincronizarBadgesHome();
-    }
-
-    async function actualizarBadgeHardware() {
-        const el = document.getElementById('badge-hardware');
-        if (!el) return;
-        // Espera hasta ~3s a que notifications.js cargue.
-        for (let i = 0; i < 30 && !(window.YurestNotifications && window.YurestNotifications.fetchAll); i++) {
-            await new Promise(r => setTimeout(r, 100));
-        }
-        if (!(window.YurestNotifications && window.YurestNotifications.fetchAll)) return;
-        try {
-            const items = await window.YurestNotifications.fetchAll();
-            const hw = items.find(x => x && x.id === 'hardware');
-            const n = hw && typeof hw.count === 'number' ? hw.count : 0;
-            el.textContent = n > 0 ? String(n) : '';
-        } catch (_) { el.textContent = ''; }
     }
 
     function sincronizarBadgesHome() {
