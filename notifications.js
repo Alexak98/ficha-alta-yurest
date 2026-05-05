@@ -206,25 +206,30 @@
 
     // Pide todas las fuentes aplicables según permisos y descarta
     // las que no tengan count. Devuelve en el orden de SOURCES.
-    // Dedup in-flight: si llegan dos llamadas concurrentes (típico en
-    // home.html, donde la sección "Cosas por hacer" y los badges del
-    // grid disparan fetchAll en paralelo), comparten la misma promesa
-    // y evitamos duplicar peticiones de red.
+    // Dedup con ventana corta: en home se llama dos veces — una desde
+    // renderInto (sección "Cosas por hacer") y otra desde
+    // actualizarBadgeHardware en cargarBadges, separadas por dos awaits.
+    // Mantenemos la promesa resuelta durante FETCH_ALL_DEDUP_MS para que
+    // ambos llamadores compartan el mismo resultado, sin volver a la red.
+    // invalidate() limpia este cache, así que tras una acción del usuario
+    // (refresh()) la siguiente lectura golpea fresca.
     let _fetchAllInflight = null;
+    let _fetchAllInflightAt = 0;
+    const FETCH_ALL_DEDUP_MS = 3000;
     async function fetchAll() {
-        if (_fetchAllInflight) return _fetchAllInflight;
+        const now = Date.now();
+        if (_fetchAllInflight && (now - _fetchAllInflightAt < FETCH_ALL_DEDUP_MS)) {
+            return _fetchAllInflight;
+        }
         const YC = global.YurestConfig;
         const puede = (p) => !YC || typeof YC.tienePermiso !== 'function' ? true : YC.tienePermiso(p);
         const aplicables = SOURCES.filter(s => puede(s.permiso));
+        _fetchAllInflightAt = now;
         _fetchAllInflight = (async () => {
-            try {
-                const results = await Promise.all(aplicables.map(s => s.resolve().catch(() => null)));
-                return results
-                    .map((r, i) => r ? { id: aplicables[i].id, ...r } : null)
-                    .filter(Boolean);
-            } finally {
-                _fetchAllInflight = null;
-            }
+            const results = await Promise.all(aplicables.map(s => s.resolve().catch(() => null)));
+            return results
+                .map((r, i) => r ? { id: aplicables[i].id, ...r } : null)
+                .filter(Boolean);
         })();
         return _fetchAllInflight;
     }
@@ -672,6 +677,8 @@
         if (YC && typeof YC._badgeCacheInvalidateAll === 'function') {
             YC._badgeCacheInvalidateAll();
         }
+        _fetchAllInflight = null;
+        _fetchAllInflightAt = 0;
     }
 
     global.YurestNotifications = { fetchAll, mountHeaderBell, renderInto, refresh, invalidate, _onRefresh };
