@@ -96,11 +96,24 @@
     // confirmada y listos para preparar el envío físico).
     // Pasamos `slim=1` para que el workflow no nos devuelva los PDFs base64
     // — solo necesitamos la longitud del array.
+    // Side effect: actualiza el span puente `badge-hardware` (lo lee el
+    // home para los badges de las cards/secciones) y dispara el
+    // sincronizado de badges agrupados. Mantiene la misma forma que ya
+    // hacen actualizarBadgeSinAsignar / actualizarBadgeA3 en config.js,
+    // así home no necesita una segunda fetchAll para refrescar este span.
+    function _writeHardwareBadge(n) {
+        const el = document.getElementById('badge-hardware');
+        if (el) el.textContent = n > 0 ? String(n) : '';
+        if (typeof window._actualizarSidebarBadgesGrupos === 'function') {
+            try { window._actualizarSidebarBadgesGrupos(); } catch (_) {}
+        }
+    }
+
     async function countHardwareEnvios() {
         const YC = global.YurestConfig;
         if (YC && YC._badgeCacheGet) {
             const cached = YC._badgeCacheGet('hw_envios');
-            if (cached !== null) return cached;
+            if (cached !== null) { _writeHardwareBadge(cached); return cached; }
         }
         if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
         const fetchOnce = async () => {
@@ -128,6 +141,7 @@
             }
             if (!r.ok || r.empty) return 0;       // no cacheamos un 0 dudoso
             if (YC._badgeCacheSet) YC._badgeCacheSet('hw_envios', r.count);
+            _writeHardwareBadge(r.count);
             return r.count;
         } catch (_) { return 0; }
     }
@@ -206,11 +220,9 @@
 
     // Pide todas las fuentes aplicables según permisos y descarta
     // las que no tengan count. Devuelve en el orden de SOURCES.
-    // Dedup con ventana corta: en home se llama dos veces — una desde
-    // renderInto (sección "Cosas por hacer") y otra desde
-    // actualizarBadgeHardware en cargarBadges, separadas por dos awaits.
-    // Mantenemos la promesa resuelta durante FETCH_ALL_DEDUP_MS para que
-    // ambos llamadores compartan el mismo resultado, sin volver a la red.
+    // Dedup con ventana corta (3 s): si llegan dos llamadas seguidas
+    // (p.ej. campana del header tras un cambio de ruta interno),
+    // comparten la misma promesa resuelta y evitamos volver a la red.
     // invalidate() limpia este cache, así que tras una acción del usuario
     // (refresh()) la siguiente lectura golpea fresca.
     let _fetchAllInflight = null;
