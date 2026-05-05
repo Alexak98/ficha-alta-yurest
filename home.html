@@ -640,15 +640,19 @@
 
     // ─────────────────────────────────────────────────────────────────────
     //  Render dashboard de KPIs (placeholder)
-    //  Muestra un bloque por cada departamento del que el usuario tenga
-    //  permiso de LECTURA en al menos una de sus páginas. Admin → todos.
-    //  Los KPIs concretos se cablearán más adelante; de momento dejamos
-    //  3 tiles vacíos con etiqueta "Próximamente".
+    //  Muestra un widget por cada DEPARTAMENTO real del que el usuario
+    //  tenga permiso de Lectura en al menos una de sus páginas. Admin →
+    //  todos. "Informes" y "Administración" no son departamentos
+    //  (uno es transversal, el otro es operativo del portal), así que
+    //  se excluyen explícitamente del dashboard.
     // ─────────────────────────────────────────────────────────────────────
+    const DEPTS_SIN_KPI = new Set(['informes', 'admin']);
+
     function deptsConLectura() {
         const esAdminUser = YurestConfig.esAdmin();
         return DEPARTAMENTOS
             .map(d => {
+                if (DEPTS_SIN_KPI.has(d.id)) return null;
                 if (d.requiereAdmin && !esAdminUser) return null;
                 const leibles = d.paginas.filter(p =>
                     esAdminUser || YurestConfig.puedeLeer(p.id)
