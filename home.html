@@ -79,7 +79,84 @@
             margin-top:8px; font-size:15px; color:var(--text-muted);
         }
 
+        /* ── KPI dashboard ────────────────────────────────────────────── */
+        .kpi-dashboard {
+            display:flex; flex-direction:column;
+            gap:22px;
+            margin: 8px 0 32px;
+        }
+        .kpi-dash-header {
+            display:flex; align-items:baseline; justify-content:space-between;
+            gap:12px; flex-wrap:wrap;
+        }
+        .kpi-dash-header h2 {
+            font-size:18px; font-weight:800; letter-spacing:-0.01em;
+            color:var(--text);
+        }
+        .kpi-dash-header p {
+            font-size:12px; color:var(--text-muted);
+        }
+        .kpi-dept-block {
+            background: var(--card);
+            border: 1.5px solid var(--border);
+            border-radius: 18px;
+            padding: 18px 20px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-dept-block::before {
+            content:'';
+            position:absolute; top:0; left:0; right:0;
+            height:3px;
+            background: linear-gradient(90deg, var(--dept-a) 0%, var(--dept-b) 100%);
+        }
+        .kpi-dept-head {
+            display:flex; align-items:center; gap:12px;
+            margin-bottom:14px;
+        }
+        .kpi-dept-icon {
+            width:36px; height:36px; border-radius:10px;
+            display:inline-flex; align-items:center; justify-content:center;
+            background: linear-gradient(135deg, var(--dept-a) 0%, var(--dept-b) 100%);
+            color:#fff; flex-shrink:0;
+        }
+        .kpi-dept-icon svg { width:18px; height:18px; }
+        .kpi-dept-title {
+            display:flex; flex-direction:column; gap:2px; min-width:0;
+        }
+        .kpi-dept-title strong {
+            font-size:14px; font-weight:700; color:var(--text);
+            letter-spacing:-0.01em;
+        }
+        .kpi-dept-title span {
+            font-size:11px; color:var(--text-muted);
+        }
+        .kpi-empty {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 18px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-align: center;
+            letter-spacing: 0.01em;
+        }
+
         /* ── Department grid ──────────────────────────────────────────── */
+        .dept-section-title {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin: 0 2px 14px;
+            display:flex; align-items:center; gap:10px;
+        }
+        .dept-section-title::after {
+            content:'';
+            flex:1; height:1px; background: var(--border);
+        }
         .dept-grid {
             display:grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -321,6 +398,11 @@
             <p>Selecciona un departamento para acceder a sus secciones.</p>
         </div>
         <section class="todo-section" id="todo-section" aria-label="Cosas por hacer"></section>
+
+        <!-- Dashboard de KPIs por departamento (solo los que el usuario puede leer) -->
+        <section class="kpi-dashboard" id="kpi-dashboard" aria-label="KPIs por departamento"></section>
+
+        <div class="dept-section-title" id="dept-section-title" hidden>Tus departamentos</div>
         <div class="dept-grid" id="dept-grid"><!-- rendered by JS --></div>
     </section>
 
@@ -566,6 +648,58 @@
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    //  Render dashboard de KPIs (placeholder)
+    //  Muestra un bloque por cada departamento del que el usuario tenga
+    //  permiso de LECTURA en al menos una de sus páginas. Admin → todos.
+    //  Los KPIs concretos se cablearán más adelante; de momento dejamos
+    //  3 tiles vacíos con etiqueta "Próximamente".
+    // ─────────────────────────────────────────────────────────────────────
+    function deptsConLectura() {
+        const esAdminUser = YurestConfig.esAdmin();
+        return DEPARTAMENTOS
+            .map(d => {
+                if (d.requiereAdmin && !esAdminUser) return null;
+                const leibles = d.paginas.filter(p =>
+                    esAdminUser || YurestConfig.puedeLeer(p.id)
+                );
+                if (leibles.length === 0) return null;
+                return { ...d, paginas: leibles };
+            })
+            .filter(Boolean);
+    }
+
+    function renderKPIDashboard() {
+        const cont = document.getElementById('kpi-dashboard');
+        if (!cont) return;
+        const visibles = deptsConLectura();
+        if (visibles.length === 0) {
+            cont.innerHTML = '';
+            cont.style.display = 'none';
+            return;
+        }
+        cont.style.display = '';
+        const blocks = visibles.map(d => `
+            <article class="kpi-dept-block" style="--dept-a:${d.colorA};--dept-b:${d.colorB}">
+                <header class="kpi-dept-head">
+                    <div class="kpi-dept-icon">${ICON[d.icon] || ''}</div>
+                    <div class="kpi-dept-title">
+                        <strong>${escHtml(d.nombre)}</strong>
+                        <span>Indicadores clave</span>
+                    </div>
+                </header>
+                <div class="kpi-empty">Próximamente</div>
+            </article>
+        `).join('');
+        cont.innerHTML = `
+            <div class="kpi-dash-header">
+                <h2>Resumen por departamento</h2>
+                <p>Indicadores en preparación</p>
+            </div>
+            ${blocks}
+        `;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     //  Render Vista 2: Detalle de un departamento
     // ─────────────────────────────────────────────────────────────────────
     function renderDetalle(deptId) {
@@ -794,6 +928,15 @@
         document.getElementById('hero-greeting').textContent = saludo;
 
         renderGrid();
+        renderKPIDashboard();
+
+        // Mostramos el título "Tus departamentos" sólo si el grid tiene
+        // contenido real (es decir, el usuario tiene acceso a algo).
+        const titulo = document.getElementById('dept-section-title');
+        const grid = document.getElementById('dept-grid');
+        if (titulo && grid && grid.querySelector('.dept-card')) {
+            titulo.hidden = false;
+        }
 
         // Vista inicial según query ?d=
         const deptId = new URLSearchParams(window.location.search).get('d');
