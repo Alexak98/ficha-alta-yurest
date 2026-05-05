@@ -238,7 +238,8 @@
             <button type="button" class="rs-preset" data-preset="anteanterior" onclick="setPreset('anteanterior')">Hace 2 semanas</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-            <button type="button" class="rs-btn" id="rs-generate" onclick="generar()">
+            <button type="button" class="rs-btn" id="rs-generate" onclick="generar(true)"
+                    title="Vuelve a generar el resumen aunque haya uno guardado">
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
                 Generar resumen
             </button>
@@ -302,7 +303,8 @@ const esc = YurestConfig.escHtml;
 // caché cada cambio de preset disparaba un fetch nuevo a n8n y, vía caché
 // del propio workflow, una lectura completa de la fila en Supabase.
 // 30 min basta: las semanas cerradas no cambian, y la semana actual se
-// regenera al refrescar manualmente con F5 (no hay botón Regenerar aquí).
+// regenera con el botón "Generar resumen" (force=true → bypass caché
+// local + refresh=1 al backend).
 const RS_CACHE_PREFIX = 'yurest_resumen_semanal_v1_';
 const RS_CACHE_TTL_MS = 30 * 60 * 1000;
 function _rsCacheGet(week) {
@@ -377,7 +379,11 @@ document.getElementById('rs-week').addEventListener('change', () => generar());
 // no hay TDZ que romper.
 let _cargaCtrl = null;
 
-async function generar() {
+// `force=true` salta la caché local de sessionStorage y manda
+// `refresh=1` al backend para regenerar el resumen aunque ya haya
+// uno guardado. Lo usa el botón "Generar resumen"; el auto-load por
+// cambio de preset llama sin force para reutilizar caché.
+async function generar(force) {
     const week = document.getElementById('rs-week').value;
     if (!week) {
         mostrarError('Selecciona una semana antes de generar el resumen.');
@@ -401,24 +407,28 @@ async function generar() {
     const _wOld = document.getElementById('rs-cache-warn');
     if (_wOld) _wOld.remove();
 
-    // Cache hit: servimos sin tocar la red.
-    const cached = _rsCacheGet(week);
-    if (cached) {
-        if (!cached.total || cached.total === 0) {
-            document.getElementById('rs-empty').style.display = 'block';
+    // Cache hit: servimos sin tocar la red. Salvo `force`, en cuyo
+    // caso el usuario pidió expresamente regenerar.
+    if (!force) {
+        const cached = _rsCacheGet(week);
+        if (cached) {
+            if (!cached.total || cached.total === 0) {
+                document.getElementById('rs-empty').style.display = 'block';
+                document.getElementById('rs-loading').style.display = 'none';
+                btn.disabled = false;
+                return;
+            }
+            renderResumen(cached);
             document.getElementById('rs-loading').style.display = 'none';
             btn.disabled = false;
             return;
         }
-        renderResumen(cached);
-        document.getElementById('rs-loading').style.display = 'none';
-        btn.disabled = false;
-        return;
     }
 
     try {
         const url = EP + (EP.includes('?') ? '&' : '?') +
-            'week=' + encodeURIComponent(week);
+            'week=' + encodeURIComponent(week) +
+            (force ? '&refresh=1' : '');
         const res = await YurestConfig.apiFetch(url, { method: 'GET', signal });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
