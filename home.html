@@ -79,68 +79,59 @@
             margin-top:8px; font-size:15px; color:var(--text-muted);
         }
 
-        /* ── KPI dashboard ────────────────────────────────────────────── */
+        /* ── KPI dashboard (cuadro único, compacto) ──────────────────── */
         .kpi-dashboard {
-            display:flex; flex-direction:column;
-            gap:22px;
-            margin: 8px 0 32px;
+            background: var(--card);
+            border: 1.5px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 16px 16px;
+            margin: 8px 0 28px;
         }
         .kpi-dash-header {
             display:flex; align-items:baseline; justify-content:space-between;
             gap:12px; flex-wrap:wrap;
+            margin-bottom: 12px;
         }
         .kpi-dash-header h2 {
-            font-size:18px; font-weight:800; letter-spacing:-0.01em;
-            color:var(--text);
+            font-size:13px; font-weight:800;
+            letter-spacing:.06em; text-transform:uppercase;
+            color:var(--text-muted);
         }
         .kpi-dash-header p {
-            font-size:12px; color:var(--text-muted);
+            font-size:11px; color:#94a3b8;
         }
-        .kpi-dept-block {
-            background: var(--card);
-            border: 1.5px solid var(--border);
-            border-radius: 18px;
-            padding: 18px 20px 20px;
-            position: relative;
-            overflow: hidden;
+        .kpi-grid {
+            display:grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
         }
-        .kpi-dept-block::before {
-            content:'';
-            position:absolute; top:0; left:0; right:0;
-            height:3px;
-            background: linear-gradient(90deg, var(--dept-a) 0%, var(--dept-b) 100%);
-        }
-        .kpi-dept-head {
-            display:flex; align-items:center; gap:12px;
-            margin-bottom:14px;
-        }
-        .kpi-dept-icon {
-            width:36px; height:36px; border-radius:10px;
-            display:inline-flex; align-items:center; justify-content:center;
-            background: linear-gradient(135deg, var(--dept-a) 0%, var(--dept-b) 100%);
-            color:#fff; flex-shrink:0;
-        }
-        .kpi-dept-icon svg { width:18px; height:18px; }
-        .kpi-dept-title {
-            display:flex; flex-direction:column; gap:2px; min-width:0;
-        }
-        .kpi-dept-title strong {
-            font-size:14px; font-weight:700; color:var(--text);
-            letter-spacing:-0.01em;
-        }
-        .kpi-dept-title span {
-            font-size:11px; color:var(--text-muted);
-        }
-        .kpi-empty {
+        .kpi-tile {
             background: #f8fafc;
             border: 1px dashed #cbd5e1;
-            border-radius: 12px;
-            padding: 18px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #94a3b8;
-            text-align: center;
-            letter-spacing: 0.01em;
+            border-radius: 10px;
+            padding: 10px 12px;
+            min-height: 64px;
+            display:flex; flex-direction:column; gap:4px;
+            position: relative;
+        }
+        .kpi-tile::before {
+            content:'';
+            position:absolute; left:10px; top:10px; bottom:10px;
+            width:3px; border-radius:2px;
+            background: linear-gradient(180deg, var(--dept-a, var(--primary)) 0%, var(--dept-b, var(--primary-dark)) 100%);
+            opacity:.7;
+        }
+        .kpi-tile-label {
+            font-size:11px; font-weight:700;
+            letter-spacing:.04em;
+            color: var(--text);
+            padding-left: 10px;
+        }
+        .kpi-tile-hint {
+            font-size:11px; font-weight:600;
+            color:#94a3b8;
+            padding-left: 10px;
+            margin-top:auto;
         }
 
         /* ── Department grid ──────────────────────────────────────────── */
@@ -678,24 +669,18 @@
             return;
         }
         cont.style.display = '';
-        const blocks = visibles.map(d => `
-            <article class="kpi-dept-block" style="--dept-a:${d.colorA};--dept-b:${d.colorB}">
-                <header class="kpi-dept-head">
-                    <div class="kpi-dept-icon">${ICON[d.icon] || ''}</div>
-                    <div class="kpi-dept-title">
-                        <strong>${escHtml(d.nombre)}</strong>
-                        <span>Indicadores clave</span>
-                    </div>
-                </header>
-                <div class="kpi-empty">Próximamente</div>
-            </article>
+        const tiles = visibles.map(d => `
+            <div class="kpi-tile" style="--dept-a:${d.colorA};--dept-b:${d.colorB}">
+                <div class="kpi-tile-label">${escHtml(d.nombre)}</div>
+                <div class="kpi-tile-hint">Próximamente</div>
+            </div>
         `).join('');
         cont.innerHTML = `
             <div class="kpi-dash-header">
-                <h2>Resumen por departamento</h2>
+                <h2>KPIs</h2>
                 <p>Indicadores en preparación</p>
             </div>
-            ${blocks}
+            <div class="kpi-grid">${tiles}</div>
         `;
     }
 
