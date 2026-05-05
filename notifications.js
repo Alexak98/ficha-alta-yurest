@@ -103,17 +103,32 @@
             if (cached !== null) return cached;
         }
         if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
-        try {
+        const fetchOnce = async () => {
             const url = YC.ENDPOINTS.hardwarePedidos
                 + (YC.ENDPOINTS.hardwarePedidos.includes('?') ? '&' : '?')
                 + 'estado=lista_envio&slim=1&_=' + Date.now();
-            const res = await (YC.apiFetch || fetch)(url, { method: 'GET' });
-            if (!res.ok) return 0;
-            const data = await res.json();
-            const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
-            const count = lista.filter(p => p && p.estado === 'lista_envio').length;
-            if (YC._badgeCacheSet) YC._badgeCacheSet('hw_envios', count);
-            return count;
+            const res = await (YC.apiFetch || fetch)(url, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } });
+            if (!res.ok) return { ok: false };
+            // Webhooks n8n "fríos" pueden devolver 200 con body vacío en el
+            // primer hit — replicamos el patrón de hardware.html: leemos
+            // texto y reintentamos una vez si está vacío.
+            const txt = await res.text();
+            if (!txt || !txt.trim()) return { ok: true, empty: true };
+            try {
+                const data = JSON.parse(txt);
+                const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
+                return { ok: true, count: lista.filter(p => p && p.estado === 'lista_envio').length };
+            } catch (_) { return { ok: false }; }
+        };
+        try {
+            let r = await fetchOnce();
+            if (r.ok && r.empty) {
+                await new Promise(res => setTimeout(res, 600));
+                r = await fetchOnce();
+            }
+            if (!r.ok || r.empty) return 0;       // no cacheamos un 0 dudoso
+            if (YC._badgeCacheSet) YC._badgeCacheSet('hw_envios', r.count);
+            return r.count;
         } catch (_) { return 0; }
     }
 
@@ -146,19 +161,31 @@
             if (cached !== null) return cached;
         }
         if (!YC || !YC.ENDPOINTS || !YC.ENDPOINTS.hardwarePedidos) return 0;
-        try {
+        const fetchOnce = async () => {
             const url = YC.ENDPOINTS.hardwarePedidos
                 + (YC.ENDPOINTS.hardwarePedidos.includes('?') ? '&' : '?')
                 + 'estados=solicitada,pendiente_confirmar&slim=1&_=' + Date.now();
-            const res = await (YC.apiFetch || fetch)(url, { method: 'GET' });
-            if (!res.ok) return 0;
-            const data = await res.json();
-            const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
-            // El workflow ya filtró por estado; pero por defensa filtramos
-            // en cliente igualmente (workflows no actualizados verían 0).
-            const count = lista.filter(p => p && (p.estado === 'solicitada' || p.estado === 'pendiente_confirmar')).length;
-            if (YC._badgeCacheSet) YC._badgeCacheSet('pf_pend', count);
-            return count;
+            const res = await (YC.apiFetch || fetch)(url, { method: 'GET', headers: { 'Cache-Control': 'no-cache' } });
+            if (!res.ok) return { ok: false };
+            const txt = await res.text();
+            if (!txt || !txt.trim()) return { ok: true, empty: true };
+            try {
+                const data = JSON.parse(txt);
+                const lista = Array.isArray(data) ? data : (data.pedidos || data.data || []);
+                // El workflow ya filtró por estado; pero por defensa filtramos
+                // en cliente igualmente (workflows no actualizados verían 0).
+                return { ok: true, count: lista.filter(p => p && (p.estado === 'solicitada' || p.estado === 'pendiente_confirmar')).length };
+            } catch (_) { return { ok: false }; }
+        };
+        try {
+            let r = await fetchOnce();
+            if (r.ok && r.empty) {
+                await new Promise(res => setTimeout(res, 600));
+                r = await fetchOnce();
+            }
+            if (!r.ok || r.empty) return 0;
+            if (YC._badgeCacheSet) YC._badgeCacheSet('pf_pend', r.count);
+            return r.count;
         } catch (_) { return 0; }
     }
 
@@ -179,14 +206,27 @@
 
     // Pide todas las fuentes aplicables según permisos y descarta
     // las que no tengan count. Devuelve en el orden de SOURCES.
+    // Dedup in-flight: si llegan dos llamadas concurrentes (típico en
+    // home.html, donde la sección "Cosas por hacer" y los badges del
+    // grid disparan fetchAll en paralelo), comparten la misma promesa
+    // y evitamos duplicar peticiones de red.
+    let _fetchAllInflight = null;
     async function fetchAll() {
+        if (_fetchAllInflight) return _fetchAllInflight;
         const YC = global.YurestConfig;
         const puede = (p) => !YC || typeof YC.tienePermiso !== 'function' ? true : YC.tienePermiso(p);
         const aplicables = SOURCES.filter(s => puede(s.permiso));
-        const results = await Promise.all(aplicables.map(s => s.resolve().catch(() => null)));
-        return results
-            .map((r, i) => r ? { id: aplicables[i].id, ...r } : null)
-            .filter(Boolean);
+        _fetchAllInflight = (async () => {
+            try {
+                const results = await Promise.all(aplicables.map(s => s.resolve().catch(() => null)));
+                return results
+                    .map((r, i) => r ? { id: aplicables[i].id, ...r } : null)
+                    .filter(Boolean);
+            } finally {
+                _fetchAllInflight = null;
+            }
+        })();
+        return _fetchAllInflight;
     }
 
     // ── UI: Campana en page-header ─────────────────────────────
