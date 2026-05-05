@@ -12,18 +12,24 @@
       "name": "Webhook GET resumen",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 300],
+      "position": [
+        200,
+        300
+      ],
       "webhookId": "zendesk-resumen-semanal"
     },
     {
       "parameters": {
-        "jsCode": "// Acepta dos formatos en la URL:\n//   ?from=YYYY-MM-DD&to=YYYY-MM-DD     (rango libre)\n//   ?week=YYYY-WW                      (semana ISO; lunes a domingo)\n//\n// Devuelve siempre un objeto plano con la fecha de inicio (lunes ISO),\n// fin (domingo) y un par anio/semana solo informativo. La FECHA es lo\n// que se envía a Supabase como clave de búsqueda — un único campo\n// `fecha_desde`. Si esa fecha existe en la tabla `resumenes_semanales`\n// usamos esa fila; si no, generamos.\nconst raw = $input.first().json || {};\nconst q = raw.query || raw.params || {};\n\nfunction parseISO(s) { const d = new Date(s + 'T00:00:00Z'); return isNaN(d.getTime()) ? null : d; }\nfunction iso(d) { return d.toISOString().slice(0, 10); }\n\nfunction lunesDeSemana(d) {\n  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));\n  const dow = x.getUTCDay() || 7;\n  if (dow !== 1) x.setUTCDate(x.getUTCDate() - (dow - 1));\n  return x;\n}\n\nfunction semanaISO(d) {\n  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));\n  const dow = x.getUTCDay() || 7;\n  x.setUTCDate(x.getUTCDate() + 4 - dow);\n  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));\n  const week = Math.ceil((((x - yearStart) / 86400000) + 1) / 7);\n  return [x.getUTCFullYear(), week];\n}\n\nlet from = null, to = null, label = '';\n\nif (q.week && /^\\d{4}-W?\\d{1,2}$/i.test(q.week)) {\n  const [y, w] = String(q.week).replace('W', '').split('-').map(Number);\n  const enero4 = new Date(Date.UTC(y, 0, 4));\n  const lunesW1 = lunesDeSemana(enero4);\n  const lunes = new Date(lunesW1.getTime() + (w - 1) * 7 * 86400000);\n  const domingo = new Date(lunes.getTime() + 6 * 86400000);\n  from = iso(lunes); to = iso(domingo);\n  label = `Semana ${w} de ${y}`;\n} else if (q.from && q.to) {\n  const dF = parseISO(q.from), dT = parseISO(q.to);\n  if (!dF || !dT) throw new Error('from/to deben ser YYYY-MM-DD');\n  from = iso(dF); to = iso(dT);\n  label = `${from} → ${to}`;\n} else {\n  // Default: última semana ISO completa\n  const ahora = new Date();\n  const lunesActual = lunesDeSemana(ahora);\n  const lunesPasada = new Date(lunesActual.getTime() - 7 * 86400000);\n  const domingoPasada = new Date(lunesPasada.getTime() + 6 * 86400000);\n  from = iso(lunesPasada); to = iso(domingoPasada);\n  const [y, w] = semanaISO(lunesPasada);\n  label = `Semana ${w} de ${y}`;\n}\n\nconst [anio, semana] = semanaISO(new Date(from + 'T00:00:00Z'));\n// Filtro Zendesk Search:\n//  - type:ticket → solo tickets, no usuarios/orgs\n//  - created>=X created<=X → rango de creación de la semana\n//  - -subject:\"Conversation with\" → exclusión literal del subject;\n//    Zendesk Search soporta \"-\" como NOT y comillas para frase.\n//    Esto descarta los tickets que siguen en el agente IA antes de\n//    descargarlos. Backup: el .filter() de \"Preparar prompt\" lo vuelve\n//    a comprobar por si Zendesk no respeta el NOT en algún caso raro.\nconst zendeskQuery = `type:ticket created>=${from} created<=${to} -subject:\"Conversation with\"`;\n\nreturn [{ json: {\n  fecha_desde: from,\n  fecha_hasta: to,\n  label,\n  anio,\n  semana,\n  zendeskQuery\n} }];"
+        "jsCode": "// Acepta dos formatos en la URL:\n//   ?from=YYYY-MM-DD&to=YYYY-MM-DD     (rango libre)\n//   ?week=YYYY-WW                      (semana ISO; lunes a domingo)\n//\n// Devuelve siempre un objeto plano con la fecha de inicio (lunes ISO),\n// fin (domingo) y un par anio/semana solo informativo. La FECHA es lo\n// que se envía a Supabase como clave de búsqueda — un único campo\n// `fecha_desde`. Si esa fecha existe en la tabla `resumenes_semanales`\n// usamos esa fila; si no, generamos.\nconst raw = $input.first().json || {};\nconst q = raw.query || raw.params || {};\n\nfunction parseISO(s) { const d = new Date(s + 'T00:00:00Z'); return isNaN(d.getTime()) ? null : d; }\nfunction iso(d) { return d.toISOString().slice(0, 10); }\n\nfunction lunesDeSemana(d) {\n  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));\n  const dow = x.getUTCDay() || 7;\n  if (dow !== 1) x.setUTCDate(x.getUTCDate() - (dow - 1));\n  return x;\n}\n\nfunction semanaISO(d) {\n  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));\n  const dow = x.getUTCDay() || 7;\n  x.setUTCDate(x.getUTCDate() + 4 - dow);\n  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));\n  const week = Math.ceil((((x - yearStart) / 86400000) + 1) / 7);\n  return [x.getUTCFullYear(), week];\n}\n\nlet from = null, to = null, label = '';\n\nif (q.week && /^\\d{4}-W?\\d{1,2}$/i.test(q.week)) {\n  const [y, w] = String(q.week).replace('W', '').split('-').map(Number);\n  const enero4 = new Date(Date.UTC(y, 0, 4));\n  const lunesW1 = lunesDeSemana(enero4);\n  const lunes = new Date(lunesW1.getTime() + (w - 1) * 7 * 86400000);\n  const domingo = new Date(lunes.getTime() + 6 * 86400000);\n  from = iso(lunes); to = iso(domingo);\n  label = `Semana ${w} de ${y}`;\n} else if (q.from && q.to) {\n  const dF = parseISO(q.from), dT = parseISO(q.to);\n  if (!dF || !dT) throw new Error('from/to deben ser YYYY-MM-DD');\n  from = iso(dF); to = iso(dT);\n  label = `${from} → ${to}`;\n} else {\n  // Default: última semana ISO completa\n  const ahora = new Date();\n  const lunesActual = lunesDeSemana(ahora);\n  const lunesPasada = new Date(lunesActual.getTime() - 7 * 86400000);\n  const domingoPasada = new Date(lunesPasada.getTime() + 6 * 86400000);\n  from = iso(lunesPasada); to = iso(domingoPasada);\n  const [y, w] = semanaISO(lunesPasada);\n  label = `Semana ${w} de ${y}`;\n}\n\nconst [anio, semana] = semanaISO(new Date(from + 'T00:00:00Z'));\n// Filtro Zendesk Search:\n//  - type:ticket → solo tickets, no usuarios/orgs\n//  - created>=X created<=X → rango de creación de la semana\n//  - -subject:\"Conversation with\" → exclusión literal del subject;\n//    Zendesk Search soporta \"-\" como NOT y comillas para frase.\n//    Esto descarta los tickets que siguen en el agente IA antes de\n//    descargarlos. Backup: el .filter() de \"Preparar prompt\" lo vuelve\n//    a comprobar por si Zendesk no respeta el NOT en algún caso raro.\nconst zendeskQuery = `type:ticket created>=${from} created<=${to} -subject:\"Conversation with\"`;\n\n// `?refresh=1` (o `refresh=true`) fuerza regeneración: salta la\n// rama \"Format desde Supabase\" del IF y vuelve a llamar a OpenAI,\n// sobrescribiendo la fila guardada vía on_conflict=anio,semana.\nconst forceRefresh = String(q.refresh || '') === '1' || q.refresh === 'true';\n\nreturn [{ json: {\n  fecha_desde: from,\n  fecha_hasta: to,\n  label,\n  anio,\n  semana,\n  forceRefresh,\n  zendeskQuery\n} }];"
       },
       "id": "code-validar-rango",
       "name": "Validar rango",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 300]
+      "position": [
+        400,
+        300
+      ]
     },
     {
       "parameters": {
@@ -44,7 +50,10 @@
       "name": "Consultar Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [620, 300],
+      "position": [
+        620,
+        300
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -74,6 +83,15 @@
                 "operation": "notEmpty",
                 "singleValue": true
               }
+            },
+            {
+              "id": "cond-not-refresh",
+              "leftValue": "={{ $('Validar rango').item.json.forceRefresh }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ]
         },
@@ -85,7 +103,10 @@
       "name": "¿Existe en Supabase?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [820, 300]
+      "position": [
+        820,
+        300
+      ]
     },
     {
       "parameters": {
@@ -95,7 +116,10 @@
       "name": "Format desde Supabase",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 180]
+      "position": [
+        1040,
+        180
+      ]
     },
     {
       "parameters": {
@@ -109,7 +133,10 @@
       "name": "Get many tickets",
       "type": "n8n-nodes-base.zendesk",
       "typeVersion": 1,
-      "position": [1040, 420],
+      "position": [
+        1040,
+        420
+      ],
       "credentials": {
         "zendeskApi": {
           "id": "KagVdQFawJyTOzEO",
@@ -125,7 +152,10 @@
       "name": "Preparar prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1240, 420]
+      "position": [
+        1240,
+        420
+      ]
     },
     {
       "parameters": {
@@ -136,7 +166,9 @@
         },
         "messages": {
           "values": [
-            { "content": "={{ $json.prompt_final }}" }
+            {
+              "content": "={{ $json.prompt_final }}"
+            }
           ]
         },
         "options": {}
@@ -145,7 +177,10 @@
       "name": "Generar resumen",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.6,
-      "position": [1440, 420],
+      "position": [
+        1440,
+        420
+      ],
       "credentials": {
         "openAiApi": {
           "id": "w2doUpVdPofPaHNg",
@@ -161,7 +196,10 @@
       "name": "Formatear resultado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1640, 420]
+      "position": [
+        1640,
+        420
+      ]
     },
     {
       "parameters": {
@@ -172,9 +210,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Accept",       "value": "application/json" },
-            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=minimal" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -194,7 +241,10 @@
       "name": "Guardar resumen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [1840, 420],
+      "position": [
+        1840,
+        420
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "SUPABASE_CREDENTIAL_ID",
@@ -212,7 +262,10 @@
       "name": "Pasar resultado",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2040, 420]
+      "position": [
+        2040,
+        420
+      ]
     },
     {
       "parameters": {
@@ -221,10 +274,22 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin",  "value": "*" },
-              { "name": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
-              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
-              { "name": "Content-Type",                 "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -233,7 +298,10 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [2240, 300]
+      "position": [
+        2240,
+        300
+      ]
     },
     {
       "parameters": {
@@ -245,26 +313,145 @@
       "name": "Doc",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [200, 60]
+      "position": [
+        200,
+        60
+      ]
     }
   ],
   "connections": {
-    "Webhook GET resumen":   { "main": [[{ "node": "Validar rango",         "type": "main", "index": 0 }]] },
-    "Validar rango":         { "main": [[{ "node": "Consultar Supabase",    "type": "main", "index": 0 }]] },
-    "Consultar Supabase":    { "main": [[{ "node": "¿Existe en Supabase?", "type": "main", "index": 0 }]] },
-    "¿Existe en Supabase?": { "main": [
-                                  [{ "node": "Format desde Supabase", "type": "main", "index": 0 }],
-                                  [{ "node": "Get many tickets",      "type": "main", "index": 0 }]
-                              ] },
-    "Format desde Supabase": { "main": [[{ "node": "Respond",               "type": "main", "index": 0 }]] },
-    "Get many tickets":      { "main": [[{ "node": "Preparar prompt",       "type": "main", "index": 0 }]] },
-    "Preparar prompt":       { "main": [[{ "node": "Generar resumen",       "type": "main", "index": 0 }]] },
-    "Generar resumen":       { "main": [[{ "node": "Formatear resultado",   "type": "main", "index": 0 }]] },
-    "Formatear resultado":   { "main": [[{ "node": "Guardar resumen",       "type": "main", "index": 0 }]] },
-    "Guardar resumen":       { "main": [[{ "node": "Pasar resultado",       "type": "main", "index": 0 }]] },
-    "Pasar resultado":       { "main": [[{ "node": "Respond",               "type": "main", "index": 0 }]] }
+    "Webhook GET resumen": {
+      "main": [
+        [
+          {
+            "node": "Validar rango",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar rango": {
+      "main": [
+        [
+          {
+            "node": "Consultar Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Supabase": {
+      "main": [
+        [
+          {
+            "node": "¿Existe en Supabase?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Existe en Supabase?": {
+      "main": [
+        [
+          {
+            "node": "Format desde Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get many tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format desde Supabase": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many tickets": {
+      "main": [
+        [
+          {
+            "node": "Preparar prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar prompt": {
+      "main": [
+        [
+          {
+            "node": "Generar resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar resumen": {
+      "main": [
+        [
+          {
+            "node": "Formatear resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear resultado": {
+      "main": [
+        [
+          {
+            "node": "Guardar resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar resumen": {
+      "main": [
+        [
+          {
+            "node": "Pasar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pasar resultado": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "staticData": null,
   "pinData": {},
   "active": false
