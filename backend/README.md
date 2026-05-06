@@ -47,12 +47,18 @@ API en `http://localhost`. Healthcheck: `curl http://localhost/api/health`.
 
 # 2) Importar usuarios reales desde Supabase
 
-# Opción A — sin password de BD (recomendado si entras con OAuth/GitHub):
+# Opción A — sin password de BD (si entras con OAuth/GitHub):
 #   1) Supabase Dashboard → SQL Editor:
 #        SELECT * FROM usuarios WHERE deleted_at IS NULL;
-#   2) Click en "Download" → JSON → guarda como database/imports/usuarios-supabase.json
-#   3) Importa:
-./vendor/bin/sail artisan yurest:import-users --json=database/imports/usuarios-supabase.json --dry-run
+#   2) Click en "Download CSV" o "Copy as JSON" — lo que ofrezca tu UI.
+#   3a) Si descargaste CSV:
+mv ~/Downloads/usuarios.csv database/imports/usuarios-supabase.csv
+./vendor/bin/sail artisan yurest:import-users --csv=database/imports/usuarios-supabase.csv --dry-run
+./vendor/bin/sail artisan yurest:import-users --csv=database/imports/usuarios-supabase.csv
+rm database/imports/usuarios-supabase.csv
+
+#   3b) Si copiaste JSON al portapapeles (Mac):
+pbpaste > database/imports/usuarios-supabase.json
 ./vendor/bin/sail artisan yurest:import-users --json=database/imports/usuarios-supabase.json
 rm database/imports/usuarios-supabase.json
 

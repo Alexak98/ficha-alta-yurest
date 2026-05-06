@@ -254,3 +254,48 @@ it('falla con error claro si el JSON está mal formateado', function () {
 
     @unlink($tmp);
 });
+
+// === Modo --csv (export desde Supabase Studio) ===
+
+it('importa desde un archivo CSV exportado de Supabase', function () {
+    $hash = bcrypt('x');
+    $permisos = '{"read":["lista","bajas"],"write":[],"delete":[]}';
+    $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.csv';
+    file_put_contents($tmp, implode("\n", [
+        'id,username,password_hash,nombre,email,rol,permisos,activo,last_login_at,created_at,updated_at,deleted_at',
+        '"55555555-5555-5555-5555-555555555555","eva","'.$hash.'","Eva Test","eva@yurest.com","user","'.str_replace('"', '""', $permisos).'",true,,2026-01-01T00:00:00Z,2026-01-01T00:00:00Z,',
+    ]));
+
+    $this->artisan('yurest:import-users', ['--csv' => $tmp])
+        ->assertSuccessful();
+
+    $u = User::where('username', 'eva')->first();
+    expect($u)->not->toBeNull()
+        ->and($u->permisos['read'])->toBe(['lista', 'bajas']);
+
+    @unlink($tmp);
+});
+
+it('omite filas soft-deleted del CSV', function () {
+    $hash = bcrypt('x');
+    $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.csv';
+    file_put_contents($tmp, implode("\n", [
+        'id,username,password_hash,rol,deleted_at',
+        '"66666666-6666-6666-6666-666666666666","activo","'.$hash.'","user",',
+        '"77777777-7777-7777-7777-777777777777","borrado","'.$hash.'","user","2026-01-01T00:00:00Z"',
+    ]));
+
+    $this->artisan('yurest:import-users', ['--csv' => $tmp])
+        ->assertSuccessful();
+
+    expect(User::where('username', 'activo')->exists())->toBeTrue()
+        ->and(User::where('username', 'borrado')->exists())->toBeFalse();
+
+    @unlink($tmp);
+});
+
+it('falla con error claro si el CSV no existe', function () {
+    $this->artisan('yurest:import-users', ['--csv' => '/no/existe.csv'])
+        ->expectsOutputToContain('Archivo no encontrado')
+        ->assertFailed();
+});

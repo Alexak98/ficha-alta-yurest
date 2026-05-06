@@ -31,6 +31,7 @@ class ImportUsersFromSupabase extends Command
     protected $signature = 'yurest:import-users
         {--dsn= : Postgres DSN de origen (si se omite, lee SUPABASE_DSN del .env)}
         {--json= : Ruta a un archivo JSON con la lista de usuarios (alternativa a --dsn)}
+        {--csv= : Ruta a un archivo CSV exportado del SQL Editor de Supabase (alternativa a --dsn)}
         {--dry-run : Lista lo que importaría sin escribir nada}
         {--force : Sobrescribe usuarios locales con el mismo username}';
 
@@ -39,15 +40,18 @@ class ImportUsersFromSupabase extends Command
     public function handle(): int
     {
         $jsonPath = (string) $this->option('json');
+        $csvPath = (string) $this->option('csv');
         $dryRun = (bool) $this->option('dry-run');
         $force = (bool) $this->option('force');
 
         if ($jsonPath !== '') {
             $rows = $this->fetchFromJson($jsonPath);
+        } elseif ($csvPath !== '') {
+            $rows = $this->fetchFromCsv($csvPath);
         } else {
             $dsn = $this->option('dsn') ?: config('yurest.supabase_dsn');
             if (! $dsn) {
-                $this->error('Falta origen: pasa --dsn=..., --json=path/a/archivo.json, o define SUPABASE_DSN en .env');
+                $this->error('Falta origen: pasa --dsn=..., --json=path, --csv=path, o define SUPABASE_DSN en .env');
 
                 return self::FAILURE;
             }
@@ -157,6 +161,73 @@ class ImportUsersFromSupabase extends Command
             }
             $rows[] = $item;
         }
+
+        return $rows;
+    }
+
+    /**
+     * Lee usuarios desde un CSV exportado del SQL Editor de Supabase
+     * Studio. Formato esperado: primera fila = cabeceras (id, username,
+     * password_hash, ...), una fila por usuario. Soporta valores con
+     * comillas y comas dentro (formato CSV estándar).
+     *
+     * El campo `permisos` viene como string JSON serializado y lo
+     * decodifica `mapRow()` vía `normalizePermisos()`.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function fetchFromCsv(string $path): ?array
+    {
+        if (! is_file($path)) {
+            $this->error("Archivo no encontrado: $path");
+
+            return null;
+        }
+
+        $handle = fopen($path, 'r');
+        if ($handle === false) {
+            $this->error("No se pudo leer: $path");
+
+            return null;
+        }
+
+        $headers = fgetcsv($handle);
+        if (! is_array($headers)) {
+            fclose($handle);
+            $this->error('CSV vacío o sin cabecera.');
+
+            return null;
+        }
+
+        // Normaliza cabeceras: trim + lowercase para tolerar variaciones.
+        $headers = array_map(fn ($h) => trim((string) $h), $headers);
+
+        $rows = [];
+        while (($cells = fgetcsv($handle)) !== false) {
+            if (count($cells) !== count($headers)) {
+                continue; // fila corrupta, saltar
+            }
+            /** @var array<string, mixed> $row */
+            $row = array_combine($headers, $cells);
+
+            // CSV no distingue null de '' — si un campo viene vacío, lo dejamos null.
+            foreach ($row as $k => $v) {
+                if ($v === '') {
+                    $row[$k] = null;
+                }
+            }
+
+            // Filtra soft-deleted (consistencia con --dsn / --json)
+            if (! empty($row['deleted_at'])) {
+                continue;
+            }
+            if (empty($row['username'])) {
+                continue;
+            }
+
+            $rows[] = $row;
+        }
+        fclose($handle);
 
         return $rows;
     }
