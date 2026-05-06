@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\FichaController;
 use App\Http\Controllers\Api\HardwarePedidoController;
 use App\Http\Controllers\Api\HardwareStockController;
 use App\Http\Controllers\Api\LocalController;
+use App\Http\Controllers\Api\PresupuestoController;
+use App\Http\Controllers\Api\PromocionController;
 use App\Http\Controllers\Api\ProyectoController;
 use App\Http\Controllers\Api\ProyectoHistorialController;
 use App\Http\Controllers\Api\SolicitudController;
@@ -130,5 +132,31 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::middleware('permiso:stock,delete')->group(function () {
         Route::delete('/hardware/stock/{articulo}', [HardwareStockController::class, 'destroy']);
+    });
+
+    // === Promociones (sustituye 20-promociones) ===
+    Route::middleware('permiso:promociones,read')->group(function () {
+        Route::get('/promociones', [PromocionController::class, 'index']);
+        Route::get('/promociones/{promocion}', [PromocionController::class, 'show']);
+    });
+    Route::middleware('permiso:promociones,write')->group(function () {
+        Route::post('/promociones', [PromocionController::class, 'store']);
+        Route::put('/promociones/{promocion}', [PromocionController::class, 'update']);
+    });
+    Route::middleware('permiso:promociones,delete')->group(function () {
+        Route::delete('/promociones/{promocion}', [PromocionController::class, 'destroy']);
+    });
+
+    // === Presupuestos (sustituye 22-presupuestos) ===
+    Route::middleware('permiso:presupuestos,read')->group(function () {
+        Route::get('/presupuestos', [PresupuestoController::class, 'index']);
+        Route::get('/presupuestos/{presupuesto}', [PresupuestoController::class, 'show']);
+    });
+    Route::middleware('permiso:presupuestos,write')->group(function () {
+        Route::post('/presupuestos', [PresupuestoController::class, 'store']);
+        Route::put('/presupuestos/{presupuesto}', [PresupuestoController::class, 'update']);
+    });
+    Route::middleware('permiso:presupuestos,delete')->group(function () {
+        Route::delete('/presupuestos/{presupuesto}', [PresupuestoController::class, 'destroy']);
     });
 });
