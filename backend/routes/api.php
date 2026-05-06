@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\AsanaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BajaController;
+use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\CsKanbanController;
 use App\Http\Controllers\Api\DistribucionController;
+use App\Http\Controllers\Api\DriveController;
 use App\Http\Controllers\Api\EscaladoController;
 use App\Http\Controllers\Api\FichaController;
 use App\Http\Controllers\Api\FichaHistorialController;
@@ -200,5 +203,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permiso:fichas,write')->group(function () {
         Route::post('/fichas/{ficha}/notificar-completa', [NotificarFichaCompletaController::class, 'notificar'])
             ->where('ficha', '[0-9a-f-]+');
+    });
+
+    // === Asana proxy (sustituye nodos Asana del workflow 07) ===
+    Route::middleware('permiso:proyectos,read')->group(function () {
+        Route::get('/asana/tasks', [AsanaController::class, 'tasks']);
+        Route::get('/asana/tasks/{taskId}/stories', [AsanaController::class, 'stories']);
+    });
+
+    // === Calendar proxy (sustituye nodo Calendar del workflow 07) ===
+    Route::middleware('permiso:proyectos,write')->group(function () {
+        Route::post('/calendar/events', [CalendarController::class, 'store']);
+    });
+
+    // === Drive proxy (sustituye nodos Drive del workflow 11) ===
+    Route::middleware('permiso:fichas,read')->group(function () {
+        Route::get('/drive', [DriveController::class, 'show']);
+        Route::get('/drive/docs-subidos', [DriveController::class, 'docsSubidos']);
     });
 });

@@ -18,4 +18,12 @@ return [
      */
     'supabase_dsn' => env('SUPABASE_DSN'),
 
+    /*
+     * Personal Access Token de Asana usado por AsanaController para
+     * proxyear /projects/{id}/tasks y /tasks/{gid}/stories.
+     * Mientras esté null, los endpoints devuelven 503 y el frontend
+     * sigue contra n8n.
+     */
+    'asana_pat' => env('ASANA_PAT'),
+
 ];
