@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BajaController;
+use App\Http\Controllers\Api\CsKanbanController;
 use App\Http\Controllers\Api\DistribucionController;
+use App\Http\Controllers\Api\EscaladoController;
 use App\Http\Controllers\Api\FichaController;
+use App\Http\Controllers\Api\GrabadoA3Controller;
 use App\Http\Controllers\Api\HardwarePedidoController;
 use App\Http\Controllers\Api\HardwareStockController;
 use App\Http\Controllers\Api\LocalController;
@@ -158,5 +161,28 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::middleware('permiso:presupuestos,delete')->group(function () {
         Route::delete('/presupuestos/{presupuesto}', [PresupuestoController::class, 'destroy']);
+    });
+
+    // === Escalados (sustituye 26-escalados) ===
+    Route::middleware('permiso:escalados,read')->group(function () {
+        Route::get('/escalados', [EscaladoController::class, 'index']);
+        Route::get('/escalados/{escalado}', [EscaladoController::class, 'show']);
+    });
+    Route::middleware('permiso:escalados,write')->group(function () {
+        Route::post('/escalados', [EscaladoController::class, 'store']);
+        Route::put('/escalados/{escalado}', [EscaladoController::class, 'update']);
+    });
+    Route::middleware('permiso:escalados,delete')->group(function () {
+        Route::delete('/escalados/{escalado}', [EscaladoController::class, 'destroy']);
+    });
+
+    // === CS Kanban (sustituye 27-cs-kanban) ===
+    Route::middleware('permiso:cs-kanban,write')->group(function () {
+        Route::post('/cs/estado', [CsKanbanController::class, 'updateEstado']);
+    });
+
+    // === Grabado A3 (sustituye 13-grabado-a3) ===
+    Route::middleware('permiso:contabilidad,write')->group(function () {
+        Route::post('/proyectos/{proyecto}/grabado-a3', [GrabadoA3Controller::class, 'update']);
     });
 });
