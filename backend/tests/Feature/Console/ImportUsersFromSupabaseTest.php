@@ -184,7 +184,8 @@ it('importa desde un archivo JSON con shape estándar', function () {
         [
             'id' => '11111111-1111-1111-1111-111111111111',
             'username' => 'carla',
-            'password_hash' => 'pbkdf2$100000$abc==$xyz=',
+            // ≥40 chars (CHECK length(password)>=40) y prefijo pbkdf2$ para detección
+            'password_hash' => 'pbkdf2$100000$c2FsdHNhbHRzYWx0c2FsdA==$dummyhashbase64encodedplaceholder=',
             'nombre' => 'Carla Test',
             'email' => 'carla@yurest.com',
             'rol' => 'user',
