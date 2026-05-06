@@ -128,4 +128,4 @@ jobs:
         run: php artisan migrate --force
 
       - name: Tests con Pest
-        run: vendor/bin/pest --parallel
+        run: vendor/bin/pest
