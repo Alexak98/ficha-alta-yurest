@@ -16,6 +16,7 @@ y autenticación (workflow `16-auth.json`). El resto se irá migrando por fases.
 | Middleware de permisos granulares (`permiso:pageId,accion`) | ✅ |
 | CORS configurado para GitHub Pages + dev local | ✅ |
 | CRUD de solicitudes (PoC) + endpoint público `responder` | ✅ |
+| Seeder de admin local + comando `yurest:import-users` desde Supabase | ✅ |
 | CI con Postgres + Redis + Pest + PHPStan + Pint | ✅ |
 | Resto de workflows (fichas, proyectos, bajas, hardware, ...) | ⏳ pendiente |
 | Crons (notif integraciones, resúmenes Zendesk) | ⏳ pendiente |
@@ -36,6 +37,41 @@ composer install
 ```
 
 API en `http://localhost`. Healthcheck: `curl http://localhost/api/health`.
+
+## Datos iniciales
+
+La BD arranca de cero con un único admin:
+
+```bash
+./vendor/bin/sail artisan db:seed
+# username: alex / password: alex08 / rol: admin
+```
+
+### (Opcional) importar usuarios reales desde Supabase
+
+El comando `yurest:import-users` se mantiene como infraestructura por si
+en el futuro se quiere migrar otra tabla. Soporta tres orígenes:
+
+```bash
+# Vía CSV exportado del SQL Editor de Supabase Studio
+./vendor/bin/sail artisan yurest:import-users --csv=database/imports/usuarios.csv
+
+# Vía JSON copiado al portapapeles (Mac)
+pbpaste > database/imports/usuarios.json
+./vendor/bin/sail artisan yurest:import-users --json=database/imports/usuarios.json
+
+# Vía DSN si tienes la password del rol postgres
+./vendor/bin/sail artisan yurest:import-users --dsn=postgres://user:PASS@host:5432/db
+
+# Borra siempre el archivo tras el import — contiene PII
+rm database/imports/usuarios.*
+```
+
+Soporta `--dry-run` (preview) y `--force` (sobrescribir).
+
+**Importante:** los archivos en `database/imports/*.sql/.json/.csv` están
+en `.gitignore` (contienen PII — passwords y emails reales). Bórralos en
+cuanto termines el import.
 
 ## Tests
 
