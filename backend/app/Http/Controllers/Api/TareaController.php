@@ -29,17 +29,25 @@ class TareaController extends Controller
 
     public function update(Request $request, Proyecto $proyecto): ProyectoResource|JsonResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'seccionNombre' => ['required', 'string'],
             'tarea' => ['required', 'array'],
             'tarea.id' => ['required', 'string'],
         ]);
 
+        // Leemos el tarea completo desde el request (no de validated()),
+        // porque validated() solo devuelve los campos explícitamente listados
+        // en rules, lo que dejaría fuera campos como `completada`, `asignado`,
+        // etc. — todos los que necesitamos para el merge.
+        $seccionNombre = (string) $request->input('seccionNombre');
+        /** @var array<string, mixed> $tarea */
+        $tarea = (array) $request->input('tarea');
+
         try {
             $secciones = $this->service->actualizarTarea(
                 $proyecto->secciones ?? [],
-                $data['seccionNombre'],
-                $data['tarea'],
+                $seccionNombre,
+                $tarea,
             );
         } catch (RuntimeException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
