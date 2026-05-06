@@ -40,38 +40,34 @@ API en `http://localhost`. Healthcheck: `curl http://localhost/api/health`.
 
 ## Datos iniciales
 
+La BD arranca de cero con un único admin:
+
 ```bash
-# 1) Admin local de pruebas
 ./vendor/bin/sail artisan db:seed
-# username: admin / password: la de SEED_ADMIN_PASSWORD (default: "password")
-
-# 2) Importar usuarios reales desde Supabase
-
-# Opción A — sin password de BD (si entras con OAuth/GitHub):
-#   1) Supabase Dashboard → SQL Editor:
-#        SELECT * FROM usuarios WHERE deleted_at IS NULL;
-#   2) Click en "Download CSV" o "Copy as JSON" — lo que ofrezca tu UI.
-#   3a) Si descargaste CSV:
-mv ~/Downloads/usuarios.csv database/imports/usuarios-supabase.csv
-./vendor/bin/sail artisan yurest:import-users --csv=database/imports/usuarios-supabase.csv --dry-run
-./vendor/bin/sail artisan yurest:import-users --csv=database/imports/usuarios-supabase.csv
-rm database/imports/usuarios-supabase.csv
-
-#   3b) Si copiaste JSON al portapapeles (Mac):
-pbpaste > database/imports/usuarios-supabase.json
-./vendor/bin/sail artisan yurest:import-users --json=database/imports/usuarios-supabase.json
-rm database/imports/usuarios-supabase.json
-
-# Opción B — con password del rol postgres:
-echo 'SUPABASE_DSN=postgres://USER:PASS@host:5432/postgres' >> .env
-./vendor/bin/sail artisan yurest:import-users --dry-run
-./vendor/bin/sail artisan yurest:import-users
-./vendor/bin/sail artisan yurest:import-users --force     # sobrescribe duplicados
+# username: alex / password: alex08 / rol: admin
 ```
 
-El comando preserva UUIDs, hashes PBKDF2 (con `password_algo='pbkdf2'` para
-rehash gradual al primer login), permisos granulares y normaliza el formato
-legacy de `permisos` (array plano → objeto `{read,write,delete}`).
+### (Opcional) importar usuarios reales desde Supabase
+
+El comando `yurest:import-users` se mantiene como infraestructura por si
+en el futuro se quiere migrar otra tabla. Soporta tres orígenes:
+
+```bash
+# Vía CSV exportado del SQL Editor de Supabase Studio
+./vendor/bin/sail artisan yurest:import-users --csv=database/imports/usuarios.csv
+
+# Vía JSON copiado al portapapeles (Mac)
+pbpaste > database/imports/usuarios.json
+./vendor/bin/sail artisan yurest:import-users --json=database/imports/usuarios.json
+
+# Vía DSN si tienes la password del rol postgres
+./vendor/bin/sail artisan yurest:import-users --dsn=postgres://user:PASS@host:5432/db
+
+# Borra siempre el archivo tras el import — contiene PII
+rm database/imports/usuarios.*
+```
+
+Soporta `--dry-run` (preview) y `--force` (sobrescribir).
 
 **Importante:** los archivos en `database/imports/*.sql/.json/.csv` están
 en `.gitignore` (contienen PII — passwords y emails reales). Bórralos en

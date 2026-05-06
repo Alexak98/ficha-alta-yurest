@@ -12,13 +12,10 @@ return [
     /*
      * DSN del Postgres origen (Supabase) usado por el comando
      * `php artisan yurest:import-users` cuando no se pasa --dsn.
+     * El comando se mantiene como infraestructura por si en el futuro
+     * se quiere migrar otra tabla, pero el seeder actual NO lo usa
+     * (la BD parte de cero con un único admin).
      */
     'supabase_dsn' => env('SUPABASE_DSN'),
-
-    /*
-     * Password del admin local creado por DatabaseSeeder.
-     * Solo aplica en local/test — en prod no se ejecuta el seeder.
-     */
-    'seed_admin_password' => env('SEED_ADMIN_PASSWORD', 'password'),
 
 ];

@@ -3,15 +3,15 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-it('DatabaseSeeder crea un admin local idempotente', function () {
+it('DatabaseSeeder crea el usuario alex idempotente', function () {
     $this->seed();
     $this->seed(); // re-seed: no debe duplicar
 
-    $admins = User::where('username', 'admin')->get();
-    expect($admins)->toHaveCount(1);
+    $rows = User::where('username', 'alex')->get();
+    expect($rows)->toHaveCount(1);
 
-    $admin = $admins->first();
-    expect($admin->rol)->toBe('admin')
-        ->and($admin->activo)->toBeTrue()
-        ->and(Hash::check('password', $admin->password))->toBeTrue();
+    $alex = $rows->first();
+    expect($alex->rol)->toBe('admin')
+        ->and($alex->activo)->toBeTrue()
+        ->and(Hash::check('alex08', $alex->password))->toBeTrue();
 });

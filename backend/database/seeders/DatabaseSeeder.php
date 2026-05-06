@@ -17,22 +17,20 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Crea un admin local para desarrollo. La contraseña sale de
-     * env('SEED_ADMIN_PASSWORD'), default 'password' (nunca usar en prod).
-     *
-     * Si ya existe (seed re-ejecutado), lo deja intacto.
+     * Único usuario inicial del entorno: alex / alex08, rol admin.
+     * Idempotente — si ya existe, lo deja intacto.
      */
     private function seedLocalAdmin(): void
     {
-        if (User::query()->where('username', 'admin')->exists()) {
+        if (User::query()->where('username', 'alex')->exists()) {
             return;
         }
 
         User::create([
-            'username' => 'admin',
-            'nombre' => 'Admin Local',
-            'email' => 'admin@yurest.local',
-            'password' => Hash::make(config('yurest.seed_admin_password')),
+            'username' => 'alex',
+            'nombre' => 'Alex',
+            'email' => 'alex@yurest.local',
+            'password' => Hash::make('alex08'),
             'password_algo' => 'bcrypt',
             'rol' => 'admin',
             'permisos' => ['read' => [], 'write' => [], 'delete' => []],
