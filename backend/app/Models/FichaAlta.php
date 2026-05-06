@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use Database\Factories\FichaAltaFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Ficha de alta de cliente (tabla `fichas_alta`).
@@ -15,6 +17,28 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Replica el shape exacto del workflow `04-fichas-alta.json`. Los timestamps
  * `fecha_solicitud`, `fecha_rellenado`, `fecha_completado` los puebla un
  * trigger Postgres — no se tocan desde código.
+ *
+ * @property string $id
+ * @property int $numero_ficha
+ * @property string $denominacion
+ * @property string|null $cif
+ * @property string|null $email
+ * @property string|null $tipo_cliente
+ * @property string|null $comercial
+ * @property string|null $implementador
+ * @property string|null $estado
+ * @property bool $ocr_activo
+ * @property bool $lite
+ * @property bool $tpv_no_integrado
+ * @property bool $distribuidor
+ * @property array<int, mixed>|null $paquetes_carrito
+ * @property Carbon|null $fecha_solicitud
+ * @property Carbon|null $fecha_rellenado
+ * @property Carbon|null $fecha_completado
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Collection<int, Local> $locales
  */
 class FichaAlta extends Model
 {

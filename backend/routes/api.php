@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FichaController;
+use App\Http\Controllers\Api\LocalController;
 use App\Http\Controllers\Api\SolicitudController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,5 +44,22 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::middleware('permiso:solicitudes,delete')->group(function () {
         Route::delete('/solicitudes/{solicitud}', [SolicitudController::class, 'destroy']);
+    });
+
+    // === Fichas (sustituye 04-fichas-alta + 12-completar-ficha + 09-rellenado-cliente) ===
+    Route::middleware('permiso:fichas,read')->group(function () {
+        Route::get('/fichas', [FichaController::class, 'index']);
+        Route::get('/fichas/{ficha}', [FichaController::class, 'show']);
+        Route::get('/fichas/{ficha}/locales', [LocalController::class, 'index']);
+    });
+    Route::middleware('permiso:fichas,write')->group(function () {
+        Route::post('/fichas', [FichaController::class, 'store']);
+        Route::put('/fichas/{ficha}', [FichaController::class, 'update']);
+        Route::post('/fichas/{ficha}/locales', [LocalController::class, 'store']);
+        Route::put('/fichas/{ficha}/locales/{local}', [LocalController::class, 'update']);
+    });
+    Route::middleware('permiso:fichas,delete')->group(function () {
+        Route::delete('/fichas/{ficha}', [FichaController::class, 'destroy']);
+        Route::delete('/fichas/{ficha}/locales/{local}', [LocalController::class, 'destroy']);
     });
 });
