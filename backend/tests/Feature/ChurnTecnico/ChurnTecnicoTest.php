@@ -50,7 +50,7 @@ it('status devuelve contadores correctos', function () {
 
 it('rechaza nivel fuera de 0..10', function () {
     expect(fn () => ChurnTecnico::create(['id_organizacion' => 'org-z', 'nivel' => 99]))
-        ->toThrow(Throwable::class);
+        ->toThrow(\Illuminate\Database\QueryException::class);
 });
 
 it('scan/refresh devuelven 503 stub', function () {
