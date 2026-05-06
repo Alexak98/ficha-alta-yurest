@@ -22,7 +22,8 @@ class FichaAltaFactory extends Factory
             'cp' => fake()->numerify('#####'),
             'estado' => 'pendiente',
             'baja' => 'No',
-            'modulos' => [],
+            // modulos es TEXT[] en Postgres y Eloquent no tiene cast nativo
+            // para arrays Postgres; dejamos que el DEFAULT '{}' del schema actúe.
             'paquetes_carrito' => [],
         ];
     }
