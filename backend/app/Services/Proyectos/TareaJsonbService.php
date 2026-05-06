@@ -13,7 +13,8 @@ use RuntimeException;
  * Replica la lógica del workflow `02-proyectos-tareas.json` (nodos
  * "Actualizar Tarea en JSONB" y "Mover Tarea en JSONB"). Las funciones
  * son puras: reciben el array, devuelven el array modificado, sin tocar
- * BD ni dispatch de eventos.
+ * BD ni dispatch de eventos. No usa foreach-by-reference para evitar
+ * sorpresas con la propagación de cambios anidados.
  */
 final class TareaJsonbService
 {
@@ -35,42 +36,39 @@ final class TareaJsonbService
         if (! isset($tarea['id'])) {
             throw new RuntimeException('tarea.id es obligatorio');
         }
-
         $tareaId = (string) $tarea['id'];
 
-        // 1. Intenta primero en la sección indicada (tareas + subtareas).
-        foreach ($secciones as &$seccion) {
+        // 1. Buscar en la sección indicada (tareas + subtareas).
+        foreach ($secciones as $sIdx => $seccion) {
             if (($seccion['nombre'] ?? null) !== $seccionNombre) {
                 continue;
             }
-            if ($this->mergeTarea($seccion['tareas'] ?? [], $tareaId, $tarea, $seccion['tareas'])) {
-                return $secciones;
-            }
-            // Búsqueda en subtareas dentro de la sección
-            /** @var array<int, array<string, mixed>> $tareasArr */
-            $tareasArr = $seccion['tareas'];
-            foreach ($tareasArr as &$t) {
-                if (! isset($t['subtareas'])) {
-                    continue;
+            foreach ($seccion['tareas'] ?? [] as $tIdx => $t) {
+                if (($t['id'] ?? null) === $tareaId) {
+                    $secciones[$sIdx]['tareas'][$tIdx] = array_replace($t, $tarea);
+
+                    return $secciones;
                 }
-                if ($this->mergeTarea($t['subtareas'], $tareaId, $tarea, $t['subtareas'])) {
-                    $seccion['tareas'] = $tareasArr;
+                foreach ($t['subtareas'] ?? [] as $sbIdx => $sb) {
+                    if (($sb['id'] ?? null) === $tareaId) {
+                        $secciones[$sIdx]['tareas'][$tIdx]['subtareas'][$sbIdx] = array_replace($sb, $tarea);
+
+                        return $secciones;
+                    }
+                }
+            }
+        }
+
+        // 2. Fallback: cualquier sección (top-level).
+        foreach ($secciones as $sIdx => $seccion) {
+            foreach ($seccion['tareas'] ?? [] as $tIdx => $t) {
+                if (($t['id'] ?? null) === $tareaId) {
+                    $secciones[$sIdx]['tareas'][$tIdx] = array_replace($t, $tarea);
 
                     return $secciones;
                 }
             }
-            unset($t);
-            $seccion['tareas'] = $tareasArr;
         }
-        unset($seccion);
-
-        // 2. Fallback: buscar en cualquier sección.
-        foreach ($secciones as &$seccion) {
-            if ($this->mergeTarea($seccion['tareas'] ?? [], $tareaId, $tarea, $seccion['tareas'])) {
-                return $secciones;
-            }
-        }
-        unset($seccion);
 
         throw new RuntimeException("Tarea $tareaId no encontrada en sección $seccionNombre");
     }
@@ -114,31 +112,9 @@ final class TareaJsonbService
         $tarea = $tareas[$tareaPos];
         array_splice($tareas, $tareaPos, 1);
         $secciones[$origenIdx]['tareas'] = array_values($tareas);
-
         $secciones[$destinoIdx]['tareas'][] = $tarea;
 
         return $secciones;
-    }
-
-    /**
-     * Helper: hace merge en el primer elemento del array con id == $id.
-     * Devuelve true si encontró y actualizó, false si no.
-     *
-     * @param  array<int, array<string, mixed>>  $arr  (no se modifica directamente)
-     * @param  array<string, mixed>  $patch
-     * @param  array<int, array<string, mixed>>  &$ref  referencia donde escribir el merge
-     */
-    private function mergeTarea(array $arr, string $id, array $patch, array &$ref): bool
-    {
-        foreach ($arr as $i => $t) {
-            if (($t['id'] ?? null) === $id) {
-                $ref[$i] = array_replace($t, $patch);
-
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /** @param  array<int, array<string, mixed>>  $secciones */

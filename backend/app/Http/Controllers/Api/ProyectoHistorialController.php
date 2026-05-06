@@ -80,6 +80,9 @@ class ProyectoHistorialController extends Controller
             'cambios' => $data['cambios'] ?? [],
             'metadata' => $data['metadata'] ?? [],
         ]);
+        // refresh para traer el creado_at del DEFAULT NOW() de Postgres
+        // (timestamps=false en el modelo, no se rellena en memoria al insert).
+        $row->refresh();
 
         return (new ProyectoHistorialResource($row))->response()->setStatusCode(201);
     }
