@@ -3,7 +3,10 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FichaController;
 use App\Http\Controllers\Api\LocalController;
+use App\Http\Controllers\Api\ProyectoController;
+use App\Http\Controllers\Api\ProyectoHistorialController;
 use App\Http\Controllers\Api\SolicitudController;
+use App\Http\Controllers\Api\TareaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -61,5 +64,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permiso:fichas,delete')->group(function () {
         Route::delete('/fichas/{ficha}', [FichaController::class, 'destroy']);
         Route::delete('/fichas/{ficha}/locales/{local}', [LocalController::class, 'destroy']);
+    });
+
+    // === Proyectos (sustituye 01-proyectos-crud + 02-proyectos-tareas + 18-proyectos-historial) ===
+    Route::middleware('permiso:proyectos,read')->group(function () {
+        Route::get('/proyectos', [ProyectoController::class, 'index']);
+        Route::get('/proyectos/{proyecto}', [ProyectoController::class, 'show']);
+        Route::get('/proyectos/{proyecto}/historial', [ProyectoHistorialController::class, 'index']);
+    });
+    Route::middleware('permiso:proyectos,write')->group(function () {
+        Route::post('/proyectos', [ProyectoController::class, 'store']);
+        Route::put('/proyectos/{proyecto}', [ProyectoController::class, 'update']);
+        Route::put('/proyectos/{proyecto}/tareas', [TareaController::class, 'update']);
+        Route::put('/proyectos/{proyecto}/tareas/mover', [TareaController::class, 'mover']);
+        Route::put('/proyectos/{proyecto}/anotaciones', [TareaController::class, 'anotaciones']);
+        Route::post('/proyectos/{proyecto}/historial', [ProyectoHistorialController::class, 'store']);
+    });
+    Route::middleware('permiso:proyectos,delete')->group(function () {
+        Route::delete('/proyectos/{proyecto}', [ProyectoController::class, 'destroy']);
     });
 });
