@@ -16,6 +16,7 @@ y autenticación (workflow `16-auth.json`). El resto se irá migrando por fases.
 | Middleware de permisos granulares (`permiso:pageId,accion`) | ✅ |
 | CORS configurado para GitHub Pages + dev local | ✅ |
 | CRUD de solicitudes (PoC) + endpoint público `responder` | ✅ |
+| Seeder de admin local + comando `yurest:import-users` desde Supabase | ✅ |
 | CI con Postgres + Redis + Pest + PHPStan + Pint | ✅ |
 | Resto de workflows (fichas, proyectos, bajas, hardware, ...) | ⏳ pendiente |
 | Crons (notif integraciones, resúmenes Zendesk) | ⏳ pendiente |
@@ -36,6 +37,38 @@ composer install
 ```
 
 API en `http://localhost`. Healthcheck: `curl http://localhost/api/health`.
+
+## Datos iniciales
+
+```bash
+# 1) Admin local de pruebas
+./vendor/bin/sail artisan db:seed
+# username: admin / password: la de SEED_ADMIN_PASSWORD (default: "password")
+
+# 2) Importar usuarios reales desde Supabase
+echo 'SUPABASE_DSN=postgres://USER:PASS@db.kyvzrqxicxirnroowriq.supabase.co:5432/postgres' >> .env
+./vendor/bin/sail artisan yurest:import-users --dry-run   # preview sin escribir
+./vendor/bin/sail artisan yurest:import-users             # importa de verdad
+./vendor/bin/sail artisan yurest:import-users --force     # sobrescribe duplicados
+```
+
+El comando preserva UUIDs, hashes PBKDF2 (con `password_algo='pbkdf2'` para
+rehash gradual al primer login), permisos granulares y normaliza el formato
+legacy de `permisos` (array plano → objeto `{read,write,delete}`).
+
+Para importar desde un dump SQL en lugar de DSN:
+
+```bash
+# Crea BD temporal en Sail
+./vendor/bin/sail bin createdb -U yurest yurest_supabase_dump
+./vendor/bin/sail bin psql -U yurest yurest_supabase_dump < database/imports/usuarios-supabase.sql
+./vendor/bin/sail artisan yurest:import-users --dsn=postgres://yurest:yurest@127.0.0.1/yurest_supabase_dump
+./vendor/bin/sail bin dropdb -U yurest yurest_supabase_dump
+rm database/imports/usuarios-supabase.sql
+```
+
+**Importante:** los archivos en `database/imports/*.sql` están en `.gitignore`
+(contienen PII — passwords y emails reales). Bórralos en cuanto termines.
 
 ## Tests
 

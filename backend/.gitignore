@@ -25,3 +25,10 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Dumps de Supabase con PII (passwords, emails). NUNCA commitear.
+# Borra el archivo en cuanto termines el import.
+/database/imports/*.sql
+/database/imports/*.dump
+/database/imports/*.csv
+!/database/imports/.gitkeep
