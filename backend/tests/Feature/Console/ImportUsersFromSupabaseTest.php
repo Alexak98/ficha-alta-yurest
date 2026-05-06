@@ -91,7 +91,7 @@ function seedSourceUser(array $overrides = []): void
 it('falla si no se pasa DSN ni hay SUPABASE_DSN', function () {
     config(['yurest.supabase_dsn' => null]);
     $this->artisan('yurest:import-users')
-        ->expectsOutputToContain('Falta DSN')
+        ->expectsOutputToContain('Falta origen')
         ->assertFailed();
 });
 
@@ -207,9 +207,10 @@ it('importa desde un archivo JSON con shape estándar', function () {
 });
 
 it('soporta JSON envuelto por json_agg (array dentro de array)', function () {
+    $hash = bcrypt('x'); // ≥40 chars para cumplir el CHECK constraint
     $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.json';
     file_put_contents($tmp, json_encode([[
-        ['id' => '22222222-2222-2222-2222-222222222222', 'username' => 'dani', 'password_hash' => 'x', 'rol' => 'user'],
+        ['id' => '22222222-2222-2222-2222-222222222222', 'username' => 'dani', 'password_hash' => $hash, 'rol' => 'user'],
     ]]));
 
     $this->artisan('yurest:import-users', ['--json' => $tmp])
@@ -221,10 +222,11 @@ it('soporta JSON envuelto por json_agg (array dentro de array)', function () {
 });
 
 it('omite filas soft-deleted del JSON', function () {
+    $hash = bcrypt('x');
     $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.json';
     file_put_contents($tmp, json_encode([
-        ['id' => '33333333-3333-3333-3333-333333333333', 'username' => 'vivo',    'password_hash' => 'x', 'rol' => 'user'],
-        ['id' => '44444444-4444-4444-4444-444444444444', 'username' => 'borrado', 'password_hash' => 'x', 'rol' => 'user', 'deleted_at' => '2026-01-01T00:00:00Z'],
+        ['id' => '33333333-3333-3333-3333-333333333333', 'username' => 'vivo',    'password_hash' => $hash, 'rol' => 'user'],
+        ['id' => '44444444-4444-4444-4444-444444444444', 'username' => 'borrado', 'password_hash' => $hash, 'rol' => 'user', 'deleted_at' => '2026-01-01T00:00:00Z'],
     ]));
 
     $this->artisan('yurest:import-users', ['--json' => $tmp])
