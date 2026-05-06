@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AsanaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BajaController;
 use App\Http\Controllers\Api\CalendarController;
+use App\Http\Controllers\Api\ChurnTecnicoController;
 use App\Http\Controllers\Api\CsKanbanController;
 use App\Http\Controllers\Api\DistribucionController;
 use App\Http\Controllers\Api\DriveController;
@@ -241,6 +242,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permiso:integraciones,write')->group(function () {
         Route::put('/notif-integraciones/config', [NotifIntegracionesController::class, 'updateConfig']);
         Route::post('/notif-integraciones/grupos', [NotifIntegracionesController::class, 'gruposAction']);
+    });
+
+    // === Churn técnico (sustituye 24-churn-tecnico-supabase, parcial) ===
+    Route::middleware('permiso:churn-tecnico,read')->group(function () {
+        Route::get('/churn/clientes', [ChurnTecnicoController::class, 'clientes']);
+        Route::get('/churn/status', [ChurnTecnicoController::class, 'status']);
+        Route::post('/churn/buscar-resumen', [ChurnTecnicoController::class, 'buscarResumen']);
+    });
+    Route::middleware('permiso:churn-tecnico,write')->group(function () {
+        Route::post('/churn/scan', [ChurnTecnicoController::class, 'scan']);
+        Route::post('/churn/refresh', [ChurnTecnicoController::class, 'refresh']);
     });
 
     // === Zendesk heatmap + resúmenes (sustituye 25, 26-ia, 28, 29) ===
