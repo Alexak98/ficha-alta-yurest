@@ -6,10 +6,12 @@ use App\Http\Controllers\Api\CsKanbanController;
 use App\Http\Controllers\Api\DistribucionController;
 use App\Http\Controllers\Api\EscaladoController;
 use App\Http\Controllers\Api\FichaController;
+use App\Http\Controllers\Api\FichaHistorialController;
 use App\Http\Controllers\Api\GrabadoA3Controller;
 use App\Http\Controllers\Api\HardwarePedidoController;
 use App\Http\Controllers\Api\HardwareStockController;
 use App\Http\Controllers\Api\LocalController;
+use App\Http\Controllers\Api\NotificarFichaCompletaController;
 use App\Http\Controllers\Api\PresupuestoController;
 use App\Http\Controllers\Api\PromocionController;
 use App\Http\Controllers\Api\ProyectoController;
@@ -184,5 +186,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // === Grabado A3 (sustituye 13-grabado-a3) ===
     Route::middleware('permiso:contabilidad,write')->group(function () {
         Route::post('/proyectos/{proyecto}/grabado-a3', [GrabadoA3Controller::class, 'update']);
+    });
+
+    // === Historial fichas (sustituye 17-historial) ===
+    Route::middleware('permiso:fichas,read')->group(function () {
+        Route::get('/historial', [FichaHistorialController::class, 'index']);
+    });
+    Route::middleware('permiso:fichas,write')->group(function () {
+        Route::post('/historial', [FichaHistorialController::class, 'store']);
+    });
+
+    // === Notificación ficha completa (sustituye 19-notif-ficha-completa) ===
+    Route::middleware('permiso:fichas,write')->group(function () {
+        Route::post('/fichas/{ficha}/notificar-completa', [NotificarFichaCompletaController::class, 'notificar'])
+            ->where('ficha', '[0-9a-f-]+');
     });
 });
