@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BajaController;
+use App\Http\Controllers\Api\DistribucionController;
 use App\Http\Controllers\Api\FichaController;
 use App\Http\Controllers\Api\LocalController;
 use App\Http\Controllers\Api\ProyectoController;
@@ -82,5 +84,23 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::middleware('permiso:proyectos,delete')->group(function () {
         Route::delete('/proyectos/{proyecto}', [ProyectoController::class, 'destroy']);
+    });
+
+    // === Bajas (sustituye 05-bajas) ===
+    Route::middleware('permiso:bajas,read')->group(function () {
+        Route::get('/bajas', [BajaController::class, 'index']);
+    });
+    Route::middleware('permiso:bajas,write')->group(function () {
+        Route::post('/bajas', [BajaController::class, 'store']);
+        Route::put('/bajas/{baja}', [BajaController::class, 'update']);
+    });
+    Route::middleware('permiso:bajas,delete')->group(function () {
+        Route::delete('/bajas/{baja}', [BajaController::class, 'destroy']);
+    });
+
+    // === Distribución (sustituye 06-distribucion) ===
+    // Asigna implementador a ficha (1 endpoint POST, mismo permiso que escritura de fichas).
+    Route::middleware('permiso:distribucion,write')->group(function () {
+        Route::post('/distribucion', [DistribucionController::class, 'store']);
     });
 });
