@@ -31,4 +31,5 @@ Thumbs.db
 /database/imports/*.sql
 /database/imports/*.dump
 /database/imports/*.csv
+/database/imports/*.json
 !/database/imports/.gitkeep

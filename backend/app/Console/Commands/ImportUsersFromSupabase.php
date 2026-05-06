@@ -30,6 +30,7 @@ class ImportUsersFromSupabase extends Command
 {
     protected $signature = 'yurest:import-users
         {--dsn= : Postgres DSN de origen (si se omite, lee SUPABASE_DSN del .env)}
+        {--json= : Ruta a un archivo JSON con la lista de usuarios (alternativa a --dsn)}
         {--dry-run : Lista lo que importaría sin escribir nada}
         {--force : Sobrescribe usuarios locales con el mismo username}';
 
@@ -37,18 +38,23 @@ class ImportUsersFromSupabase extends Command
 
     public function handle(): int
     {
-        $dsn = $this->option('dsn') ?: config('yurest.supabase_dsn');
-        if (! $dsn) {
-            $this->error('Falta DSN: pasa --dsn=... o define SUPABASE_DSN en .env');
-
-            return self::FAILURE;
-        }
-
+        $jsonPath = (string) $this->option('json');
         $dryRun = (bool) $this->option('dry-run');
         $force = (bool) $this->option('force');
 
-        $this->info('Conectando al origen...');
-        $rows = $this->fetchSourceRows($dsn);
+        if ($jsonPath !== '') {
+            $rows = $this->fetchFromJson($jsonPath);
+        } else {
+            $dsn = $this->option('dsn') ?: config('yurest.supabase_dsn');
+            if (! $dsn) {
+                $this->error('Falta origen: pasa --dsn=..., --json=path/a/archivo.json, o define SUPABASE_DSN en .env');
+
+                return self::FAILURE;
+            }
+            $this->info('Conectando al origen...');
+            $rows = $this->fetchSourceRows($dsn);
+        }
+
         if ($rows === null) {
             return self::FAILURE;
         }
@@ -102,6 +108,57 @@ class ImportUsersFromSupabase extends Command
         ));
 
         return $stats['errors'] > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Lee usuarios desde un archivo JSON exportado del SQL Editor de
+     * Supabase Studio. El JSON debe ser un array de objetos con las
+     * columnas estándar (id, username, password_hash, ...).
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function fetchFromJson(string $path): ?array
+    {
+        if (! is_file($path)) {
+            $this->error("Archivo no encontrado: $path");
+
+            return null;
+        }
+
+        $raw = file_get_contents($path);
+        if ($raw === false) {
+            $this->error("No se pudo leer: $path");
+
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded)) {
+            $this->error('JSON inválido o no es un array.');
+
+            return null;
+        }
+
+        // Soporta dos shapes:
+        //   1) [{...}, {...}]                     (export estándar)
+        //   2) [[{...}, {...}]]                   (resultado de json_agg en una columna)
+        if (count($decoded) === 1 && is_array($decoded[0]) && ! isset($decoded[0]['username'])) {
+            $decoded = $decoded[0];
+        }
+
+        $rows = [];
+        foreach ($decoded as $item) {
+            if (! is_array($item) || ! isset($item['username'])) {
+                continue;
+            }
+            // Filtra soft-deleted al cargar (consistencia con el modo --dsn)
+            if (! empty($item['deleted_at'])) {
+                continue;
+            }
+            $rows[] = $item;
+        }
+
+        return $rows;
     }
 
     /**

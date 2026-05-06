@@ -46,9 +46,20 @@ API en `http://localhost`. Healthcheck: `curl http://localhost/api/health`.
 # username: admin / password: la de SEED_ADMIN_PASSWORD (default: "password")
 
 # 2) Importar usuarios reales desde Supabase
-echo 'SUPABASE_DSN=postgres://USER:PASS@db.kyvzrqxicxirnroowriq.supabase.co:5432/postgres' >> .env
-./vendor/bin/sail artisan yurest:import-users --dry-run   # preview sin escribir
-./vendor/bin/sail artisan yurest:import-users             # importa de verdad
+
+# Opción A — sin password de BD (recomendado si entras con OAuth/GitHub):
+#   1) Supabase Dashboard → SQL Editor:
+#        SELECT * FROM usuarios WHERE deleted_at IS NULL;
+#   2) Click en "Download" → JSON → guarda como database/imports/usuarios-supabase.json
+#   3) Importa:
+./vendor/bin/sail artisan yurest:import-users --json=database/imports/usuarios-supabase.json --dry-run
+./vendor/bin/sail artisan yurest:import-users --json=database/imports/usuarios-supabase.json
+rm database/imports/usuarios-supabase.json
+
+# Opción B — con password del rol postgres:
+echo 'SUPABASE_DSN=postgres://USER:PASS@host:5432/postgres' >> .env
+./vendor/bin/sail artisan yurest:import-users --dry-run
+./vendor/bin/sail artisan yurest:import-users
 ./vendor/bin/sail artisan yurest:import-users --force     # sobrescribe duplicados
 ```
 
@@ -56,19 +67,9 @@ El comando preserva UUIDs, hashes PBKDF2 (con `password_algo='pbkdf2'` para
 rehash gradual al primer login), permisos granulares y normaliza el formato
 legacy de `permisos` (array plano → objeto `{read,write,delete}`).
 
-Para importar desde un dump SQL en lugar de DSN:
-
-```bash
-# Crea BD temporal en Sail
-./vendor/bin/sail bin createdb -U yurest yurest_supabase_dump
-./vendor/bin/sail bin psql -U yurest yurest_supabase_dump < database/imports/usuarios-supabase.sql
-./vendor/bin/sail artisan yurest:import-users --dsn=postgres://yurest:yurest@127.0.0.1/yurest_supabase_dump
-./vendor/bin/sail bin dropdb -U yurest yurest_supabase_dump
-rm database/imports/usuarios-supabase.sql
-```
-
-**Importante:** los archivos en `database/imports/*.sql` están en `.gitignore`
-(contienen PII — passwords y emails reales). Bórralos en cuanto termines.
+**Importante:** los archivos en `database/imports/*.sql/.json/.csv` están
+en `.gitignore` (contienen PII — passwords y emails reales). Bórralos en
+cuanto termines el import.
 
 ## Tests
 

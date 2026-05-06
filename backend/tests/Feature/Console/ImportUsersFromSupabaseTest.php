@@ -175,3 +175,80 @@ it('--dry-run no escribe nada', function () {
 
     expect(User::count())->toBe(0);
 });
+
+// === Modo --json (export desde Supabase Studio) ===
+
+it('importa desde un archivo JSON con shape estándar', function () {
+    $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.json';
+    file_put_contents($tmp, json_encode([
+        [
+            'id' => '11111111-1111-1111-1111-111111111111',
+            'username' => 'carla',
+            'password_hash' => 'pbkdf2$100000$abc==$xyz=',
+            'nombre' => 'Carla Test',
+            'email' => 'carla@yurest.com',
+            'rol' => 'user',
+            'permisos' => ['read' => ['lista'], 'write' => [], 'delete' => []],
+            'activo' => true,
+            'created_at' => '2026-01-01T00:00:00+00:00',
+            'updated_at' => '2026-01-01T00:00:00+00:00',
+        ],
+    ]));
+
+    $this->artisan('yurest:import-users', ['--json' => $tmp])
+        ->assertSuccessful();
+
+    $u = User::where('username', 'carla')->first();
+    expect($u)->not->toBeNull()
+        ->and($u->password_algo)->toBe('pbkdf2')
+        ->and($u->permisos['read'])->toBe(['lista']);
+
+    @unlink($tmp);
+});
+
+it('soporta JSON envuelto por json_agg (array dentro de array)', function () {
+    $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.json';
+    file_put_contents($tmp, json_encode([[
+        ['id' => '22222222-2222-2222-2222-222222222222', 'username' => 'dani', 'password_hash' => 'x', 'rol' => 'user'],
+    ]]));
+
+    $this->artisan('yurest:import-users', ['--json' => $tmp])
+        ->assertSuccessful();
+
+    expect(User::where('username', 'dani')->exists())->toBeTrue();
+
+    @unlink($tmp);
+});
+
+it('omite filas soft-deleted del JSON', function () {
+    $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.json';
+    file_put_contents($tmp, json_encode([
+        ['id' => '33333333-3333-3333-3333-333333333333', 'username' => 'vivo',    'password_hash' => 'x', 'rol' => 'user'],
+        ['id' => '44444444-4444-4444-4444-444444444444', 'username' => 'borrado', 'password_hash' => 'x', 'rol' => 'user', 'deleted_at' => '2026-01-01T00:00:00Z'],
+    ]));
+
+    $this->artisan('yurest:import-users', ['--json' => $tmp])
+        ->assertSuccessful();
+
+    expect(User::where('username', 'vivo')->exists())->toBeTrue()
+        ->and(User::where('username', 'borrado')->exists())->toBeFalse();
+
+    @unlink($tmp);
+});
+
+it('falla con error claro si el JSON no existe', function () {
+    $this->artisan('yurest:import-users', ['--json' => '/no/existe.json'])
+        ->expectsOutputToContain('Archivo no encontrado')
+        ->assertFailed();
+});
+
+it('falla con error claro si el JSON está mal formateado', function () {
+    $tmp = tempnam(sys_get_temp_dir(), 'usuarios-').'.json';
+    file_put_contents($tmp, '{ esto no es json valido');
+
+    $this->artisan('yurest:import-users', ['--json' => $tmp])
+        ->expectsOutputToContain('JSON inválido')
+        ->assertFailed();
+
+    @unlink($tmp);
+});
