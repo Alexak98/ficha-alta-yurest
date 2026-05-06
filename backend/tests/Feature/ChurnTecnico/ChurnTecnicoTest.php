@@ -2,6 +2,7 @@
 
 use App\Models\ChurnTecnico;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 
 beforeEach(function () {
     $this->admin = User::factory()->admin()->create();
@@ -50,7 +51,7 @@ it('status devuelve contadores correctos', function () {
 
 it('rechaza nivel fuera de 0..10', function () {
     expect(fn () => ChurnTecnico::create(['id_organizacion' => 'org-z', 'nivel' => 99]))
-        ->toThrow(\Illuminate\Database\QueryException::class);
+        ->toThrow(QueryException::class);
 });
 
 it('scan/refresh devuelven 503 stub', function () {
