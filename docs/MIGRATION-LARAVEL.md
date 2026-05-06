@@ -11,7 +11,7 @@ Yurest hoy son **28 HTMLs estáticos en GitHub Pages** que consumen **29 webhook
 
 Migramos a:
 
-- **Backend:** Laravel 11 (PHP 8.3) + PostgreSQL 15 propio + Redis + Horizon + S3 (Hetzner Object Storage).
+- **Backend:** Laravel 11 (PHP 8.4) + PostgreSQL 15 propio + Redis + Horizon + S3 (Hetzner Object Storage).
 - **Frontend:** se mantiene tal cual en GitHub Pages. Solo cambia `WEBHOOK_BASE` → `API_BASE`.
 - **Operación:** 3 entornos (local / dev / prod) gestionados con Laravel Forge sobre Hetzner.
 - **Backups:** `spatie/laravel-backup` con `pg_dump` diario + `pg_basebackup` semanal a S3, retención 30 días.
@@ -24,7 +24,7 @@ Esfuerzo estimado: **8–9 semanas full‑time** para una persona con experienci
 
 | Capa | Tecnología | Comentario |
 |------|------------|------------|
-| Lenguaje | PHP 8.3 | Tipado estricto, enums, readonly, performance OK |
+| Lenguaje | PHP 8.4 | Tipado estricto, enums, readonly, performance OK |
 | Framework | Laravel 11 | Estándar de facto, ecosistema enorme |
 | BD | PostgreSQL 15 | El schema actual usa JSONB, arrays, GIN, triggers — Postgres es obligatorio, no MySQL |
 | Cache + colas | Redis 7 + Horizon | Reemplaza schedule de n8n + jobs async (envío de emails, Asana sync, A3) |
