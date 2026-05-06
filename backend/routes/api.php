@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\CsKanbanController;
 use App\Http\Controllers\Api\DistribucionController;
 use App\Http\Controllers\Api\DriveController;
+use App\Http\Controllers\Api\EliminarController;
 use App\Http\Controllers\Api\EscaladoController;
 use App\Http\Controllers\Api\FichaController;
 use App\Http\Controllers\Api\FichaHistorialController;
@@ -220,5 +221,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permiso:fichas,read')->group(function () {
         Route::get('/drive', [DriveController::class, 'show']);
         Route::get('/drive/docs-subidos', [DriveController::class, 'docsSubidos']);
+    });
+
+    // === Eliminar genérico (sustituye 10-eliminar) ===
+    // Acepta { id, entity? } y soft-deletea en la tabla correspondiente.
+    // Existe como compat para frontend legacy; los DELETEs específicos por
+    // recurso ya están disponibles (DELETE /api/fichas/{id}, etc).
+    Route::middleware('permiso:fichas,delete')->group(function () {
+        Route::post('/eliminar', [EliminarController::class, 'eliminar']);
     });
 });
