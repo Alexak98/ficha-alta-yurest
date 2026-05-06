@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BajaController;
 use App\Http\Controllers\Api\DistribucionController;
 use App\Http\Controllers\Api\FichaController;
+use App\Http\Controllers\Api\HardwarePedidoController;
+use App\Http\Controllers\Api\HardwareStockController;
 use App\Http\Controllers\Api\LocalController;
 use App\Http\Controllers\Api\ProyectoController;
 use App\Http\Controllers\Api\ProyectoHistorialController;
@@ -102,5 +104,31 @@ Route::middleware('auth:sanctum')->group(function () {
     // Asigna implementador a ficha (1 endpoint POST, mismo permiso que escritura de fichas).
     Route::middleware('permiso:distribucion,write')->group(function () {
         Route::post('/distribucion', [DistribucionController::class, 'store']);
+    });
+
+    // === Hardware pedidos (sustituye 21-hardware-pedidos) ===
+    Route::middleware('permiso:hardware,read')->group(function () {
+        Route::get('/hardware/pedidos', [HardwarePedidoController::class, 'index']);
+        Route::get('/hardware/pedidos/{pedido}', [HardwarePedidoController::class, 'show']);
+    });
+    Route::middleware('permiso:hardware,write')->group(function () {
+        Route::post('/hardware/pedidos', [HardwarePedidoController::class, 'store']);
+        Route::put('/hardware/pedidos/{pedido}', [HardwarePedidoController::class, 'update']);
+    });
+    Route::middleware('permiso:hardware,delete')->group(function () {
+        Route::delete('/hardware/pedidos/{pedido}', [HardwarePedidoController::class, 'destroy']);
+    });
+
+    // === Hardware stock (sustituye 23-hardware-stock) ===
+    Route::middleware('permiso:stock,read')->group(function () {
+        Route::get('/hardware/stock', [HardwareStockController::class, 'index']);
+        Route::get('/hardware/stock/{articulo}', [HardwareStockController::class, 'show']);
+    });
+    Route::middleware('permiso:stock,write')->group(function () {
+        Route::post('/hardware/stock', [HardwareStockController::class, 'store']);
+        Route::put('/hardware/stock/{articulo}', [HardwareStockController::class, 'update']);
+    });
+    Route::middleware('permiso:stock,delete')->group(function () {
+        Route::delete('/hardware/stock/{articulo}', [HardwareStockController::class, 'destroy']);
     });
 });
