@@ -63,7 +63,9 @@ class FichaController extends Controller
     public function store(FichaRequest $request): JsonResponse
     {
         $ficha = FichaAlta::create($request->validated());
-        $ficha->load('locales');
+        // refresh para traer defaults de la BD (estado='pendiente', numero_ficha SERIAL,
+        // baja='No', deleted_at=null) que no existen en la instancia recién creada.
+        $ficha->refresh()->load('locales');
 
         return (new FichaResource($ficha))->response()->setStatusCode(201);
     }
