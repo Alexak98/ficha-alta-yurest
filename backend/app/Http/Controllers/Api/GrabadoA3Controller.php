@@ -23,13 +23,27 @@ class GrabadoA3Controller extends Controller
             'grabado_a3' => ['required', 'boolean'],
         ]);
 
-        $proyecto->update(['grabado_a3' => $data['grabado_a3']]);
+        $newValue = (bool) $data['grabado_a3'];
+
+        // El schema de proyectos no lleva trigger auto-stamp (a diferencia
+        // de fichas_alta), así que lo gestionamos en el controller:
+        // - true ←  cualquiera : stampar grabado_a3_at = NOW
+        // - false ← true       : limpiar grabado_a3_at
+        $update = ['grabado_a3' => $newValue];
+        if ($newValue && ! $proyecto->grabado_a3) {
+            $update['grabado_a3_at'] = now();
+        } elseif (! $newValue && $proyecto->grabado_a3) {
+            $update['grabado_a3_at'] = null;
+        }
+        $proyecto->update($update);
+
+        $fresh = $proyecto->fresh();
 
         return response()->json([
             'success' => true,
             'id' => $proyecto->id,
-            'grabado_a3' => (bool) $data['grabado_a3'],
-            'grabado_a3_at' => $proyecto->fresh()->grabado_a3_at?->toIso8601String(),
+            'grabado_a3' => $newValue,
+            'grabado_a3_at' => $fresh?->grabado_a3_at?->toIso8601String(),
         ]);
     }
 }
