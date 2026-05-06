@@ -8,12 +8,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Solicitud de servicio (tabla `solicitudes`).
  *
  * Replica el workflow `08-solicitudes.json` — endpoint público con
  * `access_token` aleatorio para que el cliente rellene desde email.
+ *
+ * @property string $id
+ * @property string|null $ficha_id
+ * @property string|null $tipo
+ * @property string $estado
+ * @property string|null $asignado_a
+ * @property string|null $access_token
+ * @property Carbon|null $fecha_vencimiento
+ * @property array<int, mixed>|null $documentos
+ * @property string|null $notas
+ * @property array<string, mixed>|null $datos
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Solicitud extends Model
 {
