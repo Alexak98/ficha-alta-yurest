@@ -24,7 +24,7 @@ class NotifIntegracionesController extends Controller
     {
         /** @var NotifIntegracionesConfig $config */
         $config = NotifIntegracionesConfig::query()->first()
-            ?? NotifIntegracionesConfig::create([]);
+            ?? tap(NotifIntegracionesConfig::create([]))->refresh();
 
         $grupos = NotifIntegracionesGrupo::query()
             ->whereNull('deleted_at')
@@ -49,7 +49,7 @@ class NotifIntegracionesController extends Controller
 
         /** @var NotifIntegracionesConfig $config */
         $config = NotifIntegracionesConfig::query()->first()
-            ?? NotifIntegracionesConfig::create([]);
+            ?? tap(NotifIntegracionesConfig::create([]))->refresh();
         $config->update($data);
 
         return response()->json($config->refresh());
