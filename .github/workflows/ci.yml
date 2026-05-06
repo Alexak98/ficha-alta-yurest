@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  validate:
-    name: Validar sintaxis
+  frontend:
+    name: Frontend (HTML/JS/JSON/SQL)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,14 +24,14 @@ jobs:
 
       - name: Validar JavaScript con node --check
         run: |
-          find . \( -path ./node_modules -prune \) -o -name '*.js' -print | while read -r f; do
+          find . \( -path ./node_modules -prune -o -path ./backend/vendor -prune -o -path ./backend/node_modules -prune \) -o -name '*.js' -print | while read -r f; do
             echo "🔍 $f"
             node --check "$f" || exit 1
           done
 
       - name: Validar JSON (workflows n8n, configs)
         run: |
-          find . \( -path ./node_modules -prune \) -o -name '*.json' -print | while read -r f; do
+          find . \( -path ./node_modules -prune -o -path ./backend/vendor -prune -o -path ./backend/node_modules -prune \) -o -name '*.json' -print | while read -r f; do
             echo "🔍 $f"
             jq empty "$f" || exit 1
           done
@@ -41,21 +41,91 @@ jobs:
 
       - name: Validar SQL (parseo básico)
         run: |
-          # Arrancamos un Postgres temporal y pasamos el schema con --dry-run like check
-          docker run --rm -d --name pg-ci -e POSTGRES_PASSWORD=ci -p 5432:5432 postgres:15 || true
-          sleep 5
-          # Si docker no está disponible, al menos validamos que no haya sintaxis obvia rota
-          # usando pg_query_go vía un script simple. Como fallback:
           grep -c 'CREATE TABLE' database/schema.sql || exit 1
           echo "✅ schema.sql contiene CREATE TABLE"
 
       - name: Comprobar que no hay secretos hardcodeados
         run: |
-          # Lista blanca de patrones prohibidos.
           if grep -rEn '(sk_live|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16})' \
              --include='*.js' --include='*.html' --include='*.json' \
-             --exclude-dir=node_modules --exclude-dir=.git .; then
+             --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=vendor .; then
             echo "❌ Posible secreto detectado"
             exit 1
           fi
           echo "✅ Sin secretos obvios"
+
+  backend:
+    name: Backend (Laravel + Postgres)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: yurest
+          POSTGRES_PASSWORD: yurest
+          POSTGRES_DB: yurest_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pgsql, pdo_pgsql, redis, intl, bcmath
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache de Composer
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Instalar dependencias
+        run: composer install --no-progress --prefer-dist --no-interaction
+
+      - name: Preparar .env de test
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          # Sobreescribir credenciales de BD para CI
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=yurest_test/' .env
+          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=yurest/' .env
+          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=yurest/' .env
+          sed -i 's/^REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
+          sed -i 's/^MAIL_HOST=.*/MAIL_HOST=127.0.0.1/' .env
+          sed -i 's/^FILESYSTEM_DISK=.*/FILESYSTEM_DISK=local/' .env
+
+      - name: Lint con Pint
+        run: vendor/bin/pint --test
+
+      - name: Análisis estático con PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Migraciones (dry-run lógico)
+        run: php artisan migrate --pretend
+
+      - name: Migraciones (real)
+        run: php artisan migrate --force
+
+      - name: Tests con Pest
+        run: vendor/bin/pest --parallel

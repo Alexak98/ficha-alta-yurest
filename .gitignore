@@ -31,3 +31,27 @@ build/
 # Se mantienen en disco por si hay que regenerar a partir del original, pero
 # no se commitean: pesan mucho y la versión optimizada ya está versionada.
 logos/tpv/_originales/
+
+# Backend Laravel
+backend/vendor/
+backend/node_modules/
+backend/public/build/
+backend/public/hot
+backend/public/storage
+backend/storage/*.key
+backend/storage/app/public/*
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/testing/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+backend/storage/pail/*
+backend/bootstrap/cache/*.php
+backend/.phpunit.result.cache
+backend/.phpunit.cache
+backend/.env.backup
+backend/.env.production
+backend/auth.json
+backend/.fleet
+backend/.idea
+backend/.vscode
