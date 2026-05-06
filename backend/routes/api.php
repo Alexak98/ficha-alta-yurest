@@ -16,12 +16,14 @@ use App\Http\Controllers\Api\HardwarePedidoController;
 use App\Http\Controllers\Api\HardwareStockController;
 use App\Http\Controllers\Api\LocalController;
 use App\Http\Controllers\Api\NotificarFichaCompletaController;
+use App\Http\Controllers\Api\NotifIntegracionesController;
 use App\Http\Controllers\Api\PresupuestoController;
 use App\Http\Controllers\Api\PromocionController;
 use App\Http\Controllers\Api\ProyectoController;
 use App\Http\Controllers\Api\ProyectoHistorialController;
 use App\Http\Controllers\Api\SolicitudController;
 use App\Http\Controllers\Api\TareaController;
+use App\Http\Controllers\Api\ZendeskController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -229,5 +231,24 @@ Route::middleware('auth:sanctum')->group(function () {
     // recurso ya están disponibles (DELETE /api/fichas/{id}, etc).
     Route::middleware('permiso:fichas,delete')->group(function () {
         Route::post('/eliminar', [EliminarController::class, 'eliminar']);
+    });
+
+    // === Notificaciones automáticas integraciones (sustituye 15) ===
+    Route::middleware('permiso:integraciones,read')->group(function () {
+        Route::get('/notif-integraciones/config', [NotifIntegracionesController::class, 'getConfig']);
+        Route::get('/notif-integraciones/historial', [NotifIntegracionesController::class, 'getHistorial']);
+    });
+    Route::middleware('permiso:integraciones,write')->group(function () {
+        Route::put('/notif-integraciones/config', [NotifIntegracionesController::class, 'updateConfig']);
+        Route::post('/notif-integraciones/grupos', [NotifIntegracionesController::class, 'gruposAction']);
+    });
+
+    // === Zendesk heatmap + resúmenes (sustituye 25, 26-ia, 28, 29) ===
+    // Heatmap y heatmap-IA son stubs 503 (n8n sigue sirviéndolos).
+    // /resumen lee de la caché si existe; el generador real va en fase 6.
+    Route::middleware('permiso:zendesk,read')->group(function () {
+        Route::get('/zendesk/heatmap', [ZendeskController::class, 'heatmap']);
+        Route::get('/zendesk/heatmap/ia', [ZendeskController::class, 'heatmapIa']);
+        Route::get('/zendesk/resumen', [ZendeskController::class, 'resumen']);
     });
 });
