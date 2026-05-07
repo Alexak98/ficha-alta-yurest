@@ -161,11 +161,13 @@ return [
             'filename_prefix' => '',
 
             /*
-             * The disk names on which the backups will be stored.
+             * The disk names on which the backups will be stored. En dev
+             * usamos 'local' (storage/app); en prod 'BACKUP_DESTINATION_DISK'
+             * apunta a 's3' (Hetzner Object Storage). Ver docs/BACKUPS.md.
              */
-            'disks' => [
-                'local',
-            ],
+            'disks' => array_filter([
+                env('BACKUP_DESTINATION_DISK', 'local'),
+            ]),
 
             /*
              * Determines whether to allow backups to continue when some targets fail instead of failing completely.
@@ -236,7 +238,7 @@ return [
         'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => 'your@example.com',
+            'to' => env('BACKUP_NOTIFICATION_EMAIL', 'soporte@yurest.com'),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
@@ -297,7 +299,10 @@ return [
     'monitor_backups' => [
         [
             'name' => env('APP_NAME', 'laravel-backup'),
-            'disks' => ['local'],
+            // Mismo disco que se usa para escribir; en prod => 's3'.
+            'disks' => array_filter([
+                env('BACKUP_DESTINATION_DISK', 'local'),
+            ]),
             'health_checks' => [
                 MaximumAgeInDays::class => 1,
                 MaximumStorageInMegabytes::class => 5000,
