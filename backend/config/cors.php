@@ -15,12 +15,17 @@ return [
     'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     'allowed_origins' => $envOrigins ?: [
         'https://alexak98.github.io',
-        'http://localhost:8090',
-        'http://127.0.0.1:8090',
     ],
-    'allowed_origins_patterns' => [],
+    // Patrón regex para dev: cualquier puerto en localhost / 127.0.0.1.
+    // Necesario porque el frontend se sirve con php -S / python http.server
+    // en puertos variables (8090, 8091, otros) y aquí no queremos manualidad.
+    'allowed_origins_patterns' => [
+        '#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#',
+    ],
     'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-XSRF-TOKEN'],
     'exposed_headers' => [],
     'max_age' => 3600,
-    'supports_credentials' => true,
+    // false porque usamos Bearer tokens (no cookies). Con true CORS exige
+    // origin específico y no permite *, lo que complica patterns.
+    'supports_credentials' => false,
 ];
