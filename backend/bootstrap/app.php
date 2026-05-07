@@ -16,7 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permiso' => CheckPermiso::class,
         ]);
-        $middleware->statefulApi();
+        // statefulApi() activa CSRF para Sanctum SPA (same-origin con cookies),
+        // pero usamos Bearer tokens cross-origin (frontend en otro host) →
+        // no aplica y rompe con 419 "page expired" en el primer POST.
+        // Si en el futuro hace falta modo SPA same-origin, reactivar y
+        // configurar SANCTUM_STATEFUL_DOMAINS en .env.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Forzar respuesta JSON en /api/* y /up aunque el cliente no

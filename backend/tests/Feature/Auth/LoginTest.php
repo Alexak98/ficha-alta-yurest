@@ -74,7 +74,7 @@ it('me() devuelve datos del usuario autenticado', function () {
         ->getJson('/api/auth/me')
         ->assertOk()
         ->assertJsonPath('ok', true)
-        ->assertJsonPath('user.username', $user->username);
+        ->assertJsonPath('username', $user->username);
 });
 
 it('me() rechaza usuario inactivo', function () {
