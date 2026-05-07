@@ -81,6 +81,11 @@ class FichaRequest extends FormRequest
         'Integracion Financiera' => 'integracion_financiera',
         'Int Fin Persona' => 'int_fin_persona',
         'Int Fin Email' => 'int_fin_email',
+        // Booleans legacy: el legacy map los pasa a snake_case con valor
+        // string ('Sí'/''); el loop posterior los convierte a true/false.
+        'Lite' => 'lite',
+        'TPV No Integrado' => 'tpv_no_integrado',
+        'Distribuidor' => 'distribuidor',
     ];
 
     /**

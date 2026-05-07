@@ -32,6 +32,10 @@ use Illuminate\Support\Carbon;
  * @property bool $tpv_no_integrado
  * @property bool $distribuidor
  * @property array<int, mixed>|null $paquetes_carrito
+ * @property array<int, string>|null $modulos
+ * @property string|null $integracion_financiera
+ * @property string|null $int_fin_persona
+ * @property string|null $int_fin_email
  * @property Carbon|null $fecha_solicitud
  * @property Carbon|null $fecha_rellenado
  * @property Carbon|null $fecha_completado

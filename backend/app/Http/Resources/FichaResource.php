@@ -110,6 +110,10 @@ class FichaResource extends JsonResource
 
             // Otros
             'paquetes_carrito' => $this->paquetes_carrito ?? [],
+            'modulos' => $this->modulos ?? [],
+            'integracion_financiera' => $this->integracion_financiera,
+            'int_fin_persona' => $this->int_fin_persona,
+            'int_fin_email' => $this->int_fin_email,
             'comentarios' => $this->comentarios,
             'baja' => $this->baja,
             'estado' => $this->estado,
