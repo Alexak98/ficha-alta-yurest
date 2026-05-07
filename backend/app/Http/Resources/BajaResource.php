@@ -29,6 +29,7 @@ class BajaResource extends JsonResource
             // frontend los lea directamente (mismo comportamiento del workflow 05).
             'cliente_id' => $datos['cliente_id'] ?? null,
             'cliente_nombre' => $datos['cliente_nombre'] ?? null,
+            'cliente_comercial' => $datos['cliente_comercial'] ?? null,
             'cliente_denom' => $datos['cliente_denom'] ?? null,
             'cliente_cif' => $datos['cliente_cif'] ?? null,
             'cliente_email' => $datos['cliente_email'] ?? null,

@@ -80,6 +80,7 @@ class BajaController extends Controller
                 'tipo' => $d['tipo'] ?? null,
                 'cliente_id' => $d['cliente_id'] ?? null,
                 'cliente_nombre' => $d['cliente_nombre'] ?? null,
+                'cliente_comercial' => $d['cliente_comercial'] ?? null,
                 'cliente_denom' => $d['cliente_denom'] ?? null,
                 'cliente_cif' => $d['cliente_cif'] ?? null,
                 'cliente_email' => $d['cliente_email'] ?? null,

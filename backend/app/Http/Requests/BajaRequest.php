@@ -23,6 +23,8 @@ class BajaRequest extends FormRequest
             'cliente_nombre' => [$isCreate ? 'required' : 'sometimes', 'string', 'max:200'],
             'cliente_id' => ['nullable', 'string', 'max:64'],
             'cliente_denom' => ['nullable', 'string', 'max:200'],
+            // El frontend distingue entre nombre comercial y denominación social.
+            'cliente_comercial' => ['nullable', 'string', 'max:200'],
             'cliente_cif' => ['nullable', 'string', 'max:30'],
             'cliente_email' => ['nullable', 'email', 'max:200'],
             'motivo' => ['nullable', 'string', 'max:200'],

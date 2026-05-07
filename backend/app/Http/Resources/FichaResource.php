@@ -14,7 +14,7 @@ class FichaResource extends JsonResource
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
-        return [
+        return $this->withLegacyAliases([
             'id' => $this->id,
             'numero_ficha' => $this->numero_ficha,
 
@@ -128,6 +128,64 @@ class FichaResource extends JsonResource
 
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Añade aliases con keys legacy ("Comercial", "Nombre Sociedad", "CIF/NIF",
+     * "Implementador", "Tipo Cliente", etc.) para que las páginas del portal
+     * que aún consultan los campos en formato n8n (mayúsculas con espacios)
+     * sigan renderizando sin tocar el frontend.
+     *
+     * Las claves snake_case quedan intactas — un consumidor moderno puede
+     * usar las que prefiera. El coste extra son ~30 strings por fila (sin
+     * impacto perceptible en payload size).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withLegacyAliases(array $data): array
+    {
+        return $data + [
+            'Comercial' => $this->comercial,
+            'Implementador' => $this->implementador,
+            'Nombre Sociedad' => $this->denominacion,
+            'Denominación Social' => $this->denominacion,
+            'Nombre Comercial' => $this->nombre_comercial,
+            'CIF/NIF' => $this->cif,
+            'Email' => $this->email,
+            'Email Factura' => $this->email_factura,
+            'Email CC' => $this->email_cc,
+            'Tipo Cliente' => $this->tipo_cliente,
+            'Calle' => $this->calle,
+            'Número' => $this->numero,
+            'CP' => $this->cp,
+            'Municipio' => $this->municipio,
+            'Provincia' => $this->provincia,
+            'JP Nombre' => $this->jp_nombre,
+            'JP Apellidos' => $this->jp_apellidos,
+            'JP Rol' => $this->jp_rol,
+            'JP Teléfono' => $this->jp_telefono,
+            'JP Mail' => $this->jp_mail,
+            'Firmante Nombre' => $this->firm_nombre,
+            'Firmante Apellidos' => $this->firm_apellidos,
+            'Firmante Mail' => $this->firm_mail,
+            'Firmante DNI' => $this->firm_dni,
+            'Firmante Puesto' => $this->firm_puesto,
+            'Firmas Contratadas' => $this->firmas_contratadas,
+            'TPV' => $this->tpv,
+            'TPV Contacto' => $this->tpv_contacto,
+            'TPV Email' => $this->tpv_email,
+            'TPV No Integrado' => $this->tpv_no_integrado ? 'Sí' : '',
+            'TPV NI Nombre' => $this->tpv_ni_nombre,
+            'TPV NI Contacto' => $this->tpv_ni_contacto,
+            'TPV NI Email' => $this->tpv_ni_email,
+            'Lite' => $this->lite ? 'Sí' : '',
+            'Distribuidor' => $this->distribuidor ? 'Sí' : '',
+            'Estado' => $this->estado,
+            'Baja' => $this->baja,
+            'Comentarios' => $this->comentarios,
+            'Módulos' => $this->modulos ?? [],
         ];
     }
 }

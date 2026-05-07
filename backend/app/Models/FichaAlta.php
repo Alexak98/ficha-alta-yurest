@@ -55,9 +55,9 @@ class FichaAlta extends Model
     protected function casts(): array
     {
         return [
-            // 'modulos' es TEXT[] de Postgres — sin cast nativo en Eloquent.
-            // Se trata como string al leer; el accessor explícito vendrá cuando
-            // implementemos la migración de fichas (workflow 04).
+            // modulos pasó de TEXT[] a JSONB (migración 2026_05_07_000010)
+            // para que Eloquent lo maneje con cast 'array'.
+            'modulos' => 'array',
             'paquetes_carrito' => 'array',
             'ocr_activo' => 'boolean',
             'lite' => 'boolean',
