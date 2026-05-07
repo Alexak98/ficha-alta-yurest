@@ -85,12 +85,21 @@
      */
     const API_BASE = (function () {
         // Permite override por hostname para que prod (GitHub Pages) y
-        // local (localhost:8090) apunten distinto sin tocar el código.
-        if (typeof location !== 'undefined' && location.hostname === 'alexak98.github.io') {
-            // Cuando despleguemos prod, sustituir por la URL real:
-            // return 'https://api.yurest.dev/api';
-            return 'https://n8n-soporte.data.yurest.dev/webhook'; // fallback: sigue n8n
+        // local (php -S 127.0.0.1:8090) apunten distinto sin tocar el código.
+        if (typeof location === 'undefined') {
+            return 'http://localhost/api';
         }
+        const host = location.hostname;
+        // Producción: GitHub Pages.
+        // CUANDO ESTÉ DESPLEGADO el backend Laravel real, sustituye la URL
+        // de abajo por la del Forge prod (ej. 'https://api.yurest.com/api').
+        // Hasta entonces, el flag yurest_backend='laravel' contra GitHub Pages
+        // intentará llamar a localhost (que solo existe en máquinas de devs);
+        // los usuarios normales seguirán contra n8n por defecto.
+        if (host === 'alexak98.github.io') {
+            return 'https://api.yurest.com/api'; // ← cambiar al dominio real cuando esté
+        }
+        // Dev local
         return 'http://localhost/api';
     })();
 
