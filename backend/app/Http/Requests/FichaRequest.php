@@ -113,13 +113,23 @@ class FichaRequest extends FormRequest
             unset($out[$legacyKey]);
         }
 
-        // 2) Booleans 'Sí'/'' → true/false (cuando vienen como string)
+        // 2) Booleans legacy → true/false. OJO: el middleware
+        // ConvertEmptyStringsToNull de Laravel convierte '' → null ANTES
+        // de prepareForValidation, así que tenemos que tratar null como
+        // false (que es lo que el frontend quería decir con vacío).
         foreach (['lite', 'tpv_no_integrado', 'distribuidor', 'ocr_activo'] as $bf) {
-            if (array_key_exists($bf, $out) && is_string($out[$bf])) {
-                $out[$bf] = strtolower(trim($out[$bf])) === 'sí'
-                    || strtolower(trim($out[$bf])) === 'si'
-                    || $out[$bf] === '1'
-                    || strtolower(trim($out[$bf])) === 'true';
+            if (! array_key_exists($bf, $out)) {
+                continue;
+            }
+            $v = $out[$bf];
+            if ($v === null || $v === '') {
+                $out[$bf] = false;
+            } elseif (is_bool($v)) {
+                // ya está
+            } elseif (is_string($v)) {
+                $out[$bf] = in_array(strtolower(trim($v)), ['sí', 'si', '1', 'true'], true);
+            } elseif (is_int($v)) {
+                $out[$bf] = $v !== 0;
             }
         }
 
