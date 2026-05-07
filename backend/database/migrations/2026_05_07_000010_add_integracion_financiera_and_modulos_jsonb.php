@@ -26,10 +26,10 @@ return new class extends Migration
         SQL);
 
         // 2) modulos: TEXT[] → JSONB.
-        // El driver legacy de n8n insertaba {a,b,c}; Eloquent no tiene cast
-        // nativo para arrays Postgres. Pasamos a jsonb (default '[]') que
-        // sí maneja con $casts['modulos'=>'array'] sin lío.
+        // Postgres exige quitar el DEFAULT antes de cambiar el tipo
+        // porque '{}'::text[] no se puede castear automáticamente a jsonb.
         DB::statement('DROP INDEX IF EXISTS idx_fichas_modulos_gin');
+        DB::statement('ALTER TABLE fichas_alta ALTER COLUMN modulos DROP DEFAULT');
         DB::statement(
             'ALTER TABLE fichas_alta ALTER COLUMN modulos TYPE JSONB '.
             'USING COALESCE(to_jsonb(modulos), \'[]\'::jsonb)'
