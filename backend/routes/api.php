@@ -62,6 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::middleware('permiso:solicitudes,write')->group(function () {
         Route::post('/solicitudes', [SolicitudController::class, 'store']);
+        // Reenviar email al cliente (botón ✉ del listado de solicitudes).
+        Route::post('/solicitudes/{solicitud}/reenviar', [SolicitudController::class, 'reenviar']);
     });
     Route::middleware('permiso:solicitudes,delete')->group(function () {
         Route::delete('/solicitudes/{solicitud}', [SolicitudController::class, 'destroy']);
