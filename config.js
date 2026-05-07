@@ -74,9 +74,122 @@
     'use strict';
 
     // ──────────────────────────────────────────────────────────
-    //  BASE URLS
+    //  BASE URLS — y modo de backend (n8n vs Laravel)
     // ──────────────────────────────────────────────────────────
     const WEBHOOK_BASE = 'https://n8n-soporte.data.yurest.dev/webhook';
+
+    /**
+     * URL base del backend Laravel local. En cuanto haya dominio público
+     * (api-dev.yurest.dev / api.yurest.dev), se cambia aquí o se inyecta
+     * por env. Sin slash final.
+     */
+    const API_BASE = (function () {
+        // Permite override por hostname para que prod (GitHub Pages) y
+        // local (localhost:8090) apunten distinto sin tocar el código.
+        if (typeof location !== 'undefined' && location.hostname === 'alexak98.github.io') {
+            // Cuando despleguemos prod, sustituir por la URL real:
+            // return 'https://api.yurest.dev/api';
+            return 'https://n8n-soporte.data.yurest.dev/webhook'; // fallback: sigue n8n
+        }
+        return 'http://localhost/api';
+    })();
+
+    /**
+     * Modo de backend: 'n8n' (default, legacy) o 'laravel' (nuevo).
+     * Se controla con localStorage.yurest_backend para poder alternar
+     * desde la consola del browser sin tocar código:
+     *   localStorage.setItem('yurest_backend', 'laravel')
+     *   localStorage.setItem('yurest_backend', 'n8n')
+     */
+    function getBackendMode() {
+        try {
+            const v = localStorage.getItem('yurest_backend');
+            return v === 'laravel' ? 'laravel' : 'n8n';
+        } catch (_) {
+            return 'n8n';
+        }
+    }
+
+    /**
+     * Mapa endpoint legacy n8n → endpoint Laravel. Solo lista los que
+     * ya tienen equivalente implementado en backend/. Si una URL no
+     * está aquí, apiFetch la deja tal cual y la petición sigue contra
+     * n8n aunque el modo esté en 'laravel' (degradación segura).
+     *
+     * @type {Record<string, string>}
+     */
+    const LARAVEL_ROUTES = {
+        // Auth
+        '018f3362-7969-4c49-9088-c78e4446c77f': 'auth/login',
+        // Fichas
+        '57e04029-bae4-4124-8c43-c535e831a147': 'fichas',
+        '5a304fcd-ae1d-49e6-92d1-c5a5e007bbfd': 'fichas',
+        'fa16b994-5af1-4368-ba6b-592e633937c3': 'fichas?estado=rellenado',
+        // Solicitudes
+        'b0629324-e611-47d4-835f-3ac9bcd4dc9b': 'solicitudes',
+        '1757fdcc-7fa7-4cb9-93b9-eb8118adaa1e': 'solicitudes',
+        '6da4274f-5a6d-4981-a92a-f9d7eb734144': 'solicitudes/responder',
+        // Eliminar
+        'a2b1b1d6-a1dc-4366-b60e-b5e4506faa3d': 'eliminar',
+        // Bajas
+        '84f094b2-9e55-448f-8ad9-f28721841873': 'bajas',
+        '73ce8d34-9980-4c65-bd82-c0767f1483cf': 'bajas',
+        '95d5ed5d-1139-45b9-88c2-3066bc49e45b': 'eliminar',
+        // Distribución
+        '6d3ed726-c86a-4b86-a2ae-7f07da9630a5': 'distribucion',
+        // Slugs (los que ya eran legibles en n8n se mantienen idénticos)
+        'proyectos': 'proyectos',
+        'proyectos/tarea': 'proyectos/{id}/tareas',
+        'proyectos/tarea/mover': 'proyectos/{id}/tareas/mover',
+        'proyectos/anotaciones': 'proyectos/{id}/anotaciones',
+        'proyectos/historial': 'proyectos/{id}/historial',
+        'historial': 'historial',
+        'asana/tasks': 'asana/tasks',
+        'asana/task/stories': 'asana/tasks/{id}/stories',
+        'calendar/event': 'calendar/events',
+        'ficha/notificar-completa': 'fichas/{id}/notificar-completa',
+        'yurest-grabado-a3': 'proyectos/{id}/grabado-a3',
+        'promociones': 'promociones',
+        'hardware/pedidos': 'hardware/pedidos',
+        'hardware/stock': 'hardware/stock',
+        'presupuestos': 'presupuestos',
+        'notif-integraciones/config': 'notif-integraciones/config',
+        'notif-integraciones/grupos': 'notif-integraciones/grupos',
+        'notif-integraciones/historial': 'notif-integraciones/historial',
+        'escalados': 'escalados',
+        'cs-estado': 'cs/estado',
+        'zendesk/tickets-heatmap': 'zendesk/heatmap',
+        'zendesk/tickets-heatmap-ia': 'zendesk/heatmap/ia',
+        'zendesk/resumen-semanal': 'zendesk/resumen?periodo=semana',
+        'zendesk/resumen-mensual': 'zendesk/resumen?periodo=mes',
+        'auth/login': 'auth/login',
+        'auth/usuarios': 'usuarios',
+        'auth/verify': 'auth/me',
+    };
+
+    /**
+     * Reescribe una URL n8n a su equivalente Laravel cuando el modo está
+     * activo. Solo reemplaza el dominio + path conocido; el query string
+     * se preserva. Si no hay mapping → devuelve la URL original (degradación).
+     */
+    function rewriteForLaravel(url) {
+        if (typeof url !== 'string') return url;
+        if (getBackendMode() !== 'laravel') return url;
+        if (!url.startsWith(WEBHOOK_BASE + '/')) return url;
+        const tail = url.slice(WEBHOOK_BASE.length + 1);
+        // Separar path ↔ query
+        const qIdx = tail.indexOf('?');
+        const pathRaw = qIdx === -1 ? tail : tail.slice(0, qIdx);
+        const query = qIdx === -1 ? '' : tail.slice(qIdx);
+        const mapped = LARAVEL_ROUTES[pathRaw];
+        if (!mapped) return url; // sin equivalente → seguimos en n8n
+        // Si el mapping ya trae query (ej: 'fichas?estado=rellenado') y
+        // el caller también añade query, las concatenamos con &.
+        if (query && mapped.includes('?')) {
+            return API_BASE + '/' + mapped + '&' + query.slice(1);
+        }
+        return API_BASE + '/' + mapped + query;
+    }
 
     // ──────────────────────────────────────────────────────────
     //  ENDPOINTS — agrupados por dominio
@@ -597,6 +710,16 @@
     function getAuthHeaders(extra) {
         const s = getSession();
         const headers = { 'Content-Type': 'application/json', ...(extra || {}) };
+        // En modo Laravel siempre añadimos Accept para que la API devuelva
+        // JSON aunque el endpoint dispare un error de validación o auth.
+        if (getBackendMode() === 'laravel') {
+            headers['Accept'] = 'application/json';
+            // Bearer token Sanctum; cae a Basic si aún no hay token (login).
+            if (s && s.token && s.token !== 'authenticated') {
+                headers['Authorization'] = 'Bearer ' + s.token;
+                return headers;
+            }
+        }
         if (s && s.basicAuth) headers['Authorization'] = 'Basic ' + s.basicAuth;
         return headers;
     }
@@ -702,6 +825,9 @@
     }
 
     async function apiFetch(url, options) {
+        // Reescribe la URL al backend Laravel si el modo está activo y
+        // hay mapping. Las URLs sin mapping pasan tal cual (siguen n8n).
+        url = rewriteForLaravel(url);
         const opts = { ...(options || {}) };
         opts.headers = { ...getAuthHeaders(), ...(opts.headers || {}) };
         const method = String(opts.method || 'GET').toUpperCase();
@@ -1591,6 +1717,9 @@
         getUsuario,
         getAuthHeaders,
         apiFetch,
+        getBackendMode,
+        rewriteForLaravel,
+        API_BASE,
         cerrarSesion,
         escHtml,
         escAttr,

@@ -324,10 +324,18 @@
             errorEl.classList.remove('visible');
 
             try {
-                // 1) Validar contra la tabla de usuarios (Supabase)
-                const loginRes = await fetch(YurestConfig.ENDPOINTS.authLogin, {
+                // 1) Validar contra la tabla de usuarios. Si el modo está en
+                //    'laravel' (localStorage.yurest_backend), reescribimos al
+                //    nuevo backend; si no, sigue contra n8n como hasta ahora.
+                const loginUrl = YurestConfig.rewriteForLaravel
+                    ? YurestConfig.rewriteForLaravel(YurestConfig.ENDPOINTS.authLogin)
+                    : YurestConfig.ENDPOINTS.authLogin;
+                const loginRes = await fetch(loginUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
                     body: JSON.stringify({ username: user, password: pass })
                 });
                 let loginData = {};
