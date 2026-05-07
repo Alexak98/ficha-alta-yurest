@@ -15,6 +15,173 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class FichaRequest extends FormRequest
 {
+    /**
+     * Mapeo de keys del shape legacy del frontend (capitalizadas, español)
+     * al shape snake_case interno. Replica la traducción que hacía el
+     * workflow `04-fichas-alta.json` en el nodo "Preparar Ficha".
+     *
+     * @var array<string, string>
+     */
+    private const LEGACY_KEY_MAP = [
+        'Comercial' => 'comercial',
+        'Nombre Sociedad' => 'denominacion',
+        'Denominación Social' => 'denominacion',
+        'Nombre Comercial' => 'nombre_comercial',
+        'Calle' => 'calle',
+        'Número' => 'numero',
+        'CP' => 'cp',
+        'Municipio' => 'municipio',
+        'Provincia' => 'provincia',
+        'CIF/NIF' => 'cif',
+        'Email' => 'email',
+        'Email Factura' => 'email_factura',
+        'Email CC' => 'email_cc',
+        'IBAN' => 'iban',
+        'Tipo Cliente' => 'tipo_cliente',
+        'Firmas Contratadas' => 'firmas_contratadas',
+        'JP Nombre' => 'jp_nombre',
+        'JP Apellidos' => 'jp_apellidos',
+        'JP Rol' => 'jp_rol',
+        'JP Teléfono' => 'jp_telefono',
+        'JP Mail' => 'jp_mail',
+        'Firmante Nombre' => 'firm_nombre',
+        'Firmante Apellidos' => 'firm_apellidos',
+        'Firmante Mail' => 'firm_mail',
+        'Firmante DNI' => 'firm_dni',
+        'Firmante Puesto' => 'firm_puesto',
+        'TPV' => 'tpv',
+        'TPV Contacto' => 'tpv_contacto',
+        'TPV Email' => 'tpv_email',
+        'TPV NI Nombre' => 'tpv_ni_nombre',
+        'TPV NI Contacto' => 'tpv_ni_contacto',
+        'TPV NI Email' => 'tpv_ni_email',
+        'Entrega Calle' => 'entrega_calle',
+        'Entrega Número' => 'entrega_numero',
+        'Entrega CP' => 'entrega_cp',
+        'Entrega Municipio' => 'entrega_municipio',
+        'Entrega Provincia' => 'entrega_provincia',
+        'Contacto Nombre' => 'contacto_nombre',
+        'Contacto Email' => 'contacto_email',
+        'Contacto Teléfono' => 'contacto_telefono',
+        'Dist. Empresa' => 'dist_empresa',
+        'Dist. CIF' => 'dist_cif',
+        'Dist. Dirección' => 'dist_direccion',
+        'Dist. CP' => 'dist_cp',
+        'Dist. Contacto' => 'dist_contacto',
+        'Dist. Mail' => 'dist_mail',
+        'Dist. Teléfono' => 'dist_telefono',
+        'Credencial Master' => 'cred_master',
+        'Credencial Yurest' => 'cred_yurest',
+        'Comentarios' => 'comentarios',
+        'Estado' => 'estado',
+        'Baja' => 'baja',
+        'Adjuntos' => 'adjuntos',
+        'Módulos' => 'modulos',
+        'Modulos' => 'modulos',
+        'Integracion Financiera' => 'integracion_financiera',
+        'Int Fin Persona' => 'int_fin_persona',
+        'Int Fin Email' => 'int_fin_email',
+        // Booleans legacy: el legacy map los pasa a snake_case con valor
+        // string ('Sí'/''); el loop posterior los convierte a true/false.
+        'Lite' => 'lite',
+        'TPV No Integrado' => 'tpv_no_integrado',
+        'Distribuidor' => 'distribuidor',
+    ];
+
+    /**
+     * Si el body llega con keys en formato legacy (capitalizadas, español),
+     * lo traducimos a snake_case ANTES de validar. Booleans tipo 'Sí'/''
+     * se convierten a true/false, y los importes numéricos se parsean.
+     *
+     * Soporta también el shape moderno (snake_case directo) — solo traduce
+     * las keys que están en LEGACY_KEY_MAP. Es idempotente.
+     */
+    protected function prepareForValidation(): void
+    {
+        $input = $this->all();
+        $out = $input;
+
+        // 1) Re-mapear keys legacy → snake_case
+        foreach (self::LEGACY_KEY_MAP as $legacyKey => $modernKey) {
+            if (! array_key_exists($legacyKey, $input)) {
+                continue;
+            }
+            // Si ya hay una versión moderna en el body, no la pisamos.
+            if (! array_key_exists($modernKey, $out) || $out[$modernKey] === '') {
+                $out[$modernKey] = $input[$legacyKey];
+            }
+            unset($out[$legacyKey]);
+        }
+
+        // 2) Booleans legacy → true/false. OJO: el middleware
+        // ConvertEmptyStringsToNull de Laravel convierte '' → null ANTES
+        // de prepareForValidation, así que tenemos que tratar null como
+        // false (que es lo que el frontend quería decir con vacío).
+        foreach (['lite', 'tpv_no_integrado', 'distribuidor', 'ocr_activo'] as $bf) {
+            if (! array_key_exists($bf, $out)) {
+                continue;
+            }
+            $v = $out[$bf];
+            if ($v === null || $v === '') {
+                $out[$bf] = false;
+            } elseif (is_bool($v)) {
+                // ya está
+            } elseif (is_string($v)) {
+                $out[$bf] = in_array(strtolower(trim($v)), ['sí', 'si', '1', 'true'], true);
+            } elseif (is_int($v)) {
+                $out[$bf] = $v !== 0;
+            }
+        }
+
+        // 3) Importes financieros legacy → snake_case (con parseFloat)
+        $legacyImportes = [
+            'ImporteSetup' => 'importe_setup',
+            'Descuentosetup' => 'descuento_setup',
+            'Mensualidad Anualizada' => 'fin_mensualidad_anual',
+            'Proyecto de Implementación' => 'fin_implementacion',
+            'Plan Producto BASIC' => 'fin_basic',
+            'Plan Producto PRO' => 'fin_pro',
+            'Plan RRHH' => 'fin_rrhh',
+            'Plan Operaciones' => 'fin_operaciones',
+            'Yurest Lite' => 'fin_lite',
+            'Integraciones' => 'fin_integraciones',
+            'Dist. Comisión Implementación (%)' => 'dist_comision',
+        ];
+        foreach ($legacyImportes as $legacyKey => $modernKey) {
+            if (array_key_exists($legacyKey, $input)) {
+                $out[$modernKey] = is_numeric($input[$legacyKey])
+                    ? (float) $input[$legacyKey]
+                    : 0.0;
+                unset($out[$legacyKey]);
+            }
+        }
+
+        // 4) Mensualidad Total Locales setea ambos campos a la vez.
+        if (array_key_exists('Mensualidad Total Locales', $input)) {
+            $val = is_numeric($input['Mensualidad Total Locales'])
+                ? (float) $input['Mensualidad Total Locales'] : 0.0;
+            $out['mensualidad_total_locales'] = $val;
+            $out['mensualidad_total'] = $val;
+            unset($out['Mensualidad Total Locales']);
+        }
+
+        // 5) Necesita Tablet no es columna del schema — descartar silenciosamente.
+        unset($out['Necesita Tablet']);
+        // 6) `locales` y `paquetes_carrito` ya vienen en snake_case del front.
+
+        // 7) Normalizar campos con CHECK que rechazan '' pero aceptan NULL
+        foreach (['tipo_cliente', 'integracion_financiera'] as $f) {
+            if (isset($out[$f]) && $out[$f] === '') {
+                $out[$f] = null;
+            }
+        }
+
+        // 8) firmas_contratadas legacy también se acepta como '' (sin firmas)
+        // — no hay que tocarlo, el CHECK ya admite la cadena vacía.
+
+        $this->replace($out);
+    }
+
     public function authorize(): bool
     {
         return true; // permisos los aplica el middleware permiso:fichas,write
@@ -115,9 +282,21 @@ class FichaRequest extends FormRequest
 
             // Otros
             'paquetes_carrito' => ['nullable', 'array'],
+            'modulos' => ['nullable', 'array'],
+            'modulos.*' => ['string'],
+            'adjuntos' => ['nullable', 'array'],
             'comentarios' => ['nullable', 'string'],
             'baja' => ['nullable', 'in:No,Sí,Si'],
             'estado' => ['nullable', 'in:pendiente,completada,en_proceso,rellenado,Rellenado'],
+
+            // Integración financiera (added in 2026_05_07_000010)
+            'integracion_financiera' => ['nullable', 'in:no_aplica,sage,a3'],
+            'int_fin_persona' => ['nullable', 'string', 'max:200'],
+            'int_fin_email' => ['nullable', 'email', 'max:200'],
+
+            // Locales nested al crear/editar ficha desde index.html
+            'locales' => ['nullable', 'array'],
+            'locales.*' => ['array'],
         ];
     }
 }
