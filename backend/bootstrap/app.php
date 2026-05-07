@@ -19,5 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Forzar respuesta JSON en /api/* y /up aunque el cliente no
+        // envíe Accept: application/json. Sin esto Laravel devuelve el
+        // debugger HTML en local y eso rompe los frontends que esperan JSON.
+        $exceptions->shouldRenderJsonWhen(function ($request) {
+            return $request->is('api/*') || $request->is('up');
+        });
     })->create();
