@@ -119,8 +119,11 @@
      * @type {Record<string, string>}
      */
     const LARAVEL_ROUTES = {
-        // Auth
-        '018f3362-7969-4c49-9088-c78e4446c77f': 'auth/login',
+        // Auth + listado fichas comparten UUID en n8n con métodos distintos.
+        // Resolvemos según método cuando hace falta (key "<path>|<METHOD>"),
+        // si no, key sin sufijo cubre todos los métodos.
+        '018f3362-7969-4c49-9088-c78e4446c77f|POST': 'auth/login',
+        '018f3362-7969-4c49-9088-c78e4446c77f|GET': 'fichas',
         // Fichas
         '57e04029-bae4-4124-8c43-c535e831a147': 'fichas',
         '5a304fcd-ae1d-49e6-92d1-c5a5e007bbfd': 'fichas',
@@ -171,8 +174,15 @@
      * Reescribe una URL n8n a su equivalente Laravel cuando el modo está
      * activo. Solo reemplaza el dominio + path conocido; el query string
      * se preserva. Si no hay mapping → devuelve la URL original (degradación).
+     *
+     * Para paths con semántica distinta según método HTTP (ej. mismo UUID
+     * usado para POST login y GET listar), busca primero la key con
+     * sufijo "|METHOD"; si no existe cae a la key sin sufijo.
+     *
+     * @param {string} url
+     * @param {string} [method] HTTP method (default 'GET')
      */
-    function rewriteForLaravel(url) {
+    function rewriteForLaravel(url, method) {
         if (typeof url !== 'string') return url;
         if (getBackendMode() !== 'laravel') return url;
         if (!url.startsWith(WEBHOOK_BASE + '/')) return url;
@@ -181,7 +191,10 @@
         const qIdx = tail.indexOf('?');
         const pathRaw = qIdx === -1 ? tail : tail.slice(0, qIdx);
         const query = qIdx === -1 ? '' : tail.slice(qIdx);
-        const mapped = LARAVEL_ROUTES[pathRaw];
+        const m = String(method || 'GET').toUpperCase();
+        // 1) Mapping específico por método (path|METHOD)
+        // 2) Mapping genérico por path
+        const mapped = LARAVEL_ROUTES[pathRaw + '|' + m] || LARAVEL_ROUTES[pathRaw];
         if (!mapped) return url; // sin equivalente → seguimos en n8n
         // Si el mapping ya trae query (ej: 'fichas?estado=rellenado') y
         // el caller también añade query, las concatenamos con &.
@@ -825,12 +838,13 @@
     }
 
     async function apiFetch(url, options) {
-        // Reescribe la URL al backend Laravel si el modo está activo y
-        // hay mapping. Las URLs sin mapping pasan tal cual (siguen n8n).
-        url = rewriteForLaravel(url);
         const opts = { ...(options || {}) };
         opts.headers = { ...getAuthHeaders(), ...(opts.headers || {}) };
         const method = String(opts.method || 'GET').toUpperCase();
+        // Reescribe la URL al backend Laravel si el modo está activo y
+        // hay mapping. Pasa el método para resolver paths multi-método.
+        // Las URLs sin mapping siguen tal cual (degradación a n8n).
+        url = rewriteForLaravel(url, method);
 
         // Solo deduplicamos GETs (los POST/PATCH son acciones, no idempotentes
         // a nivel de respuesta). Si llega un GET con AbortSignal propio del

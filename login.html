@@ -328,7 +328,7 @@
                 //    'laravel' (localStorage.yurest_backend), reescribimos al
                 //    nuevo backend; si no, sigue contra n8n como hasta ahora.
                 const loginUrl = YurestConfig.rewriteForLaravel
-                    ? YurestConfig.rewriteForLaravel(YurestConfig.ENDPOINTS.authLogin)
+                    ? YurestConfig.rewriteForLaravel(YurestConfig.ENDPOINTS.authLogin, 'POST')
                     : YurestConfig.ENDPOINTS.authLogin;
                 const loginRes = await fetch(loginUrl, {
                     method: 'POST',
