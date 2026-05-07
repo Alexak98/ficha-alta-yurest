@@ -71,17 +71,20 @@ class AuthController extends Controller
             return response()->json(['ok' => false, 'reason' => 'usuario inactivo o no encontrado'], 401);
         }
 
+        // Shape FLAT (no envuelto en `user`) para mantener compat con el
+        // frontend, que ya consumía /auth/verify de n8n con este formato:
+        //   { ok, id, username, nombre, email, rol, permisos, sessions_revoked_at }
+        // Si en el futuro queremos un shape más limpio, cambiarlo aquí y en
+        // config.js::_validateSessionFresh a la vez.
         return response()->json([
             'ok' => true,
-            'user' => [
-                'id' => $user->id,
-                'username' => $user->username,
-                'nombre' => $user->nombre ?: $user->username,
-                'email' => $user->email ?: '',
-                'rol' => $user->rol,
-                'permisos' => $user->permisos,
-                'sessions_revoked_at' => $user->sessions_revoked_at?->toIso8601String(),
-            ],
+            'id' => $user->id,
+            'username' => $user->username,
+            'nombre' => $user->nombre ?: $user->username,
+            'email' => $user->email ?: '',
+            'rol' => $user->rol,
+            'permisos' => $user->permisos,
+            'sessions_revoked_at' => $user->sessions_revoked_at?->toIso8601String(),
         ]);
     }
 

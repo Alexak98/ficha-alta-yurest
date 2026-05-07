@@ -525,7 +525,11 @@
         const s = getSession();
         if (!s || !s.id) return;
         try {
-            const url = `${ENDPOINTS.authVerify}?userId=${encodeURIComponent(s.id)}`;
+            const rawUrl = `${ENDPOINTS.authVerify}?userId=${encodeURIComponent(s.id)}`;
+            // Reescribir a Laravel si el flag está activo. Sin esto el verify
+            // periódico golpea n8n con un token Sanctum que n8n no entiende
+            // y devuelve "usuario no encontrado" → falsamente nos saca al login.
+            const url = rewriteForLaravel(rawUrl, 'GET');
             const res = await fetch(url, { method: 'GET', headers: getAuthHeaders() });
             if (!res.ok) return;  // fallo transitorio: no invalidamos
             const data = await res.json().catch(() => null);
