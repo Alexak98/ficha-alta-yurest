@@ -87,10 +87,10 @@
             label: 'Comercial',
             icon: 'comercial',
             items: [
-                { id: 'lista',         href: 'lista.html',         label: 'Fichas de cliente',     icon: 'fichas' },
-                { id: 'escalados',     href: 'escalados.html',     label: 'Escalados de clientes', icon: 'escalados' },
+                { id: 'ofertas',       href: 'ofertas.html',       label: 'Ofertas generadas',      icon: 'fichas' },
                 { id: 'configurador',  href: 'configurador.html',  label: 'Configurador de oferta', icon: 'presupuestos' },
-                { id: 'ofertas',       href: 'ofertas.html',       label: 'Ofertas generadas',     icon: 'fichas' }
+                { id: 'lista',         href: 'lista.html',         label: 'Fichas de cliente',      icon: 'fichas' },
+                { id: 'escalados',     href: 'escalados.html',     label: 'Escalados de clientes',  icon: 'escalados' }
             ]
         },
         {
