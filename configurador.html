@@ -1267,7 +1267,9 @@ body{font-feature-settings:"ss01"}
     </div>
     <div class="ofr-saving show" id="ofr-saving">✓ 2 meses gratis</div>
   </div>
-  <div class="ofr-logo">yurest</div>
+  <!-- Slot del logo oculto (visibility:hidden, no display:none) para
+       conservar el centrado del toggle vía justify-content:space-between. -->
+  <div class="ofr-logo" aria-hidden="true" style="visibility:hidden">yurest</div>
 </div>
 
 <div class="ofr-wrap">
