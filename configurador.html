@@ -935,7 +935,10 @@ body{font-feature-settings:"ss01"}
 <div class="band hdr-band">
   <div class="cfg-inner">
     <div class="hdr">
-      <a href="#" class="logo" aria-label="yurest"><img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/66fcfac3f4a5201dde375477.png" alt="yurest" loading="eager"></a>
+      <!-- Logo oculto con visibility:hidden para preservar el slot y que
+           .hdr (display:flex; justify-content:space-between) siga
+           manteniendo el subtítulo alineado a la derecha. -->
+      <a href="#" class="logo" aria-label="yurest" aria-hidden="true" style="visibility:hidden" tabindex="-1"><img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/66fcfac3f4a5201dde375477.png" alt="" loading="eager"></a>
       <span class="hdr-sub">Configura tu plan · Sin compromisos · Sin permanencia</span>
     </div>
   </div>
