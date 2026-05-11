@@ -8,9 +8,6 @@
 <script src="config.js"></script>
 <script>YurestConfig.requireAuth('configurador');</script>
 <link rel="stylesheet" href="style.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
   --navy:#2a3554;--red:#F95A5C;--bg:#ffffff;
@@ -18,7 +15,11 @@
   --amber:#d97706;--amber-bg-from:#fffbeb;--amber-bg-to:#fef3c7;
   --purple:#6d28d9;--surface:#f4f6fb;
   --sel-bg:#eef0f7;--sel-border:#2a3554;
-  --font-system:"Inter Tight",-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  /* Tipografía corporativa Yurest. Antes era Inter Tight (configurador
+     standalone); ahora hereda Bw Modelica del portal (fonts.css ya viene
+     cargado por style.css). Mantenemos --font-system como alias local
+     para no tocar las decenas de usos internos. */
+  --font-system:'Bw Modelica', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{overflow-x:clip}
@@ -781,8 +782,9 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 }
 
 /* ═══════════════ TYPOGRAPHIC REFINEMENT (sans) ═══════════════ */
-/* Inter Tight everywhere. Numeric elements get tabular figures so
-   columns of prices align cleanly. Tight tracking on display sizes. */
+/* Bw Modelica (tipografía corporativa Yurest). Numeric elements get
+   tabular figures so columns of prices align cleanly. Tight tracking
+   on display sizes. */
 
 body{font-feature-settings:"ss01"}
 
