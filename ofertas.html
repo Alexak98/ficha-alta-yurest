@@ -191,7 +191,7 @@
     <script>
     const EP   = YurestConfig.ENDPOINTS.ofertas;
     const esc  = YurestConfig.escHtml;
-    const fmt€ = n => (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €';
+    const fmtEur = n => (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €';
     const fmtFecha = iso => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); };
 
     let DATA = [];                  // raw del backend
@@ -285,8 +285,8 @@
         const totalFinal  = vivas.reduce((s, o) => s + (Number(o.final_amount)    || 0), 0);
         const totalAnnual = vivas.reduce((s, o) => s + (Number(o.annual_subtotal) || 0), 0);
         document.getElementById('k-count').textContent  = vivas.length;
-        document.getElementById('k-final').textContent  = fmt€(totalFinal);
-        document.getElementById('k-annual').textContent = fmt€(totalAnnual);
+        document.getElementById('k-final').textContent  = fmtEur(totalFinal);
+        document.getElementById('k-annual').textContent = fmtEur(totalAnnual);
 
         document.getElementById('loading').style.display = 'none';
         if (filtradas.length === 0) {
@@ -314,7 +314,7 @@
                     <span class="billing-pill">${o.billing === 'annual' ? 'anual' : 'mensual'}</span>
                 </td>
                 <td class="num">${o.locales || 1}</td>
-                <td class="num">${fmt€(o.final_amount)}</td>
+                <td class="num">${fmtEur(o.final_amount)}</td>
                 <td><span class="badge-estado estado-${esc(o.estado)}">${esc(o.estado)}</span></td>
                 <td style="text-align:right">
                     <button class="btn-action" onclick="verDetalle('${esc(o.id)}')">Ver detalle</button>
@@ -349,12 +349,12 @@
             <div class="detalle-section">
                 <div class="detalle-section-title">Snapshot de precios</div>
                 <div class="detalle-grid">
-                    <div class="detalle-field"><label>Mensual</label><span>${fmt€(o.monthly_total)}</span></div>
-                    <div class="detalle-field"><label>Suscripción anual</label><span>${fmt€(o.annual_subtotal)}</span></div>
-                    <div class="detalle-field"><label>Servicios únicos</label><span>${fmt€(o.onetime_total)}</span></div>
-                    <div class="detalle-field"><label>Bonus</label><span>${fmt€(o.bonus_val)}</span></div>
-                    <div class="detalle-field"><label>Valor total (tachado)</label><span>${fmt€(o.full_val)}</span></div>
-                    <div class="detalle-field"><label>A pagar hoy</label><span>${fmt€(o.final_amount)}</span></div>
+                    <div class="detalle-field"><label>Mensual</label><span>${fmtEur(o.monthly_total)}</span></div>
+                    <div class="detalle-field"><label>Suscripción anual</label><span>${fmtEur(o.annual_subtotal)}</span></div>
+                    <div class="detalle-field"><label>Servicios únicos</label><span>${fmtEur(o.onetime_total)}</span></div>
+                    <div class="detalle-field"><label>Bonus</label><span>${fmtEur(o.bonus_val)}</span></div>
+                    <div class="detalle-field"><label>Valor total (tachado)</label><span>${fmtEur(o.full_val)}</span></div>
+                    <div class="detalle-field"><label>A pagar hoy</label><span>${fmtEur(o.final_amount)}</span></div>
                 </div>
             </div>
             ${addonsActivos.length ? `<div class="detalle-section">
