@@ -2541,6 +2541,53 @@
         document.getElementById('sol-panel-msg').style.display = 'none';
     }
 
+    /* ── Prefill desde el configurador ──────────────────────────────────
+       Si la URL trae `?from=cfg&sociedad=...&cif=...&...`, abrimos
+       automáticamente el panel `#solicitud-panel` con los valores
+       cargados. Pensado para el flujo: configurador → "Empezar Ficha"
+       → modal con datos iniciales → redirección aquí para revisar y
+       enviar. Tras prefillear se limpia la query string del historial
+       (replaceState) para evitar repetir el flujo si el usuario recarga. */
+    (function _prefillDesdeConfigurador(){
+        try {
+            const qs = new URLSearchParams(window.location.search);
+            if (qs.get('from') !== 'cfg') return;
+            const map = {
+                sociedad:  'sol-sociedad',
+                cif:       'sol-cif',
+                nombre:    'sol-nombre',
+                email:     'sol-email',
+                comercial: 'sol-comercial',
+                tipo:      'sol-tipo'
+            };
+            Object.keys(map).forEach(k => {
+                const v = qs.get(k);
+                if (v == null) return;
+                const el = document.getElementById(map[k]);
+                if (el) el.value = v;
+            });
+            const panel = document.getElementById('solicitud-panel');
+            const btn   = document.getElementById('btn-solicitar');
+            if (panel && !panel.classList.contains('open')) {
+                panel.classList.add('open');
+                if (btn) btn.classList.add('open');
+            }
+            const msg = document.getElementById('sol-panel-msg');
+            if (msg) {
+                msg.textContent = 'Datos importados del configurador — revisa y envía.';
+                msg.style.background = '#ecfdf5';
+                msg.style.color = '#065f46';
+                msg.style.display = 'block';
+            }
+            setTimeout(() => {
+                panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                document.getElementById('sol-sociedad')?.focus();
+            }, 80);
+            // Limpia la query string del historial sin recargar.
+            window.history.replaceState({}, '', window.location.pathname);
+        } catch (_) { /* noop: prefill best-effort */ }
+    })();
+
     function solClearErrors() {
         ['sol-sociedad','sol-cif','sol-nombre','sol-email','sol-comercial','sol-tipo'].forEach(id => {
             const el = document.getElementById(id);

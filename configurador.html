@@ -1350,6 +1350,16 @@ body{font-feature-settings:"ss01"}
     <div class="budget-send-desc">Genera un PDF listo para enviar al cliente.</div>
     <button class="budget-send-cta" onclick="downloadBudget()">Descargar PDF</button>
   </div>
+
+  <!-- Acción siguiente: arrancar la solicitud de ficha de alta con los
+       datos iniciales del cliente. Encaja el flujo comercial: oferta →
+       presupuesto → solicitud de ficha (continúa en lista.html con los
+       campos prefilled vía query string). -->
+  <div class="budget-send" id="ficha-actions" style="margin-top:14px">
+    <div class="budget-send-title">📋 Iniciar ficha de alta</div>
+    <div class="budget-send-desc">Captura los datos iniciales del cliente y continúa la solicitud en Fichas de cliente.</div>
+    <button class="budget-send-cta" onclick="abrirFichaModal()">Empezar Ficha →</button>
+  </div>
 </div>
 </div><!-- /v-budget -->
 
@@ -2430,6 +2440,161 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
     </div>
   </div>
 </div>
+
+<!-- ═══════════════ FICHA POPUP (datos iniciales de la solicitud) ═══════════════
+     Mismo set de campos que el panel `#solicitud-panel` de lista.html para que
+     el comercial capture lo básico aquí y al darle "Continuar" se navegue a
+     lista.html con los valores en query string. Allí se prefillean los inputs
+     `sol-*` y se abre automáticamente el panel para revisar/enviar. -->
+<div class="popup-overlay" id="ficha-popup" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="popup-box" style="max-width:560px">
+    <div class="popup-hd">
+      <button class="popup-close" onclick="document.getElementById('ficha-popup').classList.remove('open')">×</button>
+      <div class="popup-eyebrow">Paso siguiente</div>
+      <div class="popup-title">Iniciar ficha de alta</div>
+      <div class="popup-subtitle">Captura los datos iniciales del cliente. Continuarás en Fichas de cliente para revisar y enviar la solicitud.</div>
+    </div>
+    <div class="popup-body">
+      <style>
+        .fk-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+        .fk-row label{font-size:12px;font-weight:700;color:var(--navy);letter-spacing:.02em}
+        .fk-row input,.fk-row select{
+          width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;
+          font-size:14px;font-family:var(--font-system);color:var(--navy);background:#fff;
+          transition:border-color .15s, box-shadow .15s;
+        }
+        .fk-row input:focus,.fk-row select:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(42,53,84,.12)}
+        .fk-row input.fk-error,.fk-row select.fk-error{border-color:var(--red);box-shadow:0 0 0 3px rgba(249,90,92,.12)}
+        .fk-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+        @media (max-width:520px){.fk-grid{grid-template-columns:1fr}}
+        .fk-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+        .fk-btn-primary{
+          background:var(--navy);color:#fff;border:none;border-radius:10px;
+          padding:12px 22px;font-size:14px;font-weight:700;cursor:pointer;
+          font-family:var(--font-system);transition:opacity .15s;
+        }
+        .fk-btn-primary:hover{opacity:.88}
+      </style>
+      <div class="fk-grid">
+        <div class="fk-row">
+          <label for="fk-sociedad">Nombre de Sociedad</label>
+          <input type="text" id="fk-sociedad" placeholder="Empresa S.L." autocomplete="off" oninput="fkClearErrors()">
+        </div>
+        <div class="fk-row">
+          <label for="fk-cif">CIF de la sociedad</label>
+          <input type="text" id="fk-cif" placeholder="B12345678" autocomplete="off" style="text-transform:uppercase" oninput="fkClearErrors()">
+        </div>
+        <div class="fk-row">
+          <label for="fk-nombre">Nombre del cliente</label>
+          <input type="text" id="fk-nombre" placeholder="Ana García López" autocomplete="off" oninput="fkClearErrors()">
+        </div>
+        <div class="fk-row">
+          <label for="fk-email">Email del cliente</label>
+          <input type="email" id="fk-email" placeholder="ana@empresa.com" autocomplete="off" oninput="fkClearErrors()">
+        </div>
+        <div class="fk-row">
+          <label for="fk-comercial">Comercial</label>
+          <select id="fk-comercial" onchange="fkClearErrors()">
+            <option value="">— Selecciona —</option>
+            <option value="Pedro Martin">Pedro Martin</option>
+            <option value="Borja Pastor">Borja Pastor</option>
+            <option value="Santiago Gonzalez">Santiago Gonzalez</option>
+            <option value="Ivan Ramirez">Ivan Ramirez</option>
+            <option value="Springboard Monica">Springboard Monica</option>
+            <option value="Springboard Pau">Springboard Pau</option>
+            <option value="Ismael Calero">Ismael Calero</option>
+          </select>
+        </div>
+        <div class="fk-row">
+          <label for="fk-tipo">Tipo de plan</label>
+          <select id="fk-tipo" onchange="fkClearErrors()">
+            <option value="">— Selecciona —</option>
+            <option value="lite">Lite</option>
+            <option value="planes">Planes</option>
+            <option value="corporate">Corporate</option>
+            <option value="corporate_cp">Corporate + CP</option>
+            <option value="corp_cocina">CORP. Cocina Producción</option>
+          </select>
+        </div>
+      </div>
+      <div id="fk-msg" style="display:none;margin:6px 0 10px;font-size:13px;color:var(--red);font-weight:600"></div>
+      <div class="fk-actions">
+        <button class="fk-btn-primary" onclick="enviarAFicha()">Continuar a Ficha →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══ Flow: Configurador → Solicitud de Ficha ═══
+   Mapea el plan del configurador (lite/basic/pro) al `tipo` de plan
+   que usa lista.html (lite/planes/corporate/...). Es una sugerencia
+   por defecto — el comercial puede cambiar el valor en el select. */
+function _fkMapPlanToTipo(p){
+  if(p==='lite')  return 'lite';
+  if(p==='basic') return 'planes';
+  if(p==='pro')   return 'corporate';
+  return '';
+}
+
+function abrirFichaModal(){
+  // Pre-rellena el `tipo` con el plan elegido en el configurador, si lo hay.
+  // El resto de campos los introduce el comercial in situ.
+  var tipoSel = document.getElementById('fk-tipo');
+  if(tipoSel && !tipoSel.value){
+    var sugerido = _fkMapPlanToTipo(typeof plan !== 'undefined' ? plan : null);
+    if(sugerido) tipoSel.value = sugerido;
+  }
+  document.getElementById('ficha-popup').classList.add('open');
+  setTimeout(function(){ var el=document.getElementById('fk-sociedad'); if(el) el.focus(); }, 60);
+}
+
+function fkClearErrors(){
+  ['fk-sociedad','fk-cif','fk-nombre','fk-email','fk-comercial','fk-tipo'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.classList.remove('fk-error');
+  });
+  var msg = document.getElementById('fk-msg');
+  if(msg) msg.style.display='none';
+}
+
+function _fkShowError(msg){
+  var el = document.getElementById('fk-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function enviarAFicha(){
+  fkClearErrors();
+  var v = {
+    sociedad:  document.getElementById('fk-sociedad').value.trim(),
+    cif:       document.getElementById('fk-cif').value.trim().toUpperCase(),
+    nombre:    document.getElementById('fk-nombre').value.trim(),
+    email:     document.getElementById('fk-email').value.trim(),
+    comercial: document.getElementById('fk-comercial').value,
+    tipo:      document.getElementById('fk-tipo').value
+  };
+  // Validación mínima: todos los campos son obligatorios (mismo
+  // criterio que enviarSolicitud() en lista.html).
+  var faltan = [];
+  Object.keys(v).forEach(function(k){
+    if(!v[k]){ faltan.push(k); document.getElementById('fk-'+k).classList.add('fk-error'); }
+  });
+  if(v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)){
+    document.getElementById('fk-email').classList.add('fk-error');
+    _fkShowError('Email no válido.');
+    return;
+  }
+  if(faltan.length){
+    _fkShowError('Completa todos los campos antes de continuar.');
+    return;
+  }
+  // Pasa los valores por query string a lista.html. Allí, un init lee
+  // `?from=cfg&...` y prefillea el panel `#solicitud-panel`.
+  var qs = new URLSearchParams({ from:'cfg', sociedad:v.sociedad, cif:v.cif, nombre:v.nombre, email:v.email, comercial:v.comercial, tipo:v.tipo });
+  window.location.href = 'lista.html?' + qs.toString();
+}
+</script>
 
 </body>
 </html>
