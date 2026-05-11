@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>Configurador — Yurest</title>
+<script src="config.js"></script>
+<script>YurestConfig.requireAuth('configurador');</script>
+<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#2a3554;--red:#F95A5C;--bg:#ffffff;
+  --border:#dde2ef;--muted:#7a87a0;--green:#16a34a;
+  --amber:#d97706;--amber-bg-from:#fffbeb;--amber-bg-to:#fef3c7;
+  --purple:#6d28d9;--surface:#f4f6fb;
+  --sel-bg:#eef0f7;--sel-border:#2a3554;
+  --font-system:"Inter Tight",-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:clip}
+body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-size:15px}
+
+.view{display:none}.view.active{display:block}
+.cfg{padding:0 0 110px;margin:0;max-width:none}
+.cfg-inner{max-width:960px;margin:0 auto;padding:0 18px}
+.band{padding:36px 0}
+.band-gray{background:var(--surface)}
+
+/* HEADER */
+.hdr-band{padding:14px 0;border-bottom:1px solid var(--border);background:#fff}
+.hdr{background:transparent;border-radius:0;padding:0;margin:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.logo{display:inline-flex;align-items:center;text-decoration:none;line-height:0}
+.logo img{height:32px;width:auto;display:block}
+.hdr-sub{font-size:13px;color:var(--muted);font-weight:500}
+
+/* BILLING TOGGLE */
+.billing-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:26px}
+/* Billing tabs — segmented control (dos opciones anidadas en una píldora única)
+   + mensaje contextual persistente debajo. */
+.bill-tabs{display:flex;flex-direction:column;align-items:center;gap:10px}
+.bill-tabs-row{display:inline-flex;background:rgba(244,246,251,.65);border:1px solid rgba(42,53,84,.08);border-radius:50px;padding:4px;gap:2px}
+.bill-tab{font-family:inherit;border:0;background:transparent;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);padding:9px 22px;border-radius:40px;display:inline-flex;align-items:center;gap:10px;white-space:nowrap;letter-spacing:.01em;transition:background .25s, color .25s, box-shadow .25s;user-select:none}
+.bill-tab:hover:not(.on){color:var(--navy);background:rgba(42,53,84,.04)}
+.bill-tab.on{color:#fff;background:var(--navy);box-shadow:0 2px 10px rgba(42,53,84,.2)}
+.bill-tab-saving{font-size:11px;font-weight:800;color:var(--green);background:rgba(22,163,74,.12);padding:2px 7px;border-radius:6px;letter-spacing:0;transition:background .2s, color .2s, box-shadow .2s}
+.bill-tab.on .bill-tab-saving{background:#fff;color:var(--green);box-shadow:0 2px 6px rgba(0,0,0,.10)}
+.bill-msg{font-size:13px;font-weight:600;text-align:center;min-height:20px;line-height:1.4;transition:color .2s}
+.bill-msg.confirm{color:var(--green)}
+.bill-msg.nudge{color:var(--green);cursor:pointer;border-bottom:1.5px solid currentColor;padding:0 0 1px;transition:opacity .2s;display:inline-flex;align-items:center;gap:6px}
+.bill-msg.nudge:hover{opacity:.7}
+
+/* SECTION */
+.sec{margin-bottom:30px}
+.band .sec{margin-bottom:0}
+.sec-label{font-family:var(--font-system);font-size:18px;font-weight:900;color:var(--navy);margin-bottom:4px}
+.sec-desc{font-size:13px;color:var(--muted);margin-bottom:18px}
+/* Header de la sección 1 — título + píldora de empleados juntos a la IZQUIERDA.
+   La píldora NO se va al lado derecho (donde está la columna Pro) para no crear
+   sensación visual de que Pro está "padded" hacia abajo. */
+.sec-hd-row{display:flex;align-items:center;gap:14px;margin-bottom:4px;flex-wrap:wrap}
+.emp-inline{display:inline-flex;align-items:center;gap:10px;background:rgba(42,53,84,.04);border:1px solid var(--border);padding:6px 12px 6px 14px;border-radius:30px}
+.emp-inline-lbl{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.emp-input{font-family:inherit;font-size:15px;font-weight:800;color:var(--navy);background:#fff;border:1.5px solid var(--border);width:70px;padding:5px 8px;border-radius:8px;text-align:center;outline:none;font-feature-settings:"tnum","lnum"}
+.emp-input:focus{border-color:var(--navy)}
+/* Plan card apagada por gate de empleados (o por estado inicial sin empleados) */
+.plan-card.disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.4);pointer-events:none}
+
+/* ── PLAN CARDS ── */
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:600px){.plans-grid{grid-template-columns:1fr}}
+
+.plan-card{
+  border:none;border-radius:20px;background:#fff;
+  padding:24px 22px 22px;cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease;
+  position:relative;user-select:none;
+  box-shadow:0 1px 3px rgba(42,53,84,.06);
+}
+.plan-card:hover{box-shadow:0 8px 24px rgba(42,53,84,.10);transform:translateY(-2px)}
+.plan-card.selected{
+  background:var(--sel-bg);
+  box-shadow:0 10px 30px rgba(42,53,84,.15), 0 0 0 2px var(--sel-border);
+  transform:translateY(-2px);
+}
+.plan-pop-wrap{position:absolute;top:-12px;left:50%;transform:translateX(-50%)}
+.plan-pop{background:linear-gradient(90deg,#F95A5C 0%,#d97706 100%);color:#fff;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:4px 14px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(249,90,92,.3)}
+.plan-check{position:absolute;top:14px;right:14px;width:24px;height:24px;background:var(--sel-border);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.plan-card.selected .plan-check{display:flex}
+
+.plan-docs-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.18);
+  color:var(--green);font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:20px;margin-bottom:10px;
+}
+.plan-name{font-family:var(--font-system);font-size:26px;font-weight:900;color:var(--navy);margin-bottom:8px}
+.plan-price-line{display:flex;align-items:baseline;gap:3px;margin-bottom:14px}
+.plan-price{font-family:var(--font-system);font-size:34px;font-weight:900;color:var(--navy);line-height:1}
+.plan-cur{font-size:18px;font-weight:700;align-self:flex-start;margin-top:6px}
+.plan-per{font-size:14px;font-weight:500;color:var(--muted)}
+.plan-note{font-size:11px;color:var(--muted);margin-bottom:14px;min-height:0}
+
+.plan-feats{border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.pf{display:flex;gap:7px;align-items:center;font-size:13px;color:rgba(42,53,84,.8)}
+.pf-dot{width:16px;height:16px;border-radius:50%;background:rgba(42,53,84,.1);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.plan-card.selected .pf-dot{background:var(--sel-border);color:#fff}
+.pf.pf-ai .pf-dot{background:rgba(109,40,217,.1)!important;color:var(--purple)!important}
+
+/* ── ADDON CARDS ── */
+.addon-cat{margin-bottom:24px}
+.addon-cat-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.cat-icon{font-size:18px}
+.cat-name{font-family:var(--font-system);font-size:16px;font-weight:800;color:var(--navy)}
+
+.addons-grid{display:grid;gap:10px}
+.addons-grid.g4{grid-template-columns:repeat(4,1fr)}
+.addons-grid.g2{grid-template-columns:repeat(2,1fr)}
+.addons-grid.g22{grid-template-columns:repeat(2,1fr)}
+@media(max-width:700px){.addons-grid.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.addons-grid.g4,.addons-grid.g2,.addons-grid.g22{grid-template-columns:1fr}}
+
+.addon-card{
+  border:none;border-radius:16px;background:var(--surface);
+  padding:18px 16px 16px;cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease;
+  position:relative;user-select:none;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  box-shadow:0 1px 2px rgba(42,53,84,.04);
+}
+.addon-card:hover:not(.disabled){box-shadow:0 6px 18px rgba(42,53,84,.10);transform:translateY(-1px)}
+.addon-card.selected{background:#fff;box-shadow:0 8px 24px rgba(42,53,84,.12), 0 0 0 2px var(--sel-border);transform:translateY(-1px)}
+.addon-card.disabled{opacity:.38;cursor:not-allowed}
+.addon-card.needs-tip{position:relative}
+.tip-bubble{
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:var(--navy);color:#fff;font-size:11.5px;font-weight:600;
+  padding:6px 12px;border-radius:8px;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .2s;z-index:50;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+.tip-bubble::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:var(--navy);
+}
+.addon-card.needs-tip.disabled:hover .tip-bubble{opacity:1}
+.addon-card.warn{background:rgba(249,90,92,.06)!important;box-shadow:0 6px 18px rgba(249,90,92,.12), 0 0 0 2px var(--red)!important}
+
+.ac-chk{
+  position:absolute;top:10px;right:10px;
+  width:20px;height:20px;border:2px solid var(--border);border-radius:5px;
+  transition:all .18s;background:#fff;
+  display:flex;align-items:center;justify-content:center;
+}
+.addon-card.selected .ac-chk{background:var(--sel-border);border-color:var(--sel-border)}
+.addon-card.selected .ac-chk::after{content:"✓";color:#fff;font-size:10px;font-weight:700}
+.addon-card.warn .ac-chk{background:var(--red)!important;border-color:var(--red)!important}
+
+/* Lock icon for disabled */
+.ac-lock{
+  position:absolute;top:10px;right:10px;
+  font-size:14px;color:var(--muted);
+  display:none;
+}
+.addon-card.disabled .ac-lock{display:block}
+.addon-card.disabled .ac-chk{display:none}
+
+/* Badge row — fixed height so titles align */
+.ac-badge-row{height:24px;display:flex;align-items:center;margin-bottom:4px}
+.ac-badge{
+  font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 8px;border-radius:8px;display:inline-block;
+}
+.b-pop{background:linear-gradient(90deg,#F95A5C 0%,#d97706 100%);color:#fff;box-shadow:0 1px 3px rgba(249,90,92,.25)}
+.b-group{background:rgba(42,53,84,.08);color:var(--navy)}
+.b-later{background:rgba(217,119,6,.1);color:var(--amber)}
+.b-promo{background:linear-gradient(90deg,#F95A5C 0%,#d97706 100%);color:#fff;font-weight:800;box-shadow:0 1px 3px rgba(249,90,92,.25)}
+.b-chain{background:rgba(122,135,160,.1);color:var(--muted);font-weight:600}
+.b-sologrp{background:rgba(42,53,84,.08);color:var(--navy);border:1px solid rgba(42,53,84,.18)}
+
+/* Cards que usan borde izquierdo en lugar de pastilla */
+.addon-card.use-border-promo{border-left:4px solid #F95A5C}
+.addon-card.use-border-sologrp{border-left:4px solid var(--navy)}
+.addon-card.use-border-promo .ac-badge,
+.addon-card.use-border-sologrp .ac-badge{display:none}
+.addon-card.solo-grp-warn{background:rgba(249,90,92,.05)!important;box-shadow:0 6px 18px rgba(249,90,92,.12), 0 0 0 2px var(--red)!important}
+
+/* En banda gris, los addon-cards son blancos (inverso del normal) */
+.band-gray .addon-card{background:#fff}
+.band-gray .addon-card.selected{background:var(--sel-bg)}
+.addon-card.solo-grp-warn .ac-chk{background:var(--red)!important;border-color:var(--red)!important}
+
+.ac-name{font-family:var(--font-system);font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;padding-right:26px;line-height:1.3}
+.ac-desc{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:8px}
+.ac-price{font-size:13px;font-weight:700;color:var(--navy)}
+.ac-price.one-t{color:var(--purple)}
+.ac-warn{font-size:11px;color:var(--red);font-weight:600;margin-top:6px;line-height:1.4;display:none;padding:6px 8px;background:rgba(249,90,92,.06);border-radius:6px}
+.addon-card.warn .ac-warn{display:block}
+
+/* ── IMPLEMENTATION ── */
+.impl-wrap{background:transparent;border:none;border-radius:0;padding:0;margin-bottom:0}
+.impl-sec-title{font-family:var(--font-system);font-size:18px;font-weight:900;color:var(--navy);margin-bottom:4px}
+.impl-sec-desc{font-size:13px;color:var(--muted);margin-bottom:22px}
+
+.impl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+@media(max-width:560px){.impl-grid{grid-template-columns:1fr}}
+
+.impl-card{
+  border:none;border-radius:16px;background:#fff;
+  padding:20px 18px;cursor:pointer;
+  transition:transform .15s ease, box-shadow .2s ease;
+  position:relative;user-select:none;
+  box-shadow:0 1px 2px rgba(42,53,84,.04);
+}
+.impl-card:hover{box-shadow:0 6px 18px rgba(42,53,84,.10);transform:translateY(-1px)}
+.impl-card.selected{background:var(--sel-bg);box-shadow:0 8px 24px rgba(42,53,84,.12), 0 0 0 2px var(--sel-border);transform:translateY(-1px)}
+.impl-card.selected .impl-chk{display:flex}
+.impl-chk{position:absolute;top:12px;right:12px;width:24px;height:24px;background:var(--sel-border);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+
+.impl-badge-row{height:24px;display:flex;align-items:center;margin-bottom:10px}
+.impl-ibadge{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:10px;display:inline-block}
+.ib-pop{background:linear-gradient(90deg,#F95A5C 0%,#d97706 100%);color:#fff;box-shadow:0 1px 3px rgba(249,90,92,.25)}
+.ib-rec{background:rgba(22,163,74,.15);color:var(--green)}
+.ib-grp{background:rgba(42,53,84,.08);color:var(--navy)}
+
+.impl-name{font-family:var(--font-system);font-size:17px;font-weight:900;color:var(--navy);margin-bottom:8px}
+.impl-price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:14px}
+.impl-old{font-size:16px;color:var(--muted);text-decoration:line-through;font-weight:700}
+.impl-new{font-family:var(--font-system);font-size:24px;font-weight:900;color:var(--green)}
+.impl-new.paid{color:var(--navy)}
+
+.impl-items{list-style:none;display:flex;flex-direction:column;gap:5px}
+.impl-items li{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:flex-start;line-height:1.35}
+.impl-hidden{display:none!important}
+.impl-items li .bul{flex-shrink:0;margin-top:1px;font-size:11px;font-weight:700}
+.li-std .bul{color:var(--navy)}
+.li-ext .bul{color:var(--green)}
+.li-ext{color:#15803d}
+.consultant-tag{color:#000;font-weight:700}
+
+/* Impl addons */
+.impl-addons-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px}
+.stocksadv-note{display:none;margin-top:14px;padding:12px 14px;background:rgba(42,53,84,.05);border:1.5px solid rgba(42,53,84,.18);border-radius:10px;font-size:13px;color:var(--navy);font-weight:600}
+
+/* ── STICKY BAR ── */
+.sticky-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(255,255,255,.78);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);
+  backdrop-filter:saturate(1.6) blur(20px);
+  border-top:1px solid rgba(42,53,84,.08);
+  padding:0 28px;height:90px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  z-index:200;
+  box-shadow:0 -10px 40px -8px rgba(42,53,84,.10);
+  flex-wrap:wrap;
+}
+.bar-info{display:flex;flex-direction:column;gap:2px}
+.bar-label{font-size:13px;color:var(--muted);font-weight:500}
+.bar-price-wrap{display:flex;align-items:baseline;gap:5px}
+.bar-price{font-family:var(--font-system);font-size:30px;font-weight:900;color:var(--navy)}
+.bar-period{font-size:14px;color:var(--muted)}
+.bar-detail{font-size:12px;color:var(--muted)}
+.bar-cta{
+  background:var(--red);color:#fff;border:none;
+  border-radius:12px;padding:15px 40px;
+  font-size:16px;font-weight:700;cursor:pointer;transition:all .15s;
+  white-space:nowrap;box-shadow:0 4px 16px rgba(249,90,92,.3);
+}
+.bar-cta:hover{opacity:.9;transform:translateY(-1px)}
+.bar-cta:disabled{opacity:.3;cursor:not-allowed;box-shadow:none;transform:none}
+
+/* ── OFFER VIEW ── */
+.ofr-topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.78);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);
+  backdrop-filter:saturate(1.6) blur(20px);
+  border-bottom:1px solid rgba(42,53,84,.08);
+  padding:0 24px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:nowrap;min-width:0;
+}
+.ofr-topbar > *{min-width:0}
+.ofr-back{background:none;border:none;color:var(--navy);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px}
+.ofr-back:hover{color:var(--red)}
+.ofr-center-tog{display:flex;flex-direction:column;align-items:center;gap:2px}
+.ofr-tog{display:flex;background:var(--surface);border:1.5px solid var(--border);border-radius:30px;padding:3px}
+.ofr-btn{font-size:13px;font-weight:600;color:var(--muted);padding:6px 18px;border-radius:24px;cursor:pointer;transition:all .18s;user-select:none;white-space:nowrap}
+.ofr-btn.on{background:var(--navy);color:#fff}
+.ofr-saving{font-size:10px;font-weight:700;color:var(--green);text-align:center;display:none}
+.ofr-saving.show{display:block}
+.ofr-logo{font-family:var(--font-system);font-size:16px;font-weight:900;color:var(--navy)}
+
+.ofr-wrap{max-width:620px;margin:0 auto;padding:28px 16px 60px}
+
+.ofr-headline{text-align:center;margin-bottom:28px}
+.ofr-eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(42,53,84,.55);margin-bottom:10px}
+.ofr-h1{font-family:var(--font-system);font-size:clamp(22px,5vw,30px);font-weight:900;color:var(--navy);line-height:1.15;margin-bottom:6px}
+.ofr-sub{font-size:14px;color:var(--muted)}
+
+/* Locales - compact */
+.locales-compact{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:12px;
+  padding:12px 18px;margin-bottom:16px;gap:10px;flex-wrap:wrap;
+}
+.loc-label{font-size:14px;font-weight:600;color:var(--navy)}
+.loc-sub{font-size:11px;color:var(--muted)}
+.loc-counter{display:flex;align-items:center;gap:10px}
+.loc-btn{width:30px;height:30px;border-radius:50%;border:2px solid var(--navy);background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--navy);transition:all .15s;font-weight:700}
+.loc-btn:hover{background:var(--navy);color:#fff}
+.loc-num{font-family:var(--font-system);font-size:20px;font-weight:900;color:var(--navy);min-width:24px;text-align:center}
+
+/* STACK */
+.ofr-stack{background:#fff;border:2px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:22px}
+.ofr-stack-hd{background:var(--navy);padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
+.ofr-stack-lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+
+.ofr-item{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--border);gap:12px}
+.ofr-item:last-child{border-bottom:none}
+.ofr-item-l{display:flex;flex-direction:column;gap:3px}
+.ofr-item-name{font-size:14px;font-weight:600;color:var(--navy);line-height:1.4}
+.ofr-item-sub{font-size:12px;color:var(--muted)}
+.ofr-item-price{font-family:var(--font-system);font-size:17px;font-weight:800;color:var(--navy);white-space:nowrap;text-align:right}
+.ofr-item-price.green{color:var(--green)}
+.ofr-item-price.gold{color:var(--amber)}
+.price-old-sm{font-size:12px;color:var(--muted);text-decoration:line-through;display:block;text-align:right}
+/* ── BRUNSON STACK ── */
+/* Each row: ✓ Name ........dots........ VALUE */
+.ofr-item{
+  display:flex;align-items:center;
+  padding:13px 22px;border-bottom:1px solid var(--border);gap:0;
+}
+.ofr-item:last-child{border-bottom:none}
+.ofr-check{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--navy);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;margin-right:12px;
+}
+.ofr-item.bonus-row .ofr-check{background:#f59e0b;font-size:13px}
+.ofr-item.garantia-row{background:linear-gradient(135deg,rgba(249,90,92,.08) 0%,rgba(249,90,92,.14) 100%)!important;border-top:2px solid rgba(249,90,92,.35)!important;border-bottom:2px solid rgba(249,90,92,.35)!important;border-left:4px solid var(--red)!important}
+.ofr-item.garantia-row .ofr-check{background:var(--red)!important;font-size:16px!important;width:28px!important;height:28px!important;box-shadow:0 0 0 3px rgba(249,90,92,.25),0 4px 14px rgba(249,90,92,.4)!important}
+.ofr-item.garantia-row .ofr-item-name{color:var(--red)!important;font-size:16px!important;font-weight:800!important}
+.ofr-item.garantia-row .ofr-val-new{color:var(--red)!important;font-size:20px!important;text-shadow:0 0 14px rgba(249,90,92,.4)!important}
+.ofr-item.garantia-row.dim{opacity:.45}
+.ofr-item.garantia-row.dim .ofr-val-new{font-size:13px!important;text-shadow:none!important}
+.ofr-item.garantia-row.dim .ofr-item-name{font-size:14px!important}
+.ofr-item.impl-row .ofr-check{background:var(--navy)}
+.ofr-item.bonus-row{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-left:3px solid var(--green)}
+.ofr-item.bonus-row.dim{opacity:.45;background:rgba(22,163,74,.05);border-left-color:rgba(22,163,74,.25)}
+.ofr-item.bonus-row.dim .ofr-check{background:rgba(42,53,84,.3)!important}
+.ofr-item.bonus-row .ofr-check{background:var(--navy);box-shadow:0 0 0 2px rgba(42,53,84,.1);font-size:13px;color:#ffd84d}
+.ofr-check{position:relative}
+.ofr-item-name-wrap-old{display:none}
+.ofr-item-name{font-size:14px;font-weight:600;color:var(--navy);line-height:1.4}
+.ofr-item.bonus-row .ofr-item-name{color:var(--navy);font-size:15px;font-weight:700}
+.ofr-item.impl-row .ofr-item-name{color:var(--navy);font-weight:700}
+.ofr-item.bonus-row.dim{opacity:.45}
+.ofr-item-sub{font-size:12px;color:var(--muted);margin-top:3px;white-space:normal;line-height:1.45;max-width:340px}
+/* Dots */
+.ofr-dots{
+  flex:1;margin:0 10px;
+  border-bottom:2px dotted rgba(42,53,84,.15);
+  min-width:20px;align-self:center;margin-bottom:4px;
+}
+.ofr-item-name-wrap{max-width:280px;flex-shrink:1}
+/* Value side */
+.ofr-val-wrap{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;min-width:160px}
+.ofr-val-old{font-size:13px;font-weight:700;color:rgba(42,53,84,.3);text-decoration:line-through;white-space:nowrap}
+.ofr-val-new{font-family:var(--font-system);font-size:16px;font-weight:900;white-space:nowrap}
+.ofr-val-new.v-plan{color:var(--navy)}
+.ofr-val-new.v-green{color:var(--green)}
+.ofr-val-new.v-red{color:var(--red)}
+.ofr-val-new.v-bonus{color:var(--green);font-size:18px;font-weight:900;letter-spacing:.02em;text-shadow:0 0 16px rgba(22,163,74,.35)}
+.ofr-item.bonus-row.dim .ofr-val-new.v-bonus{text-shadow:none;font-size:13px}
+.ofr-val-new.v-red{color:var(--red);font-size:20px;font-weight:900}
+.ofr-val-inline{display:flex;align-items:baseline;gap:8px;justify-content:flex-end;white-space:nowrap}
+.ofr-val-inline .ofr-val-old{font-size:12px;white-space:nowrap}
+.ofr-val-inline .ofr-val-new{font-size:17px;white-space:nowrap}
+.ofr-val-new.v-impl{color:var(--green)}
+.ofr-val-new.v-struck{color:rgba(42,53,84,.55);text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(42,53,84,.5);font-weight:900;font-size:16px;text-shadow:none}
+.ofr-val-old.big-strike{font-family:var(--font-system);font-size:18px;font-weight:900;color:rgba(42,53,84,.55);text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(42,53,84,.5);line-height:1.1;margin-bottom:2px}
+.ofr-item.garantia-row .ofr-val-wrap{justify-content:center}
+
+/* Stack divider */
+.stack-divider{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 22px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.stack-divider-line{flex:1;height:1px;background:var(--border)}
+.stack-divider-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+
+/* Stack footer */
+.stack-footer{
+  background:var(--navy);padding:20px 22px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;
+}
+.stack-footer-lbl{min-width:0;flex:1 1 120px}
+.stack-footer-val{min-width:0}
+.stack-footer-lbl{color:rgba(255,255,255,.7);font-size:14px;font-weight:600}
+.stack-footer-val{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.stack-val-old-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:2px}
+.stack-total-old{
+  font-family:var(--font-system);font-size:22px;font-weight:900;
+  color:rgba(255,255,255,.75);text-decoration:line-through;line-height:1;
+}
+.stack-val-sep{width:100%;height:1px;background:rgba(255,255,255,.15);margin:6px 0}
+.stack-val-new-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:2px}
+.stack-total-new{
+  font-family:var(--font-system);font-size:32px;font-weight:900;color:#fff;line-height:1;
+}
+
+/* Checkout section */
+.checkout{background:#fff;border:2px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px}
+.checkout-hd{background:var(--navy);padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
+.checkout-title{font-family:var(--font-system);font-size:15px;font-weight:900;color:#fff}
+.checkout-note{font-size:11px;color:rgba(255,255,255,.45)}
+
+.ck-section{padding:18px 22px;border-bottom:1px solid var(--border)}
+.ck-section:last-child{border-bottom:none}
+.ck-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.ck-bonus-section{background:rgba(22,163,74,.04);border-top:2px dashed rgba(22,163,74,.2)!important}
+.ck-bonus-section .ck-section-title{color:var(--green)}
+.ck-bonus-section .ck-row{border-bottom-color:rgba(22,163,74,.1)}
+
+.ck-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.ck-row:last-child{border-bottom:none}
+.ck-name{font-size:14px;color:var(--navy)}
+.ck-sub{font-size:11px;color:var(--muted)}
+.ck-val{font-family:var(--font-system);font-size:15px;font-weight:700;color:var(--navy);white-space:nowrap}
+.ck-val.green{color:var(--green)}
+.ck-val.purple{color:var(--navy)}
+
+.ck-total-row{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:var(--navy);flex-wrap:wrap;gap:10px}
+.ck-total-lbl{font-size:16px;font-weight:700;color:rgba(255,255,255,.8)}
+.ck-total-old{font-family:var(--font-system);font-size:22px;font-weight:900;color:rgba(255,255,255,.85);text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(255,255,255,.7);line-height:1.1;margin-bottom:4px}
+.ck-total-val{font-family:var(--font-system);font-size:28px;font-weight:900;color:#fff}
+.row-link{font-size:11px;color:var(--muted);font-weight:400;white-space:nowrap;display:inline-block}
+
+.ck-freq{font-size:12px;color:rgba(255,255,255,.45);margin-top:3px;text-align:right}
+
+.cta-big{
+  width:100%;margin-top:16px;padding:18px;
+  background:var(--red);color:#fff;border:none;border-radius:14px;
+  font-size:17px;font-weight:700;cursor:pointer;
+  box-shadow:0 6px 24px rgba(249,90,92,.35);transition:all .15s;
+  letter-spacing:.01em;
+}
+.cta-big:hover{opacity:.92;transform:translateY(-1px)}
+
+.ofr-foot{font-size:12px;color:var(--muted);text-align:center;line-height:1.7;margin-top:16px}
+
+/* ── BUDGET VIEW ── */
+.budget-wrap{max-width:680px;margin:0 auto;padding:24px 18px 80px}
+.budget-title{font-family:var(--font-system);font-size:26px;font-weight:900;color:var(--navy);margin-bottom:4px}
+.budget-meta{font-size:12px;color:var(--muted);margin-bottom:20px}
+
+/* Product mockup card — usado en oferta y presupuesto */
+.product-mockup-card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(42,53,84,.06);margin-bottom:18px}
+.product-mockup-card img{width:100%;height:auto;display:block;border-radius:10px}
+.budget-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:18px}
+.b-section-hd{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface);padding:9px 18px}
+.b-row{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-top:1px solid var(--border);font-size:13.5px;gap:14px;flex-wrap:wrap}
+.b-row:first-child,.b-section-hd+.b-row{border-top:none}
+.b-name{color:var(--navy);font-weight:600;flex:1;line-height:1.35}
+.b-val{font-family:var(--font-system);font-weight:800;color:var(--navy);text-align:right;white-space:nowrap;flex-shrink:0}
+.b-strike{text-decoration:line-through;color:var(--muted);font-size:11.5px;margin-right:7px;font-weight:700}
+.b-free{color:var(--green)}
+.b-included{color:var(--green);font-weight:800}
+.b-subtotal{display:flex;justify-content:space-between;padding:11px 18px;background:rgba(42,53,84,.06);font-weight:800;border-top:2px solid var(--navy);font-size:14px;color:var(--navy)}
+.b-total{display:flex;justify-content:space-between;align-items:center;background:var(--navy);color:#fff;padding:16px 18px;flex-wrap:wrap;gap:8px}
+.b-total-lbl{font-size:13px;font-weight:700}
+.b-total-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
+.b-total-val{font-family:var(--font-system);font-size:26px;font-weight:900;line-height:1}
+.budget-send{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px}
+.budget-send-title{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;font-family:var(--font-system)}
+.budget-send-desc{font-size:12px;color:var(--muted);margin-bottom:12px}
+.budget-send input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;margin-bottom:10px;font-family:var(--font-system);color:var(--navy);outline:none;transition:border-color .15s}
+.budget-send input:focus{border-color:var(--navy)}
+.budget-send-cta{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;font-family:var(--font-system)}
+.budget-send-cta:hover{opacity:.9}
+.budget-send-cta:disabled{opacity:.5;cursor:wait}
+
+/* Modo PDF: clon offscreen del wrap, layout compacto y page-break friendly */
+.pdf-clone{padding:0!important;margin:0!important;width:680px!important;max-width:680px!important;box-sizing:border-box}
+.pdf-clone .budget-title{font-size:22px;margin-bottom:2px}
+.pdf-clone .budget-meta{margin-bottom:12px;font-size:11px}
+.pdf-clone .product-mockup-card{padding:8px;margin-bottom:10px;border-radius:10px;page-break-inside:avoid;break-inside:avoid}
+.pdf-clone .product-mockup-card img{max-height:150px;width:auto;max-width:100%;margin:0 auto;display:block;object-fit:contain}
+.pdf-clone .budget-card{border-radius:10px;page-break-inside:avoid;break-inside:avoid;margin-bottom:0}
+.pdf-clone .b-row{padding:7px 14px;font-size:12.5px;page-break-inside:avoid;break-inside:avoid}
+.pdf-clone .b-section-hd{padding:7px 14px;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid}
+.pdf-clone .b-subtotal{padding:9px 14px;font-size:13px}
+.pdf-clone .b-total{padding:12px 14px}
+.pdf-clone .b-total-val{font-size:22px}
+
+/* ── MASTER POPUP ── */
+.popup-overlay{
+  position:fixed;inset:0;background:rgba(15,20,40,.7);backdrop-filter:blur(4px);
+  z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;
+}
+.popup-overlay.open{display:flex}
+.popup-box{
+  background:#fff;border-radius:20px;max-width:720px;width:100%;
+  max-height:90vh;overflow-y:auto;
+  box-shadow:0 24px 80px rgba(0,0,0,.35);
+  animation:popIn .25s ease;
+}
+@keyframes popIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.popup-hd{
+  background:var(--navy);padding:28px 32px 24px;border-radius:20px 20px 0 0;
+  position:relative;
+}
+.popup-close{
+  position:absolute;top:16px;right:20px;
+  z-index:3;
+  background:rgba(255,255,255,.12);border:none;color:#fff;
+  width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.popup-close:hover{background:rgba(255,255,255,.22)}
+.popup-eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:8px}
+.popup-title{font-family:var(--font-system);font-size:26px;font-weight:900;color:#fff;line-height:1.15;margin-bottom:6px}
+.popup-subtitle{font-size:13px;color:rgba(255,255,255,.55)}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(249,90,92,.15);border:1px solid rgba(249,90,92,.4);color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:10px}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:#ff3b3f;box-shadow:0 0 8px rgba(255,59,63,.8);animation:rec-blink 1s infinite}
+@keyframes rec-blink{0%,100%{opacity:1}50%{opacity:.25}}
+.live-recorded{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.7);margin-left:10px}
+.live-recorded::before{content:'⏺';color:#fff;opacity:.6}
+.fast-action-timer{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--red)}
+.fast-action-timer .rec-dot{width:7px;height:7px;background:#ff3b3f}
+.fast-action-banner{background:linear-gradient(90deg,rgba(249,90,92,.08) 0%,rgba(249,90,92,.02) 100%);border-left:3px solid var(--red);padding:10px 16px;margin:0 -22px 8px;font-size:11px;font-weight:700;color:var(--red);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+
+/* Guarantee popup — escudo blindado */
+.guarantee-hd{background:linear-gradient(135deg,#1a2240 0%,#2a3554 50%,#3a4670 100%)!important;overflow:hidden}
+.guarantee-hd::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(249,90,92,.18) 0%,transparent 60%);pointer-events:none}
+.shield-wrap{position:relative;width:140px;height:160px;margin:8px auto 0;display:flex;align-items:center;justify-content:center}
+.shield-svg{width:120px;height:140px;filter:drop-shadow(0 8px 24px rgba(249,90,92,.5));animation:shield-impact .9s cubic-bezier(.18,1.4,.4,1) forwards}
+.shield-path{stroke-dasharray:420;stroke-dashoffset:420;animation:shield-stroke .8s ease-out .2s forwards}
+.shield-check{stroke-dasharray:120;stroke-dashoffset:120;animation:shield-stroke .5s ease-out .9s forwards}
+.shield-ring{transform-origin:60px 70px;animation:shield-ring-spin 14s linear infinite}
+.shield-stamp{position:absolute;bottom:6px;right:-4px;background:#fff;color:var(--red);font-size:9px;font-weight:900;letter-spacing:.12em;padding:5px 10px;border-radius:4px;border:2px solid var(--red);transform:rotate(8deg);box-shadow:0 4px 12px rgba(0,0,0,.18);opacity:0;animation:shield-stamp-in .35s ease-out 1.3s forwards}
+@keyframes shield-impact{
+  0%{transform:scale(.3);opacity:0}
+  60%{transform:scale(1.12);opacity:1}
+  80%{transform:scale(.96)}
+  100%{transform:scale(1)}
+}
+@keyframes shield-stroke{to{stroke-dashoffset:0}}
+@keyframes shield-ring-spin{to{transform:rotate(360deg)}}
+@keyframes shield-stamp-in{
+  0%{opacity:0;transform:rotate(20deg) scale(2.2)}
+  100%{opacity:1;transform:rotate(8deg) scale(1)}
+}
+.popup-body{padding:28px 32px}
+
+/* Stats row */
+.popup-stats{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:28px}
+.popup-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;min-width:120px;text-align:center}
+.stat-num{font-family:var(--font-system);font-size:28px;font-weight:900;color:var(--navy)}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* Curriculum */
+.popup-section-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.popup-modules{display:flex;flex-direction:column;gap:8px;margin-bottom:28px}
+.popup-mod{display:flex;gap:12px;align-items:flex-start;padding:10px 0;position:relative}
+.popup-mod::before{content:'';position:absolute;left:12px;top:28px;bottom:-10px;width:2px;background:linear-gradient(180deg,var(--navy) 0%,rgba(42,53,84,.1) 100%);z-index:0}
+.popup-mod:last-child::before{display:none}
+.mod-num{width:26px;height:26px;background:var(--navy);color:#fff;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;position:relative;z-index:1;box-shadow:0 0 0 3px #fff}
+.mod-name{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:2px}
+.mod-desc{font-size:12px;color:var(--muted);line-height:1.45} .mod-desc em{color:var(--red);font-style:normal;font-weight:600}
+.mod-consultant{font-size:11.5px;color:var(--red);font-weight:700;margin-top:4px;letter-spacing:.01em}
+
+/* Consultants */
+.popup-consultants{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:28px}
+@media(max-width:480px){.popup-consultants{grid-template-columns:1fr}}
+.consultant-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 16px;text-align:center}
+.consultant-avatar{width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 12px;border:3px solid #fff;box-shadow:0 4px 14px rgba(42,53,84,.18)}
+.consultant-photo{width:80px;height:80px;border-radius:50%;margin:0 auto 12px;object-fit:cover;border:3px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px;background:var(--navy);color:rgba(255,255,255,.4)}
+.consultant-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.consultant-name{font-family:var(--font-system);font-size:15px;font-weight:800;color:var(--navy);margin-bottom:2px}
+.consultant-role{font-size:11px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.consultant-bio{font-size:12px;color:var(--muted);line-height:1.55;text-align:left}
+
+/* Popup CTA */
+.popup-cta-box{background:var(--navy);border-radius:14px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.popup-cta-lbl{color:rgba(255,255,255,.8);font-size:14px}
+.popup-cta-val{font-family:var(--font-system);font-size:20px;font-weight:900;color:#fff}
+.popup-cta-old{font-size:14px;color:rgba(255,255,255,.35);text-decoration:line-through;margin-right:6px}
+
+/* ── RESPONSIVE: tablet ≤ 720px ── */
+@media(max-width:720px){
+  .ofr-item-name-wrap{max-width:none}
+  .ofr-val-wrap{min-width:130px}
+  .ofr-item-sub{max-width:none}
+}
+
+/* ── RESPONSIVE: mobile ≤ 480px ── */
+@media(max-width:480px){
+  /* Layouts globales */
+  .cfg{padding:0 0 120px}
+  .cfg-inner{padding:0 12px}
+  .band{padding:24px 0}
+  .ofr-wrap{padding:18px 12px 60px}
+  .budget-wrap{padding:18px 12px 60px}
+
+  /* Header */
+  .hdr{padding:14px 16px;gap:6px}
+  .logo{font-size:18px}
+  .hdr-sub{font-size:12px}
+
+  /* Section labels */
+  .sec-label{font-size:16px}
+  .sec-desc{font-size:12px}
+
+  /* Billing tabs */
+  .bill-tab{padding:8px 16px;font-size:13px;gap:8px}
+  .bill-tab-saving{font-size:10px;padding:2px 6px}
+  .bill-msg{font-size:12px}
+
+  /* Plan cards */
+  .plan-card{padding:18px 14px 14px}
+  .plan-name{font-size:22px}
+  .plan-price{font-size:30px}
+  .plan-pop{font-size:9px;padding:3px 11px}
+
+  /* Addon cards: sin padding extra y nombres más compactos */
+  .ac-name{font-size:13.5px}
+  .ac-desc{font-size:11.5px}
+
+  /* Implementación */
+  .impl-wrap{padding:18px 14px}
+  .impl-name{font-size:15.5px}
+
+  /* Topbar oferta */
+  .ofr-topbar{padding:0 12px;height:54px;gap:6px}
+  .ofr-back{font-size:13px}
+  .ofr-btn{padding:5px 12px;font-size:12px}
+  .ofr-logo{font-size:14px}
+
+  /* Stack rows */
+  .ofr-item{padding:11px 14px}
+  .ofr-item-name{font-size:13px}
+  .ofr-item-sub{font-size:11px;line-height:1.4}
+  .ofr-val-wrap{min-width:auto}
+  .ofr-val-new{font-size:14px}
+  .ofr-val-new.v-bonus{font-size:15px}
+  .ofr-val-old.big-strike{font-size:15px}
+  .ofr-dots{margin:0 6px;min-width:6px}
+  .ofr-stack-hd{padding:11px 16px}
+  .ofr-stack-lbl{font-size:11px}
+
+  /* Locales counter */
+  .locales-compact{padding:10px 14px}
+
+  /* Sticky bar — single row, info shrinks with ellipsis, CTA stays */
+  .sticky-bar{padding:10px 14px;height:auto;min-height:80px;gap:10px;flex-wrap:nowrap}
+  .bar-info{flex:1 1 0;min-width:0}
+  .bar-label,.bar-detail{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-price-wrap{flex-wrap:wrap;row-gap:0}
+  .bar-cta{flex:0 0 auto;padding:13px 18px;font-size:13.5px}
+  .bar-price{font-size:22px}
+  .bar-label{font-size:11px}
+  .bar-detail{font-size:11px}
+
+  /* Stack footer — wrap totals under label so nothing gets clipped */
+  .stack-footer{padding:14px 16px;gap:8px;flex-direction:column;align-items:stretch}
+  .stack-footer-lbl{flex:none}
+  .stack-footer-val{align-items:flex-start}
+  .stack-total-old{font-size:18px}
+  .stack-total-new{font-size:26px}
+
+  /* Checkout */
+  .ck-section{padding:14px 16px}
+  .ck-total-row{padding:14px 16px;flex-direction:column;align-items:stretch}
+  .ck-total-val{font-size:22px}
+  .ck-total-old{font-size:18px}
+  .ck-name{font-size:13px}
+  .ck-val{font-size:14px}
+
+  /* Offer topbar — back/toggle/logo all visible */
+  .ofr-topbar > *{flex-shrink:1}
+  .ofr-back{font-size:12.5px;white-space:nowrap}
+  .ofr-logo{font-size:13px}
+
+  /* Budget view */
+  .budget-title{font-size:22px}
+  .b-row{padding:8px 14px;font-size:12.5px;gap:10px}
+  .b-section-hd{padding:8px 14px;font-size:10px}
+  .b-subtotal{padding:10px 14px;font-size:13px}
+  .b-total{padding:13px 14px}
+  .b-total-val{font-size:22px}
+
+  /* Popups */
+  .popup-box{border-radius:14px;max-height:96vh;margin:0 6px}
+  .popup-hd{padding:20px 18px 18px}
+  .popup-close{top:12px;right:12px;width:30px;height:30px;font-size:15px}
+  .popup-eyebrow{font-size:10.5px;letter-spacing:.12em}
+  .popup-title{font-size:20px;line-height:1.18}
+  .popup-subtitle{font-size:12.5px;line-height:1.45}
+  .live-badge{font-size:10.5px;padding:3px 8px}
+  .live-recorded{font-size:10.5px}
+  .popup-body{padding:20px 18px}
+
+  /* Stats — 4 cells fit as 2x2 on mobile, balanced sizes */
+  .popup-stats{gap:8px;margin-bottom:22px}
+  .popup-stat{padding:12px 10px;min-width:0;flex:1 1 calc(50% - 4px)}
+  .stat-num{font-size:22px;line-height:1.1}
+  .stat-lbl{font-size:11px;margin-top:3px;line-height:1.3}
+
+  /* Section + modules + consultants */
+  .popup-section-title{font-size:10.5px;letter-spacing:.12em;margin-bottom:12px}
+  .popup-modules{gap:6px;margin-bottom:24px}
+  .popup-mod{padding:8px 0;gap:10px}
+  .mod-num{width:22px;height:22px;font-size:10.5px}
+  .mod-name{font-size:13.5px;line-height:1.35}
+  .mod-desc{font-size:12px;line-height:1.5}
+  .mod-consultant{font-size:11px;margin-top:3px}
+  .popup-mod::before{left:10px;top:24px}
+
+  .popup-consultants{gap:12px;margin-bottom:24px}
+  .consultant-card{padding:14px 12px}
+  .consultant-avatar{width:64px;height:64px;margin-bottom:10px}
+  .consultant-photo{width:64px;height:64px;margin-bottom:10px;font-size:22px}
+  .consultant-name{font-size:14px}
+  .consultant-role{font-size:10.5px;margin-bottom:6px}
+  .consultant-bio{font-size:11.5px;line-height:1.55}
+
+  /* CTA box */
+  .popup-cta-box{padding:14px 16px;gap:10px}
+  .popup-cta-lbl{font-size:13px}
+  .popup-cta-val{font-size:18px}
+  .popup-cta-old{font-size:13px}
+
+  /* Guarantee — shield smaller and centered */
+  .shield-wrap{width:118px;height:130px}
+  .shield-svg{width:100px;height:118px}
+  .shield-stamp{font-size:8.5px;padding:4px 8px;bottom:4px;right:-2px}
+
+  /* Fast action banner inside popups */
+  .fast-action-banner{padding:8px 14px;font-size:10.5px;margin:0 -18px 8px}
+}
+
+/* ── Popups: mobile mini ≤ 360px ── */
+@media(max-width:360px){
+  .popup-hd{padding:18px 14px 16px}
+  .popup-body{padding:18px 14px}
+  .popup-title{font-size:18px}
+  .stat-num{font-size:20px}
+  .popup-stat{padding:10px 8px}
+  .popup-cta-box{padding:12px 14px}
+  .popup-cta-val{font-size:17px}
+  .shield-wrap{width:104px;height:118px}
+  .shield-svg{width:88px;height:104px}
+}
+
+/* ── RESPONSIVE: mobile mini ≤ 360px ── */
+@media(max-width:360px){
+  .bill-tab{padding:7px 13px;font-size:12px;gap:6px}
+  .bill-tab-saving{font-size:9.5px;padding:2px 5px}
+  .bill-msg{font-size:11.5px}
+  .bar-cta{padding:11px 14px;font-size:12.5px}
+  .bar-price{font-size:20px}
+  .ofr-val-new{font-size:13px}
+  .ofr-item-name{font-size:12.5px}
+  .b-name{font-size:12.5px}
+  .stack-total-new{font-size:24px}
+  .ck-total-val{font-size:20px}
+  .ofr-topbar{padding:0 10px}
+  .ofr-back{font-size:12px}
+  .ofr-btn{padding:5px 10px;font-size:11.5px}
+}
+
+/* ═══════════════ TYPOGRAPHIC REFINEMENT (sans) ═══════════════ */
+/* Inter Tight everywhere. Numeric elements get tabular figures so
+   columns of prices align cleanly. Tight tracking on display sizes. */
+
+body{font-feature-settings:"ss01"}
+
+/* Numeric elements: tabular figures + lining numbers + slashed zero. */
+.plan-price,.plan-cur,
+.bar-price,.bar-period,
+.ofr-val-new,.ofr-val-old,.ofr-val-old.big-strike,
+.ofr-item-price,
+.stack-total-old,.stack-total-new,
+.ck-val,.ck-total-old,.ck-total-val,
+.b-val,.b-total-val,.b-subtotal,
+.loc-num,.stat-num,.popup-cta-val,.popup-cta-old,
+.impl-new,.impl-old,
+.fast-action-timer{
+  font-variant-numeric:tabular-nums lining-nums;
+  font-feature-settings:"tnum","lnum","ss01";
+}
+
+/* Large display: stronger weight + tighter tracking for impact */
+.plan-price,.impl-new,.bar-price,
+.stack-total-new,.ck-total-val,.b-total-val{
+  font-weight:900;
+  letter-spacing:-0.028em;
+}
+
+/* Mid display: subtle tracking */
+.plan-name,.sec-label,.impl-sec-title,.impl-name,
+.ofr-h1,.budget-title,.popup-title,
+.stat-num,.ofr-item-price,.ofr-val-new,
+.stack-total-old,.ck-total-old{
+  letter-spacing:-0.018em;
+}
+
+/* CTAs: optical adjustment so they don't look stretched at button size */
+.bar-cta,.cta-big{
+  letter-spacing:-0.005em;
+}
+
+/* ═══════════════ REVEAL: OFFER VIEW STAGGER ═══════════════ */
+/* When entering the offer view, the wrap rises with a soft cascade.
+   No replay on internal re-renders — pure show-once flourish. */
+.ofr-just-revealed{ animation:ofr-rise .55s cubic-bezier(.16,1,.3,1) both }
+.ofr-just-revealed > *{ animation:ofr-rise .55s cubic-bezier(.16,1,.3,1) both }
+.ofr-just-revealed > *:nth-child(1){ animation-delay:.05s }
+.ofr-just-revealed > *:nth-child(2){ animation-delay:.13s }
+.ofr-just-revealed > *:nth-child(3){ animation-delay:.21s }
+.ofr-just-revealed > *:nth-child(4){ animation-delay:.29s }
+.ofr-just-revealed > *:nth-child(5){ animation-delay:.37s }
+.ofr-just-revealed > *:nth-child(6){ animation-delay:.45s }
+.ofr-just-revealed > *:nth-child(7){ animation-delay:.53s }
+.ofr-just-revealed > *:nth-child(8){ animation-delay:.61s }
+@keyframes ofr-rise{
+  from{ opacity:0; transform:translateY(14px) }
+  to{ opacity:1; transform:none }
+}
+@media (prefers-reduced-motion: reduce){
+  .ofr-just-revealed,.ofr-just-revealed > *{ animation:none }
+}
+
+/* ═══════════════ FROSTED STICKY TOGGLE ═══════════════ */
+#sticky-tog{
+  position:sticky;top:0;z-index:150;
+  background:rgba(255,255,255,.78);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);
+  backdrop-filter:saturate(1.6) blur(20px);
+  border-bottom:1px solid rgba(42,53,84,.08);
+  padding:12px 0;
+  display:flex;justify-content:center;
+  box-shadow:0 8px 28px -16px rgba(42,53,84,.18);
+}
+/* Aire para que el badge "MÁS POPULAR" del Basic (que sobresale ~18px del card)
+   no se pegue a la descripción del bloque. */
+.plans-grid{margin-top:24px}
+
+
+/* ═══════════════ PLAN CARD "POPULAR" — Basic halo ═══════════════ */
+/* Basic sits slightly raised with a perpetual soft coral halo,
+   pulling the eye without shouting. Selected state still wins. */
+#plan-basic{
+  transform:translateY(-6px);
+  box-shadow:
+    0 1px 3px rgba(42,53,84,.06),
+    0 14px 32px -12px rgba(249,90,92,.22),
+    0 0 0 1.2px rgba(249,90,92,.18);
+}
+#plan-basic:hover{
+  transform:translateY(-10px);
+  box-shadow:
+    0 1px 3px rgba(42,53,84,.06),
+    0 22px 48px -16px rgba(249,90,92,.32),
+    0 0 0 1.5px rgba(249,90,92,.28);
+}
+#plan-basic.selected{
+  transform:translateY(-8px);
+  box-shadow:
+    0 22px 48px -14px rgba(42,53,84,.22),
+    0 0 0 2px var(--sel-border),
+    0 0 0 6px rgba(249,90,92,.10);
+}
+/* Pop-pill on Basic gets a slightly stronger shadow to anchor */
+#plan-basic .plan-pop{
+  box-shadow:0 4px 14px rgba(249,90,92,.38);
+}
+@media(max-width:600px){
+  #plan-basic{transform:none}
+  #plan-basic:hover{transform:translateY(-2px)}
+  #plan-basic.selected{transform:translateY(-2px)}
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════ Sidebar portal (compartido) ═══════════════
+     El configurador vive dentro del portal Yurest: cargamos el sidebar
+     estándar para que el comercial pueda saltar a otras herramientas
+     sin perder contexto. El botón hamburguesa flota fixed top-left para
+     no romper el `.hdr-band` propio del configurador, que es parte de
+     su identidad de marca (logo yurest navy/coral). -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar"></nav>
+<script src="sidebar.js"></script>
+<script>YurestSidebar.render('configurador');</script>
+
+<button class="btn-menu cfg-menu-btn" onclick="openSidebar()" title="Menú">
+  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<script>
+  function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('open');}
+  function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open');}
+</script>
+<style>
+  /* Botón hamburguesa flotante — solo en el configurador. Posicionado
+     sobre el `.hdr-band` sin entrar en el flujo del documento, para que
+     el layout original (logo centrado en band, etc.) quede intacto. */
+  .cfg-menu-btn{position:fixed;top:14px;left:14px;z-index:60;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  /* Anti-conflicto: style.css define `.empty` con padding grande y borde.
+     El configurador NO usa esa clase, pero si en el futuro algún elemento
+     interno hereda, se aísla con namespace `.cfg .empty`. Por ahora nada
+     que añadir. */
+</style>
+
+<!-- ═══════════════ CONFIG VIEW ═══════════════ -->
+<div class="view active" id="v-config">
+<div class="cfg">
+
+<div class="band hdr-band">
+  <div class="cfg-inner">
+    <div class="hdr">
+      <a href="#" class="logo" aria-label="yurest"><img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/66fcfac3f4a5201dde375477.png" alt="yurest" loading="eager"></a>
+      <span class="hdr-sub">Configura tu plan · Sin compromisos · Sin permanencia</span>
+    </div>
+  </div>
+</div>
+
+<!-- STICKY TOGGLE -->
+<div id="sticky-tog">
+  <div class="bill-tabs">
+    <div class="bill-tabs-row">
+      <button type="button" class="bill-tab on" id="tog-annual" onclick="setBilling('annual')">
+        Anual <span class="bill-tab-saving">−17%</span>
+      </button>
+      <button type="button" class="bill-tab" id="tog-monthly" onclick="setBilling('monthly')">
+        Mensual
+      </button>
+    </div>
+    <div id="bill-msg" class="bill-msg confirm">✓ Te llevas 2 meses gratis</div>
+  </div>
+</div>
+
+<div class="band band-gray">
+<div class="cfg-inner">
+<!-- 1. PLANS -->
+<div class="sec">
+  <div class="sec-hd-row">
+    <div class="sec-label">1. Elige tu plan base</div>
+    <div class="emp-inline">
+      <span class="emp-inline-lbl">Empleados</span>
+      <input class="emp-input" id="emp-input" type="number" min="1" max="9999" oninput="changeEmployees()">
+    </div>
+  </div>
+  <div class="sec-desc">Todos los planes incluyen IA, compras, finanzas, cuadros de mando y fichador · Documentos por local</div>
+  <div class="plans-grid">
+
+    <div class="plan-card" id="plan-lite" onclick="selectPlan('lite')">
+      <div class="plan-check">✓</div>
+      <div class="plan-name">Lite</div>
+      <div class="plan-price-line">
+        <span class="plan-cur">€</span>
+        <span class="plan-price" id="pp-lite">47</span>
+        <span class="plan-per">/mes</span>
+      </div>
+      <div class="plan-note" id="pn-lite">2 meses gratis · 564 €/año</div>
+      <div class="plan-feats">
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Escáner IA de documentos</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Hasta 200 docs / local</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Yulia: Asistente IA</div>
+        <div class="pf"><div class="pf-dot">✓</div>Compras y pedidos a proveedores</div>
+        <div class="pf"><div class="pf-dot">✓</div>Finanzas</div>
+        <div class="pf"><div class="pf-dot">✓</div>Cuadros de mando</div>
+        <div class="pf"><div class="pf-dot">✓</div>Fichador digital</div>
+      </div>
+    </div>
+
+    <div class="plan-card" id="plan-basic" onclick="selectPlan('basic')">
+      <div class="plan-pop-wrap"><div class="plan-pop">★ Más popular</div></div>
+      <div class="plan-check">✓</div>
+      <div class="plan-name">Basic</div>
+      <div class="plan-price-line">
+        <span class="plan-cur">€</span>
+        <span class="plan-price" id="pp-basic">97</span>
+        <span class="plan-per">/mes</span>
+      </div>
+      <div class="plan-note" id="pn-basic">2 meses gratis · 1.164 €/año</div>
+      <div class="plan-feats">
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Escáner IA de documentos</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Hasta 400 docs / local</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Yulia: Asistente IA</div>
+        <div class="pf"><div class="pf-dot">✓</div>Compras y pedidos a proveedores</div>
+        <div class="pf"><div class="pf-dot">✓</div>Finanzas</div>
+        <div class="pf"><div class="pf-dot">✓</div>Cuadros de mando</div>
+        <div class="pf"><div class="pf-dot">✓</div>Fichador digital</div>
+      </div>
+    </div>
+
+    <div class="plan-card" id="plan-pro" onclick="selectPlan('pro')">
+      <div class="plan-check">✓</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price-line">
+        <span class="plan-cur">€</span>
+        <span class="plan-price" id="pp-pro">157</span>
+        <span class="plan-per">/mes</span>
+      </div>
+      <div class="plan-note" id="pn-pro">2 meses gratis · 1.884 €/año</div>
+      <div class="plan-feats">
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Escáner IA de documentos</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Docs ilimitados / local</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Yulia: Asistente IA</div>
+        <div class="pf"><div class="pf-dot">✓</div>Compras y pedidos a proveedores</div>
+        <div class="pf"><div class="pf-dot">✓</div>Finanzas</div>
+        <div class="pf"><div class="pf-dot">✓</div>Cuadros de mando</div>
+        <div class="pf"><div class="pf-dot">✓</div>Fichador digital</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+</div>
+
+<div class="band">
+<div class="cfg-inner">
+<!-- 2. ADDONS -->
+<div class="sec">
+  <div class="sec-label">2. Añade módulos a tu medida</div>
+  <div class="sec-desc">Activa solo lo que necesitas · Puedes cambiar en cualquier momento</div>
+
+  <!-- Rentabilidad -->
+  <div class="addon-cat">
+    <div class="addon-cat-head"><span class="cat-name">Rentabilidad</span></div>
+    <div class="addons-grid g22" style="grid-template-columns:repeat(2,1fr)">
+
+      <div class="addon-card" id="ac-tpv" onclick="toggleAddon('tpv')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"></div>
+        <div class="ac-name">Integración TPV</div>
+        <div class="ac-desc">Importa las ventas de tu TPV en tiempo real. Base para el dashboard financiero completo.</div>
+        <div class="ac-price" id="adprice-tpv">15 €/mes · anual</div>
+      </div>
+
+      <div class="addon-card" id="ac-cocina" onclick="toggleAddon('cocina')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"></div>
+        <div class="ac-name">Cocina</div>
+        <div class="ac-desc">Conecta compras y ventas con recetas y obtén un análisis avanzado de tu rentabilidad por plato.</div>
+        <div class="ac-price" id="adprice-cocina">15 €/mes · anual</div>
+      </div>
+
+      <div class="addon-card disabled needs-tip" id="ac-stocks" onclick="toggleAddon('stocks')">
+        <div class="tip-bubble" id="stocks-tip">Requiere TPV + Cocina</div>
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-later">Mejor más adelante</span></div>
+        <div class="ac-name">Stocks</div>
+        <div class="ac-desc">Gestión de inventario, valoración de stocks, control de mermas y alertas de mínimos. Requiere TPV + Cocina.</div>
+        <div class="ac-price" id="adprice-stocks">23 €/mes · anual</div>
+        <div class="ac-warn">⚠ Alta complejidad. Recomendamos arrancar con Compras + Finanzas → Cocina → Stocks.</div>
+      </div>
+
+      <div class="addon-card disabled needs-tip" id="ac-stocksadv" onclick="toggleAddon('stocksadv')">
+        <div class="tip-bubble" id="stocksadv-tip">Selecciona implementación personalizada para activar</div>
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-chain">Cadenas y grupos</span></div>
+        <div class="ac-name">Stocks avanzado</div>
+        <div class="ac-desc">Informes avanzados: coste teórico vs real, aprovechamiento y rentabilidad por producto. Requiere Stocks.</div>
+        <div class="ac-price" id="adprice-stocksadv">30 €/mes · anual</div>
+        <div class="ac-warn">⚠ Se añaden 3 sesiones personalizadas obligatorias (497 €) para garantizar la implantación.</div>
+        <div id="sa-impl-note" style="font-size:11px;color:var(--purple);font-weight:600;margin-top:6px;padding:5px 8px;background:rgba(109,40,217,.06);border-radius:6px;display:none">🔒 Requiere plan de implementación personalizada</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Calidad -->
+  <div class="addon-cat">
+    <div class="addon-cat-head"><span class="cat-name">Calidad</span></div>
+    <div class="addons-grid g4">
+
+      <div class="addon-card" id="ac-checklist" onclick="toggleAddon('checklist')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-pop">Popular</span></div>
+        <div class="ac-name">Checklist</div>
+        <div class="ac-desc">Listas de verificación para apertura, cierre y procesos diarios.</div>
+        <div class="ac-price" id="adprice-checklist">7 €/mes · anual</div>
+      </div>
+
+      <div class="addon-card" id="ac-comunicacion" onclick="toggleAddon('comunicacion')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"></div>
+        <div class="ac-name">Comunicación</div>
+        <div class="ac-desc">Canal interno de sala, cocina y dirección. Incluye gestión de incidencias y mantenimiento.</div>
+        <div class="ac-price" id="adprice-comunicacion">7 €/mes · anual</div>
+      </div>
+
+      <div class="addon-card" id="ac-appcc" onclick="toggleAddon('appcc')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"></div>
+        <div class="ac-name">APPCCs</div>
+        <div class="ac-desc">Control de puntos críticos para seguridad alimentaria.</div>
+        <div class="ac-price" id="adprice-appcc">7 €/mes · anual</div>
+      </div>
+
+      <div class="addon-card disabled needs-tip" id="ac-auditorias" onclick="toggleAddon('auditorias')">
+        <div class="tip-bubble">Requiere implementación personalizada · +4 locales</div>
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-chain" id="aud-badge">Cadenas y grupos</span></div>
+        <div class="ac-name">Auditorías</div>
+        <div class="ac-desc">Auditorías internas con informes automáticos por local.</div>
+        <div class="ac-price" id="adprice-auditorias">7 €/mes · anual</div>
+        <div class="ac-warn" id="aud-warn" style="display:none">⚠ Requiere +4 locales e implementación personalizada · 2 sesiones adicionales (397 €)</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Equipo -->
+  <div class="addon-cat">
+    <div class="addon-cat-head"><span class="cat-name">Equipo</span></div>
+    <div class="addons-grid g22" style="grid-template-columns:repeat(2,1fr)">
+
+      <div class="addon-card" id="ac-rrhh" onclick="toggleAddon('rrhh')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-later">Mejor más adelante</span></div>
+        <div class="ac-name">RRHH</div>
+        <div class="ac-desc">Turnos, vacaciones y diseño de horarios. Recomendamos estabilizar operaciones antes de activarlo.</div>
+        <div class="ac-price" id="adprice-rrhh">37 €/mes · anual</div>
+      </div>
+
+      <div class="addon-card" id="ac-firma" onclick="toggleAddon('firma')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-later">Mejor más adelante</span></div>
+        <div class="ac-name">Firma digital</div>
+        <div class="ac-desc">Firma de contratos y documentos laborales. Pack de 100 firmas, ampliable.</div>
+        <div class="ac-price">30 € · pack 100 firmas</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div class="band band-gray">
+<div class="cfg-inner">
+<!-- 3. IMPLEMENTATION -->
+<div class="sec">
+  <div class="sec-label">3. Plan de implementación</div>
+  <div class="impl-wrap">
+    <div class="impl-sec-desc">Escoge cómo quieres arrancar · Incluido en el plan anual</div>
+    <div class="impl-grid">
+
+      <div class="impl-card" id="impl-grupal" onclick="selectImpl('grupal')">
+        <div class="impl-chk">✓</div>
+        <div class="impl-badge-row"><span class="impl-ibadge ib-pop" id="ibadge-g">★ Más popular · Recomendado</span></div>
+        <div class="impl-name">Implementación grupal</div>
+        <div class="impl-price-row"><span class="impl-old">1.700 €</span><span class="impl-new">Gratis</span></div>
+        <ul class="impl-items" id="ilist-g">
+          <li class="li-std"><span class="bul">·</span>Sesión de onboarding</li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de Compras</li>
+          <li class="li-std"><span class="bul">·</span>1 sesión de Finanzas</li>
+          <li id="ig-cocina" class="li-ext" style="display:none"><span class="bul">✦</span>+2 sesiones de Cocina</li>
+          <li id="ig-stocks" class="li-ext" style="display:none"><span class="bul">✦</span>+1 sesión de Stocks</li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR grupales</li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR personalizadas (30 min)</li>
+          <li class="li-std"><span class="bul">·</span>yurest Academy · Video-formación</li>
+          <li class="li-std"><span class="bul">·</span>Sesiones de tu promoción grabadas</li>
+        </ul>
+      </div>
+
+      <div class="impl-card" id="impl-personalizada" onclick="selectImpl('personalizada')">
+        <div class="impl-chk">✓</div>
+        <div class="impl-badge-row"><span class="impl-ibadge ib-grp" id="ibadge-p">Para grupos · Recomendado si tienes Stocks</span></div>
+        <div class="impl-name">Consultoría personalizada</div>
+        <div class="impl-price-row"><span class="impl-old">5.000 €</span><span class="impl-new paid">1.500 €</span></div>
+        <ul class="impl-items" id="ilist-p">
+          <li class="li-std"><span class="bul">·</span>Sesión de onboarding <span class="consultant-tag">con tu consultor</span></li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de Compras <span class="consultant-tag">con tu consultor</span></li>
+          <li class="li-std"><span class="bul">·</span>1 sesión de Finanzas <span class="consultant-tag">con tu consultor</span></li>
+          <li id="ip-cocina" class="li-ext" style="display:none"><span class="bul">✦</span>+2 sesiones de Cocina <span class="consultant-tag">con tu consultor</span></li>
+          <li id="ip-stocks" class="li-ext" style="display:none"><span class="bul">✦</span>+1 sesión de Stocks <span class="consultant-tag">con tu consultor</span></li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR personalizadas (60 min)</li>
+          <li class="li-std"><span class="bul">·</span>yurest Academy · Video-formación</li>
+          <li class="li-std"><span class="bul">·</span>Consultor experto en hostelería</li>
+          <li class="li-std"><span class="bul">·</span>Todas las sesiones grabadas para tu equipo</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="impl-addons-title">Servicios adicionales de implementación</div>
+    <div class="addons-grid g22" style="grid-template-columns:repeat(2,1fr)">
+
+      <div class="addon-card" id="ac-carga" onclick="toggleAddon('carga')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-promo">Promoción especial</span></div>
+        <div class="ac-name">Carga masiva de datos</div>
+        <div class="ac-desc">Servicio premium: nuestro equipo migra toda tu base de proveedores y productos a yurest. Sin que muevas un dedo.</div>
+        <div class="ac-price one-t"><span style="text-decoration:line-through;color:var(--muted);font-weight:600;margin-right:6px">397 €</span><span style="color:var(--green);font-weight:800">GRATIS</span></div>
+      </div>
+
+      <div class="addon-card" id="ac-consultoria" onclick="toggleAddon('consultoria')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"></div>
+        <div class="ac-name">Pack consultoría</div>
+        <div class="ac-desc">3 sesiones de 60 min con consultor experto en hostelería y yurest. <strong>Tienes 1 año para gastarlas</strong> · durante o después de la formación.</div>
+        <div class="ac-price">497 € · 3 sesiones</div>
+        <div class="ac-warn" id="consultoria-warn">No disponible con Consultoría personalizada — ya incluye sesiones individuales.</div>
+      </div>
+
+    </div>
+
+    <div class="stocksadv-note" id="stocksadv-note" style="display:none">
+      ✦ Stocks avanzado requiere 3 sesiones personalizadas (497 €) — se añaden automáticamente a tu oferta
+    </div>
+    <div class="stocksadv-note" id="auditorias-note" style="display:none;margin-top:8px">
+      ✦ Auditorías requiere 2 sesiones personalizadas (397 €) — se añaden automáticamente a tu oferta
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div><!-- /cfg -->
+
+<div class="sticky-bar">
+  <div class="bar-info">
+    <div class="bar-label" id="bar-label">Elige un plan para continuar</div>
+    <div class="bar-price-wrap">
+      <div class="bar-price" id="bar-price">—</div>
+      <div class="bar-period" id="bar-period"></div>
+    </div>
+    <div class="bar-detail" id="bar-detail"></div>
+  </div>
+  <button class="bar-cta" id="bar-cta" disabled onclick="showOffer()">Ver mi oferta →</button>
+</div>
+</div><!-- /v-config -->
+
+
+<!-- ═══════════════ OFFER VIEW ═══════════════ -->
+<div class="view" id="v-offer">
+
+<div class="ofr-topbar">
+  <button class="ofr-back" onclick="showConfig()">← Configurar</button>
+  <div class="ofr-center-tog">
+    <div class="ofr-tog">
+      <div class="ofr-btn on" id="otog-annual" onclick="setOfferBilling('annual')">Anual</div>
+      <div class="ofr-btn" id="otog-monthly" onclick="setOfferBilling('monthly')">Mensual</div>
+    </div>
+    <div class="ofr-saving show" id="ofr-saving">✓ 2 meses gratis</div>
+  </div>
+  <div class="ofr-logo">yurest</div>
+</div>
+
+<div class="ofr-wrap">
+  <div class="ofr-headline">
+    <div class="ofr-eyebrow">Oferta personalizada</div>
+    <div class="ofr-h1" id="ofr-title">Plan yurest</div>
+    <div class="ofr-sub">Todo lo que necesitas, sin letra pequeña.</div>
+  </div>
+
+  <!-- Product mockup -->
+  <div class="product-mockup-card">
+    <img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/6808f1cf0ddda08478e37058.png" alt="yurest dashboard" loading="eager">
+  </div>
+
+  <!-- Locales compact -->
+  <div class="locales-compact">
+    <div>
+      <div class="loc-label">Número de locales</div>
+      <div class="loc-sub">El precio mensual se multiplica por local</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div class="loc-counter">
+        <button class="loc-btn" onclick="changeLocales(-1)">−</button>
+        <span class="loc-num" id="loc-num">1</span>
+        <button class="loc-btn" onclick="changeLocales(1)">+</button>
+      </div>
+      <!-- Placeholder con la cadena más larga posible para reservar siempre el mismo box.
+           El JS solo togglea visibility según haya descuento o no. -->
+      <div id="loc-discount-hint" style="font-size:11px;color:var(--green);font-weight:700;line-height:16px;white-space:nowrap;visibility:hidden">−15% descuento multi-local aplicado</div>
+    </div>
+  </div>
+
+  <!-- Stack 1: Plan (mensualidad) -->
+  <div class="ofr-stack">
+    <div class="ofr-stack-hd">
+      <span class="ofr-stack-lbl">Lo que incluye tu plan</span>
+      <span class="ofr-stack-lbl">Precio</span>
+    </div>
+    <div id="ofr-items-plan"></div>
+  </div>
+
+  <!-- Stack 2: Implementación y bonus -->
+  <div class="ofr-stack">
+    <div class="ofr-stack-hd">
+      <span class="ofr-stack-lbl">Implementación y bonus</span>
+      <span class="ofr-stack-lbl">Valor</span>
+    </div>
+    <div id="ofr-items-bonus"></div>
+    <div id="stack-footer-bonus"></div>
+  </div>
+
+  <!-- Checkout / payment section -->
+  <div class="checkout" id="checkout-wrap"></div>
+
+  <button class="cta-big" onclick="showBudget()">🚀 Quiero empezar con yurest</button>
+</div>
+</div><!-- /v-offer -->
+
+<!-- 3. BUDGET VIEW -->
+<div class="view" id="v-budget">
+<div class="ofr-topbar">
+  <button class="ofr-back" onclick="showOffer()">← Volver a la oferta</button>
+  <div class="ofr-logo">yurest</div>
+  <span style="width:80px"></span>
+</div>
+
+<div class="budget-wrap">
+  <div class="budget-title">Presupuesto yurest</div>
+  <div class="budget-meta" id="budget-meta"></div>
+
+  <!-- Product mockup -->
+  <div class="product-mockup-card">
+    <img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/6808f1cf0ddda08478e37058.png" alt="yurest dashboard" loading="eager">
+  </div>
+
+  <div class="budget-card" id="budget-content"></div>
+
+  <div class="budget-send" id="budget-actions">
+    <div class="budget-send-title">📄 Descargar presupuesto</div>
+    <div class="budget-send-desc">Genera un PDF listo para enviar al cliente.</div>
+    <button class="budget-send-cta" onclick="downloadBudget()">Descargar PDF</button>
+  </div>
+</div>
+</div><!-- /v-budget -->
+
+<script>
+/* ═══ Number tween (respects prefers-reduced-motion) ═══ */
+var REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function tweenNumber(el, target, opts){
+  if(!el) return;
+  opts = opts || {};
+  var fmtFn = opts.fmt || function(n){ return Math.round(n); };
+  var suffix = opts.suffix || '';
+  if(!isFinite(target)){ el.textContent = String(target) + suffix; return; }
+  if(REDUCED_MOTION){ el.textContent = fmtFn(target) + suffix; return; }
+  var dur = opts.dur || 380;
+  var raw = String(el.textContent || '').replace(/[^\d.,-]/g,'').replace(/\./g,'').replace(',','.');
+  var current = parseFloat(raw);
+  if(!isFinite(current)){ el.textContent = fmtFn(target) + suffix; return; }
+  if(current === target){ el.textContent = fmtFn(target) + suffix; return; }
+  if(el._tweenRaf) cancelAnimationFrame(el._tweenRaf);
+  var start = performance.now();
+  var from = current;
+  var roundFrames = (Math.round(target) === target);
+  function ease(t){ return 1 - Math.pow(1-t, 3); }
+  function step(now){
+    var t = Math.min(1, (now - start) / dur);
+    var v = from + (target - from) * ease(t);
+    var disp = roundFrames ? Math.round(v) : v;
+    el.textContent = (t < 1 ? fmtFn(disp) : fmtFn(target)) + suffix;
+    if(t < 1) el._tweenRaf = requestAnimationFrame(step);
+    else el._tweenRaf = null;
+  }
+  el._tweenRaf = requestAnimationFrame(step);
+}
+
+var billing='annual', plan=null, locales=1;
+var employees=null; // null hasta que el comercial introduzca un valor; gating de planes por tier
+var addons={tpv:false,cocina:false,stocks:false,stocksadv:false,checklist:true,comunicacion:false,appcc:false,auditorias:false,rrhh:false,firma:false,carga:false,consultoria:false};
+var impl='grupal'; // implementación grupal seleccionada por defecto (obligatoria)
+
+// Prices — methodology: 2 meses gratis exact → PY = PM × 10, PA = PY/12
+var PM={lite:57,basic:117,pro:189};
+var PA={lite:47,basic:97,pro:157};
+var PY={lite:PA.lite*12,basic:PA.basic*12,pro:PA.pro*12};
+
+var PNAMES={lite:'Lite',basic:'Basic',pro:'Pro'};
+var PDOCS={lite:'200 docs/local',basic:'400 docs/local',pro:'Docs ilimitados'};
+
+var ADM={tpv:18,cocina:18,stocks:28,stocksadv:36,checklist:9,comunicacion:9,appcc:9,auditorias:9,rrhh:45};
+var ADA={tpv:15,cocina:15,stocks:23,stocksadv:30,checklist:7,comunicacion:7,appcc:7,auditorias:7,rrhh:37};
+function adPrice(k){
+  // Checklist va incluido en el bonus Pack Checklist Pro con pago anual → 0 €
+  if(k==='checklist' && billing==='annual') return 0;
+  return billing==='annual'?(ADA[k]||ADM[k]):ADM[k];
+}
+// Multi-local discount tramos limpios
+function localeDiscount(){
+  if(locales<=2) return 0;
+  if(locales<=4) return 0.05;
+  if(locales<=6) return 0.08;
+  if(locales<=9) return 0.12;
+  return 0.15;
+}
+function applyDiscount(price){
+  var d=localeDiscount();
+  return d>0 ? Math.round(price*(1-d)) : price;
+}
+var ADN={tpv:'Integración TPV',cocina:'Cocina',stocks:'Stocks',stocksadv:'Stocks avanzado',checklist:'Checklist',comunicacion:'Comunicación',appcc:'APPCCs',auditorias:'Auditorías',rrhh:'RRHH',firma:'Firma digital',carga:'Carga masiva de datos',consultoria:'Pack consultoría (3 sesiones)'};
+
+function fmt(n){
+  if(n===Math.round(n)) return Math.round(n).toLocaleString('es-ES');
+  return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function updBillMsg(m){
+  var msg=document.getElementById('bill-msg');
+  if(!msg) return;
+  if(m==='annual'){
+    msg.className='bill-msg confirm';
+    msg.innerHTML='✓ Te llevas 2 meses gratis';
+    msg.onclick=null;
+  } else {
+    msg.className='bill-msg nudge';
+    msg.innerHTML='→ Pasa a anual y ahorra 2 meses';
+    msg.onclick=function(){setBilling('annual');};
+  }
+}
+function setBilling(m){
+  billing=m;
+  ['annual','monthly'].forEach(function(k){document.getElementById('tog-'+k).classList.toggle('on',k===m);});
+  updBillMsg(m);
+  updPlanPrices(); updAddonPrices(); updBar();
+}
+function updAddonPrices(){
+  var isA=billing==='annual';
+  Object.keys(ADM).forEach(function(k){
+    var el=document.getElementById('adprice-'+k);
+    if(!el) return;
+    // Checklist en anual va incluido en el bonus Pack Checklist Pro → 0 €
+    if(k==='checklist' && isA){
+      el.innerHTML='<span style="text-decoration:line-through;color:var(--muted);font-weight:600">'+ADA[k]+' €/mes</span> · <span style="color:var(--green);font-weight:800">Gratis 3 meses</span>';
+      return;
+    }
+    el.textContent=isA?(fmt(ADA[k])+' €/mes · anual'):(ADM[k]+' €/mes');
+  });
+}
+function updPlanPrices(){
+  var isA=billing==='annual';
+  Object.keys(PM).forEach(function(p){
+    tweenNumber(document.getElementById('pp-'+p), isA?PA[p]:PM[p], {fmt:fmt});
+    var savePerYear=Math.round((PM[p]-PA[p])*12);
+    document.getElementById('pn-'+p).textContent=isA?'2 meses gratis · '+fmt(PY[p])+' €/año':'Ahorra '+savePerYear+' €/año con anual';
+  });
+}
+
+function selectPlan(p){
+  if(document.getElementById('plan-'+p).classList.contains('disabled')) return;
+  plan=p;
+  ['lite','basic','pro'].forEach(function(k){document.getElementById('plan-'+k).classList.toggle('selected',k===p);});
+  // Cambiar de plan puede invalidar addons (stocks → requiere ≥Basic, stocksadv → requiere Pro).
+  updAddonStates(); updImplItems(); updBar();
+}
+
+// Tier por número de empleados. Reglas: 1-15 apaga Pro · 16-50 apaga Lite · 51+ apaga Lite y Basic.
+function getTier(n){
+  if(n==null || isNaN(n) || n<1) return null;
+  if(n<=15)  return {tier:1, blocked:['pro']};
+  if(n<=50)  return {tier:2, blocked:['lite']};
+  return {tier:3, blocked:['lite','basic']};
+}
+
+function changeEmployees(){
+  var raw=document.getElementById('emp-input').value.trim();
+  var v=raw===''?null:parseInt(raw,10);
+  if(v!=null && (isNaN(v)||v<1)) v=null;
+  employees=v;
+  updatePlanGating();
+  updBar();
+}
+
+function updatePlanGating(){
+  var t=getTier(employees);
+  var allPlans=['lite','basic','pro'];
+  var blocked=t?t.blocked:allPlans.slice(); // sin empleados → todos bloqueados
+  allPlans.forEach(function(p){
+    document.getElementById('plan-'+p).classList.toggle('disabled', blocked.indexOf(p)>=0);
+  });
+  // Si el plan seleccionado pasa a bloqueado (o no hay tier todavía), auto-switch al más cercano.
+  if(plan && blocked.indexOf(plan)>=0){
+    if(!t){
+      // sin empleados: ningún plan válido → deseleccionar
+      plan=null;
+      allPlans.forEach(function(p){document.getElementById('plan-'+p).classList.remove('selected');});
+    } else {
+      // buscar el plan permitido contiguo (alternando hacia arriba y abajo)
+      var fromIdx=allPlans.indexOf(plan);
+      var next=null;
+      for(var d=1;d<allPlans.length && next==null;d++){
+        var up=allPlans[fromIdx+d], dn=allPlans[fromIdx-d];
+        if(up && blocked.indexOf(up)<0){next=up;}
+        else if(dn && blocked.indexOf(dn)<0){next=dn;}
+      }
+      if(next){
+        plan=next;
+        allPlans.forEach(function(p){document.getElementById('plan-'+p).classList.toggle('selected', p===next);});
+        updAddonStates(); updImplItems();
+      }
+    }
+  }
+}
+
+function toggleAddon(k){
+  // Plan gating
+  if(k==='stocks'&&plan==='lite')return;
+  if(k==='stocksadv'&&(plan==='lite'||plan==='basic'))return;
+  // Dependency gating
+  if(k==='stocks'&&(!addons.tpv||!addons.cocina))return;
+  if(k==='stocksadv'&&!addons.stocks)return;
+  if(k==='consultoria'&&impl==='personalizada')return;
+  addons[k]=!addons[k];
+  var idMap={tpv:'ac-tpv',cocina:'ac-cocina',stocks:'ac-stocks',stocksadv:'ac-stocksadv',checklist:'ac-checklist',comunicacion:'ac-comunicacion',appcc:'ac-appcc',auditorias:'ac-auditorias',rrhh:'ac-rrhh',firma:'ac-firma',carga:'ac-carga',consultoria:'ac-consultoria'};
+  var card=document.getElementById(idMap[k]);
+  card.classList.toggle('selected',addons[k]);
+  if(k==='stocks'){
+    if(addons[k]) card.classList.add('warn');
+    else card.classList.remove('warn');
+  }
+  if(k==='stocksadv'){
+    if(addons[k]) card.classList.add('warn'); else card.classList.remove('warn');
+  }
+  updAddonStates(); updImplItems(); updBar();
+}
+
+function updAddonStates(){
+  // Stocks: requiere plan Basic/Pro + TPV + Cocina. Tip-bubble se ajusta al blocker prioritario.
+  var sEl=document.getElementById('ac-stocks');
+  var sTip=document.getElementById('stocks-tip');
+  var stocksBlockedByPlan=plan==='lite';
+  var canStocks=!stocksBlockedByPlan && addons.tpv && addons.cocina;
+  if(!canStocks){
+    sEl.classList.add('disabled');
+    if(addons.stocks){addons.stocks=false;sEl.classList.remove('selected','warn');}
+  } else { sEl.classList.remove('disabled'); }
+  if(sTip) sTip.textContent = stocksBlockedByPlan ? 'Requiere plan Basic o Pro' : 'Requiere TPV + Cocina';
+
+  // StocksAdv tip-bubble — texto dinámico según el blocker prioritario (el gating real
+  // se aplica abajo en el bloque needsPersonalizada).
+  var stocksadvBlockedByPlan=(plan==='lite'||plan==='basic');
+  var saTip=document.getElementById('stocksadv-tip');
+  if(saTip){
+    if(stocksadvBlockedByPlan) saTip.textContent='Requiere plan Pro';
+    else if(impl!=='personalizada') saTip.textContent='Selecciona implementación personalizada para activar';
+    else saTip.textContent='Requiere activar Stocks';
+  }
+
+  // Consultoria disabled if personalizada
+  var cEl=document.getElementById('ac-consultoria');
+  var cWarn=document.getElementById('consultoria-warn');
+  if(impl==='personalizada'){
+    cEl.classList.add('disabled');
+    if(addons.consultoria){addons.consultoria=false;cEl.classList.remove('selected');}
+    cWarn.style.display='';
+  } else { cEl.classList.remove('disabled'); cWarn.style.display='none'; }
+
+  // Stocks avanzado + Auditorías: requieren impl personalizada. StocksAdv además requiere plan Pro y stocks activo.
+  var needsPersonalizada=['stocksadv','auditorias'];
+  needsPersonalizada.forEach(function(k){
+    var elId={stocksadv:'ac-stocksadv',auditorias:'ac-auditorias'}[k];
+    var el=document.getElementById(elId);
+    var planBlocked=(k==='stocksadv') && (plan==='lite'||plan==='basic');
+    var canSelect=!planBlocked && (impl==='personalizada') && (k!=='stocksadv' || addons.stocks);
+    if(!canSelect){
+      el.classList.add('disabled');
+      if(addons[k]){
+        addons[k]=false;
+        el.classList.remove('selected','warn','solo-grp-warn');
+        if(k==='auditorias'){var _aw=document.getElementById('aud-warn');if(_aw)_aw.style.display='none';}
+      }
+    } else {
+      el.classList.remove('disabled');
+    }
+  });
+
+  // Update mandatory session notes AFTER states are resolved
+  document.getElementById('stocksadv-note').style.display=addons.stocksadv?'block':'none';
+  var anEl=document.getElementById('auditorias-note');
+  if(anEl) anEl.style.display=addons.auditorias?'block':'none';
+
+  // Auditorías warn + red state when selected
+  var audEl=document.getElementById('ac-auditorias');
+  var audWarn=document.getElementById('aud-warn'); // may be null — guarded below
+  if(addons.auditorias){
+    audEl.classList.add('solo-grp-warn');
+    if(audWarn)audWarn.style.display='';
+    document.getElementById('aud-badge').textContent='⚠ Cadenas y grupos';
+  } else {
+    audEl.classList.remove('solo-grp-warn');
+    if(audWarn)audWarn.style.display='none';
+    document.getElementById('aud-badge').textContent='Cadenas y grupos';
+  }
+}
+
+function selectImpl(k){
+  impl=k;
+  document.getElementById('impl-grupal').classList.toggle('selected',k==='grupal');
+  document.getElementById('impl-personalizada').classList.toggle('selected',k==='personalizada');
+  updAddonStates(); updImplItems(); updBar();
+}
+function updImplItems(){
+  // Exact same approach as v8 that worked: style.display toggle
+  var ids=['ig-cocina','ig-stocks','ip-cocina','ip-stocks'];
+  var keys=['cocina','stocks','cocina','stocks'];
+  for(var i=0;i<ids.length;i++){
+    var el=document.getElementById(ids[i]);
+    if(el) el.style.display = addons[keys[i]] ? 'flex' : 'none';
+  }
+  // Badges
+  var hasStocks=addons.stocks||addons.stocksadv;
+  var gb=document.getElementById('ibadge-g'), pb=document.getElementById('ibadge-p');
+  if(gb){
+    if(hasStocks){gb.className='impl-ibadge ib-grp';gb.textContent='★ Más popular';}
+    else{gb.className='impl-ibadge ib-pop';gb.textContent='★ Más popular · Recomendado';}
+  }
+  if(pb){
+    if(hasStocks){pb.className='impl-ibadge ib-rec';pb.textContent='✓ Recomendado con Stocks';}
+    else{pb.className='impl-ibadge ib-grp';pb.textContent='Para grupos · Recomendado si tienes Stocks';}
+  }
+}
+
+function updBar(){
+  if(employees==null){
+    document.getElementById('bar-label').textContent='Introduce el número de empleados para empezar';
+    document.getElementById('bar-price').textContent='—';
+    document.getElementById('bar-period').textContent='';
+    document.getElementById('bar-detail').textContent='';
+    document.getElementById('bar-cta').disabled=true; return;
+  }
+  if(!plan){
+    document.getElementById('bar-label').textContent='Elige un plan para continuar';
+    document.getElementById('bar-price').textContent='—';
+    document.getElementById('bar-period').textContent='';
+    document.getElementById('bar-detail').textContent='';
+    document.getElementById('bar-cta').disabled=true; return;
+  }
+  if(!impl){
+    document.getElementById('bar-label').textContent='Selecciona la implementación';
+    document.getElementById('bar-price').textContent='—';
+    document.getElementById('bar-period').textContent='';
+    document.getElementById('bar-detail').textContent='';
+    document.getElementById('bar-cta').disabled=true; return;
+  }
+  var base=billing==='annual'?PA[plan]:PM[plan];
+  var addTotal=Object.keys(ADM).reduce(function(s,k){return addons[k]?s+adPrice(k):s;},0);
+  var monthly=applyDiscount(base+addTotal)*locales;
+  var addonCount=Object.keys(addons).filter(function(k){return addons[k];}).length;
+  document.getElementById('bar-label').textContent='Plan '+PNAMES[plan]+' · '+PDOCS[plan];
+  tweenNumber(document.getElementById('bar-price'), monthly, {fmt:fmt, suffix:' €'});
+  document.getElementById('bar-period').textContent=billing==='annual'?'/mes · anual':'/mes';
+  document.getElementById('bar-detail').textContent=(addonCount?addonCount+' módulo'+(addonCount>1?'s':''):'')+( locales>1?' · '+locales+' locales':'');
+  document.getElementById('bar-cta').disabled=false;
+}
+
+function showOffer(){
+  renderOffer();
+  document.getElementById('v-config').classList.remove('active');
+  document.getElementById('v-budget').classList.remove('active');
+  var v=document.getElementById('v-offer');
+  v.classList.add('active');
+  var w=v.querySelector('.ofr-wrap');
+  if(w && !REDUCED_MOTION){
+    w.classList.remove('ofr-just-revealed');
+    void w.offsetWidth;
+    w.classList.add('ofr-just-revealed');
+  }
+  window.scrollTo(0,0);
+}
+function showConfig(){document.getElementById('v-offer').classList.remove('active');document.getElementById('v-budget').classList.remove('active');document.getElementById('v-config').classList.add('active');window.scrollTo(0,0);}
+function showBudget(){if(!plan){alert('Elige un plan primero');return;}renderBudget();document.getElementById('v-offer').classList.remove('active');document.getElementById('v-budget').classList.add('active');window.scrollTo(0,0);}
+
+function setOfferBilling(m){
+  billing=m;
+  document.getElementById('otog-annual').classList.toggle('on',m==='annual');
+  document.getElementById('otog-monthly').classList.toggle('on',m==='monthly');
+  var sv=document.getElementById('ofr-saving');
+  sv.classList.toggle('show',m==='annual');
+  document.getElementById('tog-annual').classList.toggle('on',m==='annual');
+  document.getElementById('tog-monthly').classList.toggle('on',m==='monthly');
+  updBillMsg(m);
+  updPlanPrices(); updAddonPrices(); updBar(); renderOffer();
+}
+
+function changeLocales(d){
+  locales=Math.max(1,locales+d);
+  document.getElementById('loc-num').textContent=locales;
+  var discPct=Math.round(localeDiscount()*100);
+  var hint=document.getElementById('loc-discount-hint');
+  if(hint){
+    if(discPct>0){
+      hint.textContent='−'+discPct+'% descuento multi-local aplicado';
+      hint.style.visibility='visible';
+    } else {
+      hint.style.visibility='hidden';
+    }
+  }
+  renderOffer();
+}
+
+function renderOffer(){
+  var isA=billing==='annual';
+  document.getElementById('otog-annual').classList.toggle('on',isA);
+  document.getElementById('otog-monthly').classList.toggle('on',!isA);
+  var sv=document.getElementById('ofr-saving');
+  sv.classList.toggle('show',isA);
+  document.getElementById('ofr-title').textContent='Plan yurest '+PNAMES[plan];
+
+  var planM=isA?PA[plan]:PM[plan];
+  var addM=Object.keys(ADM).reduce(function(s,k){return addons[k]?s+adPrice(k):s;},0);
+  var monthlyPerLocal=applyDiscount(planM+addM);
+  var monthlyTot=monthlyPerLocal*locales;
+  var monthlyPer=monthlyPerLocal; // alias
+
+  // One-time items
+  var onetimes=[];
+  if(addons.stocksadv) onetimes.push({n:'3 sesiones Stocks avanzado (obligatorio)',p:497});
+  if(addons.auditorias) onetimes.push({n:'2 sesiones Auditorías (obligatorio)',p:397});
+  if(addons.consultoria) onetimes.push({n:'Pack consultoría (3 sesiones)',p:497});
+  if(addons.firma) onetimes.push({n:'Firma digital · pack 100 firmas',p:30});
+  if(impl==='personalizada') onetimes.push({n:'Implementación personalizada',p:1500});
+  var onetimeTotal=onetimes.reduce(function(s,i){return s+i.p;},0);
+
+  // Stack gross value se calcula vía fullVal más abajo (saasRetail*locales + impl + onetimes + bonus).
+
+  // ── BUILD ITEMS ──
+  var planHTML='';
+  var bonusHTML='';
+
+  // Plan
+  var planDisc=applyDiscount(planM);
+  var planTotal=planDisc*locales;
+  var planOld=isA?fmt(PM[plan]*locales)+' €/mes':(locales>2?fmt(PM[plan]*locales)+' €/mes':null);
+  var planSub=locales>1?'<span style="font-size:11px;color:var(--muted);font-weight:400">'+fmt(planDisc)+' €/local</span>':null;
+  planHTML+=brunsonRow('plan',
+    'Plan yurest '+PNAMES[plan]+' · '+PDOCS[plan]+' · '+(isA?'Anual':'Mensual'),
+    planSub,
+    planOld,
+    fmt(planTotal)+' €/mes',
+    'v-plan'
+  );
+
+  // Monthly addons
+  var hasAddonSection=false;
+  Object.keys(ADM).forEach(function(k){
+    if(!addons[k]) return;
+    if(!hasAddonSection){ planHTML+=divider('Módulos adicionales'); hasAddonSection=true; }
+    var adBasePrice=adPrice(k);
+    var adDiscPrice=applyDiscount(adBasePrice);
+    var adTotal=adDiscPrice*locales;
+    var isIncluded=adBasePrice===0;
+    var adLbl=isIncluded?(k==='checklist'?'Gratis 3 meses':'Incluido'):fmt(adTotal)+' €/mes';
+    var adSub2=locales>1&&!isIncluded?'<span style="font-size:11px;color:var(--muted);font-weight:400">'+fmt(adDiscPrice)+' €/local</span>':null;
+    var adOld=(isA||locales>2)?fmt(ADM[k]*(locales>1?locales:1))+' €/mes':null;
+    planHTML+=brunsonRow('addon',ADN[k],adSub2,adOld,adLbl,isIncluded?'v-impl':'v-plan');
+  });
+
+  // Monthly subtotal — siempre cierra el stack del plan
+  var perLocalLine=locales>1?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+fmt(monthlyPerLocal)+' €/local/mes</div>':'';
+  var monthlySubtotalRow='<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 22px;background:rgba(42,53,84,.06);border-top:2px solid var(--navy);border-bottom:1px solid var(--border)">'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy)">Total mensual</div>'
+    +'<div style="text-align:right"><div style="font-family:var(--font-system);font-size:20px;font-weight:900;color:var(--navy)">'+fmt(monthlyTot)+' €/mes</div>'+perLocalLine+'</div>'
+    +'</div>';
+  planHTML+=monthlySubtotalRow;
+
+  // ── Stack 2: Implementación + Bonus ──
+  // Implementation
+  if(impl){
+    bonusHTML+=divider('Implementación');
+    if(impl==='grupal'){
+      bonusHTML+=brunsonRow('impl','Implementación grupal',
+        'Onboarding · Compras · Finanzas'+(addons.cocina?' · Cocina':'')+(addons.stocks?' · Stocks':'')+' · PyR · Academy',
+        '1.700 €','GRATIS','v-bonus');
+    } else {
+      bonusHTML+=brunsonRow('impl','Consultoría personalizada',
+        '1 a 1 con experto hostelero'+(addons.cocina?' · Cocina':'')+(addons.stocks?' · Stocks':'')+' · Academy',
+        '5.000 €','1.500 €','v-plan');
+    }
+  }
+
+  // Bonuses — always shown, dimmed when monthly
+  bonusHTML+=divider('★ Bonus exclusivos');
+  bonusHTML+=brunsonRow('bonus',
+    'Master Rentabilidad y Control <span class="row-link">— ver programa →</span>',
+    '4 consultores top del sector',
+    '4.500 €',
+    isA?'GRATIS':'Activa pago anual',
+    'v-bonus',
+    !isA,
+    "document.getElementById('master-popup').classList.add('open')"
+  );
+  // Pack Checklist Pro — valor depende de si el comercial incluyó el módulo Checklist.
+  // Sin módulo: solo formación + plantillas (797 €) y la fila se ve "apagada" (dimmed).
+  var checklist2sub;
+  if(!isA) checklist2sub='Módulo + 2 sesiones con Santiago Melgar + plantillas de los grandes';
+  else if(addons.checklist) checklist2sub='Tu Checklist activo · 3 meses gratis · 2 sesiones formación + plantillas';
+  else checklist2sub='Sin módulo · 2 sesiones Santiago Melgar + plantillas';
+  var checklistOldVal=addons.checklist?'1.300 €':'797 €';
+  var checklistDimmed=!isA || !addons.checklist;
+  bonusHTML+=brunsonRow('bonus',
+    'Pack Checklist Pro <span class="row-link">— ver detalles →</span>',
+    checklist2sub,
+    checklistOldVal,
+    isA?'GRATIS':'Activa pago anual',
+    'v-bonus',
+    checklistDimmed,
+    "document.getElementById('checklist-popup').classList.add('open')"
+  );
+
+  // Carga masiva — promoción siempre activa (mensual + anual)
+  bonusHTML+=brunsonRow('bonus',
+    'Carga masiva de datos <span class="row-link">— Promoción</span>',
+    addons.carga?'Servicio activado · Migramos toda tu base de proveedores y productos':'Migramos toda tu base de proveedores y productos. Sin que muevas un dedo.',
+    '397 €',
+    'GRATIS',
+    'v-bonus',
+    false
+  );
+
+  // Bonus de Acción Rápida — SIEMPRE visible si plan != pro (el timer 24h es solo cosmético para demos).
+  // dimmed en mensual.
+  var fastActionVal=0;
+  if(plan && plan!=='pro'){
+    fastActionVal=PY.pro-PY[plan]; // upgrade gratis a Pro
+    bonusHTML+=divider('⚡ Bonus de Acción Rápida · Solo 24h');
+    bonusHTML+=brunsonRow('bonus',
+      'Upgrade a Plan Pro <span class="row-link">— Docs ilimitados</span>',
+      '<span class="fast-action-timer"><span class="rec-dot"></span><span id="fa-timer">--:--:--</span> restantes</span> · Te llevas el plan ilimitado',
+      fmt(fastActionVal)+' €',
+      isA?'GRATIS':'Activa pago anual',
+      'v-bonus',
+      !isA
+    );
+  }
+
+  bonusHTML+=divider('🛡 Garantía de éxito · Solo con pago anual');
+  bonusHTML+=brunsonRow('garantia',
+    'Garantía de éxito yurest <span class="row-link">— ver detalles →</span>',
+    'Si haces tu parte y no obtienes resultados, seguimos contigo 3 meses con consultor asignado',
+    null,
+    isA?'Incluida':'Activa pago anual',
+    'v-bonus',
+    !isA,
+    "document.getElementById('guarantee-popup').classList.add('open')"
+  );
+
+  document.getElementById('ofr-items-plan').innerHTML=planHTML;
+  document.getElementById('ofr-items-bonus').innerHTML=bonusHTML;
+
+  // Stack 2 footer: valor total impl+bonus tachado + precio
+  var discPct=Math.round(localeDiscount()*100);
+  var implRetail=impl==='grupal'?1700:(impl==='personalizada'?5000:0);
+  // 4500 Master + 1300/797 Checklist Pro (797 si el cliente no se lleva el módulo, solo formación+plantillas)
+  var checklistBonusVal=addons.checklist?1300:797;
+  var bonusVal=(isA?(4500+checklistBonusVal+fastActionVal):0)+397;
+  var saasRetailPerLocal=PM[plan]*12+Object.keys(ADM).reduce(function(s,k){return addons[k]?s+ADM[k]:s;},0)*12;
+  var onetimesRetail=onetimes.reduce(function(s,i){return s+(i.old||i.p);},0);
+  var bonusTotalRetail=implRetail+bonusVal;
+  var fullVal=saasRetailPerLocal*locales+implRetail+onetimesRetail+bonusVal; // usado por el checkout abajo
+  var implPaidPrice=impl==='personalizada'?1500:0;
+  var bonusPriceLabel=implPaidPrice>0?fmt(implPaidPrice)+' €':'GRATIS';
+  var bonusPriceColor=implPaidPrice>0?'var(--navy)':'var(--green)';
+  document.getElementById('stack-footer-bonus').innerHTML=
+    '<div style="display:flex;justify-content:flex-end;align-items:flex-start;padding:18px 22px;background:var(--surface);border-top:2px dashed var(--border)">'
+    +'<div style="text-align:right">'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Valor total</div>'
+    +'<div style="font-family:var(--font-system);font-size:22px;font-weight:900;color:rgba(42,53,84,.75);text-decoration:line-through;text-decoration-thickness:2.5px;text-decoration-color:rgba(42,53,84,.55);line-height:1;margin-bottom:10px">'+fmt(bonusTotalRetail)+' €</div>'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin-bottom:4px">Precio</div>'
+    +'<div style="font-family:var(--font-system);font-size:28px;font-weight:900;color:'+bonusPriceColor+';line-height:1">'+bonusPriceLabel+'</div>'
+    +'</div>'
+    +'</div>';
+
+  // Checkout
+  var stackedGratis=function(oldStr,lbl,color){color=color||'var(--green)';return '<div style="text-align:right;line-height:1.2"><div style="text-decoration:line-through;color:var(--muted);font-size:12px;font-weight:700">'+oldStr+'</div><div style="color:'+color+';font-weight:700;font-size:14px;margin-top:2px">'+lbl+'</div></div>';};
+  var ckHTML='<div class="checkout-hd"><span class="checkout-title">Resumen de tu pedido</span><span class="checkout-note">Sin permanencia · Cancela cuando quieras</span></div>';
+  if(isA){
+    var annualSub=monthlyTot*12;
+    ckHTML+='<div class="ck-section"><div class="ck-section-title">Suscripción anual</div>';
+    ckHTML+=ckRow('Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),fmt(PM[plan])+' €/mes · 2 meses gratis · pago anual',fmt(applyDiscount(planM)*locales*12)+' €');
+    Object.keys(ADM).forEach(function(k){
+      if(!addons[k]) return;
+      if(adPrice(k)===0){ckHTML+=ckRow(ADN[k],'<span style="color:var(--green);font-weight:700">3 meses gratis</span> <span style="color:var(--navy);font-weight:600">· luego '+ADM[k]+' €/mes</span>','<span style="color:var(--green);font-weight:700">0 €</span>','');return;}
+      ckHTML+=ckRow(ADN[k],fmt(ADM[k])+' €/mes · 2 meses gratis · pago anual',fmt(applyDiscount(ADA[k]||ADM[k])*locales*12)+' €','');
+    });
+    ckHTML+='<div class="ck-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px"><div class="ck-name" style="font-weight:700">Subtotal anual</div><div class="ck-val">'+fmt(annualSub)+' €</div></div></div>';
+    ckHTML+='<div class="ck-section"><div class="ck-section-title">Servicios adicionales · pago único</div>';
+    if(impl==='grupal'){
+      ckHTML+=ckRow('Implementación grupal',null,stackedGratis('1.700 €','GRATIS'),'');
+    }
+    onetimes.forEach(function(i){var v=i.old?stackedGratis(fmt(i.old)+' €','GRATIS'):fmt(i.p)+' €';ckHTML+=ckRow(i.n,null,v,i.old?'':'purple');});
+    ckHTML+='</div>';
+    // Bonuses (mismo orden que stack arriba)
+    ckHTML+='<div class="ck-section ck-bonus-section"><div class="ck-section-title">★ Bonus exclusivos · Solo con pago anual</div>';
+    ckHTML+=ckRow('Master Rentabilidad y Control',null,stackedGratis('4.500 €','GRATIS'),'');
+    ckHTML+=ckRow('Pack Checklist Pro'+(addons.checklist?'':' <span style="color:var(--muted);font-weight:500">· sin módulo</span>'),null,stackedGratis(addons.checklist?'1.300 €':'797 €','GRATIS'),'');
+    ckHTML+=ckRow('Carga masiva de datos · Promoción',null,stackedGratis('397 €','GRATIS'),'');
+    if(fastActionVal>0){
+      ckHTML+=ckRow('⚡ Upgrade a Plan Pro · Bonus 24h',null,stackedGratis(fmt(fastActionVal)+' €','GRATIS'),'');
+    }
+    ckHTML+='</div>';
+    // Garantía — sección propia
+    ckHTML+='<div class="ck-section ck-garantia-section"><div class="ck-section-title">🛡 Garantía de éxito · Solo con pago anual</div>';
+    ckHTML+=ckRow('Garantía de éxito yurest',null,'INCLUIDA','green');
+    ckHTML+='</div>';
+    var perLocalAnnual=locales>1?'<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">'+fmt(monthlyPerLocal*12)+' €/local/año</div>':'';
+    var annualFinal=annualSub+onetimeTotal;
+    // Tachado = mismo fullVal que en stack (incluye SaaS retail*locales + impl retail + onetimes retail + bonuses)
+    var annualOldStrike=fullVal>annualFinal?'<div class="ck-total-old">'+fmt(fullVal)+' €</div>':'';
+    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">A pagar hoy</div><div class="ck-freq">Suscripción anual'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+annualOldStrike+'<div class="ck-total-val">'+fmt(annualFinal)+' €</div>'+perLocalAnnual+'</div></div>';
+  } else {
+    ckHTML+='<div class="ck-section"><div class="ck-section-title">Primer mes</div>';
+    ckHTML+=ckRow('Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),fmt(PM[plan])+' €/mes · pago mensual',fmt(applyDiscount(planM)*locales)+' €');
+    Object.keys(ADM).forEach(function(k){if(!addons[k]) return; ckHTML+=ckRow(ADN[k],null,fmt(applyDiscount(ADM[k])*locales)+' €/mes','');});
+    ckHTML+='<div class="ck-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px"><div class="ck-name" style="font-weight:700">Mensualidad</div><div class="ck-val">'+fmt(monthlyTot)+' €/mes</div></div></div>';
+    ckHTML+='<div class="ck-section"><div class="ck-section-title">Servicios adicionales · pago único</div>';
+    if(impl==='grupal'){
+      ckHTML+=ckRow('Implementación grupal',null,stackedGratis('1.700 €','GRATIS'),'');
+    }
+    onetimes.forEach(function(i){var v=i.old?stackedGratis(fmt(i.old)+' €','GRATIS'):fmt(i.p)+' €';ckHTML+=ckRow(i.n,null,v,i.old?'':'purple');});
+    ckHTML+='</div>';
+    // Bonus en mensual: solo Carga masiva activa
+    ckHTML+='<div class="ck-section ck-bonus-section"><div class="ck-section-title">★ Bonus incluidos</div>';
+    ckHTML+=ckRow('Carga masiva de datos · Promoción',null,stackedGratis('397 €','GRATIS'),'');
+    ckHTML+='</div>';
+    var perLocalMonthly=locales>1?'<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">'+fmt(monthlyPerLocal)+' €/local/mes</div>':'';
+    var monthlyFinal=monthlyTot+onetimeTotal;
+    // Tachado = fullVal (consistente con stack arriba)
+    var monthlyOldStrike=fullVal>monthlyFinal?'<div class="ck-total-old">'+fmt(fullVal)+' €</div>':'';
+    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">A pagar hoy</div><div class="ck-freq">Primer mes'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+monthlyOldStrike+'<div class="ck-total-val">'+fmt(monthlyFinal)+' €</div>'+perLocalMonthly+'</div></div>';
+  }
+  document.getElementById('checkout-wrap').innerHTML=ckHTML;
+}
+
+function brunsonRow(type, name, sub, oldVal, newVal, cls, dimmed, onclick){
+  var isBonus=type==='bonus';
+  var checkContent=type==='garantia'?'🛡':isBonus?'★':'✓';
+  var checkBgMap={'plan':'background:var(--navy)','addon':'background:var(--navy)','impl':'background:var(--navy)','bonus':'background:var(--navy)','garantia':'background:var(--red)'};
+  var checkBg=checkBgMap[type]||'background:var(--navy)';
+  if((isBonus||type==='garantia')&&dimmed) checkBg=type==='garantia'?'background:rgba(249,90,92,.3)':'background:rgba(42,53,84,.3)';
+  var dimStyle=dimmed?'opacity:.4;':'';
+  var extraClass=(type==='garantia'?' garantia-row bonus-row':'');
+  var onclickAttr=onclick?' onclick="'+onclick+'"':'';
+  return '<div class="ofr-item '+(isBonus||type==='garantia'?'bonus-row':'')+(type==='impl'?' impl-row':'')+extraClass+(dimmed?' dim':'')+'" style="'+dimStyle+(onclick?'cursor:pointer;':'')+'"'+onclickAttr+'>'
+    +'<div class="ofr-check" style="'+checkBg+';font-size:'+(isBonus?'14':'11')+'px">'+checkContent+'</div>'
+    +'<div class="ofr-item-name-wrap">'
+      +'<div class="ofr-item-name">'+name+'</div>'
+      +(sub?'<div class="ofr-item-sub">'+sub+'</div>':'')
+    +'</div>'
+    +'<div class="ofr-dots"></div>'
+    +'<div class="ofr-val-wrap">'
+      +(oldVal
+        ?(isBonus||type==='impl'||type==='garantia'
+          ?'<div class="ofr-val-old big-strike">'+oldVal+'</div><div class="ofr-val-new '+cls+'">'+newVal+'</div>'
+          :'<div class="ofr-val-inline"><span class="ofr-val-old">'+oldVal+'</span><span class="ofr-val-new '+cls+'">'+newVal+'</span></div>')
+        :'<div class="ofr-val-new '+cls+'">'+newVal+'</div>')
+    +'</div>'
+  +'</div>';
+}
+
+function divider(label){
+  return '<div class="stack-divider"><div class="stack-divider-line"></div><span class="stack-divider-label">'+label+'</span><div class="stack-divider-line"></div></div>';
+}
+
+// brunsonRow handles all stack items
+function ckRow(name,sub,val,cls){
+  return '<div class="ck-row"><div><div class="ck-name">'+name+'</div>'+(sub?'<div class="ck-sub">'+sub+'</div>':'')+'</div><div class="ck-val'+(cls?' '+cls:'')+'">'+val+'</div></div>';
+}
+
+
+function closePopup(e){
+  if(e.target===document.getElementById('master-popup'))
+    document.getElementById('master-popup').classList.remove('open');
+}
+
+// ── BUDGET (presupuesto compacto) ──
+function bRow(name,val){return '<div class="b-row"><div class="b-name">'+name+'</div><div class="b-val">'+val+'</div></div>';}
+function bStrike(oldStr,lbl){return '<span class="b-strike">'+oldStr+'</span><span class="b-free">'+lbl+'</span>';}
+
+function buildBudgetData(){
+  var isA=billing==='annual';
+  var planM=isA?PA[plan]:PM[plan];
+  var addM=Object.keys(ADM).reduce(function(s,k){return addons[k]?s+adPrice(k):s;},0);
+  var monthlyPerLocal=applyDiscount(planM+addM);
+  var monthlyTot=monthlyPerLocal*locales;
+  var onetimes=[];
+  if(addons.stocksadv) onetimes.push({n:'3 sesiones Stocks avanzado (obligatorio)',p:497});
+  if(addons.auditorias) onetimes.push({n:'2 sesiones Auditorías (obligatorio)',p:397});
+  if(addons.consultoria) onetimes.push({n:'Pack consultoría (3 sesiones)',p:497});
+  if(addons.firma) onetimes.push({n:'Firma digital · pack 100 firmas',p:30});
+  if(impl==='personalizada') onetimes.push({n:'Implementación personalizada',p:1500});
+  var onetimeTotal=onetimes.reduce(function(s,i){return s+i.p;},0);
+  var fastActionVal=(plan&&plan!=='pro')?(PY.pro-PY[plan]):0;
+  return {isA:isA,monthlyTot:monthlyTot,monthlyPerLocal:monthlyPerLocal,onetimes:onetimes,onetimeTotal:onetimeTotal,fastActionVal:fastActionVal};
+}
+
+function renderBudget(){
+  if(!plan)return;
+  var d=buildBudgetData();
+  var today=new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('budget-meta').textContent='Fecha · '+today+' · '+locales+' local'+(locales>1?'es':'')+' · '+(d.isA?'Pago anual':'Pago mensual');
+
+  var html='';
+  // Suscripción
+  html+='<div class="b-section-hd">Suscripción '+(d.isA?'anual':'mensual')+'</div>';
+  var planDisc=applyDiscount(d.isA?PA[plan]:PM[plan]);
+  html+=bRow('Plan '+PNAMES[plan]+' · '+PDOCS[plan],fmt(planDisc*locales)+' €/mes');
+  Object.keys(ADM).forEach(function(k){
+    if(!addons[k])return;
+    var ap=adPrice(k);
+    if(ap===0){html+=bRow(ADN[k],'<span class="b-included">3 meses gratis</span> <span style="color:var(--navy);font-weight:700">· luego '+ADM[k]+' €/mes</span>');return;}
+    var ad=applyDiscount(ap);
+    html+=bRow(ADN[k],fmt(ad*locales)+' €/mes');
+  });
+  html+='<div class="b-subtotal"><span>Total mensualidad</span><span>'+fmt(d.monthlyTot)+' €/mes</span></div>';
+  if(d.isA){
+    html+='<div class="b-subtotal" style="border-top:1px solid var(--border);background:rgba(42,53,84,.10)"><span>Total anualidad</span><span>'+fmt(d.monthlyTot*12)+' €/año</span></div>';
+  }
+
+  // Servicios adicionales (impl gratis + onetimes)
+  var hasServ=impl==='grupal'||d.onetimes.length>0;
+  if(hasServ){
+    html+='<div class="b-section-hd">Servicios adicionales · pago único</div>';
+    if(impl==='grupal') html+=bRow('Implementación grupal',bStrike('1.700 €','GRATIS'));
+    d.onetimes.forEach(function(i){html+=bRow(i.n,fmt(i.p)+' €');});
+  }
+
+  // Bonus
+  html+='<div class="b-section-hd">★ Bonus exclusivos</div>';
+  if(d.isA){
+    html+=bRow('Master Rentabilidad y Control',bStrike('4.500 €','GRATIS'));
+    html+=bRow('Pack Checklist Pro'+(addons.checklist?'':' (sin módulo)'),bStrike(addons.checklist?'1.300 €':'797 €','GRATIS'));
+  }
+  html+=bRow('Carga masiva de datos',bStrike('397 €','GRATIS'));
+  if(d.isA && d.fastActionVal>0){
+    html+=bRow('Upgrade a Plan Pro',bStrike(fmt(d.fastActionVal)+' €','GRATIS'));
+  }
+
+  // Garantía (solo anual)
+  if(d.isA){
+    html+='<div class="b-section-hd">🛡 Garantía de éxito</div>';
+    html+=bRow('Garantía de éxito yurest','<span class="b-included">Incluida</span>');
+  }
+
+  // Total
+  var subTotal=d.isA?d.monthlyTot*12:d.monthlyTot;
+  var totalToday=subTotal+d.onetimeTotal;
+  var freqLbl=d.isA?'Anualidad':'Primer mes';
+  html+='<div class="b-total"><div><div class="b-total-lbl">A pagar hoy</div><div class="b-total-sub">'+freqLbl+(d.onetimes.length?' + servicios únicos':'')+'</div></div><div class="b-total-val">'+fmt(totalToday)+' €</div></div>';
+
+  document.getElementById('budget-content').innerHTML=html;
+}
+
+function downloadBudget(){
+  if(!plan){alert('Elige un plan primero');return;}
+  if(typeof html2pdf==='undefined'){alert('Generador de PDF no cargado. Comprueba tu conexión.');return;}
+  var origWrap=document.querySelector('#v-budget .budget-wrap');
+  var btn=document.querySelector('#budget-actions button');
+  if(btn){btn.disabled=true;btn.textContent='Generando PDF…';}
+
+  // Clona el wrap en un contenedor offscreen con ancho fijo (evita que el layout
+  // de la página afecte el ancho capturado por html2canvas)
+  var clone=origWrap.cloneNode(true);
+  var cloneActions=clone.querySelector('#budget-actions');
+  if(cloneActions) cloneActions.parentNode.removeChild(cloneActions);
+  clone.classList.add('pdf-clone');
+  var container=document.createElement('div');
+  container.style.cssText='position:fixed;left:-10000px;top:0;width:680px;background:#fff;z-index:-1;padding:0;margin:0';
+  container.appendChild(clone);
+  document.body.appendChild(container);
+
+  var filename='presupuesto-yurest-'+(PNAMES[plan]||'').toLowerCase().replace(/\s+/g,'-')+'-'+locales+'l.pdf';
+  var opt={
+    margin:[10,10,12,10],
+    filename:filename,
+    image:{type:'jpeg',quality:.98},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
+    pagebreak:{mode:['css','legacy'],avoid:['.b-row','.b-total','.b-subtotal','.b-section-hd']}
+  };
+  function cleanup(){
+    if(container.parentNode) container.parentNode.removeChild(container);
+    if(btn){btn.disabled=false;btn.textContent='Descargar PDF';}
+  }
+  html2pdf().set(opt).from(clone).save().then(cleanup).catch(function(e){
+    cleanup();
+    alert('No se pudo generar el PDF. Intenta de nuevo.');
+    console.error(e);
+  });
+}
+
+// CTA handler — replace CHECKOUT_URL with your Calendly / form / endpoint
+var CHECKOUT_URL='https://calendly.com/yurest';
+function startCheckout(){
+  if(!plan){ alert('Elige un plan primero'); return; }
+  var addonsList=Object.keys(addons).filter(function(k){return addons[k];}).map(function(k){return ADN[k];});
+  var params=new URLSearchParams({
+    plan:PNAMES[plan],
+    billing:billing,
+    locales:locales,
+    impl:impl||'sin elegir',
+    addons:addonsList.join(',')||'ninguno'
+  });
+  window.open(CHECKOUT_URL+'?'+params.toString(),'_blank');
+}
+
+// Fast Action Bonus — countdown 24h cosmético para demos comerciales.
+// El bonus SIEMPRE se renderiza técnicamente; el timer es solo presión visual.
+// Se reinicia en cada carga de página para que cada demo vea ~24h fresco.
+var FA_START=Date.now();
+function fastActionRemaining(){
+  var rem=FA_START+24*60*60*1000-Date.now();
+  if(rem<=0){ FA_START=Date.now(); rem=24*60*60*1000; } // perpetual reset, nunca caduca
+  return rem;
+}
+function updateFaTimer(){
+  var el=document.getElementById('fa-timer');
+  if(!el) return;
+  var ms=fastActionRemaining();
+  var h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000), s=Math.floor((ms%60000)/1000);
+  el.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+setInterval(updateFaTimer,1000);
+
+// Init: sincroniza estado visual de los addons que nacen activados (Checklist por defecto)
+Object.keys(addons).forEach(function(k){
+  if(addons[k]){
+    var idMap={tpv:'ac-tpv',cocina:'ac-cocina',stocks:'ac-stocks',stocksadv:'ac-stocksadv',checklist:'ac-checklist',comunicacion:'ac-comunicacion',appcc:'ac-appcc',auditorias:'ac-auditorias',rrhh:'ac-rrhh',firma:'ac-firma',carga:'ac-carga',consultoria:'ac-consultoria'};
+    var el=document.getElementById(idMap[k]);
+    if(el) el.classList.add('selected');
+  }
+});
+// Sincroniza visual de implementación (impl grupal seleccionada por defecto)
+if(impl){
+  var implEl=document.getElementById('impl-'+impl);
+  if(implEl) implEl.classList.add('selected');
+}
+updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
+</script>
+
+<!-- MASTER POPUP -->
+<div class="popup-overlay" id="master-popup" onclick="closePopup(event)">
+  <div class="popup-box">
+    <div class="popup-hd">
+      <button class="popup-close" onclick="document.getElementById('master-popup').classList.remove('open')">✕</button>
+      <div class="popup-eyebrow">⭐ Bonus exclusivo · Pago anual</div>
+      <div class="popup-title">Master Rentabilidad<br>y Control</div>
+      <div class="popup-subtitle">10 horas de formación intensiva con 4 consultores top del sector hostelero</div>
+      <div class="live-badge"><span class="rec-dot"></span>EN DIRECTO · Te lo llevas grabado</div>
+    </div>
+    <div class="popup-body">
+
+      <div class="popup-stats">
+        <div class="popup-stat"><div class="stat-num">9</div><div class="stat-lbl">sesiones · 4 semanas</div></div>
+        <div class="popup-stat"><div class="stat-num">4</div><div class="stat-lbl">consultores expertos</div></div>
+        <div class="popup-stat"><div class="stat-num">+3.000€</div><div class="stat-lbl">lo que cobran otros</div></div>
+        <div class="popup-stat"><div class="stat-num" style="color:var(--green)">GRATIS</div><div class="stat-lbl">para ti</div></div>
+      </div>
+
+      <div class="popup-section-title">Programa · 4 semanas · 9 sesiones</div>
+      <div class="popup-modules" style="padding-left:0">
+
+        <div class="popup-mod">
+          <div class="mod-num">1</div>
+          <div>
+            <div class="mod-name">Planificación de turnos y eficiencia laboral</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cómo organizar equipos y turnos para maximizar la productividad sin disparar el coste de personal.</div>
+            <div class="mod-consultant">Fran Cabello</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">2</div>
+          <div>
+            <div class="mod-name">Liderazgo y gestión del cambio</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Herramientas prácticas para liderar equipos en hostelería y gestionar los procesos de transformación sin perder el equipo por el camino.</div>
+            <div class="mod-consultant">Santiago Melgar</div>
+          </div>
+        </div>
+
+        <div class="popup-mod">
+          <div class="mod-num">3</div>
+          <div>
+            <div class="mod-name">Negociación con proveedores y optimización de compras</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cómo negociar mejores condiciones, reducir el coste de materia prima y conectar las compras con yurest.</div>
+            <div class="mod-consultant">Santiago Melgar</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">4</div>
+          <div>
+            <div class="mod-name">Recetas y escandallos</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Construcción de fichas técnicas, cálculo de food cost y control de márgenes por plato.</div>
+            <div class="mod-consultant">Fran Cabello</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">5</div>
+          <div>
+            <div class="mod-name">Rentabilidad en cocina y Menu Engineering</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cómo diseñar una carta rentable: análisis de popularidad y margen, decisiones de precio y posicionamiento.</div>
+            <div class="mod-consultant">Fran Cabello</div>
+          </div>
+        </div>
+
+        <div class="popup-mod">
+          <div class="mod-num">6</div>
+          <div>
+            <div class="mod-name">Venta sugerida y métricas comerciales</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Técnicas de upselling aplicadas a sala, métricas de conversión y cómo medir el rendimiento del equipo comercial.</div>
+            <div class="mod-consultant">María Martín</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">7</div>
+          <div>
+            <div class="mod-name">Incentivos y trabajo por objetivos</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Diseño de sistemas de incentivos que alinean al equipo con los objetivos de rentabilidad del negocio.</div>
+            <div class="mod-consultant">María Martín</div>
+          </div>
+        </div>
+
+        <div class="popup-mod">
+          <div class="mod-num">8</div>
+          <div>
+            <div class="mod-name">Dirección de operaciones</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Gestión integral de la operativa: procesos, estándares, control de calidad y escalabilidad.</div>
+            <div class="mod-consultant">Santiago Melgar</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">9</div>
+          <div>
+            <div class="mod-name">Finanzas básicas para hosteleros</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cuenta de resultados, punto de equilibrio, ratios clave y cómo leer tus números para tomar decisiones.</div>
+            <div class="mod-consultant">Santiago Melgar</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="popup-section-title">Tus 4 consultores</div>
+      <div class="popup-consultants">
+
+        <div class="consultant-card">
+          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe3a503449086cc1c40b2b.jpeg" alt="Santiago Melgar" loading="lazy">
+          <div class="consultant-name">Santiago</div>
+          <div class="consultant-role">Liderazgo hostelero</div>
+          <div class="consultant-bio">Fundador de LiderazgoHostelero.com. Especialista en convertir el equipo en la mayor ventaja competitiva del restaurante. Más de 200 hosteleros han transformado sus negocios aplicando su metodología de liderazgo y gestión de equipos.</div>
+        </div>
+
+        <div class="consultant-card">
+          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe408f7285562721ce7f38.png" alt="María" loading="lazy">
+          <div class="consultant-name">María</div>
+          <div class="consultant-role">Dirección de operaciones</div>
+          <div class="consultant-bio">Directora de Operaciones de Grupo Gomez. Gestiona la operativa diaria de 9 locales y es la responsable de que yurest funcione en el día a día real del grupo. Sabe exactamente qué sirve y qué no en un negocio de hostelería real.</div>
+        </div>
+
+        <div class="consultant-card">
+          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe4118114de79afe0ce39a.jpeg" alt="Fran Cabello" loading="lazy">
+          <div class="consultant-name">Fran</div>
+          <div class="consultant-role">Rentabilidad · RestaurUP</div>
+          <div class="consultant-bio">Fundador de RestaurUP, programa de 13 semanas para mejorar el margen en restaurantes. Ha trabajado en operación, gestión y rentabilidad de restaurantes independientes, grupos y departamentos de F&amp;B hotelero. "La mayoría no pierden dinero por vender poco — lo pierden por no controlar lo que ya tienen."</div>
+        </div>
+
+        <div class="consultant-card">
+          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe40a86ca44fd334a201b5.png" alt="Keko" loading="lazy">
+          <div class="consultant-name">Keko</div>
+          <div class="consultant-role">Director Ejecutivo · Grupo Gomez</div>
+          <div class="consultant-bio">Director Ejecutivo de Grupo Gomez, empresa matriz de yurest con 9 locales de hostelería. Lidera la operativa y la estrategia de uno de los grupos de referencia del sector, y conoce desde dentro qué separa a los negocios que escalan de los que se quedan atascados.</div>
+        </div>
+
+      </div>
+
+      <div class="popup-cta-box">
+        <div>
+          <div class="popup-cta-lbl">Valor de este programa</div>
+          <div><span class="popup-cta-old">4.500 €</span><span class="popup-cta-val" style="color:#6ee7b7">Gratis con pago anual</span></div>
+        </div>
+        <button onclick="document.getElementById('master-popup').classList.remove('open')" style="background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">Entendido ✓</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- GUARANTEE POPUP -->
+<div class="popup-overlay" id="guarantee-popup" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="popup-box">
+    <div class="popup-hd guarantee-hd" style="text-align:center;padding-bottom:32px">
+      <button class="popup-close" onclick="document.getElementById('guarantee-popup').classList.remove('open')">✕</button>
+      <div class="shield-wrap">
+        <svg class="shield-svg" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ff7a7c"/>
+              <stop offset="100%" stop-color="#d63a3c"/>
+            </linearGradient>
+            <linearGradient id="shieldShine" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="rgba(255,255,255,.45)"/>
+              <stop offset="50%" stop-color="rgba(255,255,255,0)"/>
+            </linearGradient>
+          </defs>
+          <path class="shield-path" d="M60 4 L110 22 L110 70 Q110 110 60 134 Q10 110 10 70 L10 22 Z" fill="url(#shieldGrad)" stroke="#fff" stroke-width="2"/>
+          <path d="M60 4 L110 22 L110 70 Q110 110 60 134 Q10 110 10 70 L10 22 Z" fill="url(#shieldShine)"/>
+          <path class="shield-check" d="M38 70 L54 86 L84 52" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle class="shield-ring" cx="60" cy="70" r="58" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        </svg>
+        <div class="shield-stamp">POR CONTRATO</div>
+      </div>
+      <div class="popup-eyebrow" style="margin-top:18px">🛡 Compromiso yurest</div>
+      <div class="popup-title">Garantía de éxito<br>yurest</div>
+      <div class="popup-subtitle">No es una garantía de devolución. Es una garantía de que tu negocio cambia.</div>
+    </div>
+    <div class="popup-body">
+
+      <div style="background:var(--surface);border-left:3px solid var(--red);padding:18px 20px;border-radius:0 12px 12px 0;margin-bottom:24px;position:relative">
+        <div style="font-size:13px;color:var(--navy);line-height:1.6">
+          Si después de la implementación, asistir a todas las sesiones y completar todas las tareas asignadas, <strong>yurest no te ha aportado valor</strong> — no has dejado Excel ni tienes bajo control las áreas correspondientes a los módulos que contrataste — <strong>yurest te asigna un consultor experto y sigue trabajando contigo 3 meses más, sin coste adicional.</strong>
+        </div>
+      </div>
+
+      <div class="popup-section-title">Cómo funciona</div>
+      <div class="popup-modules" style="padding-left:0;margin-bottom:24px">
+        <div class="popup-mod">
+          <div class="mod-num">1</div>
+          <div>
+            <div class="mod-name">Tú haces tu parte</div>
+            <div class="mod-desc">Completas la implementación, asistes a las sesiones programadas y ejecutas las tareas que te asigna tu consultor. Sin atajos.</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">2</div>
+          <div>
+            <div class="mod-name">Medimos resultados reales</div>
+            <div class="mod-desc">¿Has dejado de usar Excel para gestionar tu negocio? ¿Tienes bajo control las áreas asociadas a los módulos contratados? Esos son los criterios. No subjetivos.</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">3</div>
+          <div>
+            <div class="mod-name">Si no hay resultado, seguimos contigo</div>
+            <div class="mod-desc">yurest asigna un consultor experto y trabaja contigo 3 meses adicionales hasta que el negocio funcione con la herramienta. Sin coste extra. Sin letra pequeña.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:18px;padding:10px;border:1px dashed var(--border);border-radius:8px">📜 Cláusula incluida por contrato en tu suscripción anual</div>
+
+      <div class="popup-cta-box">
+        <div>
+          <div class="popup-cta-lbl">Tu compromiso</div>
+          <div style="color:#fff;font-size:13px;font-weight:600">Hacer tu parte. Nosotros hacemos el resto.</div>
+        </div>
+        <button onclick="document.getElementById('guarantee-popup').classList.remove('open')" style="background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">Entendido ✓</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- CHECKLIST POPUP -->
+<div class="popup-overlay" id="checklist-popup" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="popup-box">
+    <div class="popup-hd">
+      <button class="popup-close" onclick="document.getElementById('checklist-popup').classList.remove('open')">✕</button>
+      <div class="popup-eyebrow">⭐ Bonus exclusivo · Pago anual</div>
+      <div class="popup-title">Pack Checklist Pro</div>
+      <div class="popup-subtitle">El módulo + la formación + las plantillas. Todo activo desde el día 1.</div>
+      <div class="live-badge"><span class="rec-dot"></span>FORMACIÓN EN DIRECTO · Te la llevas grabada</div>
+    </div>
+    <div class="popup-body">
+
+      <div class="popup-stats">
+        <div class="popup-stat"><div class="stat-num">3</div><div class="stat-lbl">meses módulo gratis</div></div>
+        <div class="popup-stat"><div class="stat-num">2</div><div class="stat-lbl">sesiones formación</div></div>
+        <div class="popup-stat"><div class="stat-num">+10</div><div class="stat-lbl">plantillas listas</div></div>
+        <div class="popup-stat"><div class="stat-num" style="color:var(--green)">1.300€</div><div class="stat-lbl">valor total · GRATIS</div></div>
+      </div>
+
+      <div class="popup-section-title">Qué incluye</div>
+      <div class="popup-modules" style="padding-left:0;margin-bottom:24px">
+        <div class="popup-mod">
+          <div class="mod-num">1</div>
+          <div>
+            <div class="mod-name">Módulo Checklist · 3 meses gratis</div>
+            <div class="mod-desc">Acceso completo al módulo Checklist activado en tu cuenta durante los primeros 3 meses sin coste. Después, lo mantienes activo o lo desactivas — tú decides.</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">2</div>
+          <div>
+            <div class="mod-name">2 sesiones de formación · <em style="color:var(--red);font-style:normal">Santiago Melgar</em></div>
+            <div class="mod-desc">Formación en directo con Santiago Melgar — fundador de SMQuatro y referente en operaciones hosteleras — sobre cómo diseñar e implementar checklists que el equipo realmente cumple. Te llevas las grabaciones.</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">3</div>
+          <div>
+            <div class="mod-name">Plantillas de los grandes de la hostelería en España</div>
+            <div class="mod-desc">Librería de checklists ya creados por grupos hosteleros referentes en España: apertura, cierre, limpieza, recepción de mercancía, control de cámaras, cambios de turno. Listas para copiar y adaptar a tu local.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="popup-cta-box">
+        <div>
+          <div class="popup-cta-lbl">Valor de este pack</div>
+          <div><span class="popup-cta-old">1.300 €</span><span class="popup-cta-val" style="color:#6ee7b7">Gratis con pago anual</span></div>
+        </div>
+        <button onclick="document.getElementById('checklist-popup').classList.remove('open')" style="background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">Entendido ✓</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

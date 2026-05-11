@@ -354,6 +354,7 @@
         { id: 'informe_tickets_ia', label: 'Mapa de calor — Agente IA',    grupo: 'Informes'        },
         { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'        },
         { id: 'escalados',     label: 'Escalados de clientes', grupo: 'Comercial'       },
+        { id: 'configurador',  label: 'Configurador de oferta', grupo: 'Comercial'       },
         { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación'   },
         { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación'   },
         { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'     },
