@@ -288,6 +288,13 @@
         // Reemplaza el Excel que usaba Producto.
         presupuestos:         `${WEBHOOK_BASE}/presupuestos`,
 
+        // Ofertas (departamento Comercial): ofertas generadas por el
+        // configurador. Listado GET con filtros; GET con ?id=<uuid>
+        // devuelve una sola. POST con `action` (create/update/archivar/
+        // reactivar/cambiar_estado/vincular_ficha). Workflow n8n en
+        // database/n8n-workflows/30-ofertas.json.
+        ofertas:              `${WEBHOOK_BASE}/ofertas`,
+
         // Contabilidad
         grabadoA3:            `${WEBHOOK_BASE}/yurest-grabado-a3`,
 
@@ -355,6 +362,7 @@
         { id: 'lista',         label: 'Fichas de cliente',    grupo: 'Comercial'        },
         { id: 'escalados',     label: 'Escalados de clientes', grupo: 'Comercial'       },
         { id: 'configurador',  label: 'Configurador de oferta', grupo: 'Comercial'       },
+        { id: 'ofertas',       label: 'Ofertas generadas',      grupo: 'Comercial'       },
         { id: 'sinasignar',    label: 'Sin asignar',          grupo: 'Implementación'   },
         { id: 'proyectos',     label: 'Proyectos',            grupo: 'Implementación'   },
         { id: 'contabilidad',  label: 'Grabar en A3',         grupo: 'Contabilidad'     },

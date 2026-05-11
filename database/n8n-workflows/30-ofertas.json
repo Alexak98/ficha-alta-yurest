@@ -1,0 +1,196 @@
+{
+  "name": "Yurest - Ofertas CRUD",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "ofertas",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-ofe-get",
+      "name": "Webhook GET Ofertas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "ofertas-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "ofertas",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "supa-ofe-get",
+      "name": "GET Ofertas Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [440, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve ofertas. Dos modos:\n//\n//   ?id=<uuid>                  → devuelve UNA oferta concreta (acceder a ella).\n//   sin id                      → listado con filtros opcionales:\n//     ?cliente=<texto>           contains, case-insensitive, sobre sociedad y nombre\n//     ?cif=<texto>               match exacto sobre cliente_cif (uppercase)\n//     ?comercial=<nombre>        match exacto\n//     ?estado=<estado>           borrador|enviada|aceptada|rechazada|caducada\n//     ?plan=<plan>               lite|basic|pro\n//     ?billing=<modo>            annual|monthly\n//     ?incluir_archivadas=1      incluye soft-deleted al final del orden\n//\n// Orden: vivos primero; dentro de vivos por created_at desc.\nconst wh = $('Webhook GET Ofertas').first().json || {};\nconst q = wh.query || wh.params || {};\nconst verArch = String(q.incluir_archivadas || '') === '1';\nconst raw = ($input.all() || [])\n  .map(i => i.json)\n  .filter(x => x && x.id && (verArch || !x.deleted_at));\n\n// Modo acceso directo: ?id=<uuid> devuelve una sola oferta.\nif (q.id) {\n  const one = raw.find(o => String(o.id) === String(q.id));\n  return [{ json: { oferta: one || null } }];\n}\n\nlet out = raw;\nif (q.cliente) {\n  const needle = String(q.cliente).toLowerCase();\n  out = out.filter(o =>\n    String(o.cliente_sociedad || '').toLowerCase().includes(needle) ||\n    String(o.cliente_nombre   || '').toLowerCase().includes(needle)\n  );\n}\nif (q.cif)        out = out.filter(o => String(o.cliente_cif || '').toUpperCase() === String(q.cif).toUpperCase());\nif (q.comercial)  out = out.filter(o => o.comercial === q.comercial);\nif (q.estado)     out = out.filter(o => o.estado    === q.estado);\nif (q.plan)       out = out.filter(o => o.plan      === q.plan);\nif (q.billing)    out = out.filter(o => o.billing   === q.billing);\n\n// Vivos primero, archivados al final. Dentro: por created_at desc.\nout.sort((a, b) => {\n  const ax = a.deleted_at ? 1 : 0;\n  const bx = b.deleted_at ? 1 : 0;\n  if (ax !== bx) return ax - bx;\n  const da = a.created_at ? new Date(a.created_at).getTime() : 0;\n  const db = b.created_at ? new Date(b.created_at).getTime() : 0;\n  return db - da;\n});\n\n// Agregados útiles para la UI (sólo vivos).\nconst totales = out.filter(o => !o.deleted_at).reduce((acc, o) => {\n  acc.n += 1;\n  acc.final_amount   += Number(o.final_amount)   || 0;\n  acc.annual_subtotal += Number(o.annual_subtotal) || 0;\n  return acc;\n}, { n: 0, final_amount: 0, annual_subtotal: 0 });\n\nreturn [{ json: { ofertas: out, totales } }];"
+      },
+      "id": "ofe-format-get",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "ofe-respond-get",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ofertas",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-ofe-post",
+      "name": "Webhook POST Ofertas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "webhookId": "ofertas-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Acciones soportadas:\n//   create          → alta de oferta (estado por defecto 'borrador').\n//   update          → edición libre de campos.\n//   archivar        → soft-delete (deleted_at=now).\n//   reactivar       → deshace archivar.\n//   cambiar_estado  → cambia 'estado' (borrador|enviada|aceptada|rechazada|caducada).\n//   vincular_ficha  → setea solicitud_ficha_id cuando la oferta se materializa.\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst o = b.oferta || {};\nconst now = new Date().toISOString();\nconst errores = [];\n\nconst VALID    = ['create', 'update', 'archivar', 'reactivar', 'cambiar_estado', 'vincular_ficha'];\nconst BILLING  = ['annual', 'monthly'];\nconst PLANES   = ['lite', 'basic', 'pro'];\nconst IMPLS    = ['grupal', 'personalizada'];\nconst ESTADOS  = ['borrador', 'enviada', 'aceptada', 'rechazada', 'caducada'];\nconst TIPOS    = ['lite', 'planes', 'corporate', 'corporate_cp', 'corp_cocina'];\n\nfunction esUuid(v){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||'')); }\nfunction num(v, nombre, min, max){\n  if (v === undefined || v === null || v === '') return undefined;\n  const n = +v;\n  if (!Number.isFinite(n)) { errores.push(nombre + ' debe ser número'); return undefined; }\n  if (n < min || n > max)  { errores.push(nombre + ' fuera de rango (' + min + '..' + max + ')'); return undefined; }\n  return n;\n}\n\nif (!VALID.includes(action)) errores.push('action inválida: ' + action);\nif (action !== 'create' && !o.id) errores.push('id obligatorio para ' + action);\nif (o.id && !esUuid(o.id)) errores.push('id no es un UUID válido');\n\nlet out = {};\n\nif (action === 'create') {\n  if (!o.billing || !BILLING.includes(o.billing)) errores.push('billing debe ser annual|monthly');\n  if (!o.plan    || !PLANES.includes(o.plan))    errores.push('plan debe ser lite|basic|pro');\n  if (o.impl && !IMPLS.includes(o.impl))         errores.push('impl debe ser grupal|personalizada');\n  if (o.estado   && !ESTADOS.includes(o.estado)) errores.push('estado inválido');\n  if (o.tipo_plan && !TIPOS.includes(o.tipo_plan)) errores.push('tipo_plan inválido');\n  if (o.cliente_email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(o.cliente_email)) errores.push('cliente_email no válido');\n  if (o.solicitud_ficha_id && !esUuid(o.solicitud_ficha_id)) errores.push('solicitud_ficha_id no es UUID');\n  const locales = num(o.locales, 'locales', 1, 999);\n  // UUID v4 generado aquí para que PostgREST tenga PK explícita\n  // (mismo truco que en 22-presupuestos.json).\n  const _uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){ const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); });\n  out = {\n    id: _uuid,\n    billing: o.billing,\n    plan: o.plan,\n    locales: locales !== undefined ? locales : 1,\n    addons: (o.addons && typeof o.addons === 'object') ? o.addons : {},\n    impl: o.impl || null,\n    cliente_sociedad: o.cliente_sociedad ? String(o.cliente_sociedad).trim() : null,\n    cliente_cif:      o.cliente_cif      ? String(o.cliente_cif).trim().toUpperCase() : null,\n    cliente_nombre:   o.cliente_nombre   ? String(o.cliente_nombre).trim() : null,\n    cliente_email:    o.cliente_email    ? String(o.cliente_email).trim() : null,\n    comercial:        o.comercial        ? String(o.comercial).trim() : null,\n    tipo_plan:        o.tipo_plan || null,\n    monthly_total:   num(o.monthly_total,   'monthly_total',   0, 99999999.99) || 0,\n    annual_subtotal: num(o.annual_subtotal, 'annual_subtotal', 0, 99999999.99) || 0,\n    onetime_total:   num(o.onetime_total,   'onetime_total',   0, 99999999.99) || 0,\n    bonus_val:       num(o.bonus_val,       'bonus_val',       0, 99999999.99) || 0,\n    full_val:        num(o.full_val,        'full_val',        0, 99999999.99) || 0,\n    final_amount:    num(o.final_amount,    'final_amount',    0, 99999999.99) || 0,\n    estado:          o.estado || 'borrador',\n    solicitud_ficha_id: o.solicitud_ficha_id || null,\n    notas:      o.notas      != null ? String(o.notas) : null,\n    created_by: o.created_by != null ? String(o.created_by) : null,\n    created_at: now,\n    updated_at: now\n  };\n} else if (action === 'update') {\n  out.id = o.id;\n  if (o.billing !== undefined) {\n    if (!BILLING.includes(o.billing)) errores.push('billing inválido');\n    else out.billing = o.billing;\n  }\n  if (o.plan !== undefined) {\n    if (!PLANES.includes(o.plan)) errores.push('plan inválido');\n    else out.plan = o.plan;\n  }\n  if (o.impl !== undefined) {\n    if (o.impl !== null && !IMPLS.includes(o.impl)) errores.push('impl inválido');\n    else out.impl = o.impl;\n  }\n  if (o.tipo_plan !== undefined) {\n    if (o.tipo_plan !== null && !TIPOS.includes(o.tipo_plan)) errores.push('tipo_plan inválido');\n    else out.tipo_plan = o.tipo_plan;\n  }\n  if (o.locales !== undefined) { const n = num(o.locales, 'locales', 1, 999); if (n !== undefined) out.locales = n; }\n  if (o.addons  !== undefined) out.addons = (o.addons && typeof o.addons === 'object') ? o.addons : {};\n  ['cliente_sociedad','cliente_cif','cliente_nombre','cliente_email','comercial','notas','created_by'].forEach(k => {\n    if (o[k] !== undefined) out[k] = o[k] == null ? null : (k === 'cliente_cif' ? String(o[k]).trim().toUpperCase() : String(o[k]).trim());\n  });\n  if (out.cliente_email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(out.cliente_email)) errores.push('cliente_email no válido');\n  ['monthly_total','annual_subtotal','onetime_total','bonus_val','full_val','final_amount'].forEach(k => {\n    if (o[k] !== undefined) { const n = num(o[k], k, 0, 99999999.99); if (n !== undefined) out[k] = n; }\n  });\n  if (o.estado !== undefined) {\n    if (!ESTADOS.includes(o.estado)) errores.push('estado inválido');\n    else out.estado = o.estado;\n  }\n  if (o.solicitud_ficha_id !== undefined) {\n    if (o.solicitud_ficha_id !== null && !esUuid(o.solicitud_ficha_id)) errores.push('solicitud_ficha_id no es UUID');\n    else out.solicitud_ficha_id = o.solicitud_ficha_id;\n  }\n  out.updated_at = now;\n} else if (action === 'archivar') {\n  out = { id: o.id, deleted_at: now, updated_at: now };\n} else if (action === 'reactivar') {\n  out = { id: o.id, deleted_at: null, updated_at: now };\n} else if (action === 'cambiar_estado') {\n  if (!ESTADOS.includes(o.estado)) errores.push('estado inválido');\n  out = { id: o.id, estado: o.estado, updated_at: now };\n} else if (action === 'vincular_ficha') {\n  if (!esUuid(o.solicitud_ficha_id)) errores.push('solicitud_ficha_id obligatorio y UUID');\n  out = { id: o.id, solicitud_ficha_id: o.solicitud_ficha_id, updated_at: now };\n}\n\nObject.keys(out).forEach(k => { if (out[k] === undefined) delete out[k]; });\n\nif (errores.length > 0) {\n  return [{ json: { __error: true, __errores: errores, __action: action } }];\n}\nconst _method = (action === 'create') ? 'POST' : 'PATCH';\nconst _qs     = (action === 'create') ? 'on_conflict=id' : ('id=eq.' + encodeURIComponent(o.id || ''));\nreturn [{ json: Object.assign({}, out, { __method: _method, __qs: _qs }) }];"
+      },
+      "id": "prep-upsert-ofertas",
+      "name": "Preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 460]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.__method || 'POST' }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/ofertas?{{ $json.__qs || 'on_conflict=id' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.fromEntries(Object.entries($json).filter(e => !e[0].startsWith('__')))) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-upsert-ofertas",
+      "name": "Supabase UPSERT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [640, 460],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la salida PostgREST al shape único del frontend:\n//   { success, oferta, errores }\nconst prep = $('Preparar').first().json || {};\nif (prep.__error) {\n  return [{ json: { success: false, oferta: null, errores: prep.__errores || ['validación falló'] } }];\n}\nconst items = $input.all() || [];\nconst errores = [];\nlet rows = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) { rows = rows.concat(j); continue; }\n  if (j.code && j.message && !j.id) { errores.push(j.message + (j.details ? ' (' + j.details + ')' : '')); continue; }\n  if (j.error) { errores.push(String(j.error.message || j.error)); continue; }\n  if (j.id) rows.push(j);\n  if (Array.isArray(j.data)) rows = rows.concat(j.data);\n}\nif (rows.length === 0 && errores.length === 0) errores.push('PostgREST devolvió 0 filas');\nreturn [{ json: { success: rows.length > 0, oferta: rows[0] || null, errores } }];"
+      },
+      "id": "fmt-upsert-ofertas",
+      "name": "Formatear respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "ofe-respond-post",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1040, 460]
+    }
+  ],
+  "connections": {
+    "Webhook GET Ofertas":   { "main": [[{ "node": "GET Ofertas Supabase", "type": "main", "index": 0 }]] },
+    "GET Ofertas Supabase":  { "main": [[{ "node": "Formatear GET",        "type": "main", "index": 0 }]] },
+    "Formatear GET":         { "main": [[{ "node": "Respond GET",          "type": "main", "index": 0 }]] },
+    "Webhook POST Ofertas":  { "main": [[{ "node": "Preparar",             "type": "main", "index": 0 }]] },
+    "Preparar":              { "main": [[{ "node": "Supabase UPSERT",      "type": "main", "index": 0 }]] },
+    "Supabase UPSERT":       { "main": [[{ "node": "Formatear respuesta",  "type": "main", "index": 0 }]] },
+    "Formatear respuesta":   { "main": [[{ "node": "Respond POST",         "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

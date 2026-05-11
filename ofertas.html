@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <title>Ofertas generadas — Yurest</title>
+    <script src="config.js"></script>
+    <script>YurestConfig.requireAuth('ofertas');</script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f8fafc; }
+        .page-content { padding: 24px; max-width: 1500px; margin: 0 auto; }
+        .page-toolbar { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:14px;flex-wrap:wrap }
+        .page-toolbar h2 { font-size:1.35rem;font-weight:700;color:#0f172a;margin:0 }
+        .page-toolbar p  { font-size:.85rem;color:#64748b;margin:3px 0 0 0 }
+
+        /* Filtros — mismo patrón compartido que presupuestos/escalados */
+        .filter-bar { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;margin-bottom:4px; }
+        .search-wrap { position:relative;flex:1;max-width:340px }
+        .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none }
+        .search-input { width:100%;padding:8px 36px;font-family:inherit;font-size:.85rem;color:#1e293b;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;transition:border-color .15s, box-shadow .15s }
+        .search-input:focus { outline:none;border-color:#fc5858;box-shadow:0 0 0 3px rgba(252,88,88,.12) }
+        .filter-sep { width:1px;height:20px;background:#e2e8f0 }
+        .filter-label { font-size:.8rem;font-weight:600;color:#64748b }
+        .filter-select { padding:8px 14px;font-family:inherit;font-size:.85rem;color:#1e293b;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer }
+        .filter-select.active { border-color:#fc5858;color:#fc5858 }
+        .chip-filter { display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-size:.8rem;font-weight:600;color:#64748b;background:#fff;border:1.5px solid #e2e8f0;border-radius:20px;cursor:pointer;transition:all .15s }
+        .chip-filter:hover { border-color:#cbd5e1 }
+        .chip-filter.active { background:#fc5858;border-color:#fc5858;color:#fff }
+
+        /* KPI strip */
+        .kpi-strip { display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:14px 0 18px }
+        .kpi { background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 18px }
+        .kpi-label { font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px }
+        .kpi-value { font-size:1.4rem;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums }
+        .kpi-value.green { color:#16a34a }
+        .kpi-value.indigo { color:#4f46e5 }
+
+        /* Tabla */
+        .wrap { background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;overflow:hidden }
+        table.ofertas { width:100%;border-collapse:collapse;font-size:.85rem }
+        table.ofertas th { background:#f8fafc;text-align:left;padding:11px 14px;font-weight:700;color:#475569;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #e2e8f0;white-space:nowrap }
+        table.ofertas th.num { text-align:right }
+        table.ofertas td { padding:13px 14px;border-bottom:1px solid #f1f5f9;color:#1e293b;vertical-align:middle }
+        table.ofertas td.num { text-align:right;font-variant-numeric:tabular-nums;font-weight:600 }
+        table.ofertas tbody tr:hover { background:#fafbfc }
+        table.ofertas tbody tr:last-child td { border-bottom:none }
+        .td-cliente { font-weight:600;color:#0f172a }
+        .td-sub { font-size:.78rem;color:#64748b;margin-top:2px }
+        .td-cif { font-family:var(--font-mono);font-size:.78rem;color:#64748b }
+        .td-fecha { color:#64748b;white-space:nowrap }
+
+        /* Badges de estado */
+        .badge-estado { display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em }
+        .estado-borrador  { background:#f1f5f9;color:#475569 }
+        .estado-enviada   { background:#dbeafe;color:#2563eb }
+        .estado-aceptada  { background:#dcfce7;color:#15803d }
+        .estado-rechazada { background:#fee2e2;color:#b91c1c }
+        .estado-caducada  { background:#fef3c7;color:#92400e }
+
+        /* Badges de plan */
+        .badge-plan { display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em }
+        .plan-lite   { background:#f1f5f9;color:#475569 }
+        .plan-basic  { background:#fef3c7;color:#92400e }
+        .plan-pro    { background:#ede9fe;color:#6d28d9 }
+        .billing-pill { display:inline-block;font-size:.7rem;color:#94a3b8;font-weight:600;margin-left:6px;text-transform:lowercase }
+
+        .row-archivada { opacity:.55 }
+
+        /* Empty state */
+        .empty { text-align:center;padding:56px 20px;background:#fff;border:1.5px dashed #e2e8f0;border-radius:14px;color:#94a3b8 }
+        .empty-icon { font-size:2.6rem;margin-bottom:10px;line-height:1 }
+        .empty p { margin:0 }
+
+        /* Action button */
+        .btn-action { padding:5px 12px;font-size:.78rem;font-weight:600;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;color:#475569;cursor:pointer;transition:all .15s;font-family:inherit }
+        .btn-action:hover { border-color:#fc5858;color:#fc5858 }
+
+        /* Modal detalle */
+        .modal-overlay { position:fixed;inset:0;background:rgba(15,20,40,.55);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px }
+        .modal-overlay.open { display:flex }
+        .modal { background:#fff;border-radius:14px;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.25) }
+        .modal-header { display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #e2e8f0 }
+        .modal-header h3 { margin:0;font-size:1.05rem;font-weight:800;color:#0f172a }
+        .modal-close { background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;line-height:1 }
+        .modal-body { padding:22px }
+        .detalle-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px 24px }
+        .detalle-field { display:flex;flex-direction:column;gap:2px }
+        .detalle-field label { font-size:.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em }
+        .detalle-field span { font-size:.9rem;font-weight:600;color:#0f172a }
+        .detalle-section { margin-top:18px;border-top:1px solid #f1f5f9;padding-top:14px }
+        .detalle-section-title { font-size:.78rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px }
+        .detalle-addons { display:flex;flex-wrap:wrap;gap:6px }
+        .addon-chip { padding:3px 10px;background:#f1f5f9;color:#475569;border-radius:6px;font-size:.75rem;font-weight:600 }
+
+        @media (max-width:720px) {
+            .detalle-grid { grid-template-columns:1fr }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <nav class="sidebar" id="sidebar"></nav>
+    <script src="sidebar.js"></script>
+    <script>YurestSidebar.render('ofertas');</script>
+
+    <div class="page-header">
+        <button class="btn-menu" onclick="openSidebar()" title="Menú">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <h1>Ofertas generadas</h1>
+    </div>
+
+    <div class="page-content">
+        <div class="page-toolbar">
+            <div>
+                <h2>Ofertas del configurador</h2>
+                <p>Histórico de ofertas montadas en el configurador comercial. Filtra por comercial, estado o plan; abre cualquiera para ver el snapshot completo.</p>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <div class="search-wrap">
+                <svg aria-hidden="true" class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="f-q" class="search-input" type="search" placeholder="Buscar cliente, CIF o email…" oninput="render()">
+            </div>
+            <div class="filter-sep"></div>
+            <span class="filter-label">Estado</span>
+            <div id="chips-estado" style="display:flex;gap:6px"></div>
+            <div class="filter-sep"></div>
+            <span class="filter-label">Plan</span>
+            <div id="chips-plan" style="display:flex;gap:6px"></div>
+            <div class="filter-sep"></div>
+            <div class="filter-group">
+                <span class="filter-label">Comercial</span>
+                <select class="filter-select" id="f-comercial" onchange="setFiltroComercial(this)">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="filter-sep"></div>
+            <button type="button" class="chip-filter" id="chip-archivadas" onclick="toggleArchivadas()">
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                Mostrar archivadas
+            </button>
+        </div>
+
+        <div class="kpi-strip">
+            <div class="kpi"><div class="kpi-label">Total ofertas</div><div class="kpi-value" id="k-count">—</div></div>
+            <div class="kpi"><div class="kpi-label">Valor total ofertado</div><div class="kpi-value indigo" id="k-final">—</div></div>
+            <div class="kpi"><div class="kpi-label">Subscripción anual acumulada</div><div class="kpi-value green" id="k-annual">—</div></div>
+        </div>
+
+        <div id="loading" style="text-align:center;padding:40px;color:#94a3b8">Cargando ofertas…</div>
+        <div id="wrap" class="wrap" style="display:none">
+            <table class="ofertas">
+                <thead>
+                    <tr>
+                        <th>Creada</th>
+                        <th>Cliente</th>
+                        <th>Comercial</th>
+                        <th>Plan</th>
+                        <th class="num">Locales</th>
+                        <th class="num">A pagar hoy</th>
+                        <th>Estado</th>
+                        <th style="text-align:right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+        <div id="empty-state" class="empty" style="display:none">
+            <div class="empty-icon">📋</div>
+            <p style="font-weight:700;color:#475569;margin:0 0 6px">Sin ofertas registradas</p>
+            <p>Las ofertas que se monten en el <a href="configurador.html" style="color:#fc5858;font-weight:600;text-decoration:none">configurador</a> aparecerán aquí.</p>
+        </div>
+    </div>
+
+    <!-- Modal detalle de oferta -->
+    <div class="modal-overlay" id="modal-oferta" onclick="if(event.target===this)cerrarModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Detalle de oferta</h3>
+                <button class="modal-close" onclick="cerrarModal()" aria-label="Cerrar">×</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+    const EP   = YurestConfig.ENDPOINTS.ofertas;
+    const esc  = YurestConfig.escHtml;
+    const fmt€ = n => (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €';
+    const fmtFecha = iso => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); };
+
+    let DATA = [];                  // raw del backend
+    let filtroEstado = '';
+    let filtroPlan = '';
+    let filtroComercial = '';
+    let verArchivadas = false;
+
+    const ESTADOS = [
+        { id: '',          label: 'Todos' },
+        { id: 'borrador',  label: 'Borrador' },
+        { id: 'enviada',   label: 'Enviada' },
+        { id: 'aceptada',  label: 'Aceptada' },
+        { id: 'rechazada', label: 'Rechazada' },
+        { id: 'caducada',  label: 'Caducada' }
+    ];
+    const PLANES = [
+        { id: '',      label: 'Todos' },
+        { id: 'lite',  label: 'Lite' },
+        { id: 'basic', label: 'Basic' },
+        { id: 'pro',   label: 'Pro' }
+    ];
+
+    function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
+
+    // ── Carga ────────────────────────────────────────────────────────────
+    async function cargar() {
+        document.getElementById('loading').style.display = '';
+        document.getElementById('loading').innerHTML = 'Cargando ofertas…';
+        document.getElementById('wrap').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'none';
+        try {
+            const qs = verArchivadas ? '?incluir_archivadas=1' : '';
+            const res = await YurestConfig.apiFetch(EP + qs, { method: 'GET' });
+            DATA = Array.isArray(res?.ofertas) ? res.ofertas : [];
+            poblarFiltroComercial();
+            poblarChips();
+            render();
+        } catch (err) {
+            document.getElementById('loading').innerHTML =
+                '<span style="color:#dc2626">Error al cargar: ' + esc(err.message || String(err)) + '</span>';
+        }
+    }
+
+    function poblarFiltroComercial() {
+        const sel = document.getElementById('f-comercial');
+        const usados = Array.from(new Set(DATA.map(o => o.comercial).filter(Boolean))).sort();
+        sel.innerHTML = '<option value="">Todos</option>'
+            + usados.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        sel.value = filtroComercial;
+    }
+
+    function poblarChips() {
+        document.getElementById('chips-estado').innerHTML = ESTADOS.map(e =>
+            `<button class="chip-filter${filtroEstado===e.id?' active':''}" onclick="setFiltroEstado('${e.id}')">${e.label}</button>`
+        ).join('');
+        document.getElementById('chips-plan').innerHTML = PLANES.map(p =>
+            `<button class="chip-filter${filtroPlan===p.id?' active':''}" onclick="setFiltroPlan('${p.id}')">${p.label}</button>`
+        ).join('');
+        document.getElementById('chip-archivadas').classList.toggle('active', verArchivadas);
+    }
+
+    function setFiltroEstado(v)    { filtroEstado = v; poblarChips(); render(); }
+    function setFiltroPlan(v)      { filtroPlan = v;   poblarChips(); render(); }
+    function setFiltroComercial(s) { filtroComercial = s.value; s.classList.toggle('active', !!s.value); render(); }
+    function toggleArchivadas()    { verArchivadas = !verArchivadas; cargar(); }
+
+    function aplicarFiltros(rows) {
+        const q = (document.getElementById('f-q').value || '').toLowerCase().trim();
+        return rows.filter(o => {
+            if (filtroEstado && o.estado !== filtroEstado) return false;
+            if (filtroPlan && o.plan !== filtroPlan) return false;
+            if (filtroComercial && o.comercial !== filtroComercial) return false;
+            if (q) {
+                const hay = [o.cliente_sociedad, o.cliente_nombre, o.cliente_cif, o.cliente_email]
+                    .map(x => String(x || '').toLowerCase())
+                    .some(x => x.includes(q));
+                if (!hay) return false;
+            }
+            return true;
+        });
+    }
+
+    // ── Render ───────────────────────────────────────────────────────────
+    function render() {
+        const filtradas = aplicarFiltros(DATA);
+        const vivas = filtradas.filter(o => !o.deleted_at);
+
+        // KPIs sólo sobre vivas (los borrados no cuentan).
+        const totalFinal  = vivas.reduce((s, o) => s + (Number(o.final_amount)    || 0), 0);
+        const totalAnnual = vivas.reduce((s, o) => s + (Number(o.annual_subtotal) || 0), 0);
+        document.getElementById('k-count').textContent  = vivas.length;
+        document.getElementById('k-final').textContent  = fmt€(totalFinal);
+        document.getElementById('k-annual').textContent = fmt€(totalAnnual);
+
+        document.getElementById('loading').style.display = 'none';
+        if (filtradas.length === 0) {
+            document.getElementById('wrap').style.display = 'none';
+            document.getElementById('empty-state').style.display = '';
+            return;
+        }
+        document.getElementById('wrap').style.display = '';
+        document.getElementById('empty-state').style.display = 'none';
+
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = filtradas.map(o => {
+            const cliente = o.cliente_sociedad || o.cliente_nombre || '<span style="color:#94a3b8;font-style:italic">Sin cliente</span>';
+            const subCliente = [o.cliente_cif, o.cliente_email].filter(Boolean).map(esc).join(' · ');
+            const archivada = o.deleted_at ? ' row-archivada' : '';
+            return `<tr class="${archivada}">
+                <td class="td-fecha">${esc(fmtFecha(o.created_at))}</td>
+                <td>
+                    <div class="td-cliente">${typeof cliente === 'string' && cliente.startsWith('<span') ? cliente : esc(cliente)}</div>
+                    ${subCliente ? `<div class="td-sub">${subCliente}</div>` : ''}
+                </td>
+                <td>${esc(o.comercial || '—')}</td>
+                <td>
+                    <span class="badge-plan plan-${esc(o.plan)}">${esc(o.plan)}</span>
+                    <span class="billing-pill">${o.billing === 'annual' ? 'anual' : 'mensual'}</span>
+                </td>
+                <td class="num">${o.locales || 1}</td>
+                <td class="num">${fmt€(o.final_amount)}</td>
+                <td><span class="badge-estado estado-${esc(o.estado)}">${esc(o.estado)}</span></td>
+                <td style="text-align:right">
+                    <button class="btn-action" onclick="verDetalle('${esc(o.id)}')">Ver detalle</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ── Modal detalle ────────────────────────────────────────────────────
+    function verDetalle(id) {
+        const o = DATA.find(x => String(x.id) === String(id));
+        if (!o) return;
+        const addonsActivos = Object.entries(o.addons || {}).filter(([_, v]) => v === true).map(([k]) => k);
+        const body = `
+            <div class="detalle-grid">
+                <div class="detalle-field"><label>Plan</label><span>${esc(o.plan)} <span class="billing-pill">${o.billing === 'annual' ? 'anual' : 'mensual'}</span></span></div>
+                <div class="detalle-field"><label>Locales</label><span>${o.locales || 1}</span></div>
+                <div class="detalle-field"><label>Implementación</label><span>${esc(o.impl || '—')}</span></div>
+                <div class="detalle-field"><label>Estado</label><span><span class="badge-estado estado-${esc(o.estado)}">${esc(o.estado)}</span></span></div>
+            </div>
+            <div class="detalle-section">
+                <div class="detalle-section-title">Cliente</div>
+                <div class="detalle-grid">
+                    <div class="detalle-field"><label>Sociedad</label><span>${esc(o.cliente_sociedad || '—')}</span></div>
+                    <div class="detalle-field"><label>CIF</label><span>${esc(o.cliente_cif || '—')}</span></div>
+                    <div class="detalle-field"><label>Contacto</label><span>${esc(o.cliente_nombre || '—')}</span></div>
+                    <div class="detalle-field"><label>Email</label><span>${esc(o.cliente_email || '—')}</span></div>
+                    <div class="detalle-field"><label>Comercial</label><span>${esc(o.comercial || '—')}</span></div>
+                    <div class="detalle-field"><label>Tipo plan</label><span>${esc(o.tipo_plan || '—')}</span></div>
+                </div>
+            </div>
+            <div class="detalle-section">
+                <div class="detalle-section-title">Snapshot de precios</div>
+                <div class="detalle-grid">
+                    <div class="detalle-field"><label>Mensual</label><span>${fmt€(o.monthly_total)}</span></div>
+                    <div class="detalle-field"><label>Suscripción anual</label><span>${fmt€(o.annual_subtotal)}</span></div>
+                    <div class="detalle-field"><label>Servicios únicos</label><span>${fmt€(o.onetime_total)}</span></div>
+                    <div class="detalle-field"><label>Bonus</label><span>${fmt€(o.bonus_val)}</span></div>
+                    <div class="detalle-field"><label>Valor total (tachado)</label><span>${fmt€(o.full_val)}</span></div>
+                    <div class="detalle-field"><label>A pagar hoy</label><span>${fmt€(o.final_amount)}</span></div>
+                </div>
+            </div>
+            ${addonsActivos.length ? `<div class="detalle-section">
+                <div class="detalle-section-title">Addons activos</div>
+                <div class="detalle-addons">${addonsActivos.map(a => `<span class="addon-chip">${esc(a)}</span>`).join('')}</div>
+            </div>` : ''}
+            ${o.notas ? `<div class="detalle-section">
+                <div class="detalle-section-title">Notas</div>
+                <div style="font-size:.88rem;color:#475569;white-space:pre-wrap">${esc(o.notas)}</div>
+            </div>` : ''}
+            ${o.solicitud_ficha_id ? `<div class="detalle-section">
+                <div class="detalle-section-title">Vinculada a ficha</div>
+                <div style="font-family:var(--font-mono);font-size:.82rem;color:#475569">${esc(o.solicitud_ficha_id)}</div>
+            </div>` : ''}
+        `;
+        document.getElementById('modal-title').textContent = `Oferta · ${o.cliente_sociedad || o.cliente_nombre || 'Sin cliente'}`;
+        document.getElementById('modal-body').innerHTML = body;
+        document.getElementById('modal-oferta').classList.add('open');
+    }
+    function cerrarModal() { document.getElementById('modal-oferta').classList.remove('open'); }
+
+    cargar();
+    </script>
+</body>
+</html>
