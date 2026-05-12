@@ -768,7 +768,18 @@
         // Pedir datos al backend (token tiene preferencia).
         cargarDatosSolicitud({ token: tokenOk ? accessToken : '', id: idOk ? solicitudIdRaw : '' });
 
-        inicializarSEPA();
+        // Diagnóstico: la sección SEPA (#06) no se renderizaba en algunos
+        // entornos. Envolvemos init en try/catch y dejamos log explícito
+        // para detectar el motivo en consola del cliente afectado.
+        try {
+            inicializarSEPA();
+            var _sepaCont = document.getElementById('sepa-forms-container');
+            if (!_sepaCont || !_sepaCont.children.length) {
+                console.warn('[solicitud] SEPA forms container vacío tras inicializarSEPA. Revisa <template id="sepa-form-template">.');
+            }
+        } catch (e) {
+            console.error('[solicitud] error en inicializarSEPA:', e);
+        }
     }
 
     // ── Cargar datos previos de la solicitud desde el backend ────────────────
@@ -831,6 +842,11 @@
             fill('denominacion', 'Nombre Sociedad', 'nombre_sociedad');
             fill('email',        'Email', 'email');
             fill('jp_nombre',    'Nombre', 'JP Nombre', 'jp_nombre');
+            // CIF / NIF — antes no se arrastraba: el comercial lo introduce
+            // al crear la solicitud (campo 'CIF/NIF') y el cliente lo veía
+            // vacío. Cubrimos las dos variantes que envía el webhook
+            // (configurador y lista.html ambos mandan 'CIF/NIF' + 'cif').
+            fill('cif',          'CIF/NIF', 'cif', 'CIF');
         } catch (err) {
             console.warn('[solicitud] no se pudieron precargar los datos:', err);
             _mostrarEnlaceInvalido('No pudimos verificar el enlace. Comprueba tu conexión.');
