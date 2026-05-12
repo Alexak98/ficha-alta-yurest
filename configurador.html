@@ -920,8 +920,11 @@ body{font-feature-settings:"ss01"}
 <style>
   /* Botón hamburguesa flotante — solo en el configurador. Posicionado
      sobre el `.hdr-band` sin entrar en el flujo del documento, para que
-     el layout original (logo centrado en band, etc.) quede intacto. */
-  .cfg-menu-btn{position:fixed;top:14px;left:14px;z-index:60;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+     el layout original (logo centrado en band, etc.) quede intacto.
+     z-index 110 para quedar POR ENCIMA de la .ofr-topbar (z-index 100)
+     que aparece en las vistas #v-offer y #v-budget — si no, la hamburguesa
+     quedaba cubierta y no había forma de volver al sidebar tras avanzar. */
+  .cfg-menu-btn{position:fixed;top:14px;left:14px;z-index:110;box-shadow:0 2px 8px rgba(15,23,42,.06)}
   /* Anti-conflicto: style.css define `.empty` con padding grande y borde.
      El configurador NO usa esa clase, pero si en el futuro algún elemento
      interno hereda, se aísla con namespace `.cfg .empty`. Por ahora nada
@@ -1701,7 +1704,18 @@ function showOffer(){
   window.scrollTo(0,0);
 }
 function showConfig(){document.getElementById('v-offer').classList.remove('active');document.getElementById('v-budget').classList.remove('active');document.getElementById('v-config').classList.add('active');window.scrollTo(0,0);}
-function showBudget(){if(!plan){alert('Elige un plan primero');return;}renderBudget();document.getElementById('v-offer').classList.remove('active');document.getElementById('v-budget').classList.add('active');window.scrollTo(0,0);}
+function showBudget(){
+  if(!plan){ alert('Elige un plan primero'); return; }
+  renderBudget();
+  document.getElementById('v-offer').classList.remove('active');
+  document.getElementById('v-budget').classList.add('active');
+  window.scrollTo(0,0);
+  // Persistencia: al entrar a la vista de presupuesto guardamos la oferta
+  // como borrador en Supabase (vía n8n). Fire-and-forget: si falla, el
+  // flujo del comercial continúa sin bloqueo (la oferta simplemente no
+  // aparecerá en ofertas.html, pero el PDF y la ficha funcionan igual).
+  _cfgPersistDraft();
+}
 
 function setOfferBilling(m){
   billing=m;
@@ -1962,6 +1976,27 @@ function renderOffer(){
     ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">A pagar hoy</div><div class="ck-freq">Primer mes'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+monthlyOldStrike+'<div class="ck-total-val">'+fmt(monthlyFinal)+' €</div>'+perLocalMonthly+'</div></div>';
   }
   document.getElementById('checkout-wrap').innerHTML=ckHTML;
+
+  // ── Snapshot expuesto para persistencia (tabla `ofertas`) ─────────────
+  // Lo leen `_cfgSaveOferta()` al entrar a v-budget y `enviarAFicha()` al
+  // pulsar "Empezar Ficha". renderOffer ya corrió la math, así que basta
+  // con re-empaquetar los valores en el shape que espera el workflow n8n.
+  var _finalAmount = isA ? (monthlyTot*12 + onetimeTotal) : (monthlyTot + onetimeTotal);
+  var _addonsFlat = {};
+  Object.keys(ADM).forEach(function(k){ _addonsFlat[k] = !!addons[k]; });
+  window._cfgLastSnapshot = {
+    billing: billing,
+    plan: plan,
+    locales: locales,
+    addons: _addonsFlat,
+    impl: impl || null,
+    monthly_total:   monthlyTot,
+    annual_subtotal: isA ? monthlyTot*12 : 0,
+    onetime_total:   onetimeTotal,
+    bonus_val:       bonusVal,
+    full_val:        fullVal,
+    final_amount:    _finalAmount
+  };
 }
 
 function brunsonRow(type, name, sub, oldVal, newVal, cls, dimmed, onclick){
@@ -2531,6 +2566,54 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
 </div>
 
 <script>
+/* ═══ Persistencia de la oferta en Supabase (tabla `ofertas`) ═══
+   El configurador habla con el endpoint n8n `/webhook/ofertas` (POST con
+   action create | update). Mantenemos un id local de sesión para que
+   sucesivas entradas a v-budget actualicen la MISMA oferta en lugar de
+   crear duplicados. La promesa del create en vuelo se guarda para que
+   enviarAFicha() pueda await-earla antes de hacer el update con datos
+   del cliente — sin esto, el update podría salir antes de que el create
+   devuelva el id y se perdería el dato. */
+var _cfgOfertaId = null;
+var _cfgOfertaSavePromise = null;
+
+async function _cfgSaveOferta(action, extras){
+  try {
+    var snap = window._cfgLastSnapshot;
+    if (!snap) return null;
+    var oferta = Object.assign({}, snap, extras || {});
+    if (action !== 'create' && _cfgOfertaId) oferta.id = _cfgOfertaId;
+    if (action !== 'create' && !_cfgOfertaId) {
+      // No tenemos id (el create falló o aún no se hizo) → caer en create.
+      action = 'create';
+    }
+    var res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.ofertas, {
+      method: 'POST',
+      body: JSON.stringify({ action: action, oferta: oferta })
+    });
+    if (res && res.success && res.oferta && res.oferta.id) {
+      _cfgOfertaId = res.oferta.id;
+      return res.oferta.id;
+    }
+    if (res && res.errores && res.errores.length) {
+      console.warn('[ofertas] save errors:', res.errores);
+    }
+    return null;
+  } catch (e) {
+    console.warn('[ofertas] save error:', e);
+    return null;
+  }
+}
+
+function _cfgPersistDraft(){
+  // Al entrar a v-budget: si no hay id → create con estado 'borrador',
+  // si ya existe → update con la math actualizada por si el comercial
+  // cambió algo y volvió a entrar.
+  var action = _cfgOfertaId ? 'update' : 'create';
+  var extras = _cfgOfertaId ? {} : { estado: 'borrador' };
+  _cfgOfertaSavePromise = _cfgSaveOferta(action, extras);
+}
+
 /* ═══ Flow: Configurador → Solicitud de Ficha ═══
    Mapea el plan del configurador (lite/basic/pro) al `tipo` de plan
    que usa lista.html (lite/planes/corporate/...). Es una sugerencia
@@ -2569,7 +2652,7 @@ function _fkShowError(msg){
   el.style.display = 'block';
 }
 
-function enviarAFicha(){
+async function enviarAFicha(){
   fkClearErrors();
   var v = {
     sociedad:  document.getElementById('fk-sociedad').value.trim(),
@@ -2594,9 +2677,44 @@ function enviarAFicha(){
     _fkShowError('Completa todos los campos antes de continuar.');
     return;
   }
+
+  // Persistir la oferta con los datos del cliente + estado='enviada'.
+  // Si hay un create en vuelo (_cfgPersistDraft), esperamos a que termine
+  // para tener el id y poder hacer update; si falla, _cfgSaveOferta cae
+  // de update a create automáticamente. Capamos a 4s por si n8n tarda
+  // demasiado — no queremos bloquear el flujo del comercial indefinidamente.
+  _fkShowError(''); // limpia mensaje previo si lo hubiera
+  document.getElementById('fk-msg').style.display = 'none';
+  var btn = document.querySelector('#ficha-popup .fk-btn-primary');
+  var btnLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  try {
+    var withTimeout = function(p, ms){
+      return Promise.race([p, new Promise(function(res){ setTimeout(function(){ res(null); }, ms); })]);
+    };
+    if (_cfgOfertaSavePromise) {
+      try { await withTimeout(_cfgOfertaSavePromise, 4000); } catch(_){}
+    }
+    await withTimeout(_cfgSaveOferta('update', {
+      cliente_sociedad: v.sociedad,
+      cliente_cif:      v.cif,
+      cliente_nombre:   v.nombre,
+      cliente_email:    v.email,
+      comercial:        v.comercial,
+      tipo_plan:        v.tipo,
+      estado:           'enviada'
+    }), 4000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = btnLabel || 'Continuar a Ficha →'; }
+  }
+
   // Pasa los valores por query string a lista.html. Allí, un init lee
-  // `?from=cfg&...` y prefillea el panel `#solicitud-panel`.
-  var qs = new URLSearchParams({ from:'cfg', sociedad:v.sociedad, cif:v.cif, nombre:v.nombre, email:v.email, comercial:v.comercial, tipo:v.tipo });
+  // `?from=cfg&...` y prefillea el panel `#solicitud-panel`. Incluimos
+  // también el id de la oferta para que lista.html pueda, en una
+  // iteración futura, hacer vincular_ficha tras enviar la solicitud.
+  var qsObj = { from:'cfg', sociedad:v.sociedad, cif:v.cif, nombre:v.nombre, email:v.email, comercial:v.comercial, tipo:v.tipo };
+  if (_cfgOfertaId) qsObj.oferta_id = _cfgOfertaId;
+  var qs = new URLSearchParams(qsObj);
   window.location.href = 'lista.html?' + qs.toString();
 }
 </script>
