@@ -2542,12 +2542,24 @@
     }
 
     /* ── Prefill desde el configurador ──────────────────────────────────
-       Si la URL trae `?from=cfg&sociedad=...&cif=...&...`, abrimos
-       automáticamente el panel `#solicitud-panel` con los valores
-       cargados. Pensado para el flujo: configurador → "Empezar Ficha"
-       → modal con datos iniciales → redirección aquí para revisar y
-       enviar. Tras prefillear se limpia la query string del historial
-       (replaceState) para evitar repetir el flujo si el usuario recarga. */
+       Si la URL trae `?from=cfg&sociedad=...&cif=...&...&oferta_id=<uuid>`,
+       abrimos el panel `#solicitud-panel` con los valores cargados.
+       Flujo: configurador → "Empezar Ficha" → modal → redirección aquí.
+
+       El `oferta_id` (cuando viene) se persiste en sessionStorage para
+       sobrevivir al replaceState. Después de enviarSolicitud lo
+       leeremos para:
+         · pasarlo en el body del webhook CREAR_SOLICITUD (así n8n
+           puede grabarlo en `solicitudes.oferta_id` cuando ese
+           workflow se actualice — hoy lo ignora silenciosamente),
+         · actualizar la oferta en Supabase con una nota que referencia
+           la solicitud (id + access_token) y dejarla así trazable
+           desde ofertas.html.
+
+       Nota: NO llamamos a `vincular_ficha` aquí porque la `fichas_alta`
+       aún no existe — sólo se crea cuando el cliente rellena el
+       formulario público (solicitud.html). La vinculación final
+       quedará en el workflow n8n que materializa la ficha. */
     (function _prefillDesdeConfigurador(){
         try {
             const qs = new URLSearchParams(window.location.search);
@@ -2566,6 +2578,13 @@
                 const el = document.getElementById(map[k]);
                 if (el) el.value = v;
             });
+            // Stash del oferta_id para sobrevivir al replaceState.
+            // Lo limpia _enviarSolicitudImpl tras vincularla, o un
+            // refresh manual del usuario al recargar lista.html sin QS.
+            const ofertaId = qs.get('oferta_id');
+            if (ofertaId) {
+                try { sessionStorage.setItem('yurest_oferta_pendiente', ofertaId); } catch (_) {}
+            }
             const panel = document.getElementById('solicitud-panel');
             const btn   = document.getElementById('btn-solicitar');
             if (panel && !panel.classList.contains('open')) {
@@ -2574,7 +2593,8 @@
             }
             const msg = document.getElementById('sol-panel-msg');
             if (msg) {
-                msg.textContent = 'Datos importados del configurador — revisa y envía.';
+                const sufijoOferta = ofertaId ? ` · Vinculada a oferta <code style="font-family:var(--font-mono);font-size:.78rem">${ofertaId.slice(0,8)}…</code>` : '';
+                msg.innerHTML = 'Datos importados del configurador — revisa y envía.' + sufijoOferta;
                 msg.style.background = '#ecfdf5';
                 msg.style.color = '#065f46';
                 msg.style.display = 'block';
@@ -2785,6 +2805,11 @@
             `Si tienes cualquier duda no dudes en contactarme.\n\n` +
             `Un saludo,\n${comercial}`;
 
+        // Si la solicitud viene del configurador, recuperamos el oferta_id
+        // stasheado por _prefillDesdeConfigurador para enlazar las dos.
+        let _ofertaId = null;
+        try { _ofertaId = sessionStorage.getItem('yurest_oferta_pendiente') || null; } catch (_) {}
+
         try {
             const res = await fetch(WEBHOOK_CREAR_SOLICITUD, {
                 method: 'POST',
@@ -2804,7 +2829,13 @@
                     'email_to':      email,
                     'email_subject': emailAsunto,
                     'email_body':    emailCuerpo,
-                    'form_url':      formUrl
+                    'form_url':      formUrl,
+                    // Vínculo con la oferta del configurador. n8n side
+                    // puede ignorarlo hoy (no rompe nada) y propagarlo
+                    // hacia solicitudes.oferta_id cuando ese workflow se
+                    // actualice. La trazabilidad ya queda asegurada por
+                    // la nota que ponemos en la oferta a continuación.
+                    'oferta_id':     _ofertaId
                 })
             });
             if (!res.ok) {
@@ -2821,9 +2852,43 @@
             return;
         }
 
+        // ── Vincular con oferta del configurador (si la había) ────────
+        // Si la solicitud venía del configurador, dejamos rastro en la
+        // oferta (notas con solicitudId + access_token). NO usamos
+        // action:'vincular_ficha' aquí porque la `fichas_alta` aún no
+        // existe — la ficha real se crea cuando el cliente rellena el
+        // formulario público. Esa vinculación final (setear
+        // solicitud_ficha_id) debe ocurrir en el workflow n8n que
+        // materializa la ficha, no en el frontend.
+        if (_ofertaId) {
+            (async () => {
+                try {
+                    await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.ofertas, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action: 'update',
+                            oferta: {
+                                id: _ofertaId,
+                                estado: 'enviada',
+                                notas: `Solicitud creada: #${solicitudId} · token=${accessToken} · ${fecha}`
+                            }
+                        })
+                    });
+                } catch (e) {
+                    console.warn('[ofertas] no se pudo actualizar la oferta vinculada:', e);
+                }
+            })();
+            // El stash queda inutilizable tras esto — la oferta ya está
+            // marcada como enviada y la solicitud creada. Si el comercial
+            // crea otra solicitud sin pasar por el configurador, no debe
+            // arrastrar el id viejo.
+            try { sessionStorage.removeItem('yurest_oferta_pendiente'); } catch (_) {}
+        }
+
         // Feedback visual + limpiar
         const msg = document.getElementById('sol-panel-msg');
-        msg.textContent = `✓ Solicitud creada. Email enviado a ${email}.`;
+        const nota = _ofertaId ? ` · Oferta ${_ofertaId.slice(0,8)}… marcada como enviada.` : '';
+        msg.textContent = `✓ Solicitud creada. Email enviado a ${email}.${nota}`;
         msg.style.cssText = 'display:block;background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0;border-radius:8px;padding:9px 14px;margin-top:12px;font-size:0.85rem;';
         document.getElementById('sol-sociedad').value  = '';
         document.getElementById('sol-cif').value       = '';
