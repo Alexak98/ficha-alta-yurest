@@ -2559,13 +2559,85 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
       </div>
       <div id="fk-msg" style="display:none;margin:6px 0 10px;font-size:13px;color:var(--red);font-weight:600"></div>
       <div class="fk-actions">
-        <button class="fk-btn-primary" onclick="enviarAFicha()">Continuar a Ficha →</button>
+        <button class="fk-btn-primary" onclick="enviarAFicha()">Crear solicitud y enviar →</button>
+      </div>
+    </div>
+    <!-- Estado de éxito — sustituye al cuerpo del modal tras enviar la solicitud.
+         Lo activamos añadiendo .fk-ok al popup-box (display:flex / display:none
+         vía CSS). Mantiene la cabecera navy y reutiliza el espacio del body. -->
+    <div class="popup-body fk-success" id="ficha-success" style="display:none">
+      <div style="text-align:center;padding:8px 0 4px">
+        <div style="width:64px;height:64px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px">✓</div>
+        <div style="font-family:var(--font-system);font-size:20px;font-weight:900;color:var(--navy);margin-bottom:6px">Solicitud enviada</div>
+        <div id="fk-success-sub" style="font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:18px"></div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="ofertas.html" class="fk-btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">Ver oferta</a>
+          <a href="lista.html" class="fk-btn-primary" style="text-decoration:none;background:#fff;color:var(--navy);border:1.5px solid var(--border)">Ver solicitudes</a>
+          <button class="fk-btn-primary" style="background:#fff;color:var(--navy);border:1.5px solid var(--border)" onclick="_cfgCerrarFichaSuccess()">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
+/* ═══ Helpers para crear la solicitud directamente desde el configurador ═══
+   Replican la lógica mínima de lista.html → _enviarSolicitudImpl para no
+   tener que hacer un hop por lista.html cuando el comercial pulsa
+   "Empezar Ficha". Los endpoints viven en YurestConfig.ENDPOINTS. */
+function _cfgEsCIFValido(v){
+  v = (v||'').toUpperCase().trim();
+  if (!/^[A-Z0-9][0-9]{7}[A-Z0-9]$/.test(v)) return false;
+  if (/^[0-9]{8}[A-Z]$/.test(v)) {
+    var letras='TRWAGMYFPDXBNJZSQVHLCKE'; var num=parseInt(v.slice(0,8),10);
+    return v[8]===letras[num%23];
+  }
+  if (/^[XYZ][0-9]{7}[A-Z]$/.test(v)) {
+    var letras2='TRWAGMYFPDXBNJZSQVHLCKE'; var pd={X:'0',Y:'1',Z:'2'}[v[0]];
+    var num2=parseInt(pd+v.slice(1,8),10);
+    return v[8]===letras2[num2%23];
+  }
+  if (/^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(v)) {
+    var d=v.slice(1,8), sp=0, si=0;
+    for (var i=0;i<7;i++){ var n=parseInt(d[i],10); if(i%2===0){ var p=n*2; si+=Math.floor(p/10)+(p%10); } else { sp+=n; } }
+    var dc=(10-((sp+si)%10))%10;
+    var ctrl=v[8], esLetra=/^[A-J]$/.test(ctrl);
+    if (esLetra) return ctrl==='JABCDEFGHI'[dc];
+    return parseInt(ctrl,10)===dc;
+  }
+  return false;
+}
+
+// Lee el próximo solicitudId mirando las dos listas (pendientes +
+// rellenadas) y devolviendo max+1. Mismo criterio que lista.html.
+var _cfgLastUsedSolicitudId = 0;
+async function _cfgGetNextSolicitudId(){
+  async function _fetch(url){
+    try {
+      var res = await YurestConfig.apiFetch(url, { method:'GET' });
+      if (!res.ok) return [];
+      var data = {};
+      try { data = await res.json(); } catch(_){}
+      return Array.isArray(data) ? data
+        : Array.isArray(data.solicitudes) ? data.solicitudes
+        : Array.isArray(data.data) ? data.data : [];
+    } catch(_){ return []; }
+  }
+  var both = await Promise.all([
+    _fetch(YurestConfig.ENDPOINTS.listaSolicitudes),
+    _fetch(YurestConfig.ENDPOINTS.listaRellenado)
+  ]);
+  var max = _cfgLastUsedSolicitudId;
+  both[0].concat(both[1]).forEach(function(s){
+    var raw = s['ID Solicitud'] || s['ID'] || s['id'] || s['row_number'] || '';
+    var num = parseInt(String(raw).replace(/\D/g,''), 10);
+    if (!isNaN(num) && num > max) max = num;
+  });
+  var next = max + 1;
+  _cfgLastUsedSolicitudId = next;
+  return next;
+}
+
 /* ═══ Persistencia de la oferta en Supabase (tabla `ofertas`) ═══
    El configurador habla con el endpoint n8n `/webhook/ofertas` (POST con
    action create | update). Mantenemos un id local de sesión para que
@@ -2652,6 +2724,20 @@ function _fkShowError(msg){
   el.style.display = 'block';
 }
 
+/* enviarAFicha: crea la solicitud DIRECTAMENTE desde el configurador
+   (sin hop por lista.html) y actualiza la oferta vinculada en Supabase.
+   Flujo:
+     1. Valida los 6 campos del modal + formato CIF.
+     2. Awaitea el create de la oferta en vuelo (si lo había) para
+        disponer de _cfgOfertaId antes del update final.
+     3. Pide el próximo solicitudId mirando las listas existentes.
+     4. Genera access_token + form_url apuntando a solicitud.html.
+     5. POST a WEBHOOK_CREAR_SOLICITUD (mismo payload que lista.html).
+     6. En éxito: update de la oferta (cliente_* + estado='enviada' +
+        notas con solicitudId/token) y transiciona el modal al estado
+        de éxito (oculta el form, muestra el card con CTAs a ver
+        oferta / ver solicitudes / cerrar).
+     7. En fallo: mensaje rojo en el modal, deja el form para reintentar. */
 async function enviarAFicha(){
   fkClearErrors();
   var v = {
@@ -2662,60 +2748,150 @@ async function enviarAFicha(){
     comercial: document.getElementById('fk-comercial').value,
     tipo:      document.getElementById('fk-tipo').value
   };
-  // Validación mínima: todos los campos son obligatorios (mismo
-  // criterio que enviarSolicitud() en lista.html).
   var faltan = [];
   Object.keys(v).forEach(function(k){
     if(!v[k]){ faltan.push(k); document.getElementById('fk-'+k).classList.add('fk-error'); }
   });
-  if(v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)){
-    document.getElementById('fk-email').classList.add('fk-error');
-    _fkShowError('Email no válido.');
-    return;
-  }
   if(faltan.length){
     _fkShowError('Completa todos los campos antes de continuar.');
     return;
   }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)){
+    document.getElementById('fk-email').classList.add('fk-error');
+    _fkShowError('Email no válido.');
+    return;
+  }
+  if(!_cfgEsCIFValido(v.cif)){
+    document.getElementById('fk-cif').classList.add('fk-error');
+    _fkShowError('CIF/NIF no válido (revisa el dígito de control).');
+    return;
+  }
 
-  // Persistir la oferta con los datos del cliente + estado='enviada'.
-  // Si hay un create en vuelo (_cfgPersistDraft), esperamos a que termine
-  // para tener el id y poder hacer update; si falla, _cfgSaveOferta cae
-  // de update a create automáticamente. Capamos a 4s por si n8n tarda
-  // demasiado — no queremos bloquear el flujo del comercial indefinidamente.
-  _fkShowError(''); // limpia mensaje previo si lo hubiera
-  document.getElementById('fk-msg').style.display = 'none';
   var btn = document.querySelector('#ficha-popup .fk-btn-primary');
   var btnLabel = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+
+  var withTimeout = function(p, ms){
+    return Promise.race([p, new Promise(function(res){ setTimeout(function(){ res(null); }, ms); })]);
+  };
+
   try {
-    var withTimeout = function(p, ms){
-      return Promise.race([p, new Promise(function(res){ setTimeout(function(){ res(null); }, ms); })]);
-    };
+    // 1. Asegurar que tenemos _cfgOfertaId (esperamos al create draft).
     if (_cfgOfertaSavePromise) {
       try { await withTimeout(_cfgOfertaSavePromise, 4000); } catch(_){}
     }
-    await withTimeout(_cfgSaveOferta('update', {
-      cliente_sociedad: v.sociedad,
-      cliente_cif:      v.cif,
-      cliente_nombre:   v.nombre,
-      cliente_email:    v.email,
-      comercial:        v.comercial,
-      tipo_plan:        v.tipo,
-      estado:           'enviada'
-    }), 4000);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = btnLabel || 'Continuar a Ficha →'; }
-  }
 
-  // Pasa los valores por query string a lista.html. Allí, un init lee
-  // `?from=cfg&...` y prefillea el panel `#solicitud-panel`. Incluimos
-  // también el id de la oferta para que lista.html pueda, en una
-  // iteración futura, hacer vincular_ficha tras enviar la solicitud.
-  var qsObj = { from:'cfg', sociedad:v.sociedad, cif:v.cif, nombre:v.nombre, email:v.email, comercial:v.comercial, tipo:v.tipo };
-  if (_cfgOfertaId) qsObj.oferta_id = _cfgOfertaId;
-  var qs = new URLSearchParams(qsObj);
-  window.location.href = 'lista.html?' + qs.toString();
+    // 2. Datos de la solicitud.
+    var solicitudId = await _cfgGetNextSolicitudId();
+    var accessToken = (window.crypto && window.crypto.randomUUID
+      ? window.crypto.randomUUID()
+      : 'tk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,12)
+    ).replace(/-/g,'');
+    var fecha = new Date().toISOString().slice(0,10);
+    // form_url apunta a solicitud.html en el mismo directorio que
+    // el configurador. Reemplazamos el último segmento de la URL.
+    var baseUrl = window.location.href.split('?')[0].replace(/[^/]+$/, 'solicitud.html');
+    var formUrl = baseUrl + '?t=' + encodeURIComponent(accessToken);
+    var emailAsunto = 'Solicitud de creación de ficha de alta';
+    var emailCuerpo =
+      'Hola ' + v.nombre + ',\n\n' +
+      'Te mando este formulario para empezar la creación de tu alta con Yurest. ' +
+      'Por favor, rellénalo cuando puedas:\n\n' +
+      formUrl + '\n\n' +
+      'Si tienes cualquier duda no dudes en contactarme.\n\n' +
+      'Un saludo,\n' + v.comercial;
+
+    // 3. POST a WEBHOOK_CREAR_SOLICITUD (mismo payload exacto que lista.html).
+    var res = await fetch(YurestConfig.ENDPOINTS.crearSolicitud, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        'ID Solicitud':    solicitudId,
+        'access_token':    accessToken,
+        'Nombre Sociedad': v.sociedad,
+        'CIF/NIF':         v.cif,
+        'cif':             v.cif,
+        'Nombre':          v.nombre,
+        'Email':           v.email,
+        'Comercial':       v.comercial,
+        'Tipo Cliente':    v.tipo,
+        'Fecha':           fecha,
+        'Estado':          'Pendiente',
+        'email_to':        v.email,
+        'email_subject':   emailAsunto,
+        'email_body':      emailCuerpo,
+        'form_url':        formUrl,
+        // oferta_id viaja con la solicitud para que n8n pueda, cuando
+        // se actualice ese workflow, grabarlo en solicitudes.oferta_id.
+        'oferta_id':       _cfgOfertaId || null
+      })
+    });
+    if (!res.ok) {
+      var detalle = '';
+      try { var rb = await res.text(); detalle = rb ? ' — ' + rb.slice(0,200) : ''; } catch(_){}
+      throw new Error('Error ' + res.status + detalle);
+    }
+
+    // 4. Update de la oferta: cliente_* + estado='enviada' + notas trazables.
+    // Fire-and-forget — si falla la oferta queda como 'borrador' pero
+    // la solicitud sí se creó, que es lo crítico.
+    try {
+      await withTimeout(_cfgSaveOferta('update', {
+        cliente_sociedad: v.sociedad,
+        cliente_cif:      v.cif,
+        cliente_nombre:   v.nombre,
+        cliente_email:    v.email,
+        comercial:        v.comercial,
+        tipo_plan:        v.tipo,
+        estado:           'enviada',
+        notas:            'Solicitud creada: #' + solicitudId + ' · token=' + accessToken + ' · ' + fecha
+      }), 4000);
+    } catch(_){}
+
+    // 5. Transición al estado de éxito.
+    _cfgMostrarFichaSuccess(v.email, solicitudId);
+
+  } catch (err) {
+    _fkShowError('No se pudo crear la solicitud: ' + (err.message || err));
+    if (btn) { btn.disabled = false; btn.textContent = btnLabel || 'Crear solicitud y enviar →'; }
+    return;
+  }
+}
+
+function _cfgMostrarFichaSuccess(email, solicitudId){
+  // Oculta cabecera + body original, muestra success card.
+  var hd = document.querySelector('#ficha-popup .popup-hd');
+  var body = document.querySelector('#ficha-popup .popup-body:not(.fk-success)');
+  if (hd) hd.style.display = 'none';
+  if (body) body.style.display = 'none';
+  var sub = document.getElementById('fk-success-sub');
+  if (sub) sub.innerHTML = 'Solicitud #<strong>' + solicitudId + '</strong> creada. Email enviado a <strong>' + email + '</strong> con el formulario público.';
+  document.getElementById('ficha-success').style.display = 'block';
+}
+
+function _cfgCerrarFichaSuccess(){
+  // Cierra modal y resetea estado por si el comercial monta otra oferta.
+  document.getElementById('ficha-popup').classList.remove('open');
+  setTimeout(function(){
+    var hd = document.querySelector('#ficha-popup .popup-hd');
+    var body = document.querySelector('#ficha-popup .popup-body:not(.fk-success)');
+    if (hd) hd.style.display = '';
+    if (body) body.style.display = '';
+    document.getElementById('ficha-success').style.display = 'none';
+    // Limpia los campos del form para que la siguiente oferta no
+    // arrastre los del cliente anterior.
+    ['fk-sociedad','fk-cif','fk-nombre','fk-email','fk-tipo'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    var btn = document.querySelector('#ficha-popup .fk-btn-primary');
+    if (btn) { btn.disabled = false; btn.textContent = 'Crear solicitud y enviar →'; }
+    // Reseteamos el oferta_id de sesión: las próximas entradas a
+    // v-budget crearán una oferta NUEVA en lugar de actualizar la
+    // que ya quedó marcada como 'enviada'.
+    _cfgOfertaId = null;
+    _cfgOfertaSavePromise = null;
+  }, 200);
 }
 </script>
 
