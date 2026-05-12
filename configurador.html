@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title>Configurador — Yurest</title>
 <script src="config.js"></script>
@@ -17,8 +18,7 @@
   --sel-bg:#eef0f7;--sel-border:#2a3554;
   /* Tipografía corporativa Yurest. Antes era Inter Tight (configurador
      standalone); ahora hereda Bw Modelica del portal (fonts.css ya viene
-     cargado por style.css). Mantenemos --font-system como alias local
-     para no tocar las decenas de usos internos. */
+     cargado por style.css). */
   --font-system:'Bw Modelica', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -592,6 +592,38 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .consultant-role{font-size:11px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .consultant-bio{font-size:12px;color:var(--muted);line-height:1.55;text-align:left}
 
+/* ── Row de chips (foto redonda + nombre + tooltip on-hover/click) ── */
+.popup-consultants-row{position:relative;z-index:10;display:flex;gap:22px;justify-content:center;align-items:flex-start;padding:4px 4px 20px;margin-bottom:8px;flex-wrap:wrap}
+.consultant-chip{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .2s ease;flex-shrink:0}
+.consultant-chip:hover,.consultant-chip.tip-open{z-index:60;transform:translateY(-3px)}
+.cc-photo{width:62px;height:62px;border-radius:50%;border:2.5px solid rgba(42,53,84,.15);object-fit:cover;background:var(--navy);transition:border-color .2s,box-shadow .2s;display:block}
+.consultant-chip:hover .cc-photo,
+.consultant-chip.tip-open .cc-photo{border-color:var(--red);box-shadow:0 0 0 4px rgba(249,90,92,.16),0 8px 20px rgba(249,90,92,.22)}
+.cc-name{font-size:12px;font-weight:800;color:var(--red);letter-spacing:-.01em;text-align:center;line-height:1.15;max-width:110px}
+/* Tooltip aparece HACIA ABAJO (la fila está antes del programa) */
+.cc-tip{position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%) translateY(6px);width:280px;background:#fff;color:var(--navy);padding:14px 16px;border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.22),0 0 0 1px rgba(42,53,84,.08);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;text-align:left}
+.cc-tip::after{content:'';position:absolute;left:50%;bottom:100%;transform:translateX(-50%);border:8px solid transparent;border-bottom-color:#fff}
+@media(hover:hover){.consultant-chip:hover .cc-tip{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}}
+.consultant-chip.tip-open .cc-tip{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.cc-tip-name{font-size:14.5px;font-weight:900;color:var(--navy);margin-bottom:2px;letter-spacing:-.01em}
+.cc-tip-role{font-size:10.5px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+.cc-tip-bio{font-size:12px;line-height:1.5;color:#4a5072;margin:0;font-weight:500}
+/* Tooltips de los extremos anclados al lateral correspondiente */
+.consultant-chip:first-child .cc-tip{left:0;transform:translateX(0) translateY(6px)}
+@media(hover:hover){.consultant-chip:first-child:hover .cc-tip{transform:translateX(0) translateY(0)}}
+.consultant-chip:first-child.tip-open .cc-tip{transform:translateX(0) translateY(0)}
+.consultant-chip:first-child .cc-tip::after{left:30px;transform:none}
+.consultant-chip:last-child .cc-tip{left:auto;right:0;transform:translateX(0) translateY(6px)}
+@media(hover:hover){.consultant-chip:last-child:hover .cc-tip{transform:translateX(0) translateY(0)}}
+.consultant-chip:last-child.tip-open .cc-tip{transform:translateX(0) translateY(0)}
+.consultant-chip:last-child .cc-tip::after{left:auto;right:30px;transform:none}
+@media(max-width:560px){
+  .popup-consultants-row{gap:14px;padding:4px 0 14px;margin-bottom:6px}
+  .cc-photo{width:54px;height:54px}
+  .cc-name{font-size:10.5px;max-width:96px}
+  .cc-tip{width:240px}
+}
+
 /* Popup CTA */
 .popup-cta-box{background:var(--navy);border-radius:14px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .popup-cta-lbl{color:rgba(255,255,255,.8);font-size:14px}
@@ -782,9 +814,8 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 }
 
 /* ═══════════════ TYPOGRAPHIC REFINEMENT (sans) ═══════════════ */
-/* Bw Modelica (tipografía corporativa Yurest). Numeric elements get
-   tabular figures so columns of prices align cleanly. Tight tracking
-   on display sizes. */
+/* Inter Tight everywhere. Numeric elements get tabular figures so
+   columns of prices align cleanly. Tight tracking on display sizes. */
 
 body{font-feature-settings:"ss01"}
 
@@ -894,6 +925,531 @@ body{font-feature-settings:"ss01"}
   #plan-basic.selected{transform:translateY(-2px)}
 }
 
+/* ═══════════════════════════════════════════════════════
+   BASELINE VIEW (v-baseline) — paso 1: situación actual + calculadora
+   ═══════════════════════════════════════════════════════ */
+#v-baseline{background:var(--bg);padding:32px 24px 100px;color:var(--navy)}
+#v-baseline .bl-wrap{max-width:780px;margin:0 auto}
+#v-baseline .bl-hd{text-align:center;margin-bottom:28px}
+#v-baseline .bl-eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 20px;background:rgba(42,53,84,.06);border:1.5px solid rgba(42,53,84,.18);border-radius:30px;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--navy);margin-bottom:18px}
+#v-baseline .bl-eyebrow .num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;align-items:center;justify-content:center;font-size:11px;font-weight:900;letter-spacing:0}
+#v-baseline h1{font-family:var(--font-system);font-weight:900;font-size:clamp(28px,4.4vw,44px);line-height:1.1;letter-spacing:-.02em;margin:0 0 14px;color:var(--navy)}
+#v-baseline h1 .accent{color:var(--red)}
+#v-baseline .bl-lede{color:#4a5072;font-size:15px;line-height:1.55;max-width:600px;margin:0 auto;font-weight:500}
+#v-baseline .bl-card{background:#fff;border:1px solid rgba(42,53,84,.10);border-radius:20px;box-shadow:0 18px 40px -22px rgba(42,53,84,.20);overflow:hidden;margin-top:26px}
+#v-baseline .bl-q{padding:22px 26px;border-bottom:1px solid rgba(42,53,84,.08);display:flex;flex-direction:column;gap:8px}
+#v-baseline .bl-q:last-of-type{border-bottom:none}
+#v-baseline .bl-q-lbl{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6b7280;display:flex;align-items:center;gap:10px}
+#v-baseline .bl-q-num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:rgba(42,53,84,.10);color:var(--navy);align-items:center;justify-content:center;font-size:10.5px;font-weight:900;letter-spacing:0}
+#v-baseline .bl-q-title{font-size:16px;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+#v-baseline .bl-q-sub{font-size:12.5px;color:#6b7280;font-weight:500}
+#v-baseline .bl-input-row{display:flex;align-items:stretch;gap:10px;margin-top:6px}
+#v-baseline .bl-input-wrap{position:relative;flex:1;display:flex;align-items:center;background:#f8fafc;border:1.5px solid rgba(42,53,84,.15);border-radius:12px;padding:0 14px;transition:border-color .15s,background .15s}
+#v-baseline .bl-input-wrap:focus-within{border-color:var(--navy);background:#fff;box-shadow:0 0 0 4px rgba(42,53,84,.10)}
+#v-baseline .bl-input-wrap input{flex:1;border:none;background:transparent;outline:none;padding:14px 4px;font-size:18px;font-weight:800;color:var(--navy);font-family:inherit;letter-spacing:-.01em;font-variant-numeric:tabular-nums lining-nums;-moz-appearance:textfield;width:100%;min-width:0}
+#v-baseline .bl-input-wrap input::-webkit-outer-spin-button,
+#v-baseline .bl-input-wrap input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#v-baseline .bl-input-suffix{font-size:16px;font-weight:800;color:#9ca3af;flex-shrink:0;padding-left:6px}
+#v-baseline .bl-gg-row{padding:18px 26px;background:rgba(42,53,84,.04);display:flex;align-items:center;justify-content:space-between;gap:12px}
+#v-baseline .bl-gg-row .bl-gg-lbl{font-size:13px;font-weight:600;color:#4a5072}
+#v-baseline .bl-gg-row .bl-gg-lbl b{color:var(--navy);font-weight:800}
+#v-baseline .bl-gg-row .bl-gg-val{font-size:18px;font-weight:900;color:var(--navy);letter-spacing:-.01em}
+#v-baseline .bl-result{padding:28px 26px;background:linear-gradient(135deg,#0f1a3a 0%,#1a2342 100%);color:#fff;position:relative;overflow:hidden}
+#v-baseline .bl-result::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 90% 0%,rgba(249,90,92,.16) 0%,transparent 50%);pointer-events:none}
+#v-baseline .bl-result-inner{position:relative;z-index:1}
+#v-baseline .bl-result-hd{font-size:10.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.62);margin-bottom:10px}
+#v-baseline .bl-result-stat{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+#v-baseline .bl-result-pct{font-size:48px;font-weight:900;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+#v-baseline .bl-result-pct.empty{color:rgba(255,255,255,.30)}
+#v-baseline .bl-result-pct.negative{color:#fca5a5}
+#v-baseline .bl-result-eq{font-size:22px;font-weight:700;color:rgba(255,255,255,.55);align-self:baseline}
+#v-baseline .bl-result-eur{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums}
+#v-baseline .bl-result-eur small{font-size:14px;font-weight:600;color:rgba(255,255,255,.55);margin-left:6px}
+#v-baseline .bl-result-msg{margin-top:18px;padding:14px 16px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.30);border-radius:12px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.92)}
+#v-baseline .bl-result-msg b{color:#6ee7b7;font-weight:800}
+#v-baseline .bl-result-msg.negative{background:rgba(249,90,92,.12);border-color:rgba(249,90,92,.40)}
+#v-baseline .bl-result-msg.negative b{color:#fca5a5}
+@media(max-width:640px){
+  #v-baseline{padding:24px 16px 110px}
+  #v-baseline h1{font-size:26px}
+  #v-baseline .bl-lede{font-size:14px}
+  #v-baseline .bl-card{margin-top:20px;border-radius:16px}
+  #v-baseline .bl-q{padding:18px 18px}
+  #v-baseline .bl-q-title{font-size:15px}
+  #v-baseline .bl-gg-row{padding:14px 18px}
+  #v-baseline .bl-result{padding:22px 18px}
+  #v-baseline .bl-result-pct{font-size:38px}
+  #v-baseline .bl-result-eur{font-size:22px}
+  #v-baseline .bl-input-wrap input{font-size:16px;padding:12px 4px}
+}
+
+/* ═══════════════════════════════════════════════════════
+   ROI BOX en v-offer y bloque RESULTADO en v-method
+   ═══════════════════════════════════════════════════════ */
+.roi-box{margin:18px 0 24px;padding:18px 22px;background:linear-gradient(135deg,#0f1a3a 0%,#1a2342 100%);color:#fff;border-radius:16px;box-shadow:0 14px 32px -18px rgba(42,53,84,.30);position:relative;overflow:hidden}
+.roi-box::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 100% 0%,rgba(34,197,94,.14) 0%,transparent 55%);pointer-events:none}
+.roi-box-inner{position:relative;z-index:1}
+.roi-box-hd{font-size:10.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.roi-box-hd .star{color:#6ee7b7;font-size:13px}
+.roi-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:stretch}
+.roi-cell{display:flex;flex-direction:column;gap:4px;padding:10px 0}
+.roi-cell-lbl{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.roi-cell-val{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.02em;line-height:1.05;font-variant-numeric:tabular-nums lining-nums}
+.roi-cell-val.good{color:#6ee7b7}
+.roi-cell-val.huge{font-size:26px}
+.roi-cell-sub{font-size:10.5px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.02em}
+.roi-cell-sep{width:1px;background:rgba(255,255,255,.10);align-self:stretch}
+.roi-box-note{margin-top:12px;font-size:11px;color:rgba(255,255,255,.55);font-style:normal}
+@media(max-width:640px){
+  .roi-grid{grid-template-columns:1fr;gap:8px}
+  .roi-cell{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.10)}
+  .roi-cell:last-child{border-bottom:none}
+  .roi-cell-val{font-size:20px}
+  .roi-cell-val.huge{font-size:22px}
+}
+
+/* ═══════════════════════════════════════════════════════
+   MÉTODO YUREST VIEW (v-method) — landing del Método entre Plan y Oferta
+   ═══════════════════════════════════════════════════════ */
+#v-method{background:var(--surface);padding:32px 24px 100px;color:var(--navy)}
+#v-method .wrap{max-width:1100px;margin:0 auto}
+#v-method .metodo-hd{text-align:center;margin-bottom:20px}
+#v-method .eyebrow{display:inline-flex;align-items:center;gap:9px;padding:9px 22px;background:rgba(249,90,92,.06);border:1.5px solid rgba(249,90,92,.32);border-radius:30px;font-size:11.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#d63134;margin-bottom:24px}
+#v-method .eyebrow .star{color:var(--red);font-size:13px}
+#v-method h1{font-family:var(--font-system);font-weight:900;font-size:clamp(38px,5.5vw,68px);line-height:1.05;letter-spacing:-.025em;margin:0 0 22px;color:#1a2342}
+#v-method h1 .accent{color:var(--red)}
+#v-method .lede{color:#3a4564;font-size:16px;line-height:1.65;max-width:740px;margin:0 auto;font-weight:500}
+#v-method .lede strong{color:#1a2342;font-weight:800}
+#v-method .kpi-bubble{display:inline-flex;align-items:center;justify-content:center;gap:38px;flex-wrap:wrap;margin-top:32px;padding:16px 36px;background:#fff;border:1px solid rgba(42,53,84,.10);border-radius:60px;box-shadow:0 6px 24px -10px rgba(42,53,84,.12)}
+#v-method .kpi{display:flex;flex-direction:column;align-items:center;gap:4px}
+#v-method .kpi-num{font-weight:900;font-size:26px;color:#1a2342;letter-spacing:-.025em;line-height:1}
+#v-method .kpi-lbl{font-size:10.5px;font-weight:700;color:#6b7280;letter-spacing:.18em;text-transform:uppercase;text-align:center}
+#v-method .proof-banner{margin:40px 0 16px;display:flex;justify-content:center}
+#v-method .proof-pill{display:inline-flex;align-items:center;gap:14px;padding:12px 24px;background:#fff;border:1px solid rgba(42,53,84,.10);border-radius:30px;font-size:13.5px;font-weight:600;color:#1a2342;box-shadow:0 6px 24px -10px rgba(42,53,84,.12)}
+#v-method .proof-pill .stars{color:var(--red);letter-spacing:2px;font-size:14px}
+#v-method .proof-pill b{color:var(--red);font-weight:800}
+
+#v-method .map-wrap{position:relative;background:linear-gradient(135deg,#1f284a 0%,#161d3a 100%);border-radius:28px;overflow:hidden;border:1px solid rgba(42,53,84,.20);box-shadow:0 24px 60px -24px rgba(42,53,84,.35);color:#fff}
+#v-method .map-bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.85}
+#v-method .map-content{position:relative;z-index:2;padding:32px 32px 28px}
+#v-method .map-hd{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:18px;flex-wrap:wrap;padding:14px 22px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:14px}
+#v-method .map-hd-left{display:flex;flex-direction:column;gap:2px}
+#v-method .map-hd-tag{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62)}
+#v-method .map-hd-title{font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}
+#v-method .map-hd-stats{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#v-method .hd-stat{display:inline-flex;align-items:baseline;gap:6px;padding:6px 12px;background:rgba(0,0,0,.20);border-radius:8px;font-size:12px;color:rgba(255,255,255,.62);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+#v-method .hd-stat strong{color:#fff;font-size:14px;font-weight:900;letter-spacing:-.01em;text-transform:none}
+#v-method .map-area{position:relative;aspect-ratio:1200/520;width:100%;margin-top:8px}
+#v-method .map-area-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+
+#v-method .node{position:absolute;transform:translate(-50%,-50%);z-index:5;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:10px;transition:transform .3s cubic-bezier(.4,1.2,.5,1)}
+#v-method .node:hover{transform:translate(-50%,-50%) scale(1.05)}
+#v-method .node-medallion{position:relative;width:56px;height:56px;border-radius:50%;background:#fff;border:2.5px solid var(--red);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(249,90,92,.14),0 10px 22px rgba(0,0,0,.40);transition:all .3s}
+#v-method .node:hover .node-medallion{box-shadow:0 0 0 8px rgba(249,90,92,.22),0 14px 30px rgba(249,90,92,.36)}
+#v-method .node-medallion svg{width:22px;height:22px;color:var(--navy);stroke-width:2.2}
+#v-method .node-stamp{position:absolute;top:-5px;right:-5px;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:900;box-shadow:0 3px 8px rgba(0,0,0,.40);border:1.5px solid #fff}
+#v-method .node-label{background:#fff;color:var(--navy);padding:5px 11px;border-radius:30px;display:flex;flex-direction:column;align-items:center;gap:1px;white-space:nowrap;box-shadow:0 5px 14px rgba(0,0,0,.30);border:1px solid rgba(0,0,0,.06)}
+#v-method .node-name{font-weight:800;font-size:11px;letter-spacing:-.01em;line-height:1}
+#v-method .node-time{font-size:9px;font-weight:700;color:var(--navy);letter-spacing:.10em;text-transform:uppercase;line-height:1.2;opacity:.65}
+#v-method .node.optional .node-medallion{width:48px;height:48px;border-width:2px;box-shadow:0 0 0 4px rgba(249,90,92,.10),0 8px 18px rgba(0,0,0,.35);opacity:.92}
+#v-method .node.optional .node-medallion svg{width:18px;height:18px}
+#v-method .node.optional .node-stamp{width:20px;height:20px;font-size:9.5px}
+#v-method .node.optional .node-label{background:rgba(255,255,255,.92);padding:4px 9px}
+#v-method .node.optional .node-name{font-size:10.5px}
+#v-method .node.optional .node-time{font-size:8.5px;color:#d63134;font-weight:800}
+
+#v-method .milestone{position:absolute;transform:translate(-50%,-50%);z-index:4;cursor:default;transition:transform .2s ease;width:22px;height:22px}
+#v-method .milestone:hover{transform:translate(-50%,-50%) scale(1.25);z-index:50}
+#v-method .milestone-dot{width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;border:2px solid #fff;box-shadow:0 3px 10px rgba(42,53,84,.55);transition:all .2s}
+#v-method .milestone:hover .milestone-dot{box-shadow:0 0 0 6px rgba(42,53,84,.30),0 6px 18px rgba(42,53,84,.50)}
+#v-method .milestone-tip{position:absolute;left:50%;bottom:calc(100% + 14px);transform:translateX(-50%) translateY(4px);background:#fff;color:#1a2342;padding:16px 18px;border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.40),0 0 0 1px rgba(42,53,84,.06);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:500;width:300px;text-align:left}
+#v-method .milestone-tip::after{content:'';position:absolute;left:50%;top:100%;transform:translateX(-50%);border:8px solid transparent;border-top-color:#fff}
+#v-method .milestone:hover .milestone-tip{opacity:1;transform:translateX(-50%) translateY(0)}
+#v-method .milestone-tip-lbl{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#16a34a;margin-bottom:8px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(34,197,94,.10);border-radius:6px}
+#v-method .milestone-tip-title{font-size:15px;font-weight:900;color:#1a2342;line-height:1.25;letter-spacing:-.01em;margin-bottom:8px}
+#v-method .milestone-tip-desc{font-size:12.5px;color:#4a5072;line-height:1.55;margin:0;font-weight:500}
+#v-method .milestone-label{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#fff;padding:3px 9px;border-radius:30px;white-space:nowrap;background:rgba(0,0,0,.40);border:1px solid rgba(255,255,255,.10)}
+#v-method .milestone.start-point .milestone-dot{background:rgba(255,255,255,.16);color:rgba(255,255,255,.82);border-color:rgba(255,255,255,.40);box-shadow:0 4px 12px rgba(0,0,0,.30);font-size:18px;line-height:1}
+#v-method .milestone.start-point:hover .milestone-dot{box-shadow:0 0 0 7px rgba(255,255,255,.14),0 6px 18px rgba(255,255,255,.18)}
+#v-method .milestone.start-point .milestone-label{background:rgba(255,255,255,.10);color:rgba(255,255,255,.82)}
+#v-method .milestone.start-point .milestone-tip-lbl{background:rgba(42,53,84,.10);color:#6b7280}
+#v-method .milestone.start-point .milestone-tip{left:0;transform:translateX(0) translateY(4px)}
+#v-method .milestone.start-point:hover .milestone-tip{transform:translateX(0) translateY(0)}
+#v-method .milestone.start-point .milestone-tip::after{left:14px;transform:none}
+#v-method .milestone.optional-milestone .milestone-tip{left:auto;right:0;transform:translateX(0) translateY(4px)}
+#v-method .milestone.optional-milestone:hover .milestone-tip{transform:translateX(0) translateY(0)}
+#v-method .milestone.optional-milestone .milestone-tip::after{left:auto;right:14px;transform:none}
+#v-method .milestone.end-point{width:30px;height:30px}
+#v-method .milestone.end-point .milestone-dot{width:30px;height:30px;background:#22c55e;color:#fff;border-color:#fff;box-shadow:0 4px 14px rgba(34,197,94,.55);font-size:14px}
+#v-method .milestone.end-point:hover .milestone-dot{box-shadow:0 0 0 8px rgba(34,197,94,.22),0 8px 22px rgba(34,197,94,.60)}
+#v-method .milestone.end-point .milestone-label{background:#16a34a;color:#fff;border-color:transparent;font-size:10px;padding:4px 11px}
+#v-method .milestone.end-point .milestone-tip-lbl{background:rgba(34,197,94,.10);color:#16a34a}
+#v-method .milestone.end-point .milestone-tip{left:auto;right:0;transform:translateX(0) translateY(4px)}
+#v-method .milestone.end-point:hover .milestone-tip{transform:translateX(0) translateY(0)}
+#v-method .milestone.end-point .milestone-tip::after{left:auto;right:14px;transform:none}
+
+#v-method .advanced-note{position:absolute;left:88%;top:27%;z-index:2;pointer-events:none}
+#v-method .an-line{position:absolute;top:0;left:0;width:1.5px;height:165px;background:repeating-linear-gradient(0deg, rgba(255,255,255,.30) 0, rgba(255,255,255,.30) 3px, transparent 3px, transparent 7px)}
+#v-method .an-content{position:absolute;top:173px;left:50%;transform:translateX(-50%);width:175px;display:flex;align-items:flex-start;gap:6px}
+#v-method .an-arrow{color:rgba(255,255,255,.55);font-size:13px;font-weight:800;line-height:1;margin-top:1px;flex-shrink:0}
+#v-method .an-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+#v-method .an-title{font-size:9px;font-weight:800;color:rgba(255,255,255,.88);text-transform:uppercase;letter-spacing:.10em;white-space:nowrap}
+#v-method .an-sub{font-size:9px;line-height:1.45;color:rgba(255,255,255,.55);font-weight:500}
+
+#v-method .master-rail{position:relative;padding:22px 2.5% 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.10);border-radius:16px;margin-top:28px}
+#v-method .master-rail-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:0 4px 14px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,.10)}
+#v-method .mrh-title{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#fff;letter-spacing:-.01em}
+#v-method .mrh-title .star{color:var(--red);font-size:15px}
+#v-method .mrh-meta{display:flex;align-items:center;gap:10px;font-size:11px;color:rgba(255,255,255,.62);font-weight:600;letter-spacing:.10em;text-transform:uppercase}
+#v-method .mrh-meta .dot{width:3px;height:3px;background:var(--red);border-radius:50%}
+#v-method .master-rail-track{position:relative;height:88px;display:flex;align-items:center}
+#v-method .master-rail-line{position:absolute;left:0;right:0;top:50%;height:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0,rgba(255,255,255,.22) 8px,transparent 8px,transparent 16px);z-index:1;border-radius:2px}
+#v-method .master-rail-stations{position:relative;width:100%;display:flex;justify-content:space-between;align-items:center}
+#v-method .master-rail-station{position:relative;z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px;transition:transform .2s ease}
+#v-method .master-rail-station:hover{transform:translateY(-4px);z-index:400}
+#v-method .mrs-photo-wrap{position:relative;width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.30);background:var(--navy);box-shadow:0 5px 14px rgba(0,0,0,.40);transition:all .25s ease;overflow:hidden}
+#v-method .master-rail-station:hover .mrs-photo-wrap{border-color:var(--red);box-shadow:0 0 0 5px rgba(249,90,92,.18),0 8px 22px rgba(249,90,92,.30);transform:scale(1.06)}
+#v-method .mrs-photo{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+#v-method .mrs-name{font-size:10px;font-weight:700;color:#fff;letter-spacing:.02em;text-align:center;line-height:1.15}
+#v-method .mrs-tip{position:absolute;left:50%;bottom:calc(100% + 14px);transform:translateX(-50%) translateY(4px);width:300px;background:#fff;color:#1a2342;border-radius:14px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.40),0 0 0 1px rgba(42,53,84,.08);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:500;text-align:left}
+#v-method .mrs-tip::after{content:'';position:absolute;left:50%;top:100%;transform:translateX(-50%);border:8px solid transparent;border-top-color:#fff}
+#v-method .master-rail-station:hover .mrs-tip{opacity:1;transform:translateX(-50%) translateY(0)}
+#v-method .master-rail-station:first-child .mrs-tip{left:0;transform:translateX(0) translateY(4px)}
+#v-method .master-rail-station:first-child:hover .mrs-tip{transform:translateX(0) translateY(0)}
+#v-method .master-rail-station:first-child .mrs-tip::after{left:22px;transform:none}
+#v-method .master-rail-station:last-child .mrs-tip{left:auto;right:0;transform:translateX(0) translateY(4px)}
+#v-method .master-rail-station:last-child:hover .mrs-tip{transform:translateX(0) translateY(0)}
+#v-method .master-rail-station:last-child .mrs-tip::after{left:auto;right:22px;transform:none}
+#v-method .tip-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+#v-method .tip-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+#v-method .tip-name-wrap{display:flex;flex-direction:column;gap:2px;line-height:1.2}
+#v-method .tip-name{font-size:14px;font-weight:900;color:#1a2342}
+#v-method .tip-role{font-size:10.5px;font-weight:700;color:var(--red);letter-spacing:.06em;text-transform:uppercase}
+#v-method .tip-session-lbl{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:3px;display:flex;align-items:center;gap:5px}
+#v-method .tip-session-title{font-size:13px;font-weight:800;color:#1a2342;margin-bottom:4px;line-height:1.25}
+#v-method .tip-session-desc{font-size:12px;color:#4a5072;line-height:1.5;margin:0;font-weight:500}
+
+#v-method .extras-line{margin-top:18px;padding:12px 16px;text-align:center;font-size:11.5px;color:rgba(255,255,255,.62);letter-spacing:.04em;font-weight:500;line-height:1.6;border-top:1px dashed rgba(255,255,255,.10)}
+#v-method .extras-line b{color:rgba(255,255,255,.78);font-weight:700}
+#v-method .extras-line .sep{color:rgba(255,255,255,.20);margin:0 4px}
+
+#v-method .final-proof{margin-top:40px;background:linear-gradient(135deg,#1f284a 0%,#161d3a 100%);border:1.5px solid rgba(249,90,92,.40);border-radius:24px;padding:48px 32px 42px;text-align:center;color:#fff;box-shadow:0 20px 48px -20px rgba(42,53,84,.30);position:relative;overflow:hidden}
+#v-method .final-proof::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 12% 20%,rgba(249,90,92,.08) 0%,transparent 45%),radial-gradient(circle at 88% 80%,rgba(249,90,92,.08) 0%,transparent 45%);pointer-events:none}
+#v-method .final-proof-stars{position:relative;z-index:1;color:var(--red);font-size:22px;letter-spacing:10px;margin-bottom:18px}
+#v-method .final-proof-quote{position:relative;z-index:1;font-size:clamp(22px,3.2vw,36px);font-weight:900;line-height:1.2;letter-spacing:-.01em;margin:0;color:#fff}
+#v-method .final-proof-quote b{color:var(--red);font-weight:900}
+#v-method .final-proof-sub{position:relative;z-index:1;margin-top:12px;font-size:12px;color:rgba(255,255,255,.50);letter-spacing:.20em;text-transform:uppercase;font-weight:700}
+
+#v-method .phase-modal{position:fixed;inset:0;z-index:1000;background:rgba(13,18,40,.78);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:24px;animation:overlayIn .25s ease}
+#v-method .phase-modal.open{display:flex}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+#v-method .phase-modal-card{background:#fff;color:#1a2342;border-radius:24px;max-width:1080px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 40px 80px rgba(0,0,0,.50);display:grid;grid-template-columns:380px 1fr;position:relative;animation:modalIn .35s cubic-bezier(.3,.9,.3,1.1)}
+@keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+#v-method .modal-close{position:absolute;top:18px;right:18px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.30);cursor:pointer;color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:5}
+#v-method .modal-close:hover{background:var(--red);border-color:var(--red)}
+#v-method .detail-left{background:linear-gradient(180deg,var(--navy) 0%,#1f284a 100%);color:#fff;padding:36px 32px;position:relative;overflow:hidden;border-radius:24px 0 0 24px}
+#v-method .detail-left::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 0%,rgba(249,90,92,.14) 0%,transparent 55%);pointer-events:none}
+#v-method .detail-left-content{position:relative;z-index:1}
+#v-method .detail-phase{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.20em;text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:14px;padding:5px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px}
+#v-method .detail-title{font-weight:900;font-size:30px;line-height:1.05;margin:0 0 14px;letter-spacing:-.015em;color:#fff}
+#v-method .detail-time{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.10em;color:#fff;padding:7px 12px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:6px;margin-bottom:16px}
+#v-method .detail-desc{font-size:14px;line-height:1.65;color:rgba(255,255,255,.78);margin:0;font-weight:500}
+#v-method .detail-right{padding:36px 36px;overflow:visible}
+#v-method .detail-cols{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+#v-method .detail-col-hd{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#6b7280;margin-bottom:14px;display:inline-flex;align-items:center;gap:8px}
+#v-method .detail-col-hd .badge-dot{display:inline-flex;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;background:var(--navy);color:#fff;font-size:11px;font-weight:900}
+#v-method .detail-col-hd.tasks .badge-dot{background:#22c55e;color:#fff}
+#v-method .detail-list{margin:0;padding:0;list-style:none}
+#v-method .detail-list li{padding:10px 0 10px 28px;position:relative;font-size:13.5px;line-height:1.5;color:#1a2342;border-bottom:1px dashed rgba(26,35,66,.08);font-weight:500}
+#v-method .detail-list li:last-child{border-bottom:none}
+#v-method .detail-list li::before{content:'';position:absolute;left:0;top:13px;width:18px;height:18px;border-radius:50%;background:rgba(42,53,84,.10)}
+#v-method .detail-list li::after{content:'';position:absolute;left:5px;top:18px;width:5px;height:9px;border-right:2px solid var(--navy);border-bottom:2px solid var(--navy);transform:rotate(40deg)}
+#v-method .detail-list.tasks li::before{background:rgba(34,197,94,.15);border:none;width:18px;height:18px;left:0;top:13px}
+#v-method .detail-list.tasks li::after{content:'';position:absolute;left:5px;top:18px;width:5px;height:9px;border-right:2px solid #16a34a;border-bottom:2px solid #16a34a;transform:rotate(40deg)}
+
+@media(max-width:980px){
+  #v-method h1{font-size:36px}
+  #v-method .map-content{padding:22px 18px 22px}
+  #v-method .map-area{aspect-ratio:1/1.1;min-height:520px}
+  #v-method .node-medallion{width:48px;height:48px}
+  #v-method .node-medallion svg{width:18px;height:18px}
+  #v-method .node-label{padding:5px 10px}
+  #v-method .node-name{font-size:10px}
+  #v-method .node-time{font-size:8.5px}
+  #v-method .map-hd{flex-direction:column;align-items:flex-start;gap:12px}
+  #v-method .master-rail-stations{flex-wrap:wrap;gap:18px;justify-content:center}
+  #v-method .master-rail-line{display:none}
+  #v-method .master-rail-header{flex-direction:column;align-items:flex-start;gap:6px}
+  #v-method .phase-modal-card{grid-template-columns:1fr;max-height:95vh}
+  #v-method .detail-left{border-radius:24px 24px 0 0}
+  #v-method .detail-cols{gap:20px}
+  #v-method .mrs-tip{width:260px}
+  #v-method .milestone-tip{width:260px}
+  #v-method .kpi-bubble{gap:24px;padding:16px 22px}
+  #v-method .kpi-num{font-size:22px}
+  #v-method .final-proof{padding:36px 22px 30px}
+}
+
+/* ═══════════════ Mobile vertical: camino step-by-step (≤640px) ═══════════════ */
+@media(max-width:640px){
+  /* SVG horizontal fuera; el camino se reconstruye en columna */
+  #v-method .map-area-svg{display:none}
+
+  /* map-area = flex column con guía punteada coral a la izquierda */
+  #v-method .map-area{
+    aspect-ratio:auto; min-height:0; height:auto;
+    display:flex; flex-direction:column; align-items:stretch;
+    padding:8px 0; position:relative; gap:0;
+  }
+  #v-method .map-area::before{
+    content:''; position:absolute;
+    left:31px; top:60px; bottom:60px; width:0;
+    border-left:2px dashed rgba(249,90,92,.55);
+    z-index:0;
+  }
+
+  /* ── Order: interlazar nodos + hitos en orden narrativo ── */
+  #v-method .map-area > .milestone.start-point  {order:0}
+  #v-method .map-area > #m-node-1                {order:1}
+  #v-method .map-area > #m-node-2                {order:2}
+  #v-method .map-area > .milestone.ms-after-load {order:3}
+  #v-method .map-area > #m-node-3                {order:4}
+  #v-method .map-area > .milestone.ms-after-buy  {order:5}
+  #v-method .map-area > #m-node-4                {order:6}
+  #v-method .map-area > .milestone.ms-after-fin  {order:7}
+  #v-method .map-area > #m-node-5                {order:8}
+  #v-method .map-area > #m-node-6                {order:9}
+  #v-method .map-area > .milestone.end-point     {order:10}
+
+  /* ── NODES (6 fases): círculo + label en fila ── */
+  #v-method .node{
+    position:relative !important;
+    left:auto !important; top:auto !important;
+    transform:none !important;
+    flex-direction:row; align-items:center;
+    gap:14px; padding:10px 6px; width:auto;
+    z-index:2;
+  }
+  #v-method .node:hover{transform:none}
+  #v-method .node-medallion{
+    flex-shrink:0; width:46px; height:46px;
+    background:#fff;
+  }
+  #v-method .node-medallion svg{width:18px;height:18px}
+  #v-method .node-label{
+    flex-direction:row; align-items:baseline; gap:8px;
+    padding:7px 14px; text-align:left; background:#fff;
+  }
+  #v-method .node-name{font-size:13.5px}
+  #v-method .node-time{font-size:11px;opacity:.75}
+  #v-method .node.optional .node-medallion{
+    background:rgba(255,255,255,.85);
+    border-color:rgba(249,90,92,.5);
+  }
+
+  /* ── MILESTONES en móvil: banners full-width siempre visibles ── */
+  #v-method .milestone,
+  #v-method .milestone.start-point,
+  #v-method .milestone.end-point,
+  #v-method .milestone.optional-milestone{
+    position:relative !important;
+    left:auto !important; right:auto !important;
+    top:auto !important; bottom:auto !important;
+    transform:none !important;
+    width:auto !important; height:auto !important;
+    display:block !important;
+    padding:0; margin:5px 0;
+    z-index:2; cursor:default;
+  }
+  #v-method .milestone:hover{transform:none !important}
+  /* dot del hover y label "Antes/Después" ya no se necesitan en móvil */
+  #v-method .milestone-dot,
+  #v-method .milestone-label{display:none !important}
+  /* El milestone-tip pasa a ser el banner real, alineado con el label del nodo.
+     Default = gris neutral (Antes + checkpoints Tras Carga/Compras/Finanzas).
+     Después + Tras Stocks pisan el default con verde abajo. */
+  #v-method .milestone-tip,
+  #v-method .milestone.start-point .milestone-tip,
+  #v-method .milestone.end-point .milestone-tip,
+  #v-method .milestone.optional-milestone .milestone-tip{
+    position:relative !important;
+    left:auto !important; right:auto !important;
+    top:auto !important; bottom:auto !important;
+    transform:none !important;
+    opacity:1 !important; pointer-events:auto;
+    width:auto !important; max-width:none !important;
+    margin:0 0 0 64px;
+    padding:10px 14px; border-radius:12px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:none; color:#fff; text-align:left;
+  }
+  #v-method .milestone-tip::after{display:none}
+  /* Contenido base del banner (gris/neutro) */
+  #v-method .milestone-tip-lbl,
+  #v-method .milestone.start-point .milestone-tip-lbl,
+  #v-method .milestone.end-point .milestone-tip-lbl{
+    font-size:9.5px; margin-bottom:4px;
+    color:rgba(255,255,255,.55); background:transparent; padding:0;
+    letter-spacing:.14em; display:inline-block;
+  }
+  #v-method .milestone-tip-title{font-size:13.5px;color:#fff;margin-bottom:2px;font-weight:800;line-height:1.25}
+  #v-method .milestone-tip-desc{font-size:12px;line-height:1.5;color:rgba(255,255,255,.70);margin:0}
+
+  /* Después + Tras Stocks → verde (destinos/victorias) */
+  #v-method .milestone.end-point .milestone-tip,
+  #v-method .milestone.optional-milestone .milestone-tip{
+    background:rgba(34,197,94,.12);
+    border-color:rgba(34,197,94,.40);
+  }
+  #v-method .milestone.end-point .milestone-tip-lbl,
+  #v-method .milestone.optional-milestone .milestone-tip-lbl{color:#6ee7b7}
+
+  /* advanced-note: simplificada (un texto justificativo, no flecha curva) */
+  #v-method .advanced-note{
+    position:relative !important;
+    left:auto !important;top:auto !important;
+    width:auto;height:auto;
+    margin:10px 0 6px 64px;
+  }
+  #v-method .advanced-note .an-line{display:none}
+  #v-method .advanced-note .an-content{
+    position:relative;top:auto;left:auto;transform:none;
+    width:auto;padding:8px 12px;
+    background:rgba(255,255,255,.04);
+    border:1px dashed rgba(255,255,255,.18);
+    border-radius:10px;
+    align-items:flex-start;
+  }
+  #v-method .advanced-note .an-arrow{font-size:14px;color:rgba(255,255,255,.5)}
+  #v-method .advanced-note .an-title{font-size:11.5px;color:#fff}
+  #v-method .advanced-note .an-sub{font-size:10.5px;line-height:1.4}
+
+  /* ── Cabecera del map y tipografía ── */
+  #v-method .map-content{padding:18px 14px 18px}
+  #v-method .map-hd{padding:12px 14px}
+  #v-method .map-hd-title{font-size:15px}
+  #v-method h1{font-size:30px}
+  #v-method .lede{font-size:14.5px}
+  #v-method .kpi-bubble{gap:18px;padding:14px 18px;border-radius:30px}
+  #v-method .kpi-num{font-size:18px}
+  #v-method .kpi-lbl{font-size:9px}
+
+  /* ── Master rail: grid 3 cols ── */
+  #v-method .master-rail{padding:18px 14px 14px}
+  #v-method .master-rail-track{height:auto}
+  #v-method .master-rail-stations{
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:16px 6px; width:100%;
+  }
+  #v-method .mrs-photo-wrap{width:44px;height:44px}
+  #v-method .mrs-name{font-size:10.5px}
+
+  /* extras-line: línea con +info al pie */
+  #v-method .extras-line{font-size:11.5px;line-height:1.7;padding:14px}
+
+  /* ── PHASE MODAL en móvil: 1 sola columna, padding compacto ── */
+  #v-method .phase-modal{padding:12px;align-items:flex-start;padding-top:5vh}
+  #v-method .phase-modal-card{
+    grid-template-columns:1fr;
+    max-height:90vh;
+    border-radius:18px;
+  }
+  #v-method .detail-left{
+    padding:22px 22px 18px;
+    border-radius:18px 18px 0 0;
+  }
+  #v-method .detail-phase{font-size:10px;margin-bottom:8px}
+  #v-method .detail-title{font-size:22px;line-height:1.15;margin-bottom:12px}
+  #v-method .detail-time{font-size:12px;margin-bottom:14px}
+  #v-method .detail-desc{font-size:13.5px;line-height:1.55}
+  #v-method .detail-right{padding:20px 22px 22px}
+  #v-method .detail-cols{
+    grid-template-columns:1fr;  /* ← una sola columna, "Entregamos" arriba, "Deberes" abajo */
+    gap:18px;
+  }
+  #v-method .detail-col-hd{font-size:10.5px;margin-bottom:10px}
+  #v-method .detail-list li{font-size:13px;padding:9px 0 9px 26px}
+  #v-method .modal-close{
+    top:14px;right:14px;
+    width:32px;height:32px;font-size:18px;
+    background:rgba(255,255,255,.18);
+    color:#fff;border-radius:50%;
+    border:none;
+  }
+
+  /* Final proof más compacto */
+  #v-method .final-proof{padding:24px 18px}
+  #v-method .final-proof-quote{font-size:14px}
+}
+
+/* ═══════════════════════════════════════════════════════
+   STEP-BAR (proceso 3 pasos: Plan · Método · Oferta)
+   Reemplaza la sticky-bar antigua de v-config.
+   ═══════════════════════════════════════════════════════ */
+#step-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:200;
+  background:rgba(255,255,255,.92);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);
+  backdrop-filter:saturate(1.6) blur(20px);
+  border-top:1px solid rgba(42,53,84,.10);
+  padding:14px 20px;
+  display:flex;justify-content:center;align-items:center;gap:12px;
+  box-shadow:0 -8px 28px -16px rgba(42,53,84,.22);
+}
+.step-item{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:9px 16px;border-radius:30px;
+  cursor:pointer;transition:background .2s,opacity .2s;
+  background:rgba(42,53,84,.04);
+  border:1px solid rgba(42,53,84,.08);
+  color:var(--navy);
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+}
+.step-item .step-num,.step-item .step-label,.step-item .step-detail{color:inherit}
+@media(hover:hover){
+  .step-item:not(.locked):not(.current):hover{background:rgba(42,53,84,.08)}
+}
+.step-item.current{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 4px 14px rgba(42,53,84,.30)}
+.step-item.current:hover{background:var(--navy);border-color:var(--navy);color:#fff} /* lock current colors on tap */
+.step-item.done{background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.30)}
+.step-item.locked{opacity:.40;cursor:not-allowed}
+.step-num{
+  width:24px;height:24px;border-radius:50%;
+  background:rgba(42,53,84,.10);color:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:900;flex-shrink:0;
+}
+.step-item.current .step-num{background:#fff;color:var(--navy)}
+.step-item.done .step-num{background:#16a34a;color:#fff}
+.step-info{display:flex;flex-direction:column;line-height:1.1;gap:1px}
+.step-label{font-size:13px;font-weight:800;letter-spacing:-.01em}
+.step-detail{font-size:9.5px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;opacity:.65}
+.step-connector{
+  width:36px;height:2px;flex-shrink:0;
+  background:repeating-linear-gradient(90deg,rgba(42,53,84,.20) 0,rgba(42,53,84,.20) 5px,transparent 5px,transparent 10px);
+}
+.step-item.done + .step-connector{background:repeating-linear-gradient(90deg,#16a34a 0,#16a34a 5px,transparent 5px,transparent 10px)}
+
+@media(max-width:768px){
+  #step-bar{padding:10px 12px;gap:8px;flex-wrap:nowrap}
+  .step-item{padding:7px 11px;gap:7px}
+  .step-label{font-size:12px}
+  .step-detail{display:none}
+  .step-connector{width:14px}
+  /* En mobile solo el step "current" muestra texto. Los demás se compactan a número */
+  .step-item .step-info{display:none}
+  .step-item.current .step-info{display:flex}
+  .step-item.current{flex:1;justify-content:flex-start;min-width:0}
+  .step-item.current .step-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .step-item:not(.current){padding:7px 9px;flex-shrink:0}
+}
+
+/* Padding-bottom en las views para que el step-bar no tape contenido */
+.view{padding-bottom:90px}
+@media(max-width:768px){.view{padding-bottom:70px}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -902,9 +1458,9 @@ body{font-feature-settings:"ss01"}
 <!-- ═══════════════ Sidebar portal (compartido) ═══════════════
      El configurador vive dentro del portal Yurest: cargamos el sidebar
      estándar para que el comercial pueda saltar a otras herramientas
-     sin perder contexto. El botón hamburguesa flota fixed top-left para
-     no romper el `.hdr-band` propio del configurador, que es parte de
-     su identidad de marca (logo yurest navy/coral). -->
+     sin perder contexto. El botón hamburguesa flota fixed top-left con
+     z-index 110 para quedar POR ENCIMA de la .ofr-topbar (z-index 100)
+     que aparece en las vistas #v-offer y #v-budget. -->
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <nav class="sidebar" id="sidebar"></nav>
 <script src="sidebar.js"></script>
@@ -918,21 +1474,90 @@ body{font-feature-settings:"ss01"}
   function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open');}
 </script>
 <style>
-  /* Botón hamburguesa flotante — solo en el configurador. Posicionado
-     sobre el `.hdr-band` sin entrar en el flujo del documento, para que
-     el layout original (logo centrado en band, etc.) quede intacto.
-     z-index 110 para quedar POR ENCIMA de la .ofr-topbar (z-index 100)
-     que aparece en las vistas #v-offer y #v-budget — si no, la hamburguesa
-     quedaba cubierta y no había forma de volver al sidebar tras avanzar. */
   .cfg-menu-btn{position:fixed;top:14px;left:14px;z-index:110;box-shadow:0 2px 8px rgba(15,23,42,.06)}
-  /* Anti-conflicto: style.css define `.empty` con padding grande y borde.
-     El configurador NO usa esa clase, pero si en el futuro algún elemento
-     interno hereda, se aísla con namespace `.cfg .empty`. Por ahora nada
-     que añadir. */
 </style>
 
-<!-- ═══════════════ CONFIG VIEW ═══════════════ -->
-<div class="view active" id="v-config">
+<!-- ═══════════════ BASELINE VIEW (paso 1 — situación actual) ═══════════════ -->
+<div class="view active" id="v-baseline">
+<div class="bl-wrap">
+  <div class="bl-hd">
+    <div class="bl-eyebrow"><span class="num">1</span><span>Tu situación actual</span></div>
+    <h1>Antes de hablar de yurest,<br><span class="accent">hablemos de tu negocio.</span></h1>
+    <p class="bl-lede">4 datos rápidos para calcular tu rentabilidad actual. Te llevará 30 segundos y nos da la base para enseñarte cuánto puedes ganar.</p>
+  </div>
+
+  <div class="bl-card">
+    <div class="bl-q">
+      <div class="bl-q-lbl"><span class="bl-q-num">1</span>Tu equipo</div>
+      <div class="bl-q-title">¿Cuántos empleados tenéis?</div>
+      <div class="bl-q-sub">Total entre todos los locales · incluye a tiempo parcial</div>
+      <div class="bl-input-row">
+        <div class="bl-input-wrap">
+          <input type="number" id="emp-input" inputmode="numeric" autocomplete="off" placeholder="20" min="1" max="9999" oninput="changeEmployees()">
+          <span class="bl-input-suffix">personas</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bl-q">
+      <div class="bl-q-lbl"><span class="bl-q-num">2</span>Facturación anual</div>
+      <div class="bl-q-title">¿Cuánto facturas al año?</div>
+      <div class="bl-q-sub">Suma de todos los locales · sin IVA</div>
+      <div class="bl-input-row">
+        <div class="bl-input-wrap">
+          <input type="text" id="bl-facturacion" inputmode="numeric" autocomplete="off" placeholder="500.000" oninput="formatFacturacion(this);onBaselineInput()">
+          <span class="bl-input-suffix">€/año</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bl-q">
+      <div class="bl-q-lbl"><span class="bl-q-num">3</span>Coste en compras</div>
+      <div class="bl-q-title">¿Qué % se te va en materia prima?</div>
+      <div class="bl-q-sub">Compras a proveedores · % sobre facturación</div>
+      <div class="bl-input-row">
+        <div class="bl-input-wrap">
+          <input type="number" id="bl-compras" inputmode="decimal" placeholder="32" oninput="onBaselineInput()" min="0" max="100" step="0.5">
+          <span class="bl-input-suffix">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bl-q">
+      <div class="bl-q-lbl"><span class="bl-q-num">4</span>Coste en RRHH</div>
+      <div class="bl-q-title">¿Qué % se te va en personal?</div>
+      <div class="bl-q-sub">Salarios + SS + extras · % sobre facturación</div>
+      <div class="bl-input-row">
+        <div class="bl-input-wrap">
+          <input type="number" id="bl-rrhh" inputmode="decimal" placeholder="33" oninput="onBaselineInput()" min="0" max="100" step="0.5">
+          <span class="bl-input-suffix">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bl-gg-row">
+      <div class="bl-gg-lbl">+ <b>Gastos generales</b> (alquiler, suministros, marketing…) — estimado</div>
+      <div class="bl-gg-val">20%</div>
+    </div>
+
+    <div class="bl-result">
+      <div class="bl-result-inner">
+        <div class="bl-result-hd">Tu rentabilidad actual</div>
+        <div class="bl-result-stat">
+          <span class="bl-result-pct empty" id="bl-pct">—</span>
+          <span class="bl-result-eq">=</span>
+          <span class="bl-result-eur" id="bl-eur">— <small>€/año</small></span>
+        </div>
+        <div class="bl-result-msg" id="bl-msg">Rellena los 3 datos arriba y verás tu rentabilidad. La media de clientes yurest mejora esto <b>+3 a +7 puntos porcentuales</b> — te lo demostramos en los siguientes pasos.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /v-baseline -->
+
+
+<!-- ═══════════════ CONFIG VIEW (paso 2 — tu plan) ═══════════════ -->
+<div class="view" id="v-config">
 <div class="cfg">
 
 <div class="band hdr-band">
@@ -968,10 +1593,6 @@ body{font-feature-settings:"ss01"}
 <div class="sec">
   <div class="sec-hd-row">
     <div class="sec-label">1. Elige tu plan base</div>
-    <div class="emp-inline">
-      <span class="emp-inline-lbl">Empleados</span>
-      <input class="emp-input" id="emp-input" type="number" min="1" max="9999" oninput="changeEmployees()">
-    </div>
   </div>
   <div class="sec-desc">Todos los planes incluyen IA, compras, finanzas, cuadros de mando y fichador · Documentos por local</div>
   <div class="plans-grid">
@@ -1247,18 +1868,199 @@ body{font-feature-settings:"ss01"}
 
 </div><!-- /cfg -->
 
-<div class="sticky-bar">
-  <div class="bar-info">
-    <div class="bar-label" id="bar-label">Elige un plan para continuar</div>
-    <div class="bar-price-wrap">
-      <div class="bar-price" id="bar-price">—</div>
-      <div class="bar-period" id="bar-period"></div>
-    </div>
-    <div class="bar-detail" id="bar-detail"></div>
-  </div>
-  <button class="bar-cta" id="bar-cta" disabled onclick="showOffer()">Ver mi oferta →</button>
-</div>
+<!-- (Sticky-bar antiguo eliminado — la navegación ahora se hace con el #step-bar global) -->
 </div><!-- /v-config -->
+
+
+<!-- ═══════════════ MÉTODO VIEW (paso 2 — entre Plan y Oferta) ═══════════════ -->
+<div class="view" id="v-method">
+<div class="wrap">
+
+<div class="metodo-hd">
+  <div class="eyebrow"><span class="star">★</span>Método yurest: la receta del éxito</div>
+  <h1>No es teoría.<br>Es <span class="accent">un camino.</span></h1>
+  <p class="lede" id="m-lede">Implementar tecnología en hostelería no es fácil. Por eso, igual que en cualquier viaje, tenemos un mapa con paradas obligatorias, un consultor dedicado en cada una, y la regla más importante: <strong>no avanzamos hasta que la fase anterior está cerrada</strong>.</p>
+  <div class="kpi-bubble">
+    <div class="kpi"><div class="kpi-num" id="m-kpi-weeks">7 sem.</div><div class="kpi-lbl">Al control</div></div>
+    <div class="kpi"><div class="kpi-num" id="m-kpi-sessions">6</div><div class="kpi-lbl">Sesiones implementación</div></div>
+    <div class="kpi"><div class="kpi-num">9</div><div class="kpi-lbl">Sesiones Master</div></div>
+    <div class="kpi"><div class="kpi-num">4</div><div class="kpi-lbl">Consultores expertos</div></div>
+  </div>
+</div>
+
+<div class="proof-banner">
+  <div class="proof-pill"><span class="stars">★★★★★</span><b>+1.500 hosteleros</b> no pueden estar equivocados</div>
+</div>
+
+<div class="map-wrap">
+  <svg class="map-bg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1200 700">
+    <defs><pattern id="dotGrid" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="rgba(255,255,255,.06)"/></pattern></defs>
+    <rect width="1200" height="700" fill="url(#dotGrid)"/>
+    <g fill="none" stroke="rgba(255,255,255,.04)" stroke-width="1">
+      <path d="M-50 620 Q 220 580 460 600 T 940 580 T 1300 620"/>
+      <path d="M-50 540 Q 270 500 510 520 T 990 500 T 1300 540"/>
+      <path d="M-50 460 Q 320 420 560 440 T 1040 420 T 1300 460"/>
+      <path d="M-50 380 Q 370 340 610 360 T 1090 340 T 1300 380"/>
+      <path d="M-50 300 Q 420 260 660 280 T 1140 260 T 1300 300"/>
+      <path d="M-50 220 Q 470 180 710 200 T 1190 180 T 1300 220"/>
+    </g>
+  </svg>
+
+  <div class="map-content">
+    <div class="map-hd">
+      <div class="map-hd-left">
+        <div class="map-hd-tag" id="m-impl-tag">Ruta de implementación · cliente nuevo</div>
+        <div class="map-hd-title">Del primer pedido al control total</div>
+      </div>
+      <div class="map-hd-stats">
+        <div class="hd-stat"><strong id="m-stat-phases">6</strong> etapas</div>
+        <div class="hd-stat">~<strong id="m-stat-weeks">7</strong> semanas</div>
+        <div class="hd-stat"><strong id="m-stat-sessions">6+9</strong> sesiones</div>
+      </div>
+    </div>
+
+    <div class="map-area">
+      <svg class="map-area-svg" viewBox="0 0 1200 600" preserveAspectRatio="none">
+        <defs><filter id="pathGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <path id="mainPath" d="M 15 540 Q 50 520 90 470 C 180 470 220 530 290 480 S 410 320 480 320 S 600 460 670 460 S 830 220 900 220 S 1080 100 1180 80" fill="none" stroke="#F95A5C" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="8 6" filter="url(#pathGlow)">
+          <animate attributeName="stroke-dashoffset" from="56" to="0" dur="5s" repeatCount="indefinite"/>
+        </path>
+      </svg>
+
+      <div class="node" id="m-node-1" style="left:7.5%;top:78%" onclick="openMethodPhase(1)">
+        <div class="node-medallion"><div class="node-stamp">1</div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+        </div>
+        <div class="node-label"><span class="node-name">Bienvenida</span><span class="node-time">&lt;48 h</span></div>
+      </div>
+
+      <div class="node" id="m-node-2" style="left:24.2%;top:80%" onclick="openMethodPhase(2)">
+        <div class="node-medallion"><div class="node-stamp">2</div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg>
+        </div>
+        <div class="node-label"><span class="node-name">Carga + TPV</span><span class="node-time">Sem 1</span></div>
+      </div>
+
+      <div class="node" id="m-node-3" style="left:40%;top:53.3%" onclick="openMethodPhase(3)">
+        <div class="node-medallion"><div class="node-stamp">3</div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+        </div>
+        <div class="node-label"><span class="node-name">Compras</span><span class="node-time">Sem 2-3</span></div>
+      </div>
+
+      <div class="node" id="m-node-4" style="left:55.8%;top:76.7%" onclick="openMethodPhase(4)">
+        <div class="node-medallion"><div class="node-stamp">4</div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        </div>
+        <div class="node-label"><span class="node-name">Finanzas</span><span class="node-time">Sem 4</span></div>
+      </div>
+
+      <div class="node" id="m-node-5" style="left:72.5%;top:36.7%" onclick="openMethodPhase(5)">
+        <div class="node-medallion"><div class="node-stamp">5</div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>
+        </div>
+        <div class="node-label"><span class="node-name">Cocina</span><span class="node-time">Sem 5-6</span></div>
+      </div>
+
+      <div class="node" id="m-node-6" style="left:91.7%;top:21.7%" onclick="openMethodPhase(6)">
+        <div class="node-medallion"><div class="node-stamp">6</div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        </div>
+        <div class="node-label"><span class="node-name" id="m-node6-name">Stocks</span><span class="node-time" id="m-node6-time">Sem 7</span></div>
+      </div>
+
+      <div class="milestone start-point" style="left:2%;top:90%">
+        <div class="milestone-dot">·</div>
+        <div class="milestone-label">Antes</div>
+        <div class="milestone-tip">
+          <div class="milestone-tip-lbl">Antes de yurest</div>
+          <div class="milestone-tip-title">El día a día sin control</div>
+          <p class="milestone-tip-desc">Mil excels, post-its con proveedores, costes que se escapan, decisiones por intuición.</p>
+        </div>
+      </div>
+
+      <div class="milestone ms-after-load" style="left:32%;top:64%">
+        <div class="milestone-dot">✓</div>
+        <div class="milestone-tip">
+          <div class="milestone-tip-lbl">✓ Tras Carga · Listo</div>
+          <div class="milestone-tip-title">Tu BBDD operativa</div>
+          <p class="milestone-tip-desc">Productos, proveedores y 3 meses de histórico cargados. TPV integrado. Empieza la formación con datos reales.</p>
+        </div>
+      </div>
+      <div class="milestone ms-after-buy" style="left:48%;top:67%">
+        <div class="milestone-dot">✓</div>
+        <div class="milestone-tip">
+          <div class="milestone-tip-lbl">✓ Tras Compras · Listo</div>
+          <div class="milestone-tip-title">Operativa digital activa</div>
+          <p class="milestone-tip-desc">Pedidos desde la APP. Albaranes por foto. Cero papel, cero llamadas al proveedor.</p>
+        </div>
+      </div>
+      <div class="milestone ms-after-fin" style="left:64%;top:57%">
+        <div class="milestone-dot">✓</div>
+        <div class="milestone-tip">
+          <div class="milestone-tip-lbl">✓ Tras Finanzas · Listo</div>
+          <div class="milestone-tip-title">Rentabilidad en directo</div>
+          <p class="milestone-tip-desc">EBITDA, balance y cierre de caja en el móvil. Decisiones con datos, no con intuición.</p>
+        </div>
+      </div>
+
+      <div class="milestone end-point" style="left:84.2%;top:33.3%">
+        <div class="milestone-dot">★</div>
+        <div class="milestone-label">Después</div>
+        <div class="milestone-tip">
+          <div class="milestone-tip-lbl">✓ Tras Cocina · Destino</div>
+          <div class="milestone-tip-title">Ya tienes todo lo que necesitas</div>
+          <p class="milestone-tip-desc">Compras, finanzas y rentabilidad por plato bajo control. Operativa digital completa.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="extras-line">
+      Además: <b>2 sesiones P&amp;R grupales</b><span class="sep">·</span><b>2 sesiones P&amp;R individuales</b> (30 min)<span class="sep">·</span><b>yurest Academy</b> · video-formación<span class="sep">·</span><b>todas las sesiones grabadas</b>
+    </div>
+  </div>
+</div>
+
+<!-- Resultado aplicado al baseline del cliente (paso 3 · cierre del método) -->
+<div class="roi-box" id="method-roi-box" style="margin:40px 0 0;display:none">
+  <div class="roi-box-inner">
+    <div class="roi-box-hd"><span class="star">★</span>Ahora aplicado a TU negocio</div>
+    <div class="roi-grid">
+      <div class="roi-cell">
+        <span class="roi-cell-lbl">Hoy</span>
+        <span class="roi-cell-val" id="method-roi-current">—</span>
+        <span class="roi-cell-sub" id="method-roi-current-eur">— €/año</span>
+      </div>
+      <div class="roi-cell">
+        <span class="roi-cell-lbl">Con yurest (estimado)</span>
+        <span class="roi-cell-val good" id="method-roi-proj">—</span>
+        <span class="roi-cell-sub" id="method-roi-proj-eur">— €/año</span>
+      </div>
+      <div class="roi-cell">
+        <span class="roi-cell-lbl">Ganancia anual</span>
+        <span class="roi-cell-val good huge" id="method-roi-gain">—</span>
+        <span class="roi-cell-sub">recuperados cada año</span>
+      </div>
+    </div>
+    <div class="roi-box-note">* Rango +3 a +7 puntos sobre tu margen actual · media de clientes yurest</div>
+  </div>
+</div>
+
+<div class="final-proof">
+  <div class="final-proof-stars">★ ★ ★ ★ ★</div>
+  <p class="final-proof-quote"><b>+1.500 hosteleros</b> ya han recorrido este camino con nosotros</p>
+  <div class="final-proof-sub">No es lo que decimos · Es lo que han hecho</div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- Phase modal del método -->
+<div class="phase-modal" id="m-phaseModal" onclick="if(event.target.id==='m-phaseModal') closeMethodModal()">
+  <div class="phase-modal-card" id="m-phaseModalCard"></div>
+</div>
+
+</div><!-- /v-method -->
 
 
 <!-- ═══════════════ OFFER VIEW ═══════════════ -->
@@ -1273,8 +2075,7 @@ body{font-feature-settings:"ss01"}
     </div>
     <div class="ofr-saving show" id="ofr-saving">✓ 2 meses gratis</div>
   </div>
-  <!-- Slot del logo oculto (visibility:hidden, no display:none) para
-       conservar el centrado del toggle vía justify-content:space-between. -->
+  <!-- Slot del logo oculto para preservar el centrado del toggle vía space-between. -->
   <div class="ofr-logo" aria-hidden="true" style="visibility:hidden">yurest</div>
 </div>
 
@@ -1330,6 +2131,31 @@ body{font-feature-settings:"ss01"}
   <!-- Checkout / payment section -->
   <div class="checkout" id="checkout-wrap"></div>
 
+  <!-- ROI box (aparece solo si el baseline está rellenado) -->
+  <div class="roi-box" id="offer-roi-box" style="display:none">
+    <div class="roi-box-inner">
+      <div class="roi-box-hd"><span class="star">★</span>Tu ROI estimado</div>
+      <div class="roi-grid">
+        <div class="roi-cell">
+          <span class="roi-cell-lbl">Inviertes</span>
+          <span class="roi-cell-val" id="offer-roi-invest">—</span>
+          <span class="roi-cell-sub">tu plan + implementación</span>
+        </div>
+        <div class="roi-cell">
+          <span class="roi-cell-lbl">Ganas (proyección)</span>
+          <span class="roi-cell-val good" id="offer-roi-gain">—</span>
+          <span class="roi-cell-sub" id="offer-roi-gain-sub">— €/año extra de rentabilidad</span>
+        </div>
+        <div class="roi-cell">
+          <span class="roi-cell-lbl">Retorno año 1</span>
+          <span class="roi-cell-val good huge" id="offer-roi-ratio">—</span>
+          <span class="roi-cell-sub">veces lo invertido</span>
+        </div>
+      </div>
+      <div class="roi-box-note">* Estimación basada en la media de mejora de clientes yurest (+3 a +7 pp sobre tu margen actual).</div>
+    </div>
+  </div>
+
   <button class="cta-big" onclick="showBudget()">🚀 Quiero empezar con yurest</button>
 </div>
 </div><!-- /v-offer -->
@@ -1359,13 +2185,13 @@ body{font-feature-settings:"ss01"}
     <button class="budget-send-cta" onclick="downloadBudget()">Descargar PDF</button>
   </div>
 
-  <!-- Acción siguiente: arrancar la solicitud de ficha de alta con los
-       datos iniciales del cliente. Encaja el flujo comercial: oferta →
-       presupuesto → solicitud de ficha (continúa en lista.html con los
-       campos prefilled vía query string). -->
+  <!-- Acción siguiente: arrancar la solicitud de ficha de alta directamente
+       desde aquí. Crea la solicitud + envía el email + actualiza la oferta
+       como 'enviada' en Supabase. Modal con success card en sitio (sin hop
+       por lista.html). -->
   <div class="budget-send" id="ficha-actions" style="margin-top:14px">
     <div class="budget-send-title">📋 Iniciar ficha de alta</div>
-    <div class="budget-send-desc">Captura los datos iniciales del cliente y continúa la solicitud en Fichas de cliente.</div>
+    <div class="budget-send-desc">Captura los datos iniciales del cliente y crea la solicitud en un solo paso.</div>
     <button class="budget-send-cta" onclick="abrirFichaModal()">Empezar Ficha →</button>
   </div>
 </div>
@@ -1656,43 +2482,218 @@ function updImplItems(){
   }
 }
 
-function updBar(){
-  if(employees==null){
-    document.getElementById('bar-label').textContent='Introduce el número de empleados para empezar';
-    document.getElementById('bar-price').textContent='—';
-    document.getElementById('bar-period').textContent='';
-    document.getElementById('bar-detail').textContent='';
-    document.getElementById('bar-cta').disabled=true; return;
+// updBar mantiene el nombre por compatibilidad (lo llaman muchos sitios),
+// ahora solo refresca el #step-bar (la sticky-bar antigua ya no existe).
+function updBar(){ updStepBar(); }
+
+// ═══════════ BASELINE (paso 1 · situación actual) ═══════════
+var BASELINE_GG = 20;       // % gastos generales estimados (constante)
+var GAIN_LOW    = 3;        // +pp bajos del rango de mejora yurest
+var GAIN_HIGH   = 7;        // +pp altos del rango de mejora yurest
+var baseline = {facturacion:null, compras:null, rrhh:null};
+
+function readBaselineInputs(){
+  var fRaw = (document.getElementById('bl-facturacion').value||'').replace(/\D/g,'');
+  var f = parseInt(fRaw,10);
+  var c = parseFloat(document.getElementById('bl-compras').value);
+  var r = parseFloat(document.getElementById('bl-rrhh').value);
+  baseline.facturacion = (isFinite(f) && f>0) ? f : null;
+  baseline.compras     = (isFinite(c) && c>=0 && c<=100) ? c : null;
+  baseline.rrhh        = (isFinite(r) && r>=0 && r<=100) ? r : null;
+}
+
+function formatFacturacion(input){
+  var raw = input.value.replace(/\D/g,'');
+  if(!raw){ input.value=''; return; }
+  // Posición del cursor en términos de dígitos contados desde la izquierda
+  var prevCursor = input.selectionStart||0;
+  var digitsBefore = (input.value.slice(0,prevCursor).match(/\d/g)||[]).length;
+  var formatted = parseInt(raw,10).toLocaleString('es-ES');
+  input.value = formatted;
+  // Reposicionar el cursor tras el N-ésimo dígito
+  var pos = 0, count = 0;
+  for(var i=0;i<formatted.length;i++){
+    if(/\d/.test(formatted.charAt(i))){
+      count++;
+      if(count===digitsBefore){ pos = i+1; break; }
+    }
   }
-  if(!plan){
-    document.getElementById('bar-label').textContent='Elige un plan para continuar';
-    document.getElementById('bar-price').textContent='—';
-    document.getElementById('bar-period').textContent='';
-    document.getElementById('bar-detail').textContent='';
-    document.getElementById('bar-cta').disabled=true; return;
+  if(count<digitsBefore) pos = formatted.length;
+  try{ input.setSelectionRange(pos,pos); }catch(e){}
+}
+function baselineComplete(){
+  return employees!=null && baseline.facturacion!=null && baseline.compras!=null && baseline.rrhh!=null;
+}
+function computeBaseline(){
+  if(!baselineComplete()) return null;
+  var marginPct = 100 - baseline.compras - baseline.rrhh - BASELINE_GG;
+  var currentEur = baseline.facturacion * marginPct / 100;
+  var gainLowEur  = baseline.facturacion * GAIN_LOW  / 100;
+  var gainHighEur = baseline.facturacion * GAIN_HIGH / 100;
+  return {
+    marginPct: marginPct,
+    currentEur: currentEur,
+    gainLowEur: gainLowEur,
+    gainHighEur: gainHighEur,
+    projectedLowPct:  marginPct + GAIN_LOW,
+    projectedHighPct: marginPct + GAIN_HIGH,
+    projectedLowEur:  currentEur + gainLowEur,
+    projectedHighEur: currentEur + gainHighEur
+  };
+}
+
+function fmtEur(n){
+  if(!isFinite(n)) return '—';
+  return Math.round(n).toLocaleString('es-ES')+' €';
+}
+function fmtPct(n,decimals){
+  if(!isFinite(n)) return '—';
+  var d = (decimals==null) ? (Math.abs(n)<10 ? 1 : 0) : decimals;
+  return n.toFixed(d).replace('.',',')+'%';
+}
+
+function updBaselineUI(){
+  var pctEl  = document.getElementById('bl-pct');
+  var eurEl  = document.getElementById('bl-eur');
+  var msgEl  = document.getElementById('bl-msg');
+  var r = computeBaseline();
+  if(!r){
+    pctEl.textContent='—'; pctEl.className='bl-result-pct empty';
+    eurEl.innerHTML='— <small>€/año</small>';
+    msgEl.classList.remove('negative');
+    msgEl.innerHTML='Rellena los 3 datos arriba y verás tu rentabilidad. La media de clientes yurest mejora esto <b>+3 a +7 puntos porcentuales</b> — te lo demostramos en los siguientes pasos.';
+    return;
   }
-  if(!impl){
-    document.getElementById('bar-label').textContent='Selecciona la implementación';
-    document.getElementById('bar-price').textContent='—';
-    document.getElementById('bar-period').textContent='';
-    document.getElementById('bar-detail').textContent='';
-    document.getElementById('bar-cta').disabled=true; return;
+  pctEl.textContent = fmtPct(r.marginPct);
+  pctEl.className = 'bl-result-pct' + (r.marginPct<0?' negative':'');
+  eurEl.innerHTML = fmtEur(r.currentEur).replace('€','') + '<small>€/año</small>';
+  if(r.marginPct < 0){
+    msgEl.classList.add('negative');
+    msgEl.innerHTML = 'Estás en margen negativo. Yurest ha sacado a operadores del rojo: la media de clientes recupera <b>+3 a +7 puntos</b>, te enseñamos cómo en los próximos pasos.';
+  } else {
+    msgEl.classList.remove('negative');
+    msgEl.innerHTML = 'Con yurest, la media sube esto a <b>'+fmtPct(r.projectedLowPct)+' – '+fmtPct(r.projectedHighPct)+'</b>. Eso son <b>+'+fmtEur(r.gainLowEur)+' a +'+fmtEur(r.gainHighEur)+' al año</b> en tu negocio. Te lo demostramos en los próximos pasos.';
   }
-  var base=billing==='annual'?PA[plan]:PM[plan];
-  var addTotal=Object.keys(ADM).reduce(function(s,k){return addons[k]?s+adPrice(k):s;},0);
-  var monthly=applyDiscount(base+addTotal)*locales;
-  var addonCount=Object.keys(addons).filter(function(k){return addons[k];}).length;
-  document.getElementById('bar-label').textContent='Plan '+PNAMES[plan]+' · '+PDOCS[plan];
-  tweenNumber(document.getElementById('bar-price'), monthly, {fmt:fmt, suffix:' €'});
-  document.getElementById('bar-period').textContent=billing==='annual'?'/mes · anual':'/mes';
-  document.getElementById('bar-detail').textContent=(addonCount?addonCount+' módulo'+(addonCount>1?'s':''):'')+( locales>1?' · '+locales+' locales':'');
-  document.getElementById('bar-cta').disabled=false;
+}
+
+function onBaselineInput(){
+  readBaselineInputs();
+  updBaselineUI();
+  updStepBar();
+  updateROIBoxes();
+}
+
+function updateROIBoxes(){
+  var r = computeBaseline();
+  // Bloque del final del método
+  var mb = document.getElementById('method-roi-box');
+  if(mb){
+    if(r){
+      mb.style.display='block';
+      document.getElementById('method-roi-current').textContent = fmtPct(r.marginPct);
+      document.getElementById('method-roi-current-eur').textContent = fmtEur(r.currentEur)+'/año';
+      document.getElementById('method-roi-proj').textContent = fmtPct(r.projectedLowPct)+'–'+fmtPct(r.projectedHighPct);
+      document.getElementById('method-roi-proj-eur').textContent = fmtEur(r.projectedLowEur)+' – '+fmtEur(r.projectedHighEur)+'/año';
+      document.getElementById('method-roi-gain').textContent = '+'+fmtEur(r.gainLowEur)+' a +'+fmtEur(r.gainHighEur);
+    } else {
+      mb.style.display='none';
+    }
+  }
+  // Mini-box del paso 4 (oferta)
+  var ob = document.getElementById('offer-roi-box');
+  if(ob){
+    if(r && plan && impl){
+      var annualInvest = computeAnnualInvest();
+      ob.style.display='block';
+      document.getElementById('offer-roi-invest').textContent = fmtEur(annualInvest)+'/año';
+      document.getElementById('offer-roi-gain').textContent = '+'+fmtEur(r.gainLowEur)+' a +'+fmtEur(r.gainHighEur);
+      document.getElementById('offer-roi-gain-sub').textContent = 'extra de rentabilidad anual';
+      var ratioLow  = annualInvest>0 ? r.gainLowEur/annualInvest  : 0;
+      var ratioHigh = annualInvest>0 ? r.gainHighEur/annualInvest : 0;
+      document.getElementById('offer-roi-ratio').textContent = ratioLow.toFixed(1).replace('.',',')+'× a '+ratioHigh.toFixed(1).replace('.',',')+'×';
+    } else {
+      ob.style.display='none';
+    }
+  }
+}
+
+function computeAnnualInvest(){
+  if(!plan || !impl) return 0;
+  var base   = billing==='annual' ? PA[plan] : PM[plan];
+  var addTot = Object.keys(ADM).reduce(function(s,k){return addons[k]?s+adPrice(k):s;},0);
+  var monthly = applyDiscount(base+addTot)*locales;
+  var annual  = monthly*12;
+  var implCost= (impl==='personalizada') ? 1500 : 0;
+  return annual + implCost;
+}
+
+// ═══════════ STEP-BAR + navegación de views ═══════════
+function updStepBar(){
+  var v = document.querySelector('.view.active');
+  var step = 1;
+  if(v){
+    if(v.id==='v-config')      step=2;
+    else if(v.id==='v-method') step=3;
+    else if(v.id==='v-offer' || v.id==='v-budget') step=4;
+  }
+  var baseOK  = baselineComplete();
+  var planOK  = baseOK && (employees!=null) && plan && impl;
+  [1,2,3,4].forEach(function(n){
+    var el = document.getElementById('step-'+n);
+    if(!el) return;
+    el.classList.remove('current','done','locked');
+    if(n === step){ el.classList.add('current'); return; }
+    if(n < step){   el.classList.add('done');    return; }
+    // Future steps — locking en cascada
+    if(n>=2 && !baseOK) el.classList.add('locked');
+    else if(n===4 && !planOK) el.classList.add('locked');
+  });
+}
+
+function goToStep(n){
+  if(n === 1){ showBaseline(); return; }
+  if(!baselineComplete()){
+    alert('Rellena los 3 datos de tu situación actual primero');
+    return;
+  }
+  if(n === 2){ showConfig(); return; }
+  if(n === 3){ showMethod(); return; }
+  if(n === 4){
+    if(employees==null){alert('Introduce el número de empleados primero');return;}
+    if(!plan){alert('Elige un plan primero');return;}
+    if(!impl){alert('Selecciona la implementación primero');return;}
+    showOffer();
+  }
+}
+
+function deactivateAllViews(){
+  ['v-baseline','v-config','v-method','v-offer','v-budget'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.classList.remove('active');
+  });
+}
+
+function showBaseline(){
+  deactivateAllViews();
+  document.getElementById('v-baseline').classList.add('active');
+  window.scrollTo(0,0);
+  updStepBar();
+}
+
+function showMethod(){
+  if(!baselineComplete()){ showBaseline(); return; }
+  deactivateAllViews();
+  document.getElementById('v-method').classList.add('active');
+  updateMethodRoadmap();
+  updateROIBoxes();
+  window.scrollTo(0,0);
+  updStepBar();
 }
 
 function showOffer(){
+  if(!baselineComplete()){ showBaseline(); return; }
+  if(employees==null || !plan || !impl) return;
   renderOffer();
-  document.getElementById('v-config').classList.remove('active');
-  document.getElementById('v-budget').classList.remove('active');
+  deactivateAllViews();
   var v=document.getElementById('v-offer');
   v.classList.add('active');
   var w=v.querySelector('.ofr-wrap');
@@ -1701,21 +2702,217 @@ function showOffer(){
     void w.offsetWidth;
     w.classList.add('ofr-just-revealed');
   }
+  updateROIBoxes();
   window.scrollTo(0,0);
+  updStepBar();
 }
-function showConfig(){document.getElementById('v-offer').classList.remove('active');document.getElementById('v-budget').classList.remove('active');document.getElementById('v-config').classList.add('active');window.scrollTo(0,0);}
+function showConfig(){
+  if(!baselineComplete()){ showBaseline(); return; }
+  deactivateAllViews();
+  document.getElementById('v-config').classList.add('active');
+  window.scrollTo(0,0);
+  updStepBar();
+}
 function showBudget(){
-  if(!plan){ alert('Elige un plan primero'); return; }
+  if(!plan){alert('Elige un plan primero');return;}
   renderBudget();
-  document.getElementById('v-offer').classList.remove('active');
+  deactivateAllViews();
   document.getElementById('v-budget').classList.add('active');
   window.scrollTo(0,0);
+  updStepBar();
   // Persistencia: al entrar a la vista de presupuesto guardamos la oferta
   // como borrador en Supabase (vía n8n). Fire-and-forget: si falla, el
-  // flujo del comercial continúa sin bloqueo (la oferta simplemente no
-  // aparecerá en ofertas.html, pero el PDF y la ficha funcionan igual).
-  _cfgPersistDraft();
+  // flujo del comercial continúa sin bloqueo.
+  if (typeof _cfgPersistDraft === 'function') _cfgPersistDraft();
 }
+
+// ═══════════ MÉTODO YUREST · data + render ═══════════
+var METHOD_PHASES = {
+  1:{name:'Bienvenida',time:'< 48 horas · 1 sesión',desc:'Cuando firmas, en menos de 48h tienes consultor asignado y cuenta activada. No "te apañas" — alguien con nombre y apellido te acompaña desde el minuto uno.',deliver:['Llamada de bienvenida y puesta en marcha','Consultor dedicado asignado','Cuenta yurest activada','Calendario de las 6 fases'],tasks:['Confirmar datos del local','Designar interlocutor interno del equipo']},
+  2:{name:'Carga de datos + integración TPV',time:'Semana 1 · 7 días · trabajo nuestro',desc:'Aquí pasamos a la acción. Tú nos pasas albaranes y facturas de los últimos 3 meses. Nosotros construimos tu base de datos de productos y proveedores por ti. En paralelo, integramos tu TPV.',deliver:['BBDD completa de productos y proveedores construida','Integración técnica con tu TPV operativa','3 meses de histórico cargado para análisis posterior'],tasks:['Subir albaranes y facturas de los últimos 3 meses','Aportar credenciales y datos del TPV']},
+  3:{name:'Compras + Escáner IA',time:'Semanas 2-3 · 2 sesiones de 1h30',desc:'Aprendes a hacer pedidos desde la APP y a meter albaranes por foto con el OCR. No es teoría: hay deberes reales. Si no haces los deberes, no avanzamos a Finanzas.',deliver:['Sesión 1 · gestión completa del proceso de compras: pedido, recepción y verificación de albaranes','Sesión 2 · crear, editar y administrar proveedores y productos. Permisos e informes clave','Escáner IA de albaranes activado (OCR)'],tasks:['Realizar pedidos desde la aplicación','Recepcionar albarán por OCR','Revisar la configuración de productos: unidades de medida, pack, impuestos alternativos','Añadir alérgenos (opcional)']},
+  4:{name:'Finanzas',time:'Semana 6 · 1 sesión de 1h30',desc:'Aquí pasa la magia. Como ya cargamos 3 meses de datos en la fase 2, en cuanto encendemos Finanzas ves tu rentabilidad real desde el primer día. No tienes que esperar 3 meses para tener datos.',deliver:['Composición del EBITDA y balances financieros vía registro de gastos','Gastos generales, de personal, vencimientos','Cierre de caja automático conectado al TPV','Informes y analítica de ventas'],tasks:['Componer las recurrencias de los gastos generales','Cargar gastos fraccionarios y únicos','Importar nóminas en PDF']},
+  5:{name:'Cocina',time:'Semanas 3-4 · 2 sesiones de 1h30',desc:'Cargas tus recetas y escandallos. Cuando cambia el precio de compra (en Compras), el escandallo se recalcula solo. Ves rentabilidad por plato sin Excel.',deliver:['Sesión 1 · desarrollar recetas, calcular mermas y conformar fichas técnicas (platos finales)','Sesión 2 · convertir productos de venta y enlazarlos con el TPV. Comprensión de informes','Escandallos dinámicos auto-actualizables'],tasks:['Registrar y documentar todas las recetas con sus resultados finales (elaboraciones)','Componer las fichas técnicas (escandallos)','Convertir productos en productos de venta','Enlazar productos y fichas técnicas con tu TPV']},
+  6:{name:'Stocks',time:'Semana 5 · 1 sesión de 1h30',desc:'Inventarios con descuento automático según las ventas del TPV. Detectas mermas y descuadres reales en tu inventario.',deliver:['Ubicaciones de inventario configuradas','Cómo realizar inventarios correctamente','Registro de mermas','Informes y permisos'],tasks:['Realizar un inventario completo para ver tu stock real vs teórico y los descuadres presentes','Registrar las mermas']},
+  '6adv':{name:'Stocks Avanzado',time:'Semanas 5-6 · 2 sesiones de 1h30',desc:'Todo lo de Stocks + traspasos entre locales, reglas multi-local, alertas de stock mínimo y consolidación de inventario para grupos.',deliver:['Ubicaciones de inventario por local','Traspasos entre locales con trazabilidad','Reglas de stock mínimo y alertas','Consolidación de inventario multi-local','Informes avanzados y permisos por rol'],tasks:['Realizar un inventario completo en cada local (stock real vs teórico)','Registrar las mermas','Configurar tu primer traspaso entre locales']}
+};
+
+// ═══════════ MÉTODO · roadmap dinámico (4-6 fases según addons) ═══════════
+// Las posiciones de nodos y milestones se calculan en runtime sobre el path
+// canónico (mainPath) usando getPointAtLength: t evenly-spaced según el nº
+// de fases visibles. "Después" siempre va al final, después del último nodo.
+
+function updateMethodRoadmap(){
+  var kit = !!addons.cocina;
+  var stk = !!(addons.stocks || addons.stocksadv);
+  var path = document.getElementById('mainPath');
+  if(!path) return;
+
+  // Fases visibles en orden cronológico
+  var phaseNodes = [1,2,3,4];                          // siempre
+  if(kit) phaseNodes.push(5);                          // Cocina
+  if(stk) phaseNodes.push(6);                          // Stocks (o Stocks Avanzado)
+
+  // Computar posiciones a lo largo del path: t evenly-spaced de 0.08 a 0.85
+  // (los extremos del path quedan libres — "Antes" y "Después" anclados a esquinas)
+  var total = path.getTotalLength();
+  var count = phaseNodes.length;
+  var tForNode = function(i){
+    if(count === 1) return 0.5;
+    return 0.08 + (i / (count - 1)) * 0.77;
+  };
+  var pctPoint = function(t){
+    var p = path.getPointAtLength(total * t);
+    return {x: (p.x / 1200) * 100, y: (p.y / 600) * 100};
+  };
+
+  // Posicionar/mostrar nodos visibles, ocultar el resto
+  var positions = [];
+  for(var i=1;i<=6;i++){
+    var idx = phaseNodes.indexOf(i);
+    var el = document.getElementById('m-node-'+i);
+    if(!el) continue;
+    if(idx === -1){ el.style.display='none'; continue; }
+    var p = pctPoint(tForNode(idx));
+    el.style.display=''; el.style.left=p.x+'%'; el.style.top=p.y+'%';
+    positions[idx] = p;
+  }
+
+  // Milestones intermedios: solo se ven cuando AMBAS fases vecinas son visibles
+  // afterLoad entre fase 2 y 3, afterBuy entre 3 y 4, afterFin entre 4 y la siguiente.
+  var msPositionAt = function(leftPhase, rightPhase){
+    var li = phaseNodes.indexOf(leftPhase);
+    var ri = phaseNodes.indexOf(rightPhase);
+    if(li === -1 || ri === -1) return null;
+    var t = (tForNode(li) + tForNode(ri)) / 2;
+    return pctPoint(t);
+  };
+
+  var setMilestone = function(sel, pos){
+    var el = document.querySelector(sel);
+    if(!el) return;
+    if(pos){ el.style.display=''; el.style.left=pos.x+'%'; el.style.top=pos.y+'%'; }
+    else   { el.style.display='none'; }
+  };
+
+  setMilestone('#v-method .milestone.ms-after-load', msPositionAt(2,3));
+  setMilestone('#v-method .milestone.ms-after-buy',  msPositionAt(3,4));
+  // afterFin sólo si hay fase después de Finanzas (Cocina o Stocks visibles)
+  var nextAfterFin = kit ? 5 : (stk ? 6 : null);
+  setMilestone('#v-method .milestone.ms-after-fin',  nextAfterFin ? msPositionAt(4,nextAfterFin) : null);
+
+  // "Antes" y "Después" anclados a las esquinas, fuera del path principal
+  // para no chocar con los nodos extremos ni sus labels.
+  setMilestone('#v-method .milestone.start-point', {x:1, y:94});
+  setMilestone('#v-method .milestone.end-point',   {x:97, y:4});
+
+  // Adaptar el copy del milestone "Después" según cuál es la fase destino
+  var lastPhaseId = phaseNodes[phaseNodes.length-1];
+  var lastPhaseName = {1:'Bienvenida',2:'Carga',3:'Compras',4:'Finanzas',5:'Cocina',6:(addons.stocksadv?'Stocks Avanzado':'Stocks')}[lastPhaseId];
+  var despues = document.querySelector('#v-method .milestone.end-point');
+  if(despues){
+    var lbl   = despues.querySelector('.milestone-tip-lbl');
+    var title = despues.querySelector('.milestone-tip-title');
+    var desc  = despues.querySelector('.milestone-tip-desc');
+    var descCopy = stk
+      ? 'Compras, finanzas'+(kit?', cocina ':' ')+'e inventarios bajo control. Operativa digital completa.'
+      : kit
+        ? 'Compras, finanzas y rentabilidad por plato bajo control. Operativa digital completa.'
+        : 'Compras y finanzas bajo control. Operativa digital completa.';
+    if(lbl)   lbl.textContent   = '✓ Tras '+lastPhaseName+' · Destino';
+    if(title) title.textContent = 'Ya tienes todo lo que necesitas';
+    if(desc)  desc.textContent  = descCopy;
+  }
+
+  // Nodo 6: label cambia entre "Stocks" y "Stocks Avanzado"
+  var n6Name = document.getElementById('m-node6-name');
+  var n6Time = document.getElementById('m-node6-time');
+  if(n6Name) n6Name.textContent = addons.stocksadv ? 'Stocks Avanzado' : 'Stocks';
+  if(n6Time) n6Time.textContent = addons.stocksadv ? 'Sem 6-7' : 'Sem 7';
+
+  // KPIs + subtítulo
+  updateMethodKPIs(count);
+  updateMethodSubtitle();
+}
+
+function updateMethodKPIs(phaseCount){
+  var kit = !!addons.cocina;
+  var stk = !!(addons.stocks || addons.stocksadv);
+  var stkAdv = !!addons.stocksadv;
+  // Semanas: core 4 + Cocina 2 + Stocks 1 (Stocks Avanzado +1)
+  var weeks = 4 + (kit?2:0) + (stk?1:0) + (stkAdv?1:0);
+  // Sesiones implementación: 1(Welcome) + 2(Compras) + 1(Finanzas) + 2(Cocina) + 1(Stocks) (+1 si Stocks Avanzado)
+  var sessions = 1 + 2 + 1 + (kit?2:0) + (stk?1:0) + (stkAdv?1:0);
+
+  var set = function(id, v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+  set('m-kpi-weeks',     weeks+' sem.');
+  set('m-kpi-sessions',  sessions);
+  set('m-stat-phases',   phaseCount);
+  set('m-stat-weeks',    weeks);
+  set('m-stat-sessions', sessions+'+9');
+
+  var lede = document.getElementById('m-lede');
+  if(lede){
+    lede.innerHTML = 'Implementar tecnología en hostelería no es fácil. Por eso, igual que en cualquier viaje, tenemos un mapa con <strong>'+phaseCount+' paradas obligatorias</strong>, un consultor dedicado en cada una, y la regla más importante: <strong>no avanzamos hasta que la fase anterior está cerrada</strong>.';
+  }
+}
+
+function updateMethodSubtitle(){
+  var el = document.getElementById('m-impl-tag');
+  if(!el) return;
+  if(impl==='personalizada') el.textContent = 'Implementación personalizada · 1·1 con tu consultor';
+  else if(impl==='grupal')   el.textContent = 'Implementación grupal · sesiones en directo y grabadas';
+  else                       el.textContent = 'Ruta de implementación · cliente nuevo';
+}
+
+function openMethodPhase(n){
+  // Fase 6 (Stocks) tiene variante avanzada según el addon stocksadv
+  var phaseKey = (n===6 && addons.stocksadv) ? '6adv' : n;
+  var p = METHOD_PHASES[phaseKey]; var num = String(n).padStart(2,'0');
+  var html =
+    '<button class="modal-close" onclick="closeMethodModal()">×</button>'+
+    '<div class="detail-left"><div class="detail-left-content">'+
+      '<div class="detail-phase">Fase '+num+'</div>'+
+      '<h3 class="detail-title">'+p.name+'</h3>'+
+      '<div class="detail-time">⌖ '+p.time+'</div>'+
+      '<p class="detail-desc">'+p.desc+'</p>'+
+    '</div></div>'+
+    '<div class="detail-right">'+
+      '<div class="detail-cols">'+
+        '<div><div class="detail-col-hd"><span class="badge-dot">✓</span>Lo que entregamos</div>'+
+        '<ul class="detail-list">'+p.deliver.map(function(d){return '<li>'+d+'</li>'}).join('')+'</ul></div>'+
+        '<div><div class="detail-col-hd tasks"><span class="badge-dot">✓</span>Tus deberes</div>'+
+        '<ul class="detail-list tasks">'+p.tasks.map(function(t){return '<li>'+t+'</li>'}).join('')+'</ul></div>'+
+      '</div>'+
+    '</div>';
+  document.getElementById('m-phaseModalCard').innerHTML = html;
+  document.getElementById('m-phaseModal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeMethodModal(){
+  document.getElementById('m-phaseModal').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape') closeMethodModal()});
+
+// Chips de consultores en el master-popup: tap-toggle del tooltip (touch-friendly)
+function toggleConsultantTip(el, e){
+  if(e) e.stopPropagation();
+  var open = el.classList.contains('tip-open');
+  // Cierra todos los demás abiertos
+  Array.prototype.forEach.call(document.querySelectorAll('.consultant-chip.tip-open'), function(c){
+    if(c!==el) c.classList.remove('tip-open');
+  });
+  el.classList.toggle('tip-open', !open);
+}
+// Click fuera de un chip cierra todos los tooltips abiertos
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.consultant-chip')){
+    Array.prototype.forEach.call(document.querySelectorAll('.consultant-chip.tip-open'), function(c){
+      c.classList.remove('tip-open');
+    });
+  }
+});
 
 function setOfferBilling(m){
   billing=m;
@@ -1976,9 +3173,10 @@ function renderOffer(){
     ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">A pagar hoy</div><div class="ck-freq">Primer mes'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+monthlyOldStrike+'<div class="ck-total-val">'+fmt(monthlyFinal)+' €</div>'+perLocalMonthly+'</div></div>';
   }
   document.getElementById('checkout-wrap').innerHTML=ckHTML;
+  updateROIBoxes();
 
   // ── Snapshot expuesto para persistencia (tabla `ofertas`) ─────────────
-  // Lo leen `_cfgSaveOferta()` al entrar a v-budget y `enviarAFicha()` al
+  // Lo leen _cfgSaveOferta() al entrar a v-budget y enviarAFicha() al
   // pulsar "Empezar Ficha". renderOffer ya corrió la math, así que basta
   // con re-empaquetar los valores en el shape que espera el workflow n8n.
   var _finalAmount = isA ? (monthlyTot*12 + onetimeTotal) : (monthlyTot + onetimeTotal);
@@ -2224,6 +3422,49 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
         <div class="popup-stat"><div class="stat-num" style="color:var(--green)">GRATIS</div><div class="stat-lbl">para ti</div></div>
       </div>
 
+      <div class="popup-section-title">Tus 4 consultores</div>
+      <div class="popup-consultants-row">
+        <div class="consultant-chip" onclick="toggleConsultantTip(this,event)">
+          <img class="cc-photo" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe3a503449086cc1c40b2b.jpeg" alt="Santiago Melgar" loading="lazy">
+          <div class="cc-name">Santiago Melgar</div>
+          <div class="cc-tip">
+            <div class="cc-tip-name">Santiago Melgar</div>
+            <div class="cc-tip-role">Liderazgo hostelero</div>
+            <p class="cc-tip-bio">Fundador de LiderazgoHostelero.com. Especialista en convertir el equipo en la mayor ventaja competitiva del restaurante. Más de 200 hosteleros han transformado sus negocios aplicando su metodología de liderazgo.</p>
+          </div>
+        </div>
+
+        <div class="consultant-chip" onclick="toggleConsultantTip(this,event)">
+          <img class="cc-photo" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe408f7285562721ce7f38.png" alt="María Martín" loading="lazy">
+          <div class="cc-name">María Martín</div>
+          <div class="cc-tip">
+            <div class="cc-tip-name">María Martín</div>
+            <div class="cc-tip-role">Dirección de operaciones</div>
+            <p class="cc-tip-bio">Directora de Operaciones de Grupo Gomez. Gestiona la operativa diaria de 9 locales y es la responsable de que yurest funcione en el día a día real del grupo. Sabe qué sirve y qué no en hostelería real.</p>
+          </div>
+        </div>
+
+        <div class="consultant-chip" onclick="toggleConsultantTip(this,event)">
+          <img class="cc-photo" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe4118114de79afe0ce39a.jpeg" alt="Fran Cabello" loading="lazy">
+          <div class="cc-name">Fran Cabello</div>
+          <div class="cc-tip">
+            <div class="cc-tip-name">Fran Cabello</div>
+            <div class="cc-tip-role">Rentabilidad · RestaurUP</div>
+            <p class="cc-tip-bio">Fundador de RestaurUP, programa de 13 semanas para mejorar el margen en restaurantes. "La mayoría no pierden dinero por vender poco — lo pierden por no controlar lo que ya tienen."</p>
+          </div>
+        </div>
+
+        <div class="consultant-chip" onclick="toggleConsultantTip(this,event)">
+          <img class="cc-photo" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe40a86ca44fd334a201b5.png" alt="Keko Michelin" loading="lazy">
+          <div class="cc-name">Keko Michelin</div>
+          <div class="cc-tip">
+            <div class="cc-tip-name">Keko Michelin</div>
+            <div class="cc-tip-role">Director Ejecutivo · Grupo Gomez</div>
+            <p class="cc-tip-bio">Director Ejecutivo de Grupo Gomez, empresa matriz de yurest con 9 locales. Lidera la operativa y la estrategia de uno de los grupos de referencia del sector, y conoce desde dentro qué separa a los negocios que escalan de los que se quedan atascados.</p>
+          </div>
+        </div>
+      </div>
+
       <div class="popup-section-title">Programa · 4 semanas · 9 sesiones</div>
       <div class="popup-modules" style="padding-left:0">
 
@@ -2282,7 +3523,7 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
           <div>
             <div class="mod-name">Incentivos y trabajo por objetivos</div>
             <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Diseño de sistemas de incentivos que alinean al equipo con los objetivos de rentabilidad del negocio.</div>
-            <div class="mod-consultant">María Martín</div>
+            <div class="mod-consultant">Keko Michelin</div>
           </div>
         </div>
 
@@ -2301,39 +3542,6 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
             <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cuenta de resultados, punto de equilibrio, ratios clave y cómo leer tus números para tomar decisiones.</div>
             <div class="mod-consultant">Santiago Melgar</div>
           </div>
-        </div>
-
-      </div>
-
-      <div class="popup-section-title">Tus 4 consultores</div>
-      <div class="popup-consultants">
-
-        <div class="consultant-card">
-          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe3a503449086cc1c40b2b.jpeg" alt="Santiago Melgar" loading="lazy">
-          <div class="consultant-name">Santiago</div>
-          <div class="consultant-role">Liderazgo hostelero</div>
-          <div class="consultant-bio">Fundador de LiderazgoHostelero.com. Especialista en convertir el equipo en la mayor ventaja competitiva del restaurante. Más de 200 hosteleros han transformado sus negocios aplicando su metodología de liderazgo y gestión de equipos.</div>
-        </div>
-
-        <div class="consultant-card">
-          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe408f7285562721ce7f38.png" alt="María" loading="lazy">
-          <div class="consultant-name">María</div>
-          <div class="consultant-role">Dirección de operaciones</div>
-          <div class="consultant-bio">Directora de Operaciones de Grupo Gomez. Gestiona la operativa diaria de 9 locales y es la responsable de que yurest funcione en el día a día real del grupo. Sabe exactamente qué sirve y qué no en un negocio de hostelería real.</div>
-        </div>
-
-        <div class="consultant-card">
-          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe4118114de79afe0ce39a.jpeg" alt="Fran Cabello" loading="lazy">
-          <div class="consultant-name">Fran</div>
-          <div class="consultant-role">Rentabilidad · RestaurUP</div>
-          <div class="consultant-bio">Fundador de RestaurUP, programa de 13 semanas para mejorar el margen en restaurantes. Ha trabajado en operación, gestión y rentabilidad de restaurantes independientes, grupos y departamentos de F&amp;B hotelero. "La mayoría no pierden dinero por vender poco — lo pierden por no controlar lo que ya tienen."</div>
-        </div>
-
-        <div class="consultant-card">
-          <img class="consultant-avatar" src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe40a86ca44fd334a201b5.png" alt="Keko" loading="lazy">
-          <div class="consultant-name">Keko</div>
-          <div class="consultant-role">Director Ejecutivo · Grupo Gomez</div>
-          <div class="consultant-bio">Director Ejecutivo de Grupo Gomez, empresa matriz de yurest con 9 locales de hostelería. Lidera la operativa y la estrategia de uno de los grupos de referencia del sector, y conoce desde dentro qué separa a los negocios que escalan de los que se quedan atascados.</div>
         </div>
 
       </div>
@@ -2481,18 +3689,52 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
   </div>
 </div>
 
-<!-- ═══════════════ FICHA POPUP (datos iniciales de la solicitud) ═══════════════
-     Mismo set de campos que el panel `#solicitud-panel` de lista.html para que
-     el comercial capture lo básico aquí y al darle "Continuar" se navegue a
-     lista.html con los valores en query string. Allí se prefillean los inputs
-     `sol-*` y se abre automáticamente el panel para revisar/enviar. -->
+<!-- ═══════════ STEP-BAR global (proceso 1·2·3) ═══════════ -->
+<div id="step-bar" role="navigation" aria-label="Proceso de configuración">
+  <div class="step-item current" id="step-1" onclick="goToStep(1)">
+    <span class="step-num">1</span>
+    <span class="step-info">
+      <span class="step-label">Tu situación</span>
+      <span class="step-detail">Punto de partida</span>
+    </span>
+  </div>
+  <span class="step-connector" aria-hidden="true"></span>
+  <div class="step-item" id="step-2" onclick="goToStep(2)">
+    <span class="step-num">2</span>
+    <span class="step-info">
+      <span class="step-label">Tu plan</span>
+      <span class="step-detail">Configura tu setup</span>
+    </span>
+  </div>
+  <span class="step-connector" aria-hidden="true"></span>
+  <div class="step-item" id="step-3" onclick="goToStep(3)">
+    <span class="step-num">3</span>
+    <span class="step-info">
+      <span class="step-label">El secreto del éxito</span>
+      <span class="step-detail">Conoce el método</span>
+    </span>
+  </div>
+  <span class="step-connector" aria-hidden="true"></span>
+  <div class="step-item" id="step-4" onclick="goToStep(4)">
+    <span class="step-num">4</span>
+    <span class="step-info">
+      <span class="step-label">Tu oferta</span>
+      <span class="step-detail">Tu propuesta final</span>
+    </span>
+  </div>
+</div>
+
+<!-- ═══════════════ FICHA POPUP (datos iniciales + creación inline) ═══════════════
+     Captura los datos del cliente, crea la solicitud directamente vía n8n
+     (WEBHOOK_CREAR_SOLICITUD), actualiza la oferta en Supabase y muestra
+     un success card en sitio. Sin hop por lista.html. -->
 <div class="popup-overlay" id="ficha-popup" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="popup-box" style="max-width:560px">
     <div class="popup-hd">
       <button class="popup-close" onclick="document.getElementById('ficha-popup').classList.remove('open')">×</button>
       <div class="popup-eyebrow">Paso siguiente</div>
       <div class="popup-title">Iniciar ficha de alta</div>
-      <div class="popup-subtitle">Captura los datos iniciales del cliente. Continuarás en Fichas de cliente para revisar y enviar la solicitud.</div>
+      <div class="popup-subtitle">Captura los datos iniciales del cliente. Al continuar se crea la solicitud y se envía el formulario público al cliente por email.</div>
     </div>
     <div class="popup-body">
       <style>
@@ -2562,9 +3804,7 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
         <button class="fk-btn-primary" onclick="enviarAFicha()">Crear solicitud y enviar →</button>
       </div>
     </div>
-    <!-- Estado de éxito — sustituye al cuerpo del modal tras enviar la solicitud.
-         Lo activamos añadiendo .fk-ok al popup-box (display:flex / display:none
-         vía CSS). Mantiene la cabecera navy y reutiliza el espacio del body. -->
+    <!-- Estado de éxito tras enviar la solicitud. -->
     <div class="popup-body fk-success" id="ficha-success" style="display:none">
       <div style="text-align:center;padding:8px 0 4px">
         <div style="width:64px;height:64px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px">✓</div>
@@ -2581,10 +3821,7 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
 </div>
 
 <script>
-/* ═══ Helpers para crear la solicitud directamente desde el configurador ═══
-   Replican la lógica mínima de lista.html → _enviarSolicitudImpl para no
-   tener que hacer un hop por lista.html cuando el comercial pulsa
-   "Empezar Ficha". Los endpoints viven en YurestConfig.ENDPOINTS. */
+/* ═══ Helpers para crear la solicitud desde el configurador (sin hop por lista.html) ═══ */
 function _cfgEsCIFValido(v){
   v = (v||'').toUpperCase().trim();
   if (!/^[A-Z0-9][0-9]{7}[A-Z0-9]$/.test(v)) return false;
@@ -2608,8 +3845,6 @@ function _cfgEsCIFValido(v){
   return false;
 }
 
-// Lee el próximo solicitudId mirando las dos listas (pendientes +
-// rellenadas) y devolviendo max+1. Mismo criterio que lista.html.
 var _cfgLastUsedSolicitudId = 0;
 async function _cfgGetNextSolicitudId(){
   async function _fetch(url){
@@ -2638,14 +3873,7 @@ async function _cfgGetNextSolicitudId(){
   return next;
 }
 
-/* ═══ Persistencia de la oferta en Supabase (tabla `ofertas`) ═══
-   El configurador habla con el endpoint n8n `/webhook/ofertas` (POST con
-   action create | update). Mantenemos un id local de sesión para que
-   sucesivas entradas a v-budget actualicen la MISMA oferta en lugar de
-   crear duplicados. La promesa del create en vuelo se guarda para que
-   enviarAFicha() pueda await-earla antes de hacer el update con datos
-   del cliente — sin esto, el update podría salir antes de que el create
-   devuelva el id y se perdería el dato. */
+/* ═══ Persistencia de la oferta en Supabase (tabla `ofertas`) ═══ */
 var _cfgOfertaId = null;
 var _cfgOfertaSavePromise = null;
 
@@ -2655,10 +3883,7 @@ async function _cfgSaveOferta(action, extras){
     if (!snap) return null;
     var oferta = Object.assign({}, snap, extras || {});
     if (action !== 'create' && _cfgOfertaId) oferta.id = _cfgOfertaId;
-    if (action !== 'create' && !_cfgOfertaId) {
-      // No tenemos id (el create falló o aún no se hizo) → caer en create.
-      action = 'create';
-    }
+    if (action !== 'create' && !_cfgOfertaId) action = 'create';
     var res = await YurestConfig.apiFetch(YurestConfig.ENDPOINTS.ofertas, {
       method: 'POST',
       body: JSON.stringify({ action: action, oferta: oferta })
@@ -2667,9 +3892,7 @@ async function _cfgSaveOferta(action, extras){
       _cfgOfertaId = res.oferta.id;
       return res.oferta.id;
     }
-    if (res && res.errores && res.errores.length) {
-      console.warn('[ofertas] save errors:', res.errores);
-    }
+    if (res && res.errores && res.errores.length) console.warn('[ofertas] save errors:', res.errores);
     return null;
   } catch (e) {
     console.warn('[ofertas] save error:', e);
@@ -2678,18 +3901,12 @@ async function _cfgSaveOferta(action, extras){
 }
 
 function _cfgPersistDraft(){
-  // Al entrar a v-budget: si no hay id → create con estado 'borrador',
-  // si ya existe → update con la math actualizada por si el comercial
-  // cambió algo y volvió a entrar.
   var action = _cfgOfertaId ? 'update' : 'create';
   var extras = _cfgOfertaId ? {} : { estado: 'borrador' };
   _cfgOfertaSavePromise = _cfgSaveOferta(action, extras);
 }
 
-/* ═══ Flow: Configurador → Solicitud de Ficha ═══
-   Mapea el plan del configurador (lite/basic/pro) al `tipo` de plan
-   que usa lista.html (lite/planes/corporate/...). Es una sugerencia
-   por defecto — el comercial puede cambiar el valor en el select. */
+/* ═══ Flow: Configurador → Solicitud de Ficha ═══ */
 function _fkMapPlanToTipo(p){
   if(p==='lite')  return 'lite';
   if(p==='basic') return 'planes';
@@ -2698,8 +3915,6 @@ function _fkMapPlanToTipo(p){
 }
 
 function abrirFichaModal(){
-  // Pre-rellena el `tipo` con el plan elegido en el configurador, si lo hay.
-  // El resto de campos los introduce el comercial in situ.
   var tipoSel = document.getElementById('fk-tipo');
   if(tipoSel && !tipoSel.value){
     var sugerido = _fkMapPlanToTipo(typeof plan !== 'undefined' ? plan : null);
@@ -2724,20 +3939,6 @@ function _fkShowError(msg){
   el.style.display = 'block';
 }
 
-/* enviarAFicha: crea la solicitud DIRECTAMENTE desde el configurador
-   (sin hop por lista.html) y actualiza la oferta vinculada en Supabase.
-   Flujo:
-     1. Valida los 6 campos del modal + formato CIF.
-     2. Awaitea el create de la oferta en vuelo (si lo había) para
-        disponer de _cfgOfertaId antes del update final.
-     3. Pide el próximo solicitudId mirando las listas existentes.
-     4. Genera access_token + form_url apuntando a solicitud.html.
-     5. POST a WEBHOOK_CREAR_SOLICITUD (mismo payload que lista.html).
-     6. En éxito: update de la oferta (cliente_* + estado='enviada' +
-        notas con solicitudId/token) y transiciona el modal al estado
-        de éxito (oculta el form, muestra el card con CTAs a ver
-        oferta / ver solicitudes / cerrar).
-     7. En fallo: mensaje rojo en el modal, deja el form para reintentar. */
 async function enviarAFicha(){
   fkClearErrors();
   var v = {
@@ -2752,19 +3953,14 @@ async function enviarAFicha(){
   Object.keys(v).forEach(function(k){
     if(!v[k]){ faltan.push(k); document.getElementById('fk-'+k).classList.add('fk-error'); }
   });
-  if(faltan.length){
-    _fkShowError('Completa todos los campos antes de continuar.');
-    return;
-  }
+  if(faltan.length){ _fkShowError('Completa todos los campos antes de continuar.'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)){
     document.getElementById('fk-email').classList.add('fk-error');
-    _fkShowError('Email no válido.');
-    return;
+    _fkShowError('Email no válido.'); return;
   }
   if(!_cfgEsCIFValido(v.cif)){
     document.getElementById('fk-cif').classList.add('fk-error');
-    _fkShowError('CIF/NIF no válido (revisa el dígito de control).');
-    return;
+    _fkShowError('CIF/NIF no válido (revisa el dígito de control).'); return;
   }
 
   var btn = document.querySelector('#ficha-popup .fk-btn-primary');
@@ -2776,20 +3972,16 @@ async function enviarAFicha(){
   };
 
   try {
-    // 1. Asegurar que tenemos _cfgOfertaId (esperamos al create draft).
     if (_cfgOfertaSavePromise) {
       try { await withTimeout(_cfgOfertaSavePromise, 4000); } catch(_){}
     }
 
-    // 2. Datos de la solicitud.
     var solicitudId = await _cfgGetNextSolicitudId();
     var accessToken = (window.crypto && window.crypto.randomUUID
       ? window.crypto.randomUUID()
       : 'tk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,12)
     ).replace(/-/g,'');
     var fecha = new Date().toISOString().slice(0,10);
-    // form_url apunta a solicitud.html en el mismo directorio que
-    // el configurador. Reemplazamos el último segmento de la URL.
     var baseUrl = window.location.href.split('?')[0].replace(/[^/]+$/, 'solicitud.html');
     var formUrl = baseUrl + '?t=' + encodeURIComponent(accessToken);
     var emailAsunto = 'Solicitud de creación de ficha de alta';
@@ -2801,7 +3993,6 @@ async function enviarAFicha(){
       'Si tienes cualquier duda no dudes en contactarme.\n\n' +
       'Un saludo,\n' + v.comercial;
 
-    // 3. POST a WEBHOOK_CREAR_SOLICITUD (mismo payload exacto que lista.html).
     var res = await fetch(YurestConfig.ENDPOINTS.crearSolicitud, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2821,8 +4012,6 @@ async function enviarAFicha(){
         'email_subject':   emailAsunto,
         'email_body':      emailCuerpo,
         'form_url':        formUrl,
-        // oferta_id viaja con la solicitud para que n8n pueda, cuando
-        // se actualice ese workflow, grabarlo en solicitudes.oferta_id.
         'oferta_id':       _cfgOfertaId || null
       })
     });
@@ -2832,9 +4021,6 @@ async function enviarAFicha(){
       throw new Error('Error ' + res.status + detalle);
     }
 
-    // 4. Update de la oferta: cliente_* + estado='enviada' + notas trazables.
-    // Fire-and-forget — si falla la oferta queda como 'borrador' pero
-    // la solicitud sí se creó, que es lo crítico.
     try {
       await withTimeout(_cfgSaveOferta('update', {
         cliente_sociedad: v.sociedad,
@@ -2848,7 +4034,6 @@ async function enviarAFicha(){
       }), 4000);
     } catch(_){}
 
-    // 5. Transición al estado de éxito.
     _cfgMostrarFichaSuccess(v.email, solicitudId);
 
   } catch (err) {
@@ -2859,7 +4044,6 @@ async function enviarAFicha(){
 }
 
 function _cfgMostrarFichaSuccess(email, solicitudId){
-  // Oculta cabecera + body original, muestra success card.
   var hd = document.querySelector('#ficha-popup .popup-hd');
   var body = document.querySelector('#ficha-popup .popup-body:not(.fk-success)');
   if (hd) hd.style.display = 'none';
@@ -2870,7 +4054,6 @@ function _cfgMostrarFichaSuccess(email, solicitudId){
 }
 
 function _cfgCerrarFichaSuccess(){
-  // Cierra modal y resetea estado por si el comercial monta otra oferta.
   document.getElementById('ficha-popup').classList.remove('open');
   setTimeout(function(){
     var hd = document.querySelector('#ficha-popup .popup-hd');
@@ -2878,17 +4061,12 @@ function _cfgCerrarFichaSuccess(){
     if (hd) hd.style.display = '';
     if (body) body.style.display = '';
     document.getElementById('ficha-success').style.display = 'none';
-    // Limpia los campos del form para que la siguiente oferta no
-    // arrastre los del cliente anterior.
     ['fk-sociedad','fk-cif','fk-nombre','fk-email','fk-tipo'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.value = '';
     });
     var btn = document.querySelector('#ficha-popup .fk-btn-primary');
     if (btn) { btn.disabled = false; btn.textContent = 'Crear solicitud y enviar →'; }
-    // Reseteamos el oferta_id de sesión: las próximas entradas a
-    // v-budget crearán una oferta NUEVA en lugar de actualizar la
-    // que ya quedó marcada como 'enviada'.
     _cfgOfertaId = null;
     _cfgOfertaSavePromise = null;
   }, 200);
