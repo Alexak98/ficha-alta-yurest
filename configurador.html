@@ -68,10 +68,15 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .emp-input{font-family:inherit;font-size:15px;font-weight:800;color:var(--navy);background:#fff;border:1.5px solid var(--border);width:70px;padding:5px 8px;border-radius:8px;text-align:center;outline:none;font-feature-settings:"tnum","lnum"}
 .emp-input:focus{border-color:var(--navy)}
 /* Plan card apagada por gate de empleados (o por estado inicial sin empleados) */
-.plan-card.disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.4);pointer-events:none}
+.plan-card.disabled{cursor:not-allowed;background:#f8fafc}
+.plan-card.disabled:hover{box-shadow:0 1px 3px rgba(42,53,84,.06)!important;transform:none!important}
+.plan-card.disabled .plan-pop-wrap{display:none}
+.plan-card.disabled .plan-check{display:none}
+.plan-card .plan-lock{display:none}
+.plan-card.disabled .plan-lock{display:flex;align-items:center;justify-content:center;gap:5px;position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:rgba(42,53,84,.92);color:#fff;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 14px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(42,53,84,.25);z-index:3}
 
 /* ── PLAN CARDS ── */
-.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:stretch}
 @media(max-width:600px){.plans-grid{grid-template-columns:1fr}}
 
 .plan-card{
@@ -80,6 +85,7 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
   transition:transform .15s ease, box-shadow .2s ease;
   position:relative;user-select:none;
   box-shadow:0 1px 3px rgba(42,53,84,.06);
+  display:flex;flex-direction:column;height:100%;
 }
 .plan-card:hover{box-shadow:0 8px 24px rgba(42,53,84,.10);transform:translateY(-2px)}
 .plan-card.selected{
@@ -105,11 +111,16 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .plan-per{font-size:14px;font-weight:500;color:var(--muted)}
 .plan-note{font-size:11px;color:var(--muted);margin-bottom:14px;min-height:0}
 
-.plan-feats{border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.plan-feats{border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px;flex:1}
 .pf{display:flex;gap:7px;align-items:center;font-size:13px;color:rgba(42,53,84,.8)}
 .pf-dot{width:16px;height:16px;border-radius:50%;background:rgba(42,53,84,.1);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
 .plan-card.selected .pf-dot{background:var(--sel-border);color:#fff}
 .pf.pf-ai .pf-dot{background:rgba(109,40,217,.1)!important;color:var(--purple)!important}
+.pf.pf-inherit{font-weight:700;color:var(--navy)}
+.pf.pf-inherit .pf-dot{background:var(--navy)!important;color:#fff!important}
+.pf.pf-unlock{color:rgba(42,53,84,.8)}
+.pf.pf-unlock .pf-dot{background:#fef3c7!important;color:#92400e!important;font-size:11px}
+.pf.pf-foot{margin-top:auto;padding-top:6px}
 
 /* ── ADDON CARDS ── */
 .addon-cat{margin-bottom:24px}
@@ -481,6 +492,8 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .b-total-lbl{font-size:13px;font-weight:700}
 .b-total-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
 .b-total-val{font-family:var(--font-system);font-size:26px;font-weight:900;line-height:1}
+.b-tax-note{padding:10px 18px;background:rgba(42,53,84,.04);border-top:1px solid var(--border);font-size:11.5px;color:var(--navy);font-weight:700;text-align:center;letter-spacing:.01em;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-value-tax{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.18);font-size:11px;color:rgba(255,255,255,.7);font-weight:600;text-align:center;letter-spacing:.02em}
 .budget-send{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px}
 .budget-send-title{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;font-family:var(--font-system)}
 .budget-send-desc{font-size:12px;color:var(--muted);margin-bottom:12px}
@@ -494,14 +507,125 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .pdf-clone{padding:0!important;margin:0!important;width:680px!important;max-width:680px!important;box-sizing:border-box}
 .pdf-clone .budget-title{font-size:22px;margin-bottom:2px}
 .pdf-clone .budget-meta{margin-bottom:12px;font-size:11px}
-.pdf-clone .product-mockup-card{padding:8px;margin-bottom:10px;border-radius:10px;page-break-inside:avoid;break-inside:avoid}
+.pdf-clone .product-mockup-card{padding:8px;margin-bottom:10px;border-radius:10px;page-break-inside:avoid!important;break-inside:avoid!important}
 .pdf-clone .product-mockup-card img{max-height:150px;width:auto;max-width:100%;margin:0 auto;display:block;object-fit:contain}
-.pdf-clone .budget-card{border-radius:10px;page-break-inside:avoid;break-inside:avoid;margin-bottom:0}
-.pdf-clone .b-row{padding:7px 14px;font-size:12.5px;page-break-inside:avoid;break-inside:avoid}
-.pdf-clone .b-section-hd{padding:7px 14px;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid}
+.pdf-clone .budget-card{border-radius:10px;page-break-inside:avoid!important;break-inside:avoid!important;margin-bottom:0}
+.pdf-clone .b-row{padding:7px 14px;font-size:12.5px;page-break-inside:avoid!important;break-inside:avoid!important}
+.pdf-clone .b-section-hd{padding:7px 14px;page-break-inside:avoid!important;break-inside:avoid!important;page-break-after:avoid}
 .pdf-clone .b-subtotal{padding:9px 14px;font-size:13px}
 .pdf-clone .b-total{padding:12px 14px}
 .pdf-clone .b-total-val{font-size:22px}
+
+/* ═══════════════ PDF SECTIONS (flujo continuo: portada · oferta · condiciones) ═══════════════
+   Sin page-breaks forzados — html2pdf pagina solo cuando hace falta, sin huecos en blanco. */
+.pdf-page{position:relative;background:#fff;margin-bottom:18px}
+.pdf-clone .pdf-page{margin-bottom:14px;padding:6px 4px 0}
+.pdf-clone .pdf-page:last-child{margin-bottom:0}
+
+/* SECCIÓN 1 — Cabecera/portada (no fuerza altura de página) */
+.bp-cover{display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 20px 18px}
+.pdf-clone .bp-cover{padding:18px 22px 14px}
+.bp-cover-logo{font-family:var(--font-system);font-size:44px;font-weight:900;color:var(--navy);letter-spacing:-.025em;line-height:1;margin-bottom:18px}
+.bp-cover-title{font-family:var(--font-system);font-size:26px;font-weight:900;color:var(--navy);letter-spacing:-.01em;margin-bottom:4px}
+.bp-cover-sub{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:16px}
+.bp-cover-ref{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:16px}
+.bp-cover-meta{width:100%;max-width:440px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 0;margin-bottom:18px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-cover-row{display:flex;justify-content:space-between;font-size:13px;gap:14px}
+.bp-cover-row span:first-child{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10.5px;letter-spacing:.08em;align-self:center}
+.bp-cover-row span:last-child{color:var(--navy);font-weight:700;text-align:right}
+.bp-cover-mockup{width:100%;max-width:480px;margin-bottom:14px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-cover-mockup img{width:100%;height:auto;max-height:220px;object-fit:contain;display:block;margin:0 auto;border-radius:10px}
+.bp-cover-tagline{font-family:var(--font-system);font-size:16px;font-weight:800;color:var(--navy);max-width:520px;line-height:1.35;letter-spacing:-.01em;margin-bottom:0}
+.bp-cover-tagline em{font-style:normal;color:var(--red)}
+.bp-cover-footer{display:none}
+
+/* PAGE 2 — OFFER ENRICHED */
+.bp-page-hd{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--font-system);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--navy);page-break-inside:avoid!important;break-inside:avoid!important;page-break-after:avoid;break-after:avoid}
+.bp-page-hd-title{font-size:20px;font-weight:900;color:var(--navy);letter-spacing:-.01em}
+.bp-page-hd-page{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+
+.bp-value-box{background:linear-gradient(135deg,#2a3554 0%,#3b4670 100%);color:#fff;padding:18px 20px;border-radius:12px;margin-bottom:16px;box-shadow:0 6px 18px -10px rgba(42,53,84,.4);page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-value-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:10px}
+.bp-value-row:last-of-type{margin-bottom:0}
+.bp-value-lbl{font-size:12.5px;color:rgba(255,255,255,.75);font-weight:600}
+.bp-value-strike{font-size:18px;font-weight:800;text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(255,255,255,.55);color:rgba(255,255,255,.85);font-variant-numeric:tabular-nums lining-nums}
+.bp-value-now{font-family:var(--font-system);font-size:30px;font-weight:900;color:#fff;line-height:1;font-variant-numeric:tabular-nums lining-nums}
+.bp-value-saving{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.18);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.bp-value-saving-lbl{font-size:11.5px;color:rgba(255,255,255,.7);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.bp-value-saving-num{font-family:var(--font-system);font-size:17px;font-weight:900;color:#bbf7d0;font-variant-numeric:tabular-nums lining-nums}
+
+.bp-plan-box{background:rgba(42,53,84,.04);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-plan-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:10px}
+.bp-plan-name{font-family:var(--font-system);font-size:16px;font-weight:900;color:var(--navy);letter-spacing:-.005em}
+.bp-plan-price{font-size:12.5px;color:var(--muted);font-weight:700}
+.bp-plan-bullets{display:grid;grid-template-columns:1fr 1fr;gap:5px 14px}
+.bp-plan-bullet{display:flex;gap:7px;align-items:center;font-size:12px;color:rgba(42,53,84,.85);line-height:1.35}
+.bp-plan-bullet::before{content:"✓";color:var(--navy);font-weight:900;font-size:10px;flex-shrink:0}
+
+/* Row con descripción debajo del nombre (b-row enriquecida) */
+.b-row.b-row-rich{flex-direction:column;align-items:stretch;gap:3px;padding-top:9px;padding-bottom:9px;page-break-inside:avoid!important;break-inside:avoid!important}
+.b-row.b-row-rich .b-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.b-row.b-row-rich .b-desc{font-size:11px;color:var(--muted);font-weight:500;line-height:1.45;margin-top:2px}
+
+/* SECCIÓN ROADMAP — Tu camino de implementación */
+.bp-phase-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.bp-phase-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-phase-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+.bp-phase-num{font-family:var(--font-system);font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--red);min-width:60px}
+.bp-phase-name{font-family:var(--font-system);font-size:14px;font-weight:900;color:var(--navy);flex:1}
+.bp-phase-time{font-size:11px;color:var(--muted);font-weight:600;text-align:right}
+.bp-phase-desc{font-size:12px;color:rgba(42,53,84,.78);line-height:1.5;margin:6px 0 10px}
+.bp-phase-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bp-phase-col-hd{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.bp-phase-col-hd.tasks{color:var(--red)}
+.bp-phase-col-hd::before{content:"✓";color:var(--green);font-weight:900;font-size:10px}
+.bp-phase-col-hd.tasks::before{content:"●";color:var(--red);font-size:8px}
+.bp-phase-list-items{margin:0;padding-left:14px;display:flex;flex-direction:column;gap:3px}
+.bp-phase-list-items li{font-size:11px;color:rgba(42,53,84,.85);line-height:1.45}
+@media (max-width:560px){.bp-phase-cols{grid-template-columns:1fr}}
+
+/* SECCIÓN MASTER — solo en plan anual, debajo del roadmap de implementación */
+.bp-master-intro{background:linear-gradient(135deg,rgba(249,90,92,.06) 0%,rgba(249,90,92,.02) 100%);border:1px solid rgba(249,90,92,.20);border-left:3px solid var(--red);border-radius:10px;padding:12px 14px;margin:8px 0 14px;font-size:12.5px;color:var(--navy);line-height:1.5;font-weight:500;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-master-intro strong{color:var(--red);font-weight:800}
+
+/* Consultores — bloque 2x2 con foto + bio corta */
+.bp-master-consultants{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.bp-master-consultant-card{display:flex;gap:11px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 12px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-master-consultant-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--navy);border:2px solid rgba(42,53,84,.12);flex-shrink:0;display:block}
+.bp-master-consultant-body{flex:1;min-width:0}
+.bp-master-consultant-name{font-family:var(--font-system);font-size:12.5px;font-weight:900;color:var(--navy);line-height:1.2;margin-bottom:1px}
+.bp-master-consultant-role{font-size:10px;font-weight:800;color:var(--red);letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px}
+.bp-master-consultant-bio{font-size:10.5px;color:rgba(42,53,84,.78);line-height:1.45}
+@media (max-width:560px){.bp-master-consultants{grid-template-columns:1fr}}
+
+.bp-master-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.bp-master-card{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 14px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-master-num{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-family:var(--font-system);font-size:12px;font-weight:900;flex-shrink:0;margin-top:1px}
+.bp-master-body{flex:1;min-width:0}
+.bp-master-name{font-family:var(--font-system);font-size:13px;font-weight:800;color:var(--navy);margin-bottom:2px;line-height:1.3}
+.bp-master-desc{font-size:11.5px;color:rgba(42,53,84,.75);line-height:1.45;margin-bottom:4px}
+.bp-master-consultant{font-size:10.5px;font-weight:700;color:var(--red);letter-spacing:.02em}
+
+/* PAGE 3 — CONDITIONS */
+.bp-cond-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.bp-cond-item{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 14px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-cond-icon{width:24px;height:24px;border-radius:50%;background:rgba(22,163,74,.13);color:var(--green);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0;margin-top:1px}
+.bp-cond-body strong{display:block;font-size:13px;font-weight:800;color:var(--navy);margin-bottom:2px;letter-spacing:-.005em}
+.bp-cond-body div{font-size:12px;color:rgba(42,53,84,.78);line-height:1.5}
+
+.bp-next-step{background:linear-gradient(135deg,#fff3f4 0%,#fff 100%);border:1.5px solid var(--red);border-radius:12px;padding:18px 20px;margin-bottom:22px;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-next-step-hd{font-family:var(--font-system);font-size:15px;font-weight:900;color:var(--red);margin-bottom:8px;letter-spacing:-.005em}
+.bp-next-step p{font-size:13px;color:var(--navy);margin:0 0 6px;line-height:1.55}
+.bp-next-step p:last-child{margin-bottom:0}
+
+.bp-final-footer{display:flex;justify-content:space-between;align-items:center;padding-top:18px;border-top:1px solid var(--border);margin-top:24px;gap:12px;flex-wrap:wrap;page-break-inside:avoid!important;break-inside:avoid!important}
+.bp-final-brand{font-family:var(--font-system);font-size:18px;font-weight:900;color:var(--navy);letter-spacing:-.01em}
+.bp-final-mini{font-size:11px;color:var(--muted);font-weight:600}
+
+/* Esconder el título/meta del wrap original cuando se renderiza la versión 3-pages */
+.budget-wrap.bw-3pages > .budget-title,
+.budget-wrap.bw-3pages > .budget-meta,
+.budget-wrap.bw-3pages > .product-mockup-card{display:none}
 
 /* ── MASTER POPUP ── */
 .popup-overlay{
@@ -892,24 +1016,23 @@ body{font-feature-settings:"ss01"}
 
 
 /* ═══════════════ PLAN CARD "POPULAR" — Basic halo ═══════════════ */
-/* Basic sits slightly raised with a perpetual soft coral halo,
-   pulling the eye without shouting. Selected state still wins. */
+/* Basic gana protagonismo solo con halo coral + badge "Más popular".
+   Sin translateY para que el alto/fondo de las 3 cards quede alineado. */
 #plan-basic{
-  transform:translateY(-6px);
   box-shadow:
     0 1px 3px rgba(42,53,84,.06),
     0 14px 32px -12px rgba(249,90,92,.22),
     0 0 0 1.2px rgba(249,90,92,.18);
 }
 #plan-basic:hover{
-  transform:translateY(-10px);
+  transform:translateY(-2px);
   box-shadow:
     0 1px 3px rgba(42,53,84,.06),
     0 22px 48px -16px rgba(249,90,92,.32),
     0 0 0 1.5px rgba(249,90,92,.28);
 }
 #plan-basic.selected{
-  transform:translateY(-8px);
+  transform:translateY(-2px);
   box-shadow:
     0 22px 48px -14px rgba(42,53,84,.22),
     0 0 0 2px var(--sel-border),
@@ -920,7 +1043,6 @@ body{font-feature-settings:"ss01"}
   box-shadow:0 4px 14px rgba(249,90,92,.38);
 }
 @media(max-width:600px){
-  #plan-basic{transform:none}
   #plan-basic:hover{transform:translateY(-2px)}
   #plan-basic.selected{transform:translateY(-2px)}
 }
@@ -1132,6 +1254,27 @@ body{font-feature-settings:"ss01"}
 #v-method .extras-line{margin-top:18px;padding:12px 16px;text-align:center;font-size:11.5px;color:rgba(255,255,255,.62);letter-spacing:.04em;font-weight:500;line-height:1.6;border-top:1px dashed rgba(255,255,255,.10)}
 #v-method .extras-line b{color:rgba(255,255,255,.78);font-weight:700}
 #v-method .extras-line .sep{color:rgba(255,255,255,.20);margin:0 4px}
+
+/* ═══════════════ M-IMPL (selector de implementación dentro de v-method) ═══════════════ */
+#m-impl{margin-top:64px}
+#m-impl .m-impl-hd{text-align:center;margin-bottom:30px;padding:0 12px}
+#m-impl .m-impl-title{font-family:var(--font-system);font-weight:900;font-size:clamp(28px,4vw,46px);line-height:1.08;letter-spacing:-.02em;margin:18px 0 14px;color:#1a2342}
+#m-impl .m-impl-title .accent{color:var(--red)}
+#m-impl .m-impl-lede{color:#3a4564;font-size:15.5px;line-height:1.6;max-width:680px;margin:0 auto;font-weight:500}
+#m-impl .m-impl-lede strong{color:#1a2342;font-weight:800}
+#m-impl .impl-wrap{background:#fff;border:1px solid rgba(42,53,84,.10);border-radius:18px;padding:26px 26px 22px;box-shadow:0 8px 28px -16px rgba(42,53,84,.22)}
+#m-impl .impl-sec-desc{font-size:13.5px;color:var(--muted);text-align:center;margin-bottom:20px;font-weight:500}
+#m-impl .impl-pitch{font-size:12.5px;color:#3a4564;line-height:1.5;margin:8px 0 12px;font-weight:500;padding:8px 10px;background:rgba(42,53,84,.04);border-radius:8px;border-left:3px solid rgba(42,53,84,.18)}
+
+/* Lock pill en impl-grupal cuando Corporate fuerza personalizada */
+.impl-card .impl-lock-pill{display:none}
+.impl-card.locked-corp{cursor:not-allowed;background:#f8fafc}
+.impl-card.locked-corp:hover{transform:none;box-shadow:0 1px 3px rgba(42,53,84,.06)}
+.impl-card.locked-corp .impl-badge-row{visibility:hidden}
+.impl-card.locked-corp .impl-lock-pill{display:flex;align-items:center;justify-content:center;gap:5px;position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:rgba(42,53,84,.92);color:#fff;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 14px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(42,53,84,.25);z-index:3}
+
+/* Personalizada se marca como auto-seleccionada cuando Corporate */
+.impl-card.corp-forced::before{content:'OBLIGATORIO CON CORPORATE';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:10px;font-weight:700;letter-spacing:.05em;padding:5px 14px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(249,90,92,.35);z-index:3}
 
 #v-method .final-proof{margin-top:40px;background:linear-gradient(135deg,#1f284a 0%,#161d3a 100%);border:1.5px solid rgba(249,90,92,.40);border-radius:24px;padding:48px 32px 42px;text-align:center;color:#fff;box-shadow:0 20px 48px -20px rgba(42,53,84,.30);position:relative;overflow:hidden}
 #v-method .final-proof::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 12% 20%,rgba(249,90,92,.08) 0%,transparent 45%),radial-gradient(circle at 88% 80%,rgba(249,90,92,.08) 0%,transparent 45%);pointer-events:none}
@@ -1450,6 +1593,32 @@ body{font-feature-settings:"ss01"}
 /* Padding-bottom en las views para que el step-bar no tape contenido */
 .view{padding-bottom:90px}
 @media(max-width:768px){.view{padding-bottom:70px}}
+
+/* ═══════════════ PRICE PILL (esquina inferior izquierda en v-config) ═══════════════
+   Contador en vivo del precio configurado. Solo visible mientras v-config está activo.
+   No se solapa con el #step-bar (centrado).                              */
+#cfg-price-pill{
+  position:fixed;left:20px;bottom:20px;z-index:201;
+  display:inline-flex;flex-direction:column;gap:2px;
+  padding:10px 16px;
+  background:rgba(255,255,255,.92);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);
+  backdrop-filter:saturate(1.6) blur(20px);
+  border:1px solid rgba(42,53,84,.10);
+  border-radius:14px;
+  box-shadow:0 8px 24px -10px rgba(42,53,84,.20);
+  font-family:var(--font-system);
+  min-width:160px;
+  pointer-events:none;
+}
+.cpp-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.01em}
+.cpp-price-row{display:flex;align-items:baseline;gap:5px}
+.cpp-price{font-size:22px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums lining-nums;line-height:1}
+.cpp-period{font-size:11px;color:var(--muted);font-weight:500}
+.cpp-detail{font-size:10.5px;color:var(--muted);font-weight:500;min-height:0}
+@media(max-width:768px){
+  #cfg-price-pill{display:none}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -1458,9 +1627,8 @@ body{font-feature-settings:"ss01"}
 <!-- ═══════════════ Sidebar portal (compartido) ═══════════════
      El configurador vive dentro del portal Yurest: cargamos el sidebar
      estándar para que el comercial pueda saltar a otras herramientas
-     sin perder contexto. El botón hamburguesa flota fixed top-left con
-     z-index 110 para quedar POR ENCIMA de la .ofr-topbar (z-index 100)
-     que aparece en las vistas #v-offer y #v-budget. -->
+     sin perder contexto. Hamburguesa flotante fixed con z-index 110
+     para quedar POR ENCIMA de .ofr-topbar (z-index 100). -->
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <nav class="sidebar" id="sidebar"></nav>
 <script src="sidebar.js"></script>
@@ -1563,9 +1731,8 @@ body{font-feature-settings:"ss01"}
 <div class="band hdr-band">
   <div class="cfg-inner">
     <div class="hdr">
-      <!-- Logo oculto con visibility:hidden para preservar el slot y que
-           .hdr (display:flex; justify-content:space-between) siga
-           manteniendo el subtítulo alineado a la derecha. -->
+      <!-- Logo oculto con visibility:hidden para preservar el slot flex
+           (space-between) y dejar el subtítulo a la derecha. -->
       <a href="#" class="logo" aria-label="yurest" aria-hidden="true" style="visibility:hidden" tabindex="-1"><img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/66fcfac3f4a5201dde375477.png" alt="" loading="eager"></a>
       <span class="hdr-sub">Configura tu plan · Sin compromisos · Sin permanencia</span>
     </div>
@@ -1594,67 +1761,69 @@ body{font-feature-settings:"ss01"}
   <div class="sec-hd-row">
     <div class="sec-label">1. Elige tu plan base</div>
   </div>
-  <div class="sec-desc">Todos los planes incluyen IA, compras, finanzas, cuadros de mando y fichador · Documentos por local</div>
+  <div class="sec-desc">Todos los planes incluyen IA, compras, finanzas, cuadros de mando y fichador</div>
   <div class="plans-grid">
 
     <div class="plan-card" id="plan-lite" onclick="selectPlan('lite')">
+      <div class="plan-lock">🔒 No encaja con tu equipo</div>
       <div class="plan-check">✓</div>
       <div class="plan-name">Lite</div>
       <div class="plan-price-line">
         <span class="plan-cur">€</span>
         <span class="plan-price" id="pp-lite">47</span>
-        <span class="plan-per">/mes</span>
+        <span class="plan-per">/mes · por local</span>
       </div>
-      <div class="plan-note" id="pn-lite">2 meses gratis · 564 €/año</div>
+      <div class="plan-note" id="pn-lite">Para 1–15 empleados · Hasta 2 locales</div>
       <div class="plan-feats">
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Escáner IA de documentos</div>
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Hasta 200 docs / local</div>
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Yulia: Asistente IA</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Escáner IA de facturas y albaranes</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Hasta 100 docs / local</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Yulia IA: chatea con tus datos</div>
         <div class="pf"><div class="pf-dot">✓</div>Compras y pedidos a proveedores</div>
         <div class="pf"><div class="pf-dot">✓</div>Finanzas</div>
         <div class="pf"><div class="pf-dot">✓</div>Cuadros de mando</div>
         <div class="pf"><div class="pf-dot">✓</div>Fichador digital</div>
+        <div class="pf pf-foot"><div class="pf-dot">✓</div>Soporte por chat y correo</div>
       </div>
     </div>
 
     <div class="plan-card" id="plan-basic" onclick="selectPlan('basic')">
       <div class="plan-pop-wrap"><div class="plan-pop">★ Más popular</div></div>
-      <div class="plan-check">✓</div>
-      <div class="plan-name">Basic</div>
-      <div class="plan-price-line">
-        <span class="plan-cur">€</span>
-        <span class="plan-price" id="pp-basic">97</span>
-        <span class="plan-per">/mes</span>
-      </div>
-      <div class="plan-note" id="pn-basic">2 meses gratis · 1.164 €/año</div>
-      <div class="plan-feats">
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Escáner IA de documentos</div>
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Hasta 400 docs / local</div>
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Yulia: Asistente IA</div>
-        <div class="pf"><div class="pf-dot">✓</div>Compras y pedidos a proveedores</div>
-        <div class="pf"><div class="pf-dot">✓</div>Finanzas</div>
-        <div class="pf"><div class="pf-dot">✓</div>Cuadros de mando</div>
-        <div class="pf"><div class="pf-dot">✓</div>Fichador digital</div>
-      </div>
-    </div>
-
-    <div class="plan-card" id="plan-pro" onclick="selectPlan('pro')">
+      <div class="plan-lock">🔒 No encaja con tu equipo</div>
       <div class="plan-check">✓</div>
       <div class="plan-name">Pro</div>
       <div class="plan-price-line">
         <span class="plan-cur">€</span>
-        <span class="plan-price" id="pp-pro">157</span>
-        <span class="plan-per">/mes</span>
+        <span class="plan-price" id="pp-basic">97</span>
+        <span class="plan-per">/mes · por local</span>
       </div>
-      <div class="plan-note" id="pn-pro">2 meses gratis · 1.884 €/año</div>
+      <div class="plan-note" id="pn-basic">Para 16–50 empleados · Hasta 10 locales</div>
       <div class="plan-feats">
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Escáner IA de documentos</div>
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Docs ilimitados / local</div>
-        <div class="pf pf-ai"><div class="pf-dot">✦</div>Yulia: Asistente IA</div>
-        <div class="pf"><div class="pf-dot">✓</div>Compras y pedidos a proveedores</div>
-        <div class="pf"><div class="pf-dot">✓</div>Finanzas</div>
-        <div class="pf"><div class="pf-dot">✓</div>Cuadros de mando</div>
-        <div class="pf"><div class="pf-dot">✓</div>Fichador digital</div>
+        <div class="pf pf-inherit"><div class="pf-dot">✓</div>Todo lo del plan Lite</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Hasta 400 docs / local</div>
+        <div class="pf pf-unlock"><div class="pf-dot">+</div>Desbloquea Stocks</div>
+        <div class="pf"><div class="pf-dot">✓</div>Descuento multi-local desde -5%</div>
+        <div class="pf pf-foot"><div class="pf-dot">✓</div>Soporte telefónico prioritario</div>
+      </div>
+    </div>
+
+    <div class="plan-card" id="plan-pro" onclick="selectPlan('pro')">
+      <div class="plan-lock">🔒 No encaja con tu equipo</div>
+      <div class="plan-check">✓</div>
+      <div class="plan-name">Corporate</div>
+      <div class="plan-price-line">
+        <span class="plan-cur">€</span>
+        <span class="plan-price" id="pp-pro">157</span>
+        <span class="plan-per">/mes · por local</span>
+      </div>
+      <div class="plan-note" id="pn-pro">Para 51+ empleados · Locales ilimitados</div>
+      <div class="plan-feats">
+        <div class="pf pf-inherit"><div class="pf-dot">✓</div>Todo lo del plan Pro</div>
+        <div class="pf pf-ai"><div class="pf-dot">✦</div>Documentos ilimitados</div>
+        <div class="pf pf-unlock"><div class="pf-dot">+</div>Desbloquea Stocks Avanzado</div>
+        <div class="pf pf-unlock"><div class="pf-dot">+</div>Desbloquea Auditorías</div>
+        <div class="pf"><div class="pf-dot">✓</div>Informes avanzados</div>
+        <div class="pf"><div class="pf-dot">✓</div>Descuento multi-local hasta -15%</div>
+        <div class="pf pf-foot"><div class="pf-dot">✓</div>Soporte con consultor dedicado</div>
       </div>
     </div>
 
@@ -1703,7 +1872,7 @@ body{font-feature-settings:"ss01"}
       </div>
 
       <div class="addon-card disabled needs-tip" id="ac-stocksadv" onclick="toggleAddon('stocksadv')">
-        <div class="tip-bubble" id="stocksadv-tip">Selecciona implementación personalizada para activar</div>
+        <div class="tip-bubble" id="stocksadv-tip">Solo disponible en plan Corporate</div>
         <div class="ac-chk"></div><div class="ac-lock">🔒</div>
         <div class="ac-badge-row"><span class="ac-badge b-chain">Cadenas y grupos</span></div>
         <div class="ac-name">Stocks avanzado</div>
@@ -1746,13 +1915,13 @@ body{font-feature-settings:"ss01"}
       </div>
 
       <div class="addon-card disabled needs-tip" id="ac-auditorias" onclick="toggleAddon('auditorias')">
-        <div class="tip-bubble">Requiere implementación personalizada · +4 locales</div>
+        <div class="tip-bubble">Solo disponible en plan Corporate</div>
         <div class="ac-chk"></div><div class="ac-lock">🔒</div>
         <div class="ac-badge-row"><span class="ac-badge b-chain" id="aud-badge">Cadenas y grupos</span></div>
         <div class="ac-name">Auditorías</div>
         <div class="ac-desc">Auditorías internas con informes automáticos por local.</div>
         <div class="ac-price" id="adprice-auditorias">7 €/mes · anual</div>
-        <div class="ac-warn" id="aud-warn" style="display:none">⚠ Requiere +4 locales e implementación personalizada · 2 sesiones adicionales (397 €)</div>
+        <div class="ac-warn" id="aud-warn" style="display:none">⚠ Se añaden 2 sesiones personalizadas obligatorias (397 €) para garantizar la implantación.</div>
       </div>
 
     </div>
@@ -1786,89 +1955,17 @@ body{font-feature-settings:"ss01"}
 </div>
 </div>
 
-<div class="band band-gray">
-<div class="cfg-inner">
-<!-- 3. IMPLEMENTATION -->
-<div class="sec">
-  <div class="sec-label">3. Plan de implementación</div>
-  <div class="impl-wrap">
-    <div class="impl-sec-desc">Escoge cómo quieres arrancar · Incluido en el plan anual</div>
-    <div class="impl-grid">
-
-      <div class="impl-card" id="impl-grupal" onclick="selectImpl('grupal')">
-        <div class="impl-chk">✓</div>
-        <div class="impl-badge-row"><span class="impl-ibadge ib-pop" id="ibadge-g">★ Más popular · Recomendado</span></div>
-        <div class="impl-name">Implementación grupal</div>
-        <div class="impl-price-row"><span class="impl-old">1.700 €</span><span class="impl-new">Gratis</span></div>
-        <ul class="impl-items" id="ilist-g">
-          <li class="li-std"><span class="bul">·</span>Sesión de onboarding</li>
-          <li class="li-std"><span class="bul">·</span>2 sesiones de Compras</li>
-          <li class="li-std"><span class="bul">·</span>1 sesión de Finanzas</li>
-          <li id="ig-cocina" class="li-ext" style="display:none"><span class="bul">✦</span>+2 sesiones de Cocina</li>
-          <li id="ig-stocks" class="li-ext" style="display:none"><span class="bul">✦</span>+1 sesión de Stocks</li>
-          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR grupales</li>
-          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR personalizadas (30 min)</li>
-          <li class="li-std"><span class="bul">·</span>yurest Academy · Video-formación</li>
-          <li class="li-std"><span class="bul">·</span>Sesiones de tu promoción grabadas</li>
-        </ul>
-      </div>
-
-      <div class="impl-card" id="impl-personalizada" onclick="selectImpl('personalizada')">
-        <div class="impl-chk">✓</div>
-        <div class="impl-badge-row"><span class="impl-ibadge ib-grp" id="ibadge-p">Para grupos · Recomendado si tienes Stocks</span></div>
-        <div class="impl-name">Consultoría personalizada</div>
-        <div class="impl-price-row"><span class="impl-old">5.000 €</span><span class="impl-new paid">1.500 €</span></div>
-        <ul class="impl-items" id="ilist-p">
-          <li class="li-std"><span class="bul">·</span>Sesión de onboarding <span class="consultant-tag">con tu consultor</span></li>
-          <li class="li-std"><span class="bul">·</span>2 sesiones de Compras <span class="consultant-tag">con tu consultor</span></li>
-          <li class="li-std"><span class="bul">·</span>1 sesión de Finanzas <span class="consultant-tag">con tu consultor</span></li>
-          <li id="ip-cocina" class="li-ext" style="display:none"><span class="bul">✦</span>+2 sesiones de Cocina <span class="consultant-tag">con tu consultor</span></li>
-          <li id="ip-stocks" class="li-ext" style="display:none"><span class="bul">✦</span>+1 sesión de Stocks <span class="consultant-tag">con tu consultor</span></li>
-          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR personalizadas (60 min)</li>
-          <li class="li-std"><span class="bul">·</span>yurest Academy · Video-formación</li>
-          <li class="li-std"><span class="bul">·</span>Consultor experto en hostelería</li>
-          <li class="li-std"><span class="bul">·</span>Todas las sesiones grabadas para tu equipo</li>
-        </ul>
-      </div>
-
-    </div>
-
-    <div class="impl-addons-title">Servicios adicionales de implementación</div>
-    <div class="addons-grid g22" style="grid-template-columns:repeat(2,1fr)">
-
-      <div class="addon-card" id="ac-carga" onclick="toggleAddon('carga')">
-        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
-        <div class="ac-badge-row"><span class="ac-badge b-promo">Promoción especial</span></div>
-        <div class="ac-name">Carga masiva de datos</div>
-        <div class="ac-desc">Servicio premium: nuestro equipo migra toda tu base de proveedores y productos a yurest. Sin que muevas un dedo.</div>
-        <div class="ac-price one-t"><span style="text-decoration:line-through;color:var(--muted);font-weight:600;margin-right:6px">397 €</span><span style="color:var(--green);font-weight:800">GRATIS</span></div>
-      </div>
-
-      <div class="addon-card" id="ac-consultoria" onclick="toggleAddon('consultoria')">
-        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
-        <div class="ac-badge-row"></div>
-        <div class="ac-name">Pack consultoría</div>
-        <div class="ac-desc">3 sesiones de 60 min con consultor experto en hostelería y yurest. <strong>Tienes 1 año para gastarlas</strong> · durante o después de la formación.</div>
-        <div class="ac-price">497 € · 3 sesiones</div>
-        <div class="ac-warn" id="consultoria-warn">No disponible con Consultoría personalizada — ya incluye sesiones individuales.</div>
-      </div>
-
-    </div>
-
-    <div class="stocksadv-note" id="stocksadv-note" style="display:none">
-      ✦ Stocks avanzado requiere 3 sesiones personalizadas (497 €) — se añaden automáticamente a tu oferta
-    </div>
-    <div class="stocksadv-note" id="auditorias-note" style="display:none;margin-top:8px">
-      ✦ Auditorías requiere 2 sesiones personalizadas (397 €) — se añaden automáticamente a tu oferta
-    </div>
-  </div>
-</div>
-</div>
-</div>
-
 </div><!-- /cfg -->
 
-<!-- (Sticky-bar antiguo eliminado — la navegación ahora se hace con el #step-bar global) -->
+<!-- Contador de pricing en vivo, esquina inferior izquierda (solo visible en v-config) -->
+<div id="cfg-price-pill">
+  <div class="cpp-label" id="cpp-label">Elige un plan</div>
+  <div class="cpp-price-row">
+    <span class="cpp-price" id="cpp-price">—</span>
+    <span class="cpp-period" id="cpp-period"></span>
+  </div>
+  <div class="cpp-detail" id="cpp-detail"></div>
+</div>
 </div><!-- /v-config -->
 
 
@@ -1883,7 +1980,6 @@ body{font-feature-settings:"ss01"}
   <div class="kpi-bubble">
     <div class="kpi"><div class="kpi-num" id="m-kpi-weeks">7 sem.</div><div class="kpi-lbl">Al control</div></div>
     <div class="kpi"><div class="kpi-num" id="m-kpi-sessions">6</div><div class="kpi-lbl">Sesiones implementación</div></div>
-    <div class="kpi"><div class="kpi-num">9</div><div class="kpi-lbl">Sesiones Master</div></div>
     <div class="kpi"><div class="kpi-num">4</div><div class="kpi-lbl">Consultores expertos</div></div>
   </div>
 </div>
@@ -2047,6 +2143,89 @@ body{font-feature-settings:"ss01"}
   </div>
 </div>
 
+<!-- ═══════════ IMPLEMENTACIÓN: elige cómo recorres el camino ═══════════ -->
+<div id="m-impl">
+  <div class="m-impl-hd">
+    <div class="eyebrow"><span class="star">★</span>Elige cómo lo recorres</div>
+    <h2 class="m-impl-title">El camino es el mismo.<br><span class="accent">Cambia cómo lo recorres.</span></h2>
+    <p class="m-impl-lede">Hasta aquí te he contado el <strong>qué</strong>. Ahora te cuento el <strong>cómo</strong>: cómo lo ponemos a funcionar en tu negocio.</p>
+  </div>
+
+  <div class="impl-wrap">
+    <div class="impl-grid">
+
+      <div class="impl-card" id="impl-grupal" onclick="selectImpl('grupal')">
+        <div class="impl-chk">✓</div>
+        <div class="impl-lock-pill">🔒 No disponible con Corporate</div>
+        <div class="impl-badge-row"><span class="impl-ibadge ib-pop" id="ibadge-g">★ Más popular · Recomendado</span></div>
+        <div class="impl-name">Implementación grupal</div>
+        <div class="impl-price-row"><span class="impl-old">1.700 €</span><span class="impl-new">Gratis</span></div>
+        <div class="impl-pitch">Con un grupo de hosteleros que arrancan en tu misma ola. Aprendes de sus dudas. Te llevas las grabaciones.</div>
+        <ul class="impl-items" id="ilist-g">
+          <li class="li-std"><span class="bul">·</span>Sesión de onboarding</li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de Compras</li>
+          <li class="li-std"><span class="bul">·</span>1 sesión de Finanzas</li>
+          <li id="ig-cocina" class="li-ext" style="display:none"><span class="bul">✦</span>+2 sesiones de Cocina</li>
+          <li id="ig-stocks" class="li-ext" style="display:none"><span class="bul">✦</span>+1 sesión de Stocks</li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR grupales</li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR personalizadas (30 min)</li>
+          <li class="li-std"><span class="bul">·</span>yurest Academy · Video-formación</li>
+          <li class="li-std"><span class="bul">·</span>Sesiones de tu promoción grabadas</li>
+        </ul>
+      </div>
+
+      <div class="impl-card" id="impl-personalizada" onclick="selectImpl('personalizada')">
+        <div class="impl-chk">✓</div>
+        <div class="impl-badge-row"><span class="impl-ibadge ib-grp" id="ibadge-p">Para grupos · Recomendado si tienes Stocks</span></div>
+        <div class="impl-name">Consultoría personalizada</div>
+        <div class="impl-price-row"><span class="impl-old">5.000 €</span><span class="impl-new paid">1.500 €</span></div>
+        <div class="impl-pitch" id="impl-p-pitch">Tú pones los horarios. Te formamos sobre <strong>tus datos reales</strong>, no sobre una cuenta genérica. Y tienes un <strong>implementador dedicado</strong> solo para ti.</div>
+        <ul class="impl-items" id="ilist-p">
+          <li class="li-std"><span class="bul">·</span>Sesión de onboarding <span class="consultant-tag">con tu consultor</span></li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de Compras <span class="consultant-tag">con tu consultor</span></li>
+          <li class="li-std"><span class="bul">·</span>1 sesión de Finanzas <span class="consultant-tag">con tu consultor</span></li>
+          <li id="ip-cocina" class="li-ext" style="display:none"><span class="bul">✦</span>+2 sesiones de Cocina <span class="consultant-tag">con tu consultor</span></li>
+          <li id="ip-stocks" class="li-ext" style="display:none"><span class="bul">✦</span>+1 sesión de Stocks <span class="consultant-tag">con tu consultor</span></li>
+          <li class="li-std"><span class="bul">·</span>2 sesiones de PyR personalizadas (60 min)</li>
+          <li class="li-std"><span class="bul">·</span>yurest Academy · Video-formación</li>
+          <li class="li-std"><span class="bul">·</span>Consultor experto en hostelería</li>
+          <li class="li-std"><span class="bul">·</span>Todas las sesiones grabadas para tu equipo</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="impl-addons-title">Servicios adicionales</div>
+    <div class="addons-grid g22" style="grid-template-columns:repeat(2,1fr)">
+
+      <div class="addon-card" id="ac-carga" onclick="toggleAddon('carga')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"><span class="ac-badge b-promo">Promoción especial</span></div>
+        <div class="ac-name">Carga masiva de datos</div>
+        <div class="ac-desc">Servicio premium: nuestro equipo migra toda tu base de proveedores y productos a yurest. Sin que muevas un dedo.</div>
+        <div class="ac-price one-t"><span style="text-decoration:line-through;color:var(--muted);font-weight:600;margin-right:6px">397 €</span><span style="color:var(--green);font-weight:800">GRATIS</span></div>
+      </div>
+
+      <div class="addon-card" id="ac-consultoria" onclick="toggleAddon('consultoria')">
+        <div class="ac-chk"></div><div class="ac-lock">🔒</div>
+        <div class="ac-badge-row"></div>
+        <div class="ac-name">Pack consultoría</div>
+        <div class="ac-desc">3 sesiones de 60 min con consultor experto en hostelería y yurest. <strong>Tienes 1 año para gastarlas</strong> · durante o después de la formación.</div>
+        <div class="ac-price">497 € · 3 sesiones</div>
+        <div class="ac-warn" id="consultoria-warn">No disponible con Consultoría personalizada — ya incluye sesiones individuales.</div>
+      </div>
+
+    </div>
+
+    <div class="stocksadv-note" id="stocksadv-note" style="display:none">
+      ✦ Stocks Avanzado requiere 3 sesiones personalizadas (497 €) — se añaden automáticamente a tu oferta
+    </div>
+    <div class="stocksadv-note" id="auditorias-note" style="display:none;margin-top:8px">
+      ✦ Auditorías requiere 2 sesiones personalizadas (397 €) — se añaden automáticamente a tu oferta
+    </div>
+  </div>
+</div>
+
 <div class="final-proof">
   <div class="final-proof-stars">★ ★ ★ ★ ★</div>
   <p class="final-proof-quote"><b>+1.500 hosteleros</b> ya han recorrido este camino con nosotros</p>
@@ -2075,7 +2254,7 @@ body{font-feature-settings:"ss01"}
     </div>
     <div class="ofr-saving show" id="ofr-saving">✓ 2 meses gratis</div>
   </div>
-  <!-- Slot del logo oculto para preservar el centrado del toggle vía space-between. -->
+  <!-- Slot del logo oculto para conservar el centrado del toggle (space-between). -->
   <div class="ofr-logo" aria-hidden="true" style="visibility:hidden">yurest</div>
 </div>
 
@@ -2113,7 +2292,7 @@ body{font-feature-settings:"ss01"}
   <div class="ofr-stack">
     <div class="ofr-stack-hd">
       <span class="ofr-stack-lbl">Lo que incluye tu plan</span>
-      <span class="ofr-stack-lbl">Precio</span>
+      <span class="ofr-stack-lbl">Precio por local</span>
     </div>
     <div id="ofr-items-plan"></div>
   </div>
@@ -2168,27 +2347,82 @@ body{font-feature-settings:"ss01"}
   <span style="width:80px"></span>
 </div>
 
-<div class="budget-wrap">
+<div class="budget-wrap bw-3pages">
   <div class="budget-title">Presupuesto yurest</div>
   <div class="budget-meta" id="budget-meta"></div>
-
-  <!-- Product mockup -->
   <div class="product-mockup-card">
     <img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/6808f1cf0ddda08478e37058.png" alt="yurest dashboard" loading="eager">
   </div>
 
-  <div class="budget-card" id="budget-content"></div>
+  <!-- ═══════════ PAGE 1 — COVER ═══════════ -->
+  <div class="pdf-page bp-cover">
+    <div class="bp-cover-logo">yurest</div>
+    <div class="bp-cover-title">Tu presupuesto</div>
+    <div class="bp-cover-sub" id="bp-cover-sub">Configurado a tu medida</div>
+    <div class="bp-cover-ref" id="bp-cover-ref">Ref. —</div>
+    <div class="bp-cover-meta">
+      <div class="bp-cover-row"><span>Para</span><span id="bp-cover-client">—</span></div>
+      <div class="bp-cover-row"><span>Empresa</span><span id="bp-cover-company">—</span></div>
+      <div class="bp-cover-row"><span>Fecha</span><span id="bp-cover-date">—</span></div>
+      <div class="bp-cover-row"><span>Vigencia</span><span id="bp-cover-expiry">—</span></div>
+    </div>
+    <div class="bp-cover-mockup">
+      <img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/6808f1cf0ddda08478e37058.png" alt="yurest dashboard">
+    </div>
+    <div class="bp-cover-tagline">+1.500 hosteleros ya gestionan su negocio con <em>yurest</em>.</div>
+    <div class="bp-cover-footer">yurest · Presupuesto personalizado</div>
+  </div>
 
+  <!-- ═══════════ PAGE 2 — OFERTA ═══════════ -->
+  <div class="pdf-page bp-offer">
+    <div class="bp-page-hd"><span class="bp-page-hd-title">Tu oferta</span></div>
+
+    <!-- Valor total vs inversión -->
+    <div class="bp-value-box" id="bp-value-box"></div>
+
+    <!-- Plan elegido con bullets -->
+    <div class="bp-plan-box" id="bp-plan-box"></div>
+
+    <!-- Suscripción + servicios + bonuses + total -->
+    <div class="budget-card" id="budget-content"></div>
+  </div>
+
+  <!-- ═══════════ ROADMAP — Tu camino de implementación ═══════════ -->
+  <div class="pdf-page bp-roadmap">
+    <div class="bp-page-hd"><span class="bp-page-hd-title">Tu camino de implementación</span></div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 16px">El método yurest tiene paradas obligatorias. Cada fase tiene un consultor dedicado y dos columnas claras: lo que entregamos y lo que tú ejecutas. <strong style="color:var(--navy)">No avanzamos hasta cerrar la fase anterior.</strong></p>
+    <div class="bp-phase-list" id="bp-phase-list"></div>
+
+    <!-- Master Rentabilidad y Control · solo se rellena si el plan es anual -->
+    <div id="bp-master-block"></div>
+  </div>
+
+  <!-- ═══════════ PAGE 3 — CONDICIONES ═══════════ -->
+  <div class="pdf-page bp-conditions">
+    <div class="bp-page-hd"><span class="bp-page-hd-title">Condiciones y próximo paso</span></div>
+
+    <div class="bp-cond-list" id="bp-cond-list"></div>
+
+    <div class="bp-next-step" id="bp-next-step"></div>
+
+    <div class="bp-final-footer">
+      <div class="bp-final-brand">yurest</div>
+      <div class="bp-final-mini" id="bp-final-mini">Presupuesto · Ref. —</div>
+    </div>
+  </div>
+
+  <!-- Inputs del cliente + descarga (no van al PDF) -->
   <div class="budget-send" id="budget-actions">
-    <div class="budget-send-title">📄 Descargar presupuesto</div>
-    <div class="budget-send-desc">Genera un PDF listo para enviar al cliente.</div>
+    <div class="budget-send-title">📄 Personaliza y descarga</div>
+    <div class="budget-send-desc">Rellena el nombre y empresa del cliente. Aparecerán en la portada.</div>
+    <input id="client-name-input" type="text" placeholder="Nombre del cliente" autocomplete="off" oninput="onClientInfoChange()">
+    <input id="client-company-input" type="text" placeholder="Empresa (opcional)" autocomplete="off" oninput="onClientInfoChange()">
     <button class="budget-send-cta" onclick="downloadBudget()">Descargar PDF</button>
   </div>
 
   <!-- Acción siguiente: arrancar la solicitud de ficha de alta directamente
        desde aquí. Crea la solicitud + envía el email + actualiza la oferta
-       como 'enviada' en Supabase. Modal con success card en sitio (sin hop
-       por lista.html). -->
+       como 'enviada' en Supabase. Modal con success card en sitio. -->
   <div class="budget-send" id="ficha-actions" style="margin-top:14px">
     <div class="budget-send-title">📋 Iniciar ficha de alta</div>
     <div class="budget-send-desc">Captura los datos iniciales del cliente y crea la solicitud en un solo paso.</div>
@@ -2230,6 +2464,7 @@ function tweenNumber(el, target, opts){
 
 var billing='annual', plan=null, locales=1;
 var employees=null; // null hasta que el comercial introduzca un valor; gating de planes por tier
+var clientName='', clientCompany=''; // capturados en v-budget para portada del PDF
 var addons={tpv:false,cocina:false,stocks:false,stocksadv:false,checklist:true,comunicacion:false,appcc:false,auditorias:false,rrhh:false,firma:false,carga:false,consultoria:false};
 var impl='grupal'; // implementación grupal seleccionada por defecto (obligatoria)
 
@@ -2238,8 +2473,8 @@ var PM={lite:57,basic:117,pro:189};
 var PA={lite:47,basic:97,pro:157};
 var PY={lite:PA.lite*12,basic:PA.basic*12,pro:PA.pro*12};
 
-var PNAMES={lite:'Lite',basic:'Basic',pro:'Pro'};
-var PDOCS={lite:'200 docs/local',basic:'400 docs/local',pro:'Docs ilimitados'};
+var PNAMES={lite:'Lite',basic:'Pro',pro:'Corporate'};
+var PDOCS={lite:'100 docs/local',basic:'400 docs/local',pro:'Docs ilimitados'};
 
 var ADM={tpv:18,cocina:18,stocks:28,stocksadv:36,checklist:9,comunicacion:9,appcc:9,auditorias:9,rrhh:45};
 var ADA={tpv:15,cocina:15,stocks:23,stocksadv:30,checklist:7,comunicacion:7,appcc:7,auditorias:7,rrhh:37};
@@ -2299,12 +2534,12 @@ function updAddonPrices(){
     el.textContent=isA?(fmt(ADA[k])+' €/mes · anual'):(ADM[k]+' €/mes');
   });
 }
+var PEMP={lite:'Para 1–15 empleados · Hasta 2 locales',basic:'Para 16–50 empleados · Hasta 10 locales',pro:'Para 51+ empleados · Locales ilimitados'};
 function updPlanPrices(){
   var isA=billing==='annual';
   Object.keys(PM).forEach(function(p){
     tweenNumber(document.getElementById('pp-'+p), isA?PA[p]:PM[p], {fmt:fmt});
-    var savePerYear=Math.round((PM[p]-PA[p])*12);
-    document.getElementById('pn-'+p).textContent=isA?'2 meses gratis · '+fmt(PY[p])+' €/año':'Ahorra '+savePerYear+' €/año con anual';
+    document.getElementById('pn-'+p).textContent=PEMP[p];
   });
 }
 
@@ -2312,8 +2547,29 @@ function selectPlan(p){
   if(document.getElementById('plan-'+p).classList.contains('disabled')) return;
   plan=p;
   ['lite','basic','pro'].forEach(function(k){document.getElementById('plan-'+k).classList.toggle('selected',k===p);});
-  // Cambiar de plan puede invalidar addons (stocks → requiere ≥Basic, stocksadv → requiere Pro).
+  // Corporate (id='pro') fuerza implementación personalizada — locked en el paso 3.
+  if(p==='pro') impl='personalizada';
+  updImplLock();
+  // Cambiar de plan puede invalidar addons (stocks → requiere Pro+, stocksadv/auditorias → solo Corporate).
   updAddonStates(); updImplItems(); updBar();
+}
+
+// Toggle del estado "locked" en el selector de implementación (paso 3).
+// Cuando plan='pro' (Corporate), grupal queda bloqueado y personalizada se marca como obligatoria.
+function updImplLock(){
+  var g=document.getElementById('impl-grupal');
+  var pz=document.getElementById('impl-personalizada');
+  if(!g||!pz) return;
+  var corp=(plan==='pro');
+  g.classList.toggle('locked-corp', corp);
+  pz.classList.toggle('corp-forced', corp);
+  if(corp){
+    g.classList.remove('selected');
+    pz.classList.add('selected');
+  } else {
+    g.classList.toggle('selected', impl==='grupal');
+    pz.classList.toggle('selected', impl==='personalizada');
+  }
 }
 
 // Tier por número de empleados. Reglas: 1-15 apaga Pro · 16-50 apaga Lite · 51+ apaga Lite y Basic.
@@ -2337,8 +2593,12 @@ function updatePlanGating(){
   var t=getTier(employees);
   var allPlans=['lite','basic','pro'];
   var blocked=t?t.blocked:allPlans.slice(); // sin empleados → todos bloqueados
+  var lockMsg=t?'🔒 No encaja con tu equipo':'🔒 Indica empleados arriba';
   allPlans.forEach(function(p){
-    document.getElementById('plan-'+p).classList.toggle('disabled', blocked.indexOf(p)>=0);
+    var card=document.getElementById('plan-'+p);
+    card.classList.toggle('disabled', blocked.indexOf(p)>=0);
+    var lock=card.querySelector('.plan-lock');
+    if(lock) lock.textContent=lockMsg;
   });
   // Si el plan seleccionado pasa a bloqueado (o no hay tier todavía), auto-switch al más cercano.
   if(plan && blocked.indexOf(plan)>=0){
@@ -2357,7 +2617,9 @@ function updatePlanGating(){
       }
       if(next){
         plan=next;
+        if(next==='pro') impl='personalizada';
         allPlans.forEach(function(p){document.getElementById('plan-'+p).classList.toggle('selected', p===next);});
+        updImplLock();
         updAddonStates(); updImplItems();
       }
     }
@@ -2367,7 +2629,8 @@ function updatePlanGating(){
 function toggleAddon(k){
   // Plan gating
   if(k==='stocks'&&plan==='lite')return;
-  if(k==='stocksadv'&&(plan==='lite'||plan==='basic'))return;
+  if(k==='stocksadv'&&plan!=='pro')return; // Solo Corporate
+  if(k==='auditorias'&&plan!=='pro')return; // Solo Corporate
   // Dependency gating
   if(k==='stocks'&&(!addons.tpv||!addons.cocina))return;
   if(k==='stocksadv'&&!addons.stocks)return;
@@ -2396,14 +2659,14 @@ function updAddonStates(){
     sEl.classList.add('disabled');
     if(addons.stocks){addons.stocks=false;sEl.classList.remove('selected','warn');}
   } else { sEl.classList.remove('disabled'); }
-  if(sTip) sTip.textContent = stocksBlockedByPlan ? 'Requiere plan Basic o Pro' : 'Requiere TPV + Cocina';
+  if(sTip) sTip.textContent = stocksBlockedByPlan ? 'Requiere plan Pro o Corporate' : 'Requiere TPV + Cocina';
 
   // StocksAdv tip-bubble — texto dinámico según el blocker prioritario (el gating real
   // se aplica abajo en el bloque needsPersonalizada).
   var stocksadvBlockedByPlan=(plan==='lite'||plan==='basic');
   var saTip=document.getElementById('stocksadv-tip');
   if(saTip){
-    if(stocksadvBlockedByPlan) saTip.textContent='Requiere plan Pro';
+    if(stocksadvBlockedByPlan) saTip.textContent='Requiere plan Corporate';
     else if(impl!=='personalizada') saTip.textContent='Selecciona implementación personalizada para activar';
     else saTip.textContent='Requiere activar Stocks';
   }
@@ -2417,13 +2680,15 @@ function updAddonStates(){
     cWarn.style.display='';
   } else { cEl.classList.remove('disabled'); cWarn.style.display='none'; }
 
-  // Stocks avanzado + Auditorías: requieren impl personalizada. StocksAdv además requiere plan Pro y stocks activo.
-  var needsPersonalizada=['stocksadv','auditorias'];
-  needsPersonalizada.forEach(function(k){
+  // Stocks Avanzado + Auditorías: SOLO disponibles en plan Corporate (id='pro').
+  // StocksAdv además requiere Stocks activo. La impl personalizada YA no es un gate aparte
+  // (Corporate la fuerza automáticamente en el paso 3).
+  var corpOnly=['stocksadv','auditorias'];
+  corpOnly.forEach(function(k){
     var elId={stocksadv:'ac-stocksadv',auditorias:'ac-auditorias'}[k];
     var el=document.getElementById(elId);
-    var planBlocked=(k==='stocksadv') && (plan==='lite'||plan==='basic');
-    var canSelect=!planBlocked && (impl==='personalizada') && (k!=='stocksadv' || addons.stocks);
+    if(!el) return;
+    var canSelect = plan==='pro' && (k!=='stocksadv' || addons.stocks);
     if(!canSelect){
       el.classList.add('disabled');
       if(addons[k]){
@@ -2456,6 +2721,8 @@ function updAddonStates(){
 }
 
 function selectImpl(k){
+  // Si Corporate fuerza personalizada, no permitir cambiar a grupal.
+  if(plan==='pro' && k==='grupal') return;
   impl=k;
   document.getElementById('impl-grupal').classList.toggle('selected',k==='grupal');
   document.getElementById('impl-personalizada').classList.toggle('selected',k==='personalizada');
@@ -2484,7 +2751,34 @@ function updImplItems(){
 
 // updBar mantiene el nombre por compatibilidad (lo llaman muchos sitios),
 // ahora solo refresca el #step-bar (la sticky-bar antigua ya no existe).
-function updBar(){ updStepBar(); }
+function updBar(){ updStepBar(); updPricePill(); }
+
+// Contador de pricing en la esquina inferior izquierda (visible solo en v-config).
+function updPricePill(){
+  var lbl=document.getElementById('cpp-label');
+  var prc=document.getElementById('cpp-price');
+  var per=document.getElementById('cpp-period');
+  var det=document.getElementById('cpp-detail');
+  if(!lbl||!prc||!per||!det) return;
+  if(employees==null){
+    lbl.textContent='Indica empleados';
+    prc.textContent='—';per.textContent='';det.textContent='';
+    return;
+  }
+  if(!plan){
+    lbl.textContent='Elige un plan';
+    prc.textContent='—';per.textContent='';det.textContent='';
+    return;
+  }
+  var base=billing==='annual'?PA[plan]:PM[plan];
+  var addTotal=Object.keys(ADM).reduce(function(s,k){return addons[k]?s+adPrice(k):s;},0);
+  var monthly=applyDiscount(base+addTotal)*locales;
+  var addonCount=Object.keys(addons).filter(function(k){return addons[k];}).length;
+  lbl.textContent='Plan '+PNAMES[plan];
+  tweenNumber(prc, monthly, {fmt:fmt, suffix:' €'});
+  per.textContent=billing==='annual'?'/mes · anual':'/mes';
+  det.textContent=(addonCount?addonCount+' módulo'+(addonCount>1?'s':''):'')+(locales>1?(addonCount?' · ':'')+locales+' locales':'');
+}
 
 // ═══════════ BASELINE (paso 1 · situación actual) ═══════════
 var BASELINE_GG = 20;       // % gastos generales estimados (constante)
@@ -2713,6 +3007,13 @@ function showConfig(){
   window.scrollTo(0,0);
   updStepBar();
 }
+function onClientInfoChange(){
+  var n=document.getElementById('client-name-input');
+  var c=document.getElementById('client-company-input');
+  clientName=n?n.value.trim():'';
+  clientCompany=c?c.value.trim():'';
+  if(plan) renderBudget();
+}
 function showBudget(){
   if(!plan){alert('Elige un plan primero');return;}
   renderBudget();
@@ -2720,9 +3021,9 @@ function showBudget(){
   document.getElementById('v-budget').classList.add('active');
   window.scrollTo(0,0);
   updStepBar();
-  // Persistencia: al entrar a la vista de presupuesto guardamos la oferta
-  // como borrador en Supabase (vía n8n). Fire-and-forget: si falla, el
-  // flujo del comercial continúa sin bloqueo.
+  // Persistencia: al entrar a v-budget guardamos la oferta como borrador
+  // en Supabase (vía n8n). Fire-and-forget: si falla, el flujo del
+  // comercial continúa sin bloqueo.
   if (typeof _cfgPersistDraft === 'function') _cfgPersistDraft();
 }
 
@@ -2971,20 +3272,20 @@ function renderOffer(){
   var planHTML='';
   var bonusHTML='';
 
-  // Plan
+  // Plan — valor principal es POR LOCAL (más bajo, mejor contexto). Total grupo va en sub.
   var planDisc=applyDiscount(planM);
   var planTotal=planDisc*locales;
-  var planOld=isA?fmt(PM[plan]*locales)+' €/mes':(locales>2?fmt(PM[plan]*locales)+' €/mes':null);
-  var planSub=locales>1?'<span style="font-size:11px;color:var(--muted);font-weight:400">'+fmt(planDisc)+' €/local</span>':null;
+  var planOld=isA?fmt(PM[plan])+' €/mes':(locales>2?fmt(PM[plan])+' €/mes':null);
+  var planSub=locales>1?'<span style="font-size:11px;color:var(--muted);font-weight:400">'+fmt(planTotal)+' €/mes · '+locales+' locales</span>':null;
   planHTML+=brunsonRow('plan',
     'Plan yurest '+PNAMES[plan]+' · '+PDOCS[plan]+' · '+(isA?'Anual':'Mensual'),
     planSub,
     planOld,
-    fmt(planTotal)+' €/mes',
+    fmt(planDisc)+' €/mes',
     'v-plan'
   );
 
-  // Monthly addons
+  // Monthly addons — mismo criterio: por local en grande, total grupo en sub.
   var hasAddonSection=false;
   Object.keys(ADM).forEach(function(k){
     if(!addons[k]) return;
@@ -2993,17 +3294,18 @@ function renderOffer(){
     var adDiscPrice=applyDiscount(adBasePrice);
     var adTotal=adDiscPrice*locales;
     var isIncluded=adBasePrice===0;
-    var adLbl=isIncluded?(k==='checklist'?'Gratis 3 meses':'Incluido'):fmt(adTotal)+' €/mes';
-    var adSub2=locales>1&&!isIncluded?'<span style="font-size:11px;color:var(--muted);font-weight:400">'+fmt(adDiscPrice)+' €/local</span>':null;
-    var adOld=(isA||locales>2)?fmt(ADM[k]*(locales>1?locales:1))+' €/mes':null;
+    var adLbl=isIncluded?(k==='checklist'?'Gratis 3 meses':'Incluido'):fmt(adDiscPrice)+' €/mes';
+    var adSub2=locales>1&&!isIncluded?'<span style="font-size:11px;color:var(--muted);font-weight:400">'+fmt(adTotal)+' €/mes · '+locales+' locales</span>':null;
+    var adOld=(isA||locales>2)?fmt(ADM[k])+' €/mes':null;
     planHTML+=brunsonRow('addon',ADN[k],adSub2,adOld,adLbl,isIncluded?'v-impl':'v-plan');
   });
 
-  // Monthly subtotal — siempre cierra el stack del plan
-  var perLocalLine=locales>1?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+fmt(monthlyPerLocal)+' €/local/mes</div>':'';
+  // Monthly subtotal — per-local en grande (coherente con la columna "Precio por local"),
+  // total grupo abajo en pequeño con etiqueta clara.
+  var grupoSubLine=locales>1?'<div style="font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:600">Total grupo · <span style="color:var(--navy);font-weight:800">'+fmt(monthlyTot)+' €/mes</span></div>':'';
   var monthlySubtotalRow='<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 22px;background:rgba(42,53,84,.06);border-top:2px solid var(--navy);border-bottom:1px solid var(--border)">'
-    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy)">Total mensual</div>'
-    +'<div style="text-align:right"><div style="font-family:var(--font-system);font-size:20px;font-weight:900;color:var(--navy)">'+fmt(monthlyTot)+' €/mes</div>'+perLocalLine+'</div>'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy)">Total mensual'+(locales>1?' · por local':'')+'</div>'
+    +'<div style="text-align:right"><div style="font-family:var(--font-system);font-size:20px;font-weight:900;color:var(--navy)">'+fmt(monthlyPerLocal)+' €/mes</div>'+grupoSubLine+'</div>'
     +'</div>';
   planHTML+=monthlySubtotalRow;
 
@@ -3033,13 +3335,13 @@ function renderOffer(){
     !isA,
     "document.getElementById('master-popup').classList.add('open')"
   );
-  // Pack Checklist Pro — valor depende de si el comercial incluyó el módulo Checklist.
-  // Sin módulo: solo formación + plantillas (797 €) y la fila se ve "apagada" (dimmed).
+  // Pack Checklist Pro — el VALOR del pack es siempre 797 € (montante constante).
+  // Solo se incluye en el sumatorio si addons.checklist=true (y en anual). Si no, fila dimmed.
   var checklist2sub;
   if(!isA) checklist2sub='Módulo + 2 sesiones con Santiago Melgar + plantillas de los grandes';
   else if(addons.checklist) checklist2sub='Tu Checklist activo · 3 meses gratis · 2 sesiones formación + plantillas';
-  else checklist2sub='Sin módulo · 2 sesiones Santiago Melgar + plantillas';
-  var checklistOldVal=addons.checklist?'1.300 €':'797 €';
+  else checklist2sub='Activa el módulo Checklist arriba para llevarte este pack';
+  var checklistOldVal='797 €';
   var checklistDimmed=!isA || !addons.checklist;
   bonusHTML+=brunsonRow('bonus',
     'Pack Checklist Pro <span class="row-link">— ver detalles →</span>',
@@ -3068,7 +3370,7 @@ function renderOffer(){
     fastActionVal=PY.pro-PY[plan]; // upgrade gratis a Pro
     bonusHTML+=divider('⚡ Bonus de Acción Rápida · Solo 24h');
     bonusHTML+=brunsonRow('bonus',
-      'Upgrade a Plan Pro <span class="row-link">— Docs ilimitados</span>',
+      'Upgrade a Plan Corporate <span class="row-link">— Docs ilimitados</span>',
       '<span class="fast-action-timer"><span class="rec-dot"></span><span id="fa-timer">--:--:--</span> restantes</span> · Te llevas el plan ilimitado',
       fmt(fastActionVal)+' €',
       isA?'GRATIS':'Activa pago anual',
@@ -3094,9 +3396,8 @@ function renderOffer(){
   // Stack 2 footer: valor total impl+bonus tachado + precio
   var discPct=Math.round(localeDiscount()*100);
   var implRetail=impl==='grupal'?1700:(impl==='personalizada'?5000:0);
-  // 4500 Master + 1300/797 Checklist Pro (797 si el cliente no se lleva el módulo, solo formación+plantillas)
-  var checklistBonusVal=addons.checklist?1300:797;
-  var bonusVal=(isA?(4500+checklistBonusVal+fastActionVal):0)+397;
+  // Master 4500 + Pack Checklist Pro 797 (solo si addons.checklist=true; el montante mostrado en la fila es siempre 797 €).
+  var bonusVal=(isA?(4500+(addons.checklist?797:0)+fastActionVal):0)+397;
   var saasRetailPerLocal=PM[plan]*12+Object.keys(ADM).reduce(function(s,k){return addons[k]?s+ADM[k]:s;},0)*12;
   var onetimesRetail=onetimes.reduce(function(s,i){return s+(i.old||i.p);},0);
   var bonusTotalRetail=implRetail+bonusVal;
@@ -3120,11 +3421,11 @@ function renderOffer(){
   if(isA){
     var annualSub=monthlyTot*12;
     ckHTML+='<div class="ck-section"><div class="ck-section-title">Suscripción anual</div>';
-    ckHTML+=ckRow('Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),fmt(PM[plan])+' €/mes · 2 meses gratis · pago anual',fmt(applyDiscount(planM)*locales*12)+' €');
+    ckHTML+=ckRow('Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),fmt(PA[plan])+' €/mes · precio plan anual',fmt(applyDiscount(planM)*locales*12)+' €');
     Object.keys(ADM).forEach(function(k){
       if(!addons[k]) return;
       if(adPrice(k)===0){ckHTML+=ckRow(ADN[k],'<span style="color:var(--green);font-weight:700">3 meses gratis</span> <span style="color:var(--navy);font-weight:600">· luego '+ADM[k]+' €/mes</span>','<span style="color:var(--green);font-weight:700">0 €</span>','');return;}
-      ckHTML+=ckRow(ADN[k],fmt(ADM[k])+' €/mes · 2 meses gratis · pago anual',fmt(applyDiscount(ADA[k]||ADM[k])*locales*12)+' €','');
+      ckHTML+=ckRow(ADN[k],fmt(ADA[k]||ADM[k])+' €/mes · precio anual',fmt(applyDiscount(ADA[k]||ADM[k])*locales*12)+' €','');
     });
     ckHTML+='<div class="ck-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px"><div class="ck-name" style="font-weight:700">Subtotal anual</div><div class="ck-val">'+fmt(annualSub)+' €</div></div></div>';
     ckHTML+='<div class="ck-section"><div class="ck-section-title">Servicios adicionales · pago único</div>';
@@ -3136,10 +3437,10 @@ function renderOffer(){
     // Bonuses (mismo orden que stack arriba)
     ckHTML+='<div class="ck-section ck-bonus-section"><div class="ck-section-title">★ Bonus exclusivos · Solo con pago anual</div>';
     ckHTML+=ckRow('Master Rentabilidad y Control',null,stackedGratis('4.500 €','GRATIS'),'');
-    ckHTML+=ckRow('Pack Checklist Pro'+(addons.checklist?'':' <span style="color:var(--muted);font-weight:500">· sin módulo</span>'),null,stackedGratis(addons.checklist?'1.300 €':'797 €','GRATIS'),'');
+    ckHTML+=ckRow('Pack Checklist Pro'+(addons.checklist?'':' <span style="color:var(--muted);font-weight:500">· sin módulo</span>'),null,stackedGratis('797 €','GRATIS'),'');
     ckHTML+=ckRow('Carga masiva de datos · Promoción',null,stackedGratis('397 €','GRATIS'),'');
     if(fastActionVal>0){
-      ckHTML+=ckRow('⚡ Upgrade a Plan Pro · Bonus 24h',null,stackedGratis(fmt(fastActionVal)+' €','GRATIS'),'');
+      ckHTML+=ckRow('⚡ Upgrade a Plan Corporate · Bonus 24h',null,stackedGratis(fmt(fastActionVal)+' €','GRATIS'),'');
     }
     ckHTML+='</div>';
     // Garantía — sección propia
@@ -3150,7 +3451,7 @@ function renderOffer(){
     var annualFinal=annualSub+onetimeTotal;
     // Tachado = mismo fullVal que en stack (incluye SaaS retail*locales + impl retail + onetimes retail + bonuses)
     var annualOldStrike=fullVal>annualFinal?'<div class="ck-total-old">'+fmt(fullVal)+' €</div>':'';
-    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">A pagar hoy</div><div class="ck-freq">Suscripción anual'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+annualOldStrike+'<div class="ck-total-val">'+fmt(annualFinal)+' €</div>'+perLocalAnnual+'</div></div>';
+    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">Inversión hoy</div><div class="ck-freq">Suscripción anual'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+annualOldStrike+'<div class="ck-total-val">'+fmt(annualFinal)+' €</div>'+perLocalAnnual+'</div></div>';
   } else {
     ckHTML+='<div class="ck-section"><div class="ck-section-title">Primer mes</div>';
     ckHTML+=ckRow('Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),fmt(PM[plan])+' €/mes · pago mensual',fmt(applyDiscount(planM)*locales)+' €');
@@ -3170,7 +3471,7 @@ function renderOffer(){
     var monthlyFinal=monthlyTot+onetimeTotal;
     // Tachado = fullVal (consistente con stack arriba)
     var monthlyOldStrike=fullVal>monthlyFinal?'<div class="ck-total-old">'+fmt(fullVal)+' €</div>':'';
-    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">A pagar hoy</div><div class="ck-freq">Primer mes'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+monthlyOldStrike+'<div class="ck-total-val">'+fmt(monthlyFinal)+' €</div>'+perLocalMonthly+'</div></div>';
+    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">Inversión hoy</div><div class="ck-freq">Primer mes'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+monthlyOldStrike+'<div class="ck-total-val">'+fmt(monthlyFinal)+' €</div>'+perLocalMonthly+'</div></div>';
   }
   document.getElementById('checkout-wrap').innerHTML=ckHTML;
   updateROIBoxes();
@@ -3259,61 +3560,311 @@ function buildBudgetData(){
   return {isA:isA,monthlyTot:monthlyTot,monthlyPerLocal:monthlyPerLocal,onetimes:onetimes,onetimeTotal:onetimeTotal,fastActionVal:fastActionVal};
 }
 
+// ── Helpers para enriquecer el PDF ────────────────────────────────────────
+function bRowRich(name,desc,val){
+  return '<div class="b-row b-row-rich">'
+    +'<div class="b-row-top"><div class="b-name">'+name+'</div><div class="b-val">'+val+'</div></div>'
+    +(desc?'<div class="b-desc">'+desc+'</div>':'')
+    +'</div>';
+}
+function budgetRef(){
+  // YR-YYYY-NNNNN basado en timestamp (consistente dentro de la misma sesión)
+  if(!window._budgetRef){
+    var d=new Date();
+    var stamp=(d.getTime()%100000).toString().padStart(5,'0');
+    window._budgetRef='YR-'+d.getFullYear()+'-'+stamp;
+  }
+  return window._budgetRef;
+}
+function budgetDate(){return new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});}
+function budgetExpiry(){
+  var d=new Date();d.setDate(d.getDate()+14);
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
+}
+// Master Rentabilidad y Control — 4 consultores expertos. Bios literales del popup del configurador.
+var MASTER_CONSULTANTS=[
+  {n:'Santiago Melgar', r:'Liderazgo hostelero', bio:'Fundador de LiderazgoHostelero.com. Especialista en convertir el equipo en la mayor ventaja competitiva del restaurante. Más de 200 hosteleros han transformado sus negocios aplicando su metodología.', img:'https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe3a503449086cc1c40b2b.jpeg'},
+  {n:'María Martín', r:'Dirección de operaciones', bio:'Directora de Operaciones de Grupo Gomez. Gestiona la operativa diaria de 9 locales y es responsable de que yurest funcione en el día a día real del grupo.', img:'https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe408f7285562721ce7f38.png'},
+  {n:'Fran Cabello', r:'Rentabilidad · RestaurUP', bio:'Fundador de RestaurUP, programa de 13 semanas para mejorar el margen en restaurantes. "La mayoría no pierden dinero por vender poco — lo pierden por no controlar lo que ya tienen."', img:'https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe4118114de79afe0ce39a.jpeg'},
+  {n:'Keko Michelin', r:'Director Ejecutivo · Grupo Gomez', bio:'Director Ejecutivo de Grupo Gomez, empresa matriz de yurest con 9 locales. Lidera la operativa y la estrategia de uno de los grupos de referencia del sector.', img:'https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/69fe40a86ca44fd334a201b5.png'}
+];
+
+// Master Rentabilidad y Control — 9 sesiones, mismo orden que el popup del configurador.
+// Solo se renderiza en el PDF cuando billing==='annual' (el bonus aplica solo en anual).
+var MASTER_SESSIONS=[
+  {n:'Dirección de operaciones', d:'Gestión integral de la operativa: procesos, estándares, control de calidad y escalabilidad.', c:'Santiago Melgar'},
+  {n:'Negociación con proveedores y optimización de compras', d:'Cómo negociar mejores condiciones, reducir el coste de materia prima y conectar las compras con yurest.', c:'Santiago Melgar'},
+  {n:'Finanzas básicas para hosteleros', d:'Cuenta de resultados, punto de equilibrio, ratios clave y cómo leer tus números para tomar decisiones.', c:'Santiago Melgar'},
+  {n:'Recetas y escandallos', d:'Construcción de fichas técnicas, cálculo de food cost y control de márgenes por plato.', c:'Fran Cabello'},
+  {n:'Rentabilidad en cocina y Menu Engineering', d:'Cómo diseñar una carta rentable: análisis de popularidad y margen, decisiones de precio y posicionamiento.', c:'Fran Cabello'},
+  {n:'Planificación de turnos y eficiencia laboral', d:'Cómo organizar equipos y turnos para maximizar la productividad sin disparar el coste de personal.', c:'Fran Cabello'},
+  {n:'Liderazgo y gestión del cambio', d:'Herramientas prácticas para liderar equipos en hostelería y gestionar los procesos de transformación sin perder el equipo por el camino.', c:'Santiago Melgar'},
+  {n:'Venta sugerida y métricas comerciales', d:'Técnicas de upselling aplicadas a sala, métricas de conversión y cómo medir el rendimiento del equipo comercial.', c:'María Martín'},
+  {n:'Incentivos y trabajo por objetivos', d:'Diseño de sistemas de incentivos que alinean al equipo con los objetivos de rentabilidad del negocio.', c:'Keko Michelin'}
+];
+
+// Bullets del plan en el PDF — lista COMPLETA para Pro/Corporate (no "todo lo de…").
+// El PDF se entrega al cliente; tiene que ver el detalle entero, no la inheritance compacta de las cards.
+var PLAN_BULLETS={
+  lite:[
+    'Escáner IA de facturas y albaranes',
+    'Hasta 100 docs por local',
+    'Yulia IA: chatea con tus datos',
+    'Compras y pedidos a proveedores',
+    'Finanzas',
+    'Cuadros de mando',
+    'Fichador digital',
+    'Soporte por chat y correo'
+  ],
+  basic:[
+    'Escáner IA de facturas y albaranes',
+    'Hasta 400 docs por local',
+    'Yulia IA: chatea con tus datos',
+    'Compras y pedidos a proveedores',
+    'Finanzas',
+    'Cuadros de mando',
+    'Fichador digital',
+    'Desbloquea módulo Stocks',
+    'Descuento multi-local desde -5%',
+    'Soporte telefónico prioritario'
+  ],
+  pro:[
+    'Escáner IA de facturas y albaranes',
+    'Documentos ilimitados',
+    'Yulia IA: chatea con tus datos',
+    'Compras y pedidos a proveedores',
+    'Finanzas',
+    'Cuadros de mando',
+    'Fichador digital',
+    'Desbloquea módulo Stocks',
+    'Desbloquea Stocks Avanzado',
+    'Informes avanzados',
+    'Descuento multi-local hasta -15%',
+    'Soporte con consultor dedicado'
+  ]
+};
+// Descripciones cortas (1-2 líneas) para cada bonus/módulo/servicio.
+// Texto sincronizado con los popups y rows reales del configurador — sin inventar specs.
+var BONUS_DESC={
+  master:'9 sesiones · 4 semanas en directo · 4 consultores expertos: Santiago Melgar, María Martín, Fran Cabello y Keko Michelin.',
+  checklistFull:'Módulo Checklist activo 3 meses + 2 sesiones de formación con Santiago Melgar + plantillas de los grandes de la hostelería en España.',
+  checklistMini:'2 sesiones de formación con Santiago Melgar + plantillas de los grandes de la hostelería. Pack reducido (sin módulo Checklist activado).',
+  carga:'Migramos toda tu base de proveedores y productos a yurest. Sin que muevas un dedo.',
+  upgrade:'Te llevas el plan Corporate con documentos ilimitados, al precio de tu plan actual.',
+  garantia:'Tras completar implementación, sesiones y tareas, si yurest no te ha aportado valor (sigues en Excel o no controlas las áreas contratadas) te asignamos un consultor experto y trabajamos contigo 3 meses más sin coste. Cláusula incluida por contrato en planes anuales.',
+  implGrupal:'Onboarding + 2 sesiones de Compras + 1 de Finanzas + 2 PyR grupales + 2 PyR personalizadas (30 min) + yurest Academy. Todas las sesiones grabadas.',
+  implPersonalizada:'Tú pones los horarios. Formación sobre tus datos reales (no una cuenta genérica). Implementador dedicado solo para ti. Sesiones grabadas.'
+};
+// Descripciones literales de las addon-cards (ac-desc) — sin inventar nada.
+var ADDON_DESC={
+  tpv:'Importa las ventas de tu TPV en tiempo real. Base para el dashboard financiero completo.',
+  cocina:'Conecta compras y ventas con recetas y obtén un análisis avanzado de tu rentabilidad por plato.',
+  stocks:'Gestión de inventario, valoración de stocks, control de mermas y alertas de mínimos. Requiere TPV + Cocina.',
+  stocksadv:'Informes avanzados: coste teórico vs real, aprovechamiento y rentabilidad por producto. Requiere Stocks.',
+  checklist:'Listas de verificación para apertura, cierre y procesos diarios.',
+  comunicacion:'Canal interno de sala, cocina y dirección. Incluye gestión de incidencias y mantenimiento.',
+  appcc:'Control de puntos críticos para seguridad alimentaria.',
+  auditorias:'Auditorías internas con informes automáticos por local.',
+  rrhh:'Turnos, vacaciones y diseño de horarios. Recomendamos estabilizar operaciones antes de activarlo.',
+  firma:'Firma de contratos y documentos laborales. Pack de 100 firmas, ampliable.'
+};
+
 function renderBudget(){
   if(!plan)return;
   var d=buildBudgetData();
-  var today=new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
-  document.getElementById('budget-meta').textContent='Fecha · '+today+' · '+locales+' local'+(locales>1?'es':'')+' · '+(d.isA?'Pago anual':'Pago mensual');
+  var dateStr=budgetDate();
+  var expStr=budgetExpiry();
+  var ref=budgetRef();
 
+  // Meta legacy (solo screen, oculto en PDF)
+  document.getElementById('budget-meta').textContent='Fecha · '+dateStr+' · '+locales+' local'+(locales>1?'es':'')+' · '+(d.isA?'Pago anual':'Pago mensual');
+
+  // ───── PAGE 1 — Cover ─────
+  document.getElementById('bp-cover-sub').textContent='Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':'')+' · '+(d.isA?'pago anual':'pago mensual');
+  document.getElementById('bp-cover-ref').textContent='Ref. '+ref;
+  document.getElementById('bp-cover-client').textContent=clientName||'—';
+  document.getElementById('bp-cover-company').textContent=clientCompany||'—';
+  document.getElementById('bp-cover-date').textContent=dateStr;
+  document.getElementById('bp-cover-expiry').textContent='hasta el '+expStr;
+
+  // ───── PAGE 2 — Oferta ─────
+  // Valor total vs inversión (Brunson stack en PDF) — mismo cálculo que renderOffer.
+  var saasRetailPerLocal=PM[plan]*12+Object.keys(ADM).reduce(function(s,k){return addons[k]?s+ADM[k]:s;},0)*12;
+  var implRetail=(impl==='grupal'?1700:(impl==='personalizada'?5000:0));
+  // Pack Checklist Pro: 797 € constante, solo se suma si addons.checklist=true (en anual).
+  var bonusVal=(d.isA?(4500+(addons.checklist?797:0)+d.fastActionVal):0)+397;
+  var fullVal=saasRetailPerLocal*locales+implRetail+d.onetimeTotal+bonusVal;
+  var todayAmount=(d.isA?d.monthlyTot*12:d.monthlyTot)+d.onetimeTotal;
+  var saving=Math.max(0, fullVal-todayAmount);
+  var vbHTML=''
+    +'<div class="bp-value-row"><span class="bp-value-lbl">Valor total de tu oferta</span><span class="bp-value-strike">'+fmt(fullVal)+' €</span></div>'
+    +'<div class="bp-value-row"><span class="bp-value-lbl">Lo que pagas hoy</span><span class="bp-value-now">'+fmt(todayAmount)+' €</span></div>'
+    +(saving>0?'<div class="bp-value-saving"><span class="bp-value-saving-lbl">Te ahorras</span><span class="bp-value-saving-num">'+fmt(saving)+' €</span></div>':'')
+    +'<div class="bp-value-tax">Importes sin IVA</div>';
+  document.getElementById('bp-value-box').innerHTML=vbHTML;
+
+  // Plan elegido con bullets
+  var planDisc=applyDiscount(d.isA?PA[plan]:PM[plan]);
+  var bullets=(PLAN_BULLETS[plan]||[]).map(function(b){return '<div class="bp-plan-bullet">'+b+'</div>';}).join('');
+  document.getElementById('bp-plan-box').innerHTML=''
+    +'<div class="bp-plan-hd"><div class="bp-plan-name">Plan '+PNAMES[plan]+'</div><div class="bp-plan-price">'+fmt(planDisc)+' €/mes · por local</div></div>'
+    +'<div class="bp-plan-bullets">'+bullets+'</div>';
+
+  // Suscripción + servicios + bonuses + garantía + total (budget-content)
   var html='';
   // Suscripción
   html+='<div class="b-section-hd">Suscripción '+(d.isA?'anual':'mensual')+'</div>';
-  var planDisc=applyDiscount(d.isA?PA[plan]:PM[plan]);
-  html+=bRow('Plan '+PNAMES[plan]+' · '+PDOCS[plan],fmt(planDisc*locales)+' €/mes');
+  var basePerMonth=applyDiscount(d.isA?PA[plan]:PM[plan]);
+  var disc=localeDiscount();
+  var planDescStr=PDOCS[plan]+(locales>1?' · '+locales+' locales'+(disc>0?' · descuento multi-local '+Math.round(disc*100)+'%':''):' · 1 local');
+  html+=bRowRich('Plan '+PNAMES[plan], planDescStr, fmt(basePerMonth*locales)+' €/mes');
   Object.keys(ADM).forEach(function(k){
     if(!addons[k])return;
     var ap=adPrice(k);
-    if(ap===0){html+=bRow(ADN[k],'<span class="b-included">3 meses gratis</span> <span style="color:var(--navy);font-weight:700">· luego '+ADM[k]+' €/mes</span>');return;}
+    if(ap===0){
+      html+=bRowRich(ADN[k], ADDON_DESC[k]||'', '<span class="b-included">3 meses gratis</span> <span style="color:var(--navy);font-weight:700">· luego '+ADM[k]+' €/mes</span>');
+      return;
+    }
     var ad=applyDiscount(ap);
-    html+=bRow(ADN[k],fmt(ad*locales)+' €/mes');
+    html+=bRowRich(ADN[k], ADDON_DESC[k]||'', fmt(ad*locales)+' €/mes');
   });
   html+='<div class="b-subtotal"><span>Total mensualidad</span><span>'+fmt(d.monthlyTot)+' €/mes</span></div>';
   if(d.isA){
     html+='<div class="b-subtotal" style="border-top:1px solid var(--border);background:rgba(42,53,84,.10)"><span>Total anualidad</span><span>'+fmt(d.monthlyTot*12)+' €/año</span></div>';
   }
 
-  // Servicios adicionales (impl gratis + onetimes)
-  var hasServ=impl==='grupal'||d.onetimes.length>0;
+  // Servicios adicionales
+  var hasServ=impl==='grupal'||impl==='personalizada'||d.onetimes.length>0;
   if(hasServ){
     html+='<div class="b-section-hd">Servicios adicionales · pago único</div>';
-    if(impl==='grupal') html+=bRow('Implementación grupal',bStrike('1.700 €','GRATIS'));
-    d.onetimes.forEach(function(i){html+=bRow(i.n,fmt(i.p)+' €');});
+    if(impl==='grupal') html+=bRowRich('Implementación grupal', BONUS_DESC.implGrupal, bStrike('1.700 €','GRATIS'));
+    d.onetimes.forEach(function(i){
+      var desc='';
+      if(i.n.indexOf('Implementación personalizada')===0) desc=BONUS_DESC.implPersonalizada;
+      html+=bRowRich(i.n, desc, fmt(i.p)+' €');
+    });
   }
 
   // Bonus
   html+='<div class="b-section-hd">★ Bonus exclusivos</div>';
   if(d.isA){
-    html+=bRow('Master Rentabilidad y Control',bStrike('4.500 €','GRATIS'));
-    html+=bRow('Pack Checklist Pro'+(addons.checklist?'':' (sin módulo)'),bStrike(addons.checklist?'1.300 €':'797 €','GRATIS'));
+    html+=bRowRich('Master Rentabilidad y Control', BONUS_DESC.master, bStrike('4.500 €','GRATIS'));
+    if(addons.checklist){
+      html+=bRowRich('Pack Checklist Pro', BONUS_DESC.checklistFull, bStrike('797 €','GRATIS'));
+    }
   }
-  html+=bRow('Carga masiva de datos',bStrike('397 €','GRATIS'));
+  html+=bRowRich('Carga masiva de datos', BONUS_DESC.carga, bStrike('397 €','GRATIS'));
   if(d.isA && d.fastActionVal>0){
-    html+=bRow('Upgrade a Plan Pro',bStrike(fmt(d.fastActionVal)+' €','GRATIS'));
+    html+=bRowRich('Upgrade a Plan Corporate', BONUS_DESC.upgrade, bStrike(fmt(d.fastActionVal)+' €','GRATIS'));
   }
 
   // Garantía (solo anual)
   if(d.isA){
     html+='<div class="b-section-hd">🛡 Garantía de éxito</div>';
-    html+=bRow('Garantía de éxito yurest','<span class="b-included">Incluida</span>');
+    html+=bRowRich('Garantía de éxito yurest', BONUS_DESC.garantia, '<span class="b-included">Incluida</span>');
   }
 
   // Total
   var subTotal=d.isA?d.monthlyTot*12:d.monthlyTot;
   var totalToday=subTotal+d.onetimeTotal;
   var freqLbl=d.isA?'Anualidad':'Primer mes';
-  html+='<div class="b-total"><div><div class="b-total-lbl">A pagar hoy</div><div class="b-total-sub">'+freqLbl+(d.onetimes.length?' + servicios únicos':'')+'</div></div><div class="b-total-val">'+fmt(totalToday)+' €</div></div>';
-
+  html+='<div class="b-total"><div><div class="b-total-lbl">Inversión hoy</div><div class="b-total-sub">'+freqLbl+(d.onetimes.length?' + servicios únicos':'')+'</div></div><div class="b-total-val">'+fmt(totalToday)+' €</div></div>';
+  html+='<div class="b-tax-note">⚠ Todos los precios mostrados son <strong>sin IVA</strong>. Se aplicará el IVA correspondiente en la facturación.</div>';
   document.getElementById('budget-content').innerHTML=html;
+
+  // ───── ROADMAP — Tu camino de implementación ─────
+  // Mismo cálculo dinámico de fases que renderiza el v-method (paso 3).
+  var phaseList=document.getElementById('bp-phase-list');
+  if(phaseList){
+    var visiblePhases=[1,2,3,4]; // siempre
+    if(addons.cocina) visiblePhases.push(5);
+    if(addons.stocks||addons.stocksadv) visiblePhases.push(6);
+    var phaseHTML=visiblePhases.map(function(n,idx){
+      var key=(n===6 && addons.stocksadv)?'6adv':n;
+      var p=(typeof METHOD_PHASES!=='undefined')?METHOD_PHASES[key]:null;
+      if(!p) return '';
+      var num='Fase '+String(idx+1).padStart(2,'0');
+      var deliverHTML='<ul class="bp-phase-list-items">'+p.deliver.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>';
+      var tasksHTML='<ul class="bp-phase-list-items">'+p.tasks.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>';
+      return '<div class="bp-phase-card">'
+        +'<div class="bp-phase-hd">'
+        +'<span class="bp-phase-num">'+num+'</span>'
+        +'<span class="bp-phase-name">'+p.name+'</span>'
+        +'<span class="bp-phase-time">'+p.time+'</span>'
+        +'</div>'
+        +'<div class="bp-phase-desc">'+p.desc+'</div>'
+        +'<div class="bp-phase-cols">'
+        +'<div><div class="bp-phase-col-hd">Lo que entregamos</div>'+deliverHTML+'</div>'
+        +'<div><div class="bp-phase-col-hd tasks">Tus deberes</div>'+tasksHTML+'</div>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+    phaseList.innerHTML=phaseHTML;
+  }
+
+  // Master Rentabilidad y Control · vertical, solo en plan anual
+  var masterBlock=document.getElementById('bp-master-block');
+  if(masterBlock){
+    if(d.isA){
+      var mList=MASTER_SESSIONS.map(function(s,i){
+        return '<div class="bp-master-card">'
+          +'<div class="bp-master-num">'+(i+1)+'</div>'
+          +'<div class="bp-master-body">'
+          +'<div class="bp-master-name">'+s.n+'</div>'
+          +'<div class="bp-master-desc">'+s.d+'</div>'
+          +'<div class="bp-master-consultant">'+s.c+'</div>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+      var consultorsHTML=MASTER_CONSULTANTS.map(function(c){
+        return '<div class="bp-master-consultant-card">'
+          +'<img class="bp-master-consultant-photo" src="'+c.img+'" alt="'+c.n+'" crossorigin="anonymous">'
+          +'<div class="bp-master-consultant-body">'
+          +'<div class="bp-master-consultant-name">'+c.n+'</div>'
+          +'<div class="bp-master-consultant-role">'+c.r+'</div>'
+          +'<div class="bp-master-consultant-bio">'+c.bio+'</div>'
+          +'</div>'
+          +'</div>';
+      }).join('');
+      masterBlock.innerHTML=''
+        +'<div class="bp-master-intro">★ <strong>Master Rentabilidad y Control</strong> · 9 sesiones en directo · 4 semanas · 4 consultores expertos del sector. Incluido GRATIS con tu plan anual (valor 4.500 €).</div>'
+        +'<div class="bp-master-consultants">'+consultorsHTML+'</div>'
+        +'<div class="bp-master-list">'+mList+'</div>';
+    } else {
+      masterBlock.innerHTML='';
+    }
+  }
+
+  // ───── PAGE 3 — Condiciones ─────
+  var conditions=[
+    {t:'Precios sin IVA', d:'Todos los importes mostrados en este presupuesto son <strong>sin IVA</strong>. Se aplicará el IVA correspondiente en el momento de la facturación.'},
+    {t:'Vigencia', d:'Esta oferta es válida hasta el <strong>'+expStr+'</strong> (14 días desde la fecha del presupuesto).'},
+    {t:'Sin permanencia', d:'Sin compromisos. Cancela cuando quieras.'}
+  ];
+  // Plan ANUAL: 2 meses gratis + garantía por contrato. MENSUAL: nudge a anual.
+  if(d.isA){
+    conditions.push({t:'Pago anual · 2 meses gratis', d:'El precio mostrado ya incluye los 2 meses gratis del pago anual.'});
+  } else {
+    conditions.push({t:'Facturación mensual', d:'Se cobra cada mes según el plan y módulos contratados. Puedes pasarte a anual en cualquier momento y aprovechar los 2 meses gratis.'});
+  }
+  // Descuento multi-local: solo cuando aplica (3+ locales).
+  if(localeDiscount()>0){
+    var pctApplied=Math.round(localeDiscount()*100);
+    conditions.push({t:'Descuento multi-local aplicado', d:'Tu presupuesto tiene un <strong>−'+pctApplied+'%</strong> de descuento multi-local sobre plan y módulos. Tramos completos: 3-4 locales · -5% · 5-6 · -8% · 7-9 · -12% · 10+ · -15%.'});
+  }
+  if(d.isA){
+    conditions.push({t:'Garantía de éxito yurest · por contrato', d:'Tras completar la implementación, asistir a las sesiones y ejecutar las tareas asignadas, si yurest no te ha aportado valor te asignamos un consultor experto y seguimos trabajando contigo 3 meses más sin coste. No es una garantía de devolución — es una garantía de que tu negocio cambia.'});
+  }
+  document.getElementById('bp-cond-list').innerHTML=conditions.map(function(c){
+    return '<div class="bp-cond-item"><div class="bp-cond-icon">✓</div><div class="bp-cond-body"><strong>'+c.t+'</strong><div>'+c.d+'</div></div></div>';
+  }).join('');
+
+  document.getElementById('bp-next-step').innerHTML=''
+    +'<div class="bp-next-step-hd">→ Próximo paso</div>'
+    +'<p>Contacta con tu consultor de yurest para confirmar este presupuesto y empezar la implementación.</p>'
+    +'<p><strong>Vigencia hasta el '+expStr+'.</strong> Pasada esa fecha los bonuses incluidos requieren nueva confirmación.</p>';
+
+  document.getElementById('bp-final-mini').textContent='Presupuesto · Ref. '+ref+' · '+dateStr;
 }
 
 function downloadBudget(){
@@ -3341,7 +3892,7 @@ function downloadBudget(){
     image:{type:'jpeg',quality:.98},
     html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
     jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true},
-    pagebreak:{mode:['css','legacy'],avoid:['.b-row','.b-total','.b-subtotal','.b-section-hd']}
+    pagebreak:{mode:['avoid-all','css','legacy'],avoid:['.b-row','.b-total','.b-subtotal','.b-section-hd','.b-tax-note','.bp-page-hd','.bp-value-box','.bp-plan-box','.bp-cond-item','.bp-next-step','.bp-final-footer','.bp-cover-meta','.bp-cover-mockup','.bp-phase-card','.bp-phase-list','.bp-master-card','.bp-master-intro','.bp-master-consultant-card']}
   };
   function cleanup(){
     if(container.parentNode) container.parentNode.removeChild(container);
@@ -3400,7 +3951,7 @@ if(impl){
   var implEl=document.getElementById('impl-'+impl);
   if(implEl) implEl.classList.add('selected');
 }
-updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
+updPlanPrices(); updAddonPrices(); updImplItems(); updImplLock(); updatePlanGating(); updBar();
 </script>
 
 <!-- MASTER POPUP -->
@@ -3418,7 +3969,7 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
       <div class="popup-stats">
         <div class="popup-stat"><div class="stat-num">9</div><div class="stat-lbl">sesiones · 4 semanas</div></div>
         <div class="popup-stat"><div class="stat-num">4</div><div class="stat-lbl">consultores expertos</div></div>
-        <div class="popup-stat"><div class="stat-num">+3.000€</div><div class="stat-lbl">lo que cobran otros</div></div>
+        <div class="popup-stat"><div class="stat-num">4.500€</div><div class="stat-lbl">lo que cobran otros</div></div>
         <div class="popup-stat"><div class="stat-num" style="color:var(--green)">GRATIS</div><div class="stat-lbl">para ti</div></div>
       </div>
 
@@ -3471,28 +4022,28 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
         <div class="popup-mod">
           <div class="mod-num">1</div>
           <div>
-            <div class="mod-name">Planificación de turnos y eficiencia laboral</div>
-            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cómo organizar equipos y turnos para maximizar la productividad sin disparar el coste de personal.</div>
-            <div class="mod-consultant">Fran Cabello</div>
+            <div class="mod-name">Dirección de operaciones</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Gestión integral de la operativa: procesos, estándares, control de calidad y escalabilidad.</div>
+            <div class="mod-consultant">Santiago Melgar</div>
           </div>
         </div>
         <div class="popup-mod">
           <div class="mod-num">2</div>
-          <div>
-            <div class="mod-name">Liderazgo y gestión del cambio</div>
-            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Herramientas prácticas para liderar equipos en hostelería y gestionar los procesos de transformación sin perder el equipo por el camino.</div>
-            <div class="mod-consultant">Santiago Melgar</div>
-          </div>
-        </div>
-
-        <div class="popup-mod">
-          <div class="mod-num">3</div>
           <div>
             <div class="mod-name">Negociación con proveedores y optimización de compras</div>
             <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cómo negociar mejores condiciones, reducir el coste de materia prima y conectar las compras con yurest.</div>
             <div class="mod-consultant">Santiago Melgar</div>
           </div>
         </div>
+        <div class="popup-mod">
+          <div class="mod-num">3</div>
+          <div>
+            <div class="mod-name">Finanzas básicas para hosteleros</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cuenta de resultados, punto de equilibrio, ratios clave y cómo leer tus números para tomar decisiones.</div>
+            <div class="mod-consultant">Santiago Melgar</div>
+          </div>
+        </div>
+
         <div class="popup-mod">
           <div class="mod-num">4</div>
           <div>
@@ -3513,34 +4064,33 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
         <div class="popup-mod">
           <div class="mod-num">6</div>
           <div>
+            <div class="mod-name">Planificación de turnos y eficiencia laboral</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cómo organizar equipos y turnos para maximizar la productividad sin disparar el coste de personal.</div>
+            <div class="mod-consultant">Fran Cabello</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">7</div>
+          <div>
+            <div class="mod-name">Liderazgo y gestión del cambio</div>
+            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Herramientas prácticas para liderar equipos en hostelería y gestionar los procesos de transformación sin perder el equipo por el camino.</div>
+            <div class="mod-consultant">Santiago Melgar</div>
+          </div>
+        </div>
+        <div class="popup-mod">
+          <div class="mod-num">8</div>
+          <div>
             <div class="mod-name">Venta sugerida y métricas comerciales</div>
             <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Técnicas de upselling aplicadas a sala, métricas de conversión y cómo medir el rendimiento del equipo comercial.</div>
             <div class="mod-consultant">María Martín</div>
           </div>
         </div>
         <div class="popup-mod">
-          <div class="mod-num">7</div>
+          <div class="mod-num">9</div>
           <div>
             <div class="mod-name">Incentivos y trabajo por objetivos</div>
             <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Diseño de sistemas de incentivos que alinean al equipo con los objetivos de rentabilidad del negocio.</div>
             <div class="mod-consultant">Keko Michelin</div>
-          </div>
-        </div>
-
-        <div class="popup-mod">
-          <div class="mod-num">8</div>
-          <div>
-            <div class="mod-name">Dirección de operaciones</div>
-            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Gestión integral de la operativa: procesos, estándares, control de calidad y escalabilidad.</div>
-            <div class="mod-consultant">Santiago Melgar</div>
-          </div>
-        </div>
-        <div class="popup-mod">
-          <div class="mod-num">9</div>
-          <div>
-            <div class="mod-name">Finanzas básicas para hosteleros</div>
-            <div class="mod-desc" style="font-size:11.5px;color:var(--muted);line-height:1.45">Cuenta de resultados, punto de equilibrio, ratios clave y cómo leer tus números para tomar decisiones.</div>
-            <div class="mod-consultant">Santiago Melgar</div>
           </div>
         </div>
 
@@ -3649,7 +4199,7 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
         <div class="popup-stat"><div class="stat-num">3</div><div class="stat-lbl">meses módulo gratis</div></div>
         <div class="popup-stat"><div class="stat-num">2</div><div class="stat-lbl">sesiones formación</div></div>
         <div class="popup-stat"><div class="stat-num">+10</div><div class="stat-lbl">plantillas listas</div></div>
-        <div class="popup-stat"><div class="stat-num" style="color:var(--green)">1.300€</div><div class="stat-lbl">valor total · GRATIS</div></div>
+        <div class="popup-stat"><div class="stat-num" style="color:var(--green)">797€</div><div class="stat-lbl">valor total · GRATIS</div></div>
       </div>
 
       <div class="popup-section-title">Qué incluye</div>
@@ -3680,7 +4230,7 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
       <div class="popup-cta-box">
         <div>
           <div class="popup-cta-lbl">Valor de este pack</div>
-          <div><span class="popup-cta-old">1.300 €</span><span class="popup-cta-val" style="color:#6ee7b7">Gratis con pago anual</span></div>
+          <div><span class="popup-cta-old">797 €</span><span class="popup-cta-val" style="color:#6ee7b7">Gratis con pago anual</span></div>
         </div>
         <button onclick="document.getElementById('checklist-popup').classList.remove('open')" style="background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">Entendido ✓</button>
       </div>
@@ -3725,9 +4275,8 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updatePlanGating(); updBar();
 </div>
 
 <!-- ═══════════════ FICHA POPUP (datos iniciales + creación inline) ═══════════════
-     Captura los datos del cliente, crea la solicitud directamente vía n8n
-     (WEBHOOK_CREAR_SOLICITUD), actualiza la oferta en Supabase y muestra
-     un success card en sitio. Sin hop por lista.html. -->
+     Captura los datos del cliente, crea la solicitud vía WEBHOOK_CREAR_SOLICITUD,
+     actualiza la oferta en Supabase y muestra success card en sitio. -->
 <div class="popup-overlay" id="ficha-popup" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="popup-box" style="max-width:560px">
     <div class="popup-hd">

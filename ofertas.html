@@ -192,6 +192,12 @@
     const EP   = YurestConfig.ENDPOINTS.ofertas;
     const esc  = YurestConfig.escHtml;
     const fmtEur = n => (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €';
+    // Display name de cada plan (los IDs internos lite/basic/pro se
+    // mantuvieron pero el upstream del configurador renombró Basic→Pro
+    // y Pro→Corporate en commit b1501fc. Aquí lo reflejamos sólo en la
+    // UI para que el comercial no vea desalineado el badge con el resto
+    // del portal/configurador.
+    const PLAN_DISPLAY_NAMES = { lite: 'Lite', basic: 'Pro', pro: 'Corporate' };
     const fmtFecha = iso => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); };
 
     let DATA = [];                  // raw del backend
@@ -310,7 +316,7 @@
                 </td>
                 <td>${esc(o.comercial || '—')}</td>
                 <td>
-                    <span class="badge-plan plan-${esc(o.plan)}">${esc(o.plan)}</span>
+                    <span class="badge-plan plan-${PLAN_DISPLAY_NAMES[o.plan] || esc(o.plan)}">${PLAN_DISPLAY_NAMES[o.plan] || esc(o.plan)}</span>
                     <span class="billing-pill">${o.billing === 'annual' ? 'anual' : 'mensual'}</span>
                 </td>
                 <td class="num">${o.locales || 1}</td>
@@ -330,7 +336,7 @@
         const addonsActivos = Object.entries(o.addons || {}).filter(([_, v]) => v === true).map(([k]) => k);
         const body = `
             <div class="detalle-grid">
-                <div class="detalle-field"><label>Plan</label><span>${esc(o.plan)} <span class="billing-pill">${o.billing === 'annual' ? 'anual' : 'mensual'}</span></span></div>
+                <div class="detalle-field"><label>Plan</label><span>${PLAN_DISPLAY_NAMES[o.plan] || esc(o.plan)} <span class="billing-pill">${o.billing === 'annual' ? 'anual' : 'mensual'}</span></span></div>
                 <div class="detalle-field"><label>Locales</label><span>${o.locales || 1}</span></div>
                 <div class="detalle-field"><label>Implementación</label><span>${esc(o.impl || '—')}</span></div>
                 <div class="detalle-field"><label>Estado</label><span><span class="badge-estado estado-${esc(o.estado)}">${esc(o.estado)}</span></span></div>
