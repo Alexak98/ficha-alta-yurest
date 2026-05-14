@@ -288,6 +288,14 @@
         // Reemplaza el Excel que usaba Producto.
         presupuestos:         `${WEBHOOK_BASE}/presupuestos`,
 
+        // Importador desde Asana: lista las tareas de la sección
+        // "Pendiente de presupuesto" (gid 1210961912211323 del proyecto
+        // Back Clientes) y permite generar presupuestos a partir de la
+        // descripción + custom fields de cada tarea. POST con
+        // { action: 'import'|'refresh', asana_gid }. Workflow n8n en
+        // database/n8n-workflows/31-presupuestos-asana.json.
+        presupuestosAsana:    `${WEBHOOK_BASE}/presupuestos-asana`,
+
         // Ofertas (departamento Comercial): ofertas generadas por el
         // configurador. Listado GET con filtros; GET con ?id=<uuid>
         // devuelve una sola. POST con `action` (create/update/archivar/

@@ -148,11 +148,92 @@ falta migración para exponer el permiso — el admin lo asigna desde
 | Fichero | Estado |
 | --- | --- |
 | `database/migrations/2026-04-23_03_presupuestos.sql` | **Nuevo** — tabla + RLS + índices. |
-| `database/n8n-workflows/22-presupuestos.json` | **Nuevo** — GET + POST con las 7 acciones. |
-| `presupuestos.html` | **Nuevo** — página completa (tabla + filtros + modal + totales). |
+| `database/migrations/2026-05-14_01_presupuestos_asana_gid.sql` | **Nuevo** — columna `asana_gid` + UNIQUE parcial. |
+| `database/n8n-workflows/22-presupuestos.json` | **Nuevo** — GET + POST con las 7 acciones (+ acepta `asana_gid` en create/update). |
+| `database/n8n-workflows/31-presupuestos-asana.json` | **Nuevo** — importador desde Asana (GET sección + POST import/refresh). |
+| `presupuestos.html` | **Nuevo** — página completa (tabla + filtros + modal + totales + importador Asana). |
 | `sidebar.js` | Añadido icono `producto` + `presupuestos`, grupo `Producto`. |
-| `config.js` | Añadido endpoint `presupuestos` y permiso en `PERMISOS_DISPONIBLES`. |
+| `config.js` | Añadido endpoints `presupuestos` y `presupuestosAsana` + permiso en `PERMISOS_DISPONIBLES`. |
 | `scripts/test-e2e-presupuestos.sh` | **Nuevo** — E2E con ~30 asertos. |
+
+---
+
+## Importador desde Asana
+
+A petición del equipo, se cablea la sección **"Pendiente de presupuesto"**
+del proyecto Asana *Back Clientes* (gid de sección
+`1210961912211323`) como fuente para crear presupuestos sin retipear
+nada de la tarea. El flujo se dispara desde un botón "Importar de Asana"
+en la toolbar de `presupuestos.html`.
+
+### Mapeo Asana → presupuesto
+
+Salvo el ratio (€/h, descuento) y el flujo de aprobación, todo lo demás
+se deriva de la tarea de Asana:
+
+| Campo BD                  | Origen en Asana                                                         |
+| ---                       | ---                                                                     |
+| `asana_gid`               | `task.gid`                                                              |
+| `cliente`                 | Tag con prefijo `Cliente: …` (regex). Si no hay tag → `"Sin cliente"`.  |
+| `desarrollo`              | `task.name` quitando el prefijo `( Pagado )` / `( Pago )`.              |
+| `entorno`                 | Heurística por keywords (`app|móvil|notificación|tpv` → `app_cliente`; default `backoffice`). |
+| `quien_abona`             | `( Pagado )` en nombre **o** custom field `Coste = Con coste` → `cliente`; resto `yurest`. |
+| `horas_cliente`           | Custom field `Estimated time` (parseo de `"26h 00m"` → `26`).           |
+| `coste_hora_yurest/cliente`, `descuento_pct` | Defaults (25 / 85 / 0). El usuario los retoca a mano. |
+| `estado`, `estado_entrega`, `enviado` | `en_espera` / `pendiente` / `false` (importación = entrada al pipeline). |
+| `contexto`                | Bloque entre `## 🎯 TAREA` y `Comportamiento actual:`.                   |
+| `objetivo`                | Línea que empieza por `Para ` dentro del bloque de contexto.            |
+| `alcance`                 | Bloque `Comportamiento actual: …`.                                      |
+| `funcionamiento_esperado` | Bloque `Comportamiento esperado: …`.                                    |
+| `aprobacion`              | Bloque `✅ CRITERIOS DE ACEPTACIÓN …`.                                   |
+| `notas`                   | `permalink_url` + `Mail cliente:` (custom field) + traza del gid.       |
+
+### Workflow `31-presupuestos-asana`
+
+Dos endpoints bajo BasicAuth, mismo patrón canónico que el resto:
+
+**GET** `/webhook/presupuestos-asana`
+  → `GET https://app.asana.com/api/1.0/sections/1210961912211323/tasks`
+    (credencial `asanaApi` ya existente)
+  → `GET /rest/v1/presupuestos?asana_gid=not.is.null&deleted_at=is.null`
+    (para deduplicar)
+  → Code `Formatear GET` une ambos y emite
+    `{ tareas: [...], total, nuevas, importadas }`. Cada tarea incluye
+    `ya_importado`, `presupuesto_id`, `numero_doc`.
+
+**POST** `/webhook/presupuestos-asana` con `{ action, asana_gid }`:
+
+| action    | efecto                                                                                      |
+| ---       | ---                                                                                         |
+| `import`  | Fetch task → parseo → INSERT en `presupuestos`. UNIQUE en `asana_gid` bloquea re-imports.   |
+| `refresh` | Fetch task → parseo → PATCH `?asana_gid=eq.X` **sólo** de campos derivables (cliente, desarrollo, notas, contexto, objetivo, alcance, funcionamiento_esperado, aprobacion). NO toca estado, horas, costes, ni flags del usuario. |
+
+Tras el upsert se postea siempre un comentario en la tarea de Asana
+(`POST /tasks/{gid}/stories`):
+`[Yurest Portal] Importado al portal como PRES-XXXX el YYYY-MM-DD`. El
+comment es **best-effort** (`continueOnFail`): si Asana rate-limitea o
+falla, la importación se considera exitosa y se devuelve un `warning`.
+
+### Decisiones de diseño
+
+- **UNIQUE parcial sobre `asana_gid`** (`WHERE asana_gid IS NOT NULL`).
+  Los presupuestos creados a mano (gid NULL) nunca chocan entre sí.
+- **Sin merge automático.** Si ya existe presupuesto para una tarea,
+  el modal lo marca como "ya importada" y ofrece **Refrescar**
+  explícito en lugar de actualizar en silencio. Evita pisar ediciones
+  del usuario.
+- **Refrescar no toca estado/horas/costes.** El usuario ya ajustó esos
+  campos a mano; refrescar sólo trae cambios de descripción/cliente.
+- **Comentario en Asana, no cambio de sección ni de custom field.** El
+  equipo de Producto pidió mínima intrusión en el board de Asana — basta
+  con la traza textual en el thread de la tarea.
+- **Heurística de entorno conservadora.** Default `backoffice`; se
+  promueve a `app_cliente` solo si aparecen keywords explícitas (`app`,
+  `móvil`, `notificación`, `tpv`) y *no* hay mención a `backoffice` en
+  las primeras 500 chars. Pulir caso a caso si genera falsos positivos.
+- **Importación masiva secuencial.** El botón "Importar todas las
+  nuevas" itera una por una. Paralelizar dispararía rate-limits de
+  Asana y desordenaría los comments en cada tarea.
 
 ---
 

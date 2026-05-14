@@ -169,6 +169,40 @@
             background:#fff;color:#475569;border:1.5px solid #e2e8f0;padding:9px 18px;border-radius:9px;
             font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;
         }
+        .btn-secondary:hover { background:#f8fafc;border-color:#cbd5e1 }
+        .btn-secondary:disabled { opacity:.5;cursor:not-allowed }
+
+        .toolbar-actions { display:flex;align-items:center;gap:10px;flex-wrap:wrap }
+        .btn-asana { display:inline-flex;align-items:center;gap:6px;color:#6366f1;border-color:#c7d2fe }
+        .btn-asana:hover { background:#eef2ff;border-color:#a5b4fc;color:#4338ca }
+
+        /* Modal Importar de Asana — tabla de tareas detectadas */
+        .modal-asana .modal-content { max-width:980px }
+        .asana-summary {
+            display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px;margin:0 0 12px 0;
+            background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;font-size:.85rem;color:#3730a3;
+        }
+        .asana-summary b { color:#312e81 }
+        .asana-tbl-wrap { max-height:60vh;overflow:auto;border:1px solid #e2e8f0;border-radius:10px }
+        .asana-tbl { width:100%;border-collapse:collapse;font-size:.85rem }
+        .asana-tbl th, .asana-tbl td { padding:9px 10px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:top }
+        .asana-tbl thead th { background:#f8fafc;font-weight:600;color:#475569;position:sticky;top:0;z-index:1;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em }
+        .asana-tbl tr:last-child td { border-bottom:none }
+        .asana-tbl .ta-name { font-weight:600;color:#0f172a;max-width:340px;overflow-wrap:anywhere }
+        .asana-tbl .ta-name a { color:inherit;text-decoration:none }
+        .asana-tbl .ta-name a:hover { color:#6366f1;text-decoration:underline }
+        .asana-tbl .ta-cli { color:#475569;font-size:.82rem }
+        .asana-tbl .ta-h { font-variant-numeric:tabular-nums;color:#334155 }
+        .asana-tbl .ta-actions { white-space:nowrap;text-align:right }
+        .asana-tbl .ta-actions button { font-size:.78rem;padding:5px 10px;border-radius:7px }
+        .asana-chip {
+            display:inline-block;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:600;
+            background:#f1f5f9;color:#475569;
+        }
+        .asana-chip.nueva     { background:#dcfce7;color:#166534 }
+        .asana-chip.importada { background:#e0e7ff;color:#3730a3 }
+        .asana-empty { padding:30px;text-align:center;color:#64748b;font-size:.9rem }
+        .asana-row-busy { opacity:.6;pointer-events:none }
 
         .row-archivada td { opacity:.55 }
     </style>
@@ -193,7 +227,13 @@
                 <h2>Presupuestos de desarrollo</h2>
                 <p>Listado de desarrollos por cliente, con estado de aprobación, coste y estado de entrega.</p>
             </div>
-            <button class="btn-primary" onclick="abrirModal()">+ Nuevo presupuesto</button>
+            <div class="toolbar-actions">
+                <button class="btn-secondary btn-asana" onclick="abrirImportAsana()" title="Importar tareas desde la sección 'Pendiente de presupuesto' de Asana">
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Importar de Asana
+                </button>
+                <button class="btn-primary" onclick="abrirModal()">+ Nuevo presupuesto</button>
+            </div>
         </div>
 
         <div class="filter-bar" id="filter-bar">
@@ -295,6 +335,52 @@
             <div class="empty-icon">📋</div>
             <p style="font-weight:700;color:#475569;margin:0 0 6px">Sin presupuestos</p>
             <p style="margin:0">Añade un presupuesto para arrancar el tracking por cliente.</p>
+        </div>
+    </div>
+
+    <!-- Modal Importar tareas de Asana → presupuestos.
+         Lee la sección "Pendiente de presupuesto" (gid 1210961912211323) y
+         lista cada tarea con su estado de importación (nueva / ya importada).
+         · Importar  → POST { action:'import',  asana_gid }
+         · Refrescar → POST { action:'refresh', asana_gid }
+         El workflow n8n se encarga de parsear la descripción de la tarea
+         y mapearla a los campos del presupuesto, además de dejar un
+         comentario en Asana con el número de documento generado. -->
+    <div class="modal-overlay modal-asana" id="modal-asana">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Importar tareas de Asana</h3>
+                <button class="modal-close" onclick="cerrarImportAsana()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="asana-summary" id="asana-summary" style="display:none">
+                    <span><b id="asana-sum-total">0</b> tareas en la sección</span>
+                    <span>· <b id="asana-sum-nuevas">0</b> nuevas</span>
+                    <span>· <b id="asana-sum-importadas">0</b> ya importadas</span>
+                </div>
+                <div id="asana-loading" style="padding:40px;text-align:center;color:#64748b">Cargando tareas de Asana…</div>
+                <div id="asana-error" style="display:none;padding:14px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;font-size:.85rem"></div>
+                <div class="asana-tbl-wrap" id="asana-tbl-wrap" style="display:none">
+                    <table class="asana-tbl">
+                        <thead>
+                            <tr>
+                                <th style="width:40%">Tarea</th>
+                                <th>Cliente</th>
+                                <th style="text-align:right">Horas est.</th>
+                                <th>Estado</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="asana-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="asana-empty" id="asana-empty" style="display:none">La sección no tiene tareas.</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="cerrarImportAsana()">Cerrar</button>
+                <button class="btn-secondary" onclick="cargarTareasAsana()" id="btn-asana-reload">↻ Recargar</button>
+                <button class="btn-primary"   onclick="importarTodasNuevasAsana()" id="btn-asana-import-all" disabled>Importar todas las nuevas</button>
+            </div>
         </div>
     </div>
 
@@ -456,6 +542,7 @@
     function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 
     const EP = YurestConfig.ENDPOINTS.presupuestos;
+    const EP_ASANA = YurestConfig.ENDPOINTS.presupuestosAsana;
     // Defaults sólo para el FORMULARIO de alta (el modal nuevo). En BD
     // cada presupuesto guarda su coste_hora_yurest, coste_hora_cliente y
     // descuento_pct individuales, así que estos números no son la fuente
@@ -1133,10 +1220,187 @@
         w.document.close();
     }
 
+    // ─── Importador Asana ──────────────────────────────────────────────
+    // Estado de las tareas detectadas en la sección "Pendiente de
+    // presupuesto" de Asana. Se rellena al abrir el modal y se reutiliza
+    // para "importar todas las nuevas" sin tener que volver a fetchar.
+    let asanaTareas = [];
+    let asanaCargando = false;
+
+    function abrirImportAsana() {
+        document.getElementById('modal-asana').classList.add('open');
+        if (YurestConfig.a11yAbrirModal) YurestConfig.a11yAbrirModal('modal-asana');
+        cargarTareasAsana();
+    }
+    function cerrarImportAsana() {
+        document.getElementById('modal-asana').classList.remove('open');
+        if (YurestConfig.a11yCerrarModal) YurestConfig.a11yCerrarModal('modal-asana');
+    }
+
+    async function cargarTareasAsana() {
+        if (asanaCargando) return;
+        asanaCargando = true;
+        const loading = document.getElementById('asana-loading');
+        const wrap    = document.getElementById('asana-tbl-wrap');
+        const empty   = document.getElementById('asana-empty');
+        const err     = document.getElementById('asana-error');
+        const sum     = document.getElementById('asana-summary');
+        const btnAll  = document.getElementById('btn-asana-import-all');
+        loading.style.display = '';
+        wrap.style.display = 'none';
+        empty.style.display = 'none';
+        err.style.display = 'none';
+        sum.style.display = 'none';
+        btnAll.disabled = true;
+        try {
+            const url = EP_ASANA + '?_=' + Date.now();
+            const res = await YurestConfig.apiFetch(url, { method: 'GET' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            asanaTareas = Array.isArray(data.tareas) ? data.tareas : [];
+            document.getElementById('asana-sum-total').textContent      = data.total      || asanaTareas.length;
+            document.getElementById('asana-sum-nuevas').textContent     = data.nuevas     || asanaTareas.filter(t => !t.ya_importado).length;
+            document.getElementById('asana-sum-importadas').textContent = data.importadas || asanaTareas.filter(t =>  t.ya_importado).length;
+            sum.style.display = '';
+            if (asanaTareas.length === 0) {
+                empty.style.display = '';
+            } else {
+                pintarTareasAsana();
+                wrap.style.display = '';
+                btnAll.disabled = asanaTareas.every(t => t.ya_importado);
+            }
+        } catch (e) {
+            err.textContent = 'No se pudieron cargar las tareas de Asana: ' + (e.message || e);
+            err.style.display = '';
+        } finally {
+            loading.style.display = 'none';
+            asanaCargando = false;
+        }
+    }
+
+    function pintarTareasAsana() {
+        const tbody = document.getElementById('asana-tbody');
+        const esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        tbody.innerHTML = asanaTareas.map(t => {
+            const chip = t.ya_importado
+                ? `<span class="asana-chip importada" title="${esc(t.numero_doc || '')}">${esc(t.numero_doc || 'Importada')}</span>`
+                : `<span class="asana-chip nueva">Nueva</span>`;
+            const nombre = t.permalink_url
+                ? `<a href="${esc(t.permalink_url)}" target="_blank" rel="noopener noreferrer">${esc(t.name)}</a>`
+                : esc(t.name);
+            const acciones = t.ya_importado
+                ? `<button class="btn-secondary" onclick="refrescarTareaAsana('${esc(t.gid)}')">↻ Refrescar</button>`
+                : `<button class="btn-primary"   onclick="importarTareaAsana('${esc(t.gid)}')">Importar</button>`;
+            return `
+                <tr data-gid="${esc(t.gid)}">
+                    <td class="ta-name">${nombre}</td>
+                    <td class="ta-cli">${esc(t.cliente)}</td>
+                    <td class="ta-h">${Number(t.horas_estimadas) || 0} h</td>
+                    <td>${chip}</td>
+                    <td class="ta-actions">${acciones}</td>
+                </tr>`;
+        }).join('');
+    }
+
+    async function postAsana(action, asana_gid) {
+        const res = await YurestConfig.apiFetch(EP_ASANA, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, asana_gid })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (!data.success) {
+            const msg = Array.isArray(data.errores) ? data.errores.join('; ') : 'Error desconocido';
+            throw new Error(msg);
+        }
+        return data;
+    }
+
+    async function importarTareaAsana(gid) {
+        const fila = document.querySelector(`#asana-tbody tr[data-gid="${gid}"]`);
+        if (fila) fila.classList.add('asana-row-busy');
+        try {
+            const data = await postAsana('import', gid);
+            YurestConfig.toast && YurestConfig.toast('Importada como ' + (data.presupuesto && data.presupuesto.numero_doc || 'presupuesto'), 'success');
+            // Actualiza el estado local de la tarea sin refetchar todo.
+            const t = asanaTareas.find(x => String(x.gid) === String(gid));
+            if (t && data.presupuesto) {
+                t.ya_importado    = true;
+                t.presupuesto_id  = data.presupuesto.id;
+                t.numero_doc      = data.presupuesto.numero_doc;
+            }
+            pintarTareasAsana();
+            // Recargar el listado principal para que aparezca el presupuesto nuevo.
+            cargar();
+            // Actualizar contadores
+            document.getElementById('asana-sum-nuevas').textContent     = asanaTareas.filter(x => !x.ya_importado).length;
+            document.getElementById('asana-sum-importadas').textContent = asanaTareas.filter(x =>  x.ya_importado).length;
+            document.getElementById('btn-asana-import-all').disabled    = asanaTareas.every(x => x.ya_importado);
+        } catch (e) {
+            YurestConfig.toast && YurestConfig.toast('No se pudo importar: ' + (e.message || e), 'error');
+            if (fila) fila.classList.remove('asana-row-busy');
+        }
+    }
+
+    async function refrescarTareaAsana(gid) {
+        const fila = document.querySelector(`#asana-tbody tr[data-gid="${gid}"]`);
+        if (fila) fila.classList.add('asana-row-busy');
+        try {
+            await postAsana('refresh', gid);
+            YurestConfig.toast && YurestConfig.toast('Presupuesto refrescado desde Asana', 'success');
+            cargar();
+        } catch (e) {
+            YurestConfig.toast && YurestConfig.toast('No se pudo refrescar: ' + (e.message || e), 'error');
+        } finally {
+            if (fila) fila.classList.remove('asana-row-busy');
+        }
+    }
+
+    async function importarTodasNuevasAsana() {
+        const nuevas = asanaTareas.filter(t => !t.ya_importado);
+        if (nuevas.length === 0) return;
+        if (!confirm('¿Importar ' + nuevas.length + ' tareas nuevas como presupuestos?')) return;
+        const btn = document.getElementById('btn-asana-import-all');
+        btn.disabled = true; btn.textContent = 'Importando 0/' + nuevas.length + '…';
+        let ok = 0, ko = 0;
+        // Secuencial: cada tarea consume cuota de Asana + Supabase y dejamos
+        // un comentario en Asana por cada una. Paralelizar daría rate-limits
+        // intermitentes y sobre todo desordenaría el log de comments.
+        for (let i = 0; i < nuevas.length; i++) {
+            const t = nuevas[i];
+            btn.textContent = 'Importando ' + (i+1) + '/' + nuevas.length + '…';
+            try {
+                const data = await postAsana('import', t.gid);
+                t.ya_importado   = true;
+                t.presupuesto_id = data.presupuesto && data.presupuesto.id;
+                t.numero_doc     = data.presupuesto && data.presupuesto.numero_doc;
+                ok++;
+            } catch (e) {
+                ko++;
+            }
+        }
+        pintarTareasAsana();
+        document.getElementById('asana-sum-nuevas').textContent     = asanaTareas.filter(x => !x.ya_importado).length;
+        document.getElementById('asana-sum-importadas').textContent = asanaTareas.filter(x =>  x.ya_importado).length;
+        btn.textContent = 'Importar todas las nuevas';
+        btn.disabled = asanaTareas.every(x => x.ya_importado);
+        const msg = 'Importadas ' + ok + (ko ? ' (fallaron ' + ko + ')' : '');
+        YurestConfig.toast && YurestConfig.toast(msg, ko ? 'error' : 'success');
+        cargar();
+    }
+
     window.openSidebar  = openSidebar;
     window.closeSidebar = closeSidebar;
     window.abrirModal = abrirModal;
     window.cerrarModal = cerrarModal;
+    window.abrirImportAsana = abrirImportAsana;
+    window.cerrarImportAsana = cerrarImportAsana;
+    window.cargarTareasAsana = cargarTareasAsana;
+    window.importarTareaAsana = importarTareaAsana;
+    window.refrescarTareaAsana = refrescarTareaAsana;
+    window.importarTodasNuevasAsana = importarTodasNuevasAsana;
     window.guardar = guardar;
     window.editar  = editar;
     window.aceptar = aceptar;
@@ -1154,12 +1418,13 @@
 
     document.addEventListener('keydown', e => {
         if (e.key !== 'Escape') return;
-        // Si hay modal de previsualización de presupuesto abierto, lo
-        // cerramos primero (no puede haber los dos a la vez pero por si
-        // acaso priorizamos el que está encima).
+        // Priorizamos el modal que está encima si por algún motivo hay
+        // varios abiertos a la vez.
+        const modalAsa = document.getElementById('modal-asana');
         const modalDoc = document.getElementById('modal-presupuesto-doc');
-        if (modalDoc.classList.contains('open')) cerrarPresupuestoDoc();
-        else cerrarModal();
+        if (modalAsa.classList.contains('open'))      cerrarImportAsana();
+        else if (modalDoc.classList.contains('open')) cerrarPresupuestoDoc();
+        else                                          cerrarModal();
     });
     // Cerrar el modal al clicar fuera de la caja (F4 del QA). Sólo cuando
     // el target es el propio overlay — si es cualquier descendiente
@@ -1169,6 +1434,9 @@
     });
     document.getElementById('modal-presupuesto-doc').addEventListener('click', e => {
         if (e.target === e.currentTarget) cerrarPresupuestoDoc();
+    });
+    document.getElementById('modal-asana').addEventListener('click', e => {
+        if (e.target === e.currentTarget) cerrarImportAsana();
     });
     cargar();
     </script>

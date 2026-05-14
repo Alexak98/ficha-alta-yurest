@@ -1,0 +1,356 @@
+{
+  "name": "Yurest - Presupuestos Asana Import",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "presupuestos-asana",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-pre-asa-get",
+      "name": "Webhook GET Presupuestos Asana",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "presupuestos-asana-get",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/sections/1210961912211323/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "opt_fields",
+              "value": "gid,name,completed,permalink_url,custom_fields.name,custom_fields.display_value,tags.name"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "asa-get-section",
+      "name": "GET Asana Section",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 200],
+      "credentials": {
+        "asanaApi": {
+          "id": "ASANA_CREDENTIAL_ID",
+          "name": "Asana Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/presupuestos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "asana_gid", "value": "not.is.null" },
+            { "name": "deleted_at", "value": "is.null" },
+            { "name": "select", "value": "id,asana_gid,numero_doc,cliente,estado,estado_entrega" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-get-pres-asana",
+      "name": "GET Presupuestos Asana",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combina la lista de tareas de la sección de Asana con los presupuestos\n// ya existentes en Supabase (asana_gid no nulo) para que el front pueda\n// distinguir tareas nuevas (importables) de tareas ya importadas\n// (refrescables).\nconst asanaResp = $('GET Asana Section').first().json || {};\nconst tasks = Array.isArray(asanaResp.data) ? asanaResp.data : (Array.isArray(asanaResp) ? asanaResp : []);\n\nconst supaItems = $input.all() || [];\nlet presupuestos = [];\nfor (const it of supaItems) {\n  const j = it.json;\n  if (!j) continue;\n  if (Array.isArray(j)) presupuestos = presupuestos.concat(j);\n  else if (j.id) presupuestos.push(j);\n  else if (Array.isArray(j.data)) presupuestos = presupuestos.concat(j.data);\n}\nconst gidToPres = {};\npresupuestos.forEach(p => { if (p && p.asana_gid) gidToPres[String(p.asana_gid)] = p; });\n\nfunction parseHoras(s) {\n  if (!s) return 0;\n  const m = String(s).match(/(\\d+)\\s*h/i);\n  return m ? Math.min(parseInt(m[1], 10) || 0, 10000) : 0;\n}\nfunction parseCliente(tags) {\n  const t = (tags || []).find(x => x && x.name && /^cliente\\s*:/i.test(x.name));\n  if (!t) return 'Sin cliente';\n  return String(t.name).replace(/^cliente\\s*:\\s*/i, '').trim() || 'Sin cliente';\n}\n\nconst out = tasks.map(t => {\n  const cf = {};\n  (t.custom_fields || []).forEach(c => { if (c && c.name) cf[c.name] = c.display_value; });\n  const existing = gidToPres[String(t.gid)] || null;\n  return {\n    gid: String(t.gid),\n    name: t.name || '',\n    permalink_url: t.permalink_url || null,\n    completed: !!t.completed,\n    cliente: parseCliente(t.tags),\n    horas_estimadas: parseHoras(cf['Estimated time']),\n    coste_cf: cf['Coste'] || null,\n    estado_pres_cf: cf['Estado del prespuesto'] || null,\n    mail_cliente: cf['Mail cliente'] || null,\n    ya_importado: !!existing,\n    presupuesto_id: existing ? existing.id : null,\n    numero_doc:    existing ? existing.numero_doc : null,\n    estado_pres:   existing ? existing.estado : null\n  };\n});\n\n// Nuevas primero (más útil en la UI), luego ya importadas.\nout.sort((a, b) => {\n  const ax = a.ya_importado ? 1 : 0;\n  const bx = b.ya_importado ? 1 : 0;\n  if (ax !== bx) return ax - bx;\n  return String(a.name).localeCompare(String(b.name));\n});\n\nreturn [{ json: {\n  tareas: out,\n  total: out.length,\n  nuevas: out.filter(t => !t.ya_importado).length,\n  importadas: out.filter(t => t.ya_importado).length,\n  seccion_gid: '1210961912211323'\n} }];"
+      },
+      "id": "fmt-asa-get",
+      "name": "Formatear GET",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "asa-respond-get",
+      "name": "Respond GET",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1040, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "presupuestos-asana",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-pre-asa-post",
+      "name": "Webhook POST Presupuestos Asana",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 560],
+      "webhookId": "presupuestos-asana-post",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida el body de import/refresh:\n//   { action: 'import'|'refresh', asana_gid: '12345...' }\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst action = String(b.action || '').toLowerCase();\nconst asana_gid = String(b.asana_gid || '').trim();\nconst errores = [];\nconst VALID = ['import', 'refresh'];\nif (!VALID.includes(action)) errores.push('action inválida: ' + action + ' (debe ser import|refresh)');\nif (!asana_gid)                errores.push('asana_gid obligatorio');\nif (asana_gid && !/^\\d{6,}$/.test(asana_gid)) errores.push('asana_gid debe ser numérico');\nif (errores.length) {\n  return [{ json: { __error: true, __errores: errores, __action: action } }];\n}\nreturn [{ json: { action, asana_gid } }];"
+      },
+      "id": "prep-asa-post",
+      "name": "Preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 560]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://app.asana.com/api/1.0/tasks/{{ $json.asana_gid }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "opt_fields",
+              "value": "gid,name,notes,permalink_url,completed,custom_fields.name,custom_fields.display_value,tags.name"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "asa-get-task",
+      "name": "GET Asana Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 560],
+      "credentials": {
+        "asanaApi": {
+          "id": "ASANA_CREDENTIAL_ID",
+          "name": "Asana Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mapea la tarea de Asana a un payload de presupuesto y arma el método\n// HTTP + query-string que se pasa al endpoint PostgREST de Supabase.\n//\n//   import   → POST plano. UNIQUE (asana_gid) bloqueará re-importaciones.\n//   refresh  → PATCH ?asana_gid=eq.<gid>. Sólo refresca los campos\n//              derivables de la descripción (contexto/objetivo/alcance/\n//              funcionamiento_esperado/aprobacion + notas + cliente +\n//              desarrollo). NO toca estado, horas, costes ni flags: eso\n//              lo gestiona el usuario desde la UI y no queremos pisarlo.\nconst taskResp = $input.first().json || {};\nconst task = taskResp.data || taskResp;\nconst prep = $('Preparar').first().json || {};\nif (prep.__error) {\n  return [{ json: { __error: true, __errores: prep.__errores, __action: prep.__action } }];\n}\nconst action = prep.action;\nconst now = new Date().toISOString();\nconst errores = [];\nif (!task || !task.gid) {\n  errores.push('Asana no devolvió la tarea (gid ' + prep.asana_gid + ')');\n  return [{ json: { __error: true, __errores: errores, __action: action } }];\n}\n\n// 1) Cliente desde tag \"Cliente: XXX\"\nlet cliente = 'Sin cliente';\nconst tagCli = (task.tags || []).find(t => t && t.name && /^cliente\\s*:/i.test(t.name));\nif (tagCli) cliente = String(tagCli.name).replace(/^cliente\\s*:\\s*/i, '').trim() || 'Sin cliente';\n\n// 2) Desarrollo: name sin prefijo \"(Pagado)\" / \"(Pago)\"\nconst rawName = String(task.name || '').replace(/^\\s*\\(\\s*Pagad[oa]?\\s*\\)\\s*/i, '').trim();\nconst desarrollo = rawName || '(sin título)';\n\n// 3) Custom fields como dict\nconst cf = {};\n(task.custom_fields || []).forEach(c => { if (c && c.name) cf[c.name] = c.display_value; });\n\n// 4) horas_cliente desde \"Estimated time\" (formato \"26h 00m\")\nlet horas_cliente = 0;\nif (cf['Estimated time']) {\n  const m = String(cf['Estimated time']).match(/(\\d+)\\s*h/i);\n  if (m) horas_cliente = Math.min(parseInt(m[1], 10) || 0, 10000);\n}\n\n// 5) quien_abona: \"(Pagado)\" en el nombre o Coste=\"Con coste\" → cliente\nconst quien_abona = (/pagad/i.test(task.name || '') || /con coste/i.test(String(cf['Coste']||''))) ? 'cliente' : 'yurest';\n\n// 6) entorno: heurística por keywords. Default backoffice.\nconst lc = ((task.name||'') + ' ' + String(task.notes||'').slice(0,500)).toLowerCase();\nlet entorno = 'backoffice';\nif (/\\bapp\\b|m[oó]vil|notificaci[oó]n|tpv/i.test(lc) && !/back ?office/i.test(lc)) entorno = 'app_cliente';\n\n// 7) Parseo de la descripción por secciones\nfunction clip(s) { const v = String(s || '').trim(); return v || null; }\nconst notes = String(task.notes || '');\nconst sec = {};\nconst mTarea = notes.match(/## .*TAREA([\\s\\S]*?)(?=\\n\\s*Comportamiento actual:|\\n\\s*Comportamiento esperado:|\\n\\s*✅|$)/i);\nif (mTarea) sec.contexto = clip(mTarea[1]);\nconst mAct = notes.match(/Comportamiento actual:\\s*([\\s\\S]*?)(?=\\n\\s*Comportamiento esperado:|\\n\\s*✅|$)/i);\nif (mAct) sec.alcance = clip(mAct[1]);\nconst mEsp = notes.match(/Comportamiento esperado:\\s*([\\s\\S]*?)(?=\\n\\s*✅|$)/i);\nif (mEsp) sec.funcionamiento_esperado = clip(mEsp[1]);\nconst mCrit = notes.match(/✅\\s*CRITERIOS DE ACEPTACI[ÓO]N\\s*([\\s\\S]*)$/i);\nif (mCrit) sec.aprobacion = clip(mCrit[1]);\nif (sec.contexto) {\n  const mPara = sec.contexto.match(/^Para\\s+.+$/m);\n  if (mPara) sec.objetivo = clip(mPara[0]);\n}\n\n// 8) `notas`: permalink + mail + traza de origen\nconst notasArr = [];\nif (task.permalink_url) notasArr.push(task.permalink_url);\nif (cf['Mail cliente'])  notasArr.push('Mail cliente: ' + cf['Mail cliente']);\nnotasArr.push('Importado de Asana (gid ' + task.gid + ')');\nconst notasStr = notasArr.join('\\n');\n\nfunction genUUID() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){\n    const r = Math.random()*16|0; return (c==='x'?r:(r&0x3)|0x8).toString(16);\n  });\n}\n\nlet payload, __method, __qs;\nif (action === 'import') {\n  payload = {\n    id: genUUID(),\n    asana_gid: String(task.gid),\n    cliente,\n    desarrollo,\n    entorno,\n    quien_abona,\n    estado: 'en_espera',\n    estado_entrega: 'pendiente',\n    enviado: false,\n    horas_yurest: 0,\n    horas_cliente,\n    coste_yurest: 0,\n    coste_cliente: 0,\n    coste_hora_yurest: 25.00,\n    coste_hora_cliente: 85.00,\n    descuento_pct: 0,\n    notas: notasStr,\n    contexto: sec.contexto || null,\n    objetivo: sec.objetivo || null,\n    alcance:  sec.alcance  || null,\n    funcionamiento_esperado: sec.funcionamiento_esperado || null,\n    entregables: null,\n    presupuesto_detalle: null,\n    aprobacion: sec.aprobacion || null,\n    created_at: now,\n    updated_at: now\n  };\n  __method = 'POST';\n  __qs = '';\n} else { // refresh: sólo campos derivables de la descripción, sin pisar estado del usuario.\n  payload = {\n    cliente,\n    desarrollo,\n    notas: notasStr,\n    contexto: sec.contexto || null,\n    objetivo: sec.objetivo || null,\n    alcance:  sec.alcance  || null,\n    funcionamiento_esperado: sec.funcionamiento_esperado || null,\n    aprobacion: sec.aprobacion || null,\n    updated_at: now\n  };\n  __method = 'PATCH';\n  __qs = 'asana_gid=eq.' + encodeURIComponent(String(task.gid));\n}\n\nreturn [{ json: Object.assign({}, payload, {\n  __method, __qs,\n  __task_gid: String(task.gid),\n  __task_name: task.name || '',\n  __task_url:  task.permalink_url || null,\n  __action: action\n}) }];"
+      },
+      "id": "map-asa",
+      "name": "Mapear",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 560]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.__method || 'POST' }}",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/presupuestos?{{ $json.__qs || '' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer",       "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.fromEntries(Object.entries($json).filter(e => !e[0].startsWith('__')))) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "supa-upsert-asa",
+      "name": "Supabase UPSERT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 560],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae el presupuesto resultante del upsert y prepara el comentario\n// que se publicará en Asana. El comment va siempre (sea import o\n// refresh): así Asana queda con traza de cada operación.\nconst mapped = $('Mapear').first().json || {};\nif (mapped.__error) {\n  return [{ json: { __skip_comment: true, __error: true, __errores: mapped.__errores || ['error en mapeo'] } }];\n}\nconst items = $input.all() || [];\nlet row = null;\nconst errPostgrest = [];\nfor (const it of items) {\n  const j = it.json; if (!j) continue;\n  if (Array.isArray(j)) {\n    if (j[0] && j[0].id) { row = j[0]; break; }\n  } else if (j.id) {\n    row = j; break;\n  } else if (Array.isArray(j.data) && j.data[0]) {\n    row = j.data[0]; break;\n  } else if (j.code && j.message) {\n    errPostgrest.push(j.message + (j.details ? ' (' + j.details + ')' : ''));\n  }\n}\nif (!row) {\n  // Caso típico: import sobre asana_gid duplicado → PostgREST devuelve\n  // 409 conflict (code 23505 unique_violation). Mensaje claro al front.\n  const msg = errPostgrest.length ? errPostgrest.join('; ') : 'PostgREST devolvió 0 filas';\n  const dup = /duplicate key|unique/i.test(msg);\n  return [{ json: { __skip_comment: true, __error: true, __errores: [dup ? 'Esta tarea ya está importada (asana_gid duplicado). Usa Refrescar.' : msg] } }];\n}\nconst numero = row.numero_doc || '(sin número)';\nconst fecha = new Date().toISOString().slice(0,10);\nconst accion = mapped.__action === 'refresh' ? 'Refrescado desde Asana' : 'Importado al portal';\nconst texto = '[Yurest Portal] ' + accion + ' como ' + numero + ' el ' + fecha + '.';\nreturn [{ json: {\n  __task_gid: mapped.__task_gid,\n  __task_name: mapped.__task_name,\n  __action: mapped.__action,\n  presupuesto: row,\n  comment_text: texto\n} }];"
+      },
+      "id": "prep-comment-asa",
+      "name": "Preparar comentario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://app.asana.com/api/1.0/tasks/{{ $json.__task_gid }}/stories",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ data: { text: $json.comment_text || '' } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "asa-post-comment",
+      "name": "POST Asana Comment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 560],
+      "credentials": {
+        "asanaApi": {
+          "id": "ASANA_CREDENTIAL_ID",
+          "name": "Asana Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Junta el resultado del upsert con el del comment de Asana y monta\n// el shape contractual { success, presupuesto, errores, ... }.\nconst mapped = $('Mapear').first().json || {};\nconst prepCom = $('Preparar comentario').first().json || {};\nif (mapped.__error) {\n  return [{ json: { success: false, presupuesto: null, asana_gid: null, action: mapped.__action || null, errores: mapped.__errores || ['error en mapeo'] } }];\n}\nif (prepCom.__error) {\n  return [{ json: { success: false, presupuesto: null, asana_gid: mapped.__task_gid || null, action: mapped.__action || null, errores: prepCom.__errores || ['no se pudo guardar en Supabase'] } }];\n}\n// El comment de Asana es best-effort: si falló (continueOnFail), no\n// rompemos la importación. Detectamos errores del comment para reportar.\nconst commentResp = ($input.first() || {}).json || {};\nconst commentOk = !!(commentResp && (commentResp.data || commentResp.gid));\nconst warns = [];\nif (!commentOk) warns.push('No se pudo publicar el comentario en Asana (la importación sí se guardó).');\n\nreturn [{ json: {\n  success: true,\n  presupuesto: prepCom.presupuesto,\n  asana_gid: mapped.__task_gid,\n  action: mapped.__action,\n  comentario_enviado: commentOk,\n  errores: [],\n  warnings: warns\n} }];"
+      },
+      "id": "fmt-respuesta-asa",
+      "name": "Formatear respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 560]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "asa-respond-post",
+      "name": "Respond POST",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1840, 560]
+    }
+  ],
+  "connections": {
+    "Webhook GET Presupuestos Asana": { "main": [[{ "node": "GET Asana Section", "type": "main", "index": 0 }]] },
+    "GET Asana Section": { "main": [[{ "node": "GET Presupuestos Asana", "type": "main", "index": 0 }]] },
+    "GET Presupuestos Asana": { "main": [[{ "node": "Formatear GET", "type": "main", "index": 0 }]] },
+    "Formatear GET": { "main": [[{ "node": "Respond GET", "type": "main", "index": 0 }]] },
+    "Webhook POST Presupuestos Asana": { "main": [[{ "node": "Preparar", "type": "main", "index": 0 }]] },
+    "Preparar": { "main": [[{ "node": "GET Asana Task", "type": "main", "index": 0 }]] },
+    "GET Asana Task": { "main": [[{ "node": "Mapear", "type": "main", "index": 0 }]] },
+    "Mapear": { "main": [[{ "node": "Supabase UPSERT", "type": "main", "index": 0 }]] },
+    "Supabase UPSERT": { "main": [[{ "node": "Preparar comentario", "type": "main", "index": 0 }]] },
+    "Preparar comentario": { "main": [[{ "node": "POST Asana Comment", "type": "main", "index": 0 }]] },
+    "POST Asana Comment": { "main": [[{ "node": "Formatear respuesta", "type": "main", "index": 0 }]] },
+    "Formatear respuesta": { "main": [[{ "node": "Respond POST", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}
