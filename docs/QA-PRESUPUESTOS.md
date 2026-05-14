@@ -160,11 +160,34 @@ falta migración para exponer el permiso — el admin lo asigna desde
 
 ## Importador desde Asana
 
-A petición del equipo, se cablea la sección **"Pendiente de presupuesto"**
-del proyecto Asana *Back Clientes* (gid de sección
-`1210961912211323`) como fuente para crear presupuestos sin retipear
-nada de la tarea. El flujo se dispara desde un botón "Importar de Asana"
-en la toolbar de `presupuestos.html`.
+A petición del equipo, se cablean **cuatro secciones** repartidas
+entre dos proyectos de Asana como fuente para crear presupuestos sin
+retipear nada de la tarea:
+
+| gid sección          | nombre                       | proyecto       | comentario                                                                                 |
+| ---                  | ---                          | ---            | ---                                                                                        |
+| `1210961912211323`   | Pendiente de presupuesto     | Back Clientes  | flujo principal del backlog presupuestable de Back.                                        |
+| `1204767716226169`   | Pendiente de revisión        | Back Clientes  | el equipo decide caso a caso si presupuestar — entra sólo si pasa el filtro.               |
+| `1214118251811646`   | Presupuesto                  | KDS            | flujo principal del backlog presupuestable de KDS (paralelo a la de Back).                 |
+| `1204767716226198`   | Pendiente de revisión        | KDS            | mismo rol que la de Back, pero del board de KDS.                                           |
+
+Cada tarea trae en la respuesta del GET `seccion_gid`, `seccion_nombre`
+y `proyecto` para que el front pueda filtrar / agrupar si lo necesita.
+
+Sobre la unión de ambas se aplica un **filtro por custom fields** en el
+Code `Formatear GET` para que sólo aparezcan tareas realmente
+presupuestables:
+
+- `Canal = "Cliente"`        — descarta peticiones internas.
+- `Tipo  = "Funcionalidad"`  — descarta errores y otros (los errores se
+  arreglan, no se presupuestan).
+
+Las tareas que aparezcan en ambas secciones se dedupican por `gid`.
+La respuesta del GET incluye `descartadas: { canal, tipo }` y
+`raw_total` por si en el futuro queremos exponer el contador en la UI.
+
+El flujo se dispara desde un botón "Importar de Asana" en la toolbar
+de `presupuestos.html`.
 
 ### Mapeo Asana → presupuesto
 

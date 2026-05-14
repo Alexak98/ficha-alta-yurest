@@ -177,7 +177,14 @@
         .btn-asana:hover { background:#eef2ff;border-color:#a5b4fc;color:#4338ca }
 
         /* Modal Importar de Asana — tabla de tareas detectadas */
-        .modal-asana .modal-content { max-width:980px }
+        .modal-asana .modal { max-width:980px;width:min(980px, 96vw) }
+        .modal-footer.asana-footer { justify-content:space-between;align-items:center;flex-wrap:wrap;row-gap:10px }
+        .asana-footer-right { display:flex;gap:10px;flex-wrap:wrap }
+        /* Outline coordinado con el tema indigo (en vez del naranja por
+           defecto de Chrome, que choca con la paleta del módulo). */
+        .modal-asana button:focus-visible {
+            outline:2px solid #818cf8;outline-offset:2px;border-radius:9px;
+        }
         .asana-summary {
             display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px;margin:0 0 12px 0;
             background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;font-size:.85rem;color:#3730a3;
@@ -201,6 +208,11 @@
         }
         .asana-chip.nueva     { background:#dcfce7;color:#166534 }
         .asana-chip.importada { background:#e0e7ff;color:#3730a3 }
+        /* Chips por proyecto Asana: cada board un color distinto para
+           identificar de un vistazo de dónde viene la tarea. */
+        .asana-chip.proy-back { background:#fee2e2;color:#991b1b }
+        .asana-chip.proy-kds  { background:#cffafe;color:#155e75 }
+        .asana-chip.proy-otro { background:#f1f5f9;color:#475569 }
         .asana-empty { padding:30px;text-align:center;color:#64748b;font-size:.9rem }
         .asana-row-busy { opacity:.6;pointer-events:none }
 
@@ -364,7 +376,8 @@
                     <table class="asana-tbl">
                         <thead>
                             <tr>
-                                <th style="width:40%">Tarea</th>
+                                <th style="width:36%">Tarea</th>
+                                <th>Proyecto</th>
                                 <th>Cliente</th>
                                 <th style="text-align:right">Horas est.</th>
                                 <th>Estado</th>
@@ -376,10 +389,12 @@
                 </div>
                 <div class="asana-empty" id="asana-empty" style="display:none">La sección no tiene tareas.</div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-footer asana-footer">
                 <button class="btn-secondary" onclick="cerrarImportAsana()">Cerrar</button>
-                <button class="btn-secondary" onclick="cargarTareasAsana()" id="btn-asana-reload">↻ Recargar</button>
-                <button class="btn-primary"   onclick="importarTodasNuevasAsana()" id="btn-asana-import-all" disabled>Importar todas las nuevas</button>
+                <div class="asana-footer-right">
+                    <button class="btn-secondary" onclick="cargarTareasAsana()" id="btn-asana-reload">↻ Recargar</button>
+                    <button class="btn-primary"   onclick="importarTodasNuevasAsana()" id="btn-asana-import-all" disabled>Importar todas las nuevas</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1023,18 +1038,32 @@
             border-top: 1.5px solid #0f172a; margin-top: 4px; padding-top: 10px;
             font-weight: 800; font-size: 15px; color: #dc2626;
         }
-        .doc-notas {
-            margin-top: 28px; padding: 14px 16px; background: #fef3c7; border-left: 3px solid #d97706;
-            border-radius: 6px; font-size: 11.5px; color: #78350f; white-space: pre-wrap;
+        .doc-sections {
+            margin-top: 34px; padding-top: 22px; border-top: 2px solid #0f172a;
         }
-        .doc-section { margin: 22px 0; page-break-inside: avoid }
+        .doc-sections .sections-title {
+            font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+            color: #64748b; margin: 0 0 16px 0;
+        }
+        .doc-section {
+            margin: 0 0 18px 0; padding: 16px 18px;
+            background: #fafbfc; border-left: 4px solid #dc2626;
+            border-radius: 0 8px 8px 0;
+            page-break-inside: avoid;
+        }
+        .doc-section:last-child { margin-bottom: 0 }
         .doc-section h2 {
-            font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
-            color: #dc2626; margin: 0 0 6px 0; padding-bottom: 4px;
-            border-bottom: 1.5px solid #fecaca;
+            font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+            color: #dc2626; margin: 0 0 10px 0; padding-bottom: 8px;
+            border-bottom: 2px solid #fecaca;
+            display: flex; align-items: baseline; gap: 8px;
+        }
+        .doc-section h2::before {
+            content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+            background: #dc2626; flex-shrink: 0;
         }
         .doc-section .body {
-            font-size: 12px; color: #334155; line-height: 1.55;
+            font-size: 12.5px; color: #1e293b; line-height: 1.65;
             white-space: pre-wrap; word-wrap: break-word;
         }
         footer.doc-foot {
@@ -1146,7 +1175,7 @@
             <tr>
                 <td>
                     <div class="desc-title">${esc(p.desarrollo || 'Desarrollo a medida')}</div>
-                    <div class="desc-meta">Entorno: ${esc(entornoLbl)}${p.notas ? ' · ' + esc(String(p.notas).slice(0, 120)) : ''}</div>
+                    <div class="desc-meta">Entorno: ${esc(entornoLbl)}</div>
                 </td>
                 <td class="num">${horasFacturables} h</td>
                 <td class="num">${fmtE(precioUnit)}</td>
@@ -1159,7 +1188,7 @@
         <div class="row"><span class="lbl">IVA (${IVA_PCT}%)</span><span>${fmtE(iva)}</span></div>
         <div class="row total"><span>TOTAL</span><span>${fmtE(total)}</span></div>
     </div>
-    ${seccionesHtml ? `<div style="clear:both;margin-top:30px;padding-top:18px;border-top:1px solid #e2e8f0">${seccionesHtml}</div>` : ''}
+    ${seccionesHtml ? `<div class="doc-sections"><div class="sections-title">Detalle del desarrollo</div>${seccionesHtml}</div>` : ''}
     ${p.estado === 'aceptado' ? `<div style="text-align:center"><span class="stamp">Aceptado</span></div>` : ''}
     <footer class="doc-foot">
         ${esc(E.nombre)} · NIF ${esc(E.nif)} · ${esc(E.direccion)}, ${esc(E.cp)} ${esc(E.poblacion)} (${esc(E.pais)})<br>
@@ -1278,10 +1307,35 @@
         }
     }
 
+    // Mapa de fallback: si la respuesta del backend no trae `proyecto` /
+    // `seccion_nombre` (por ejemplo cuando el workflow n8n aún no está
+    // actualizado), derivamos el proyecto a partir del gid de la sección
+    // de origen. Mantener sincronizado con el array SECCIONES del Code
+    // node `Formatear GET` en 31-presupuestos-asana.json.
+    const ASANA_SECCION_META = {
+        '1210961912211323': { proyecto: 'Back Clientes', seccion: 'Pendiente de presupuesto' },
+        '1204767716226169': { proyecto: 'Back Clientes', seccion: 'Pendiente de revisión'    },
+        '1204767716226198': { proyecto: 'KDS',           seccion: 'Pendiente de revisión'    },
+        '1214118251811646': { proyecto: 'KDS',           seccion: 'Presupuesto'              }
+    };
+
     function pintarTareasAsana() {
         const tbody = document.getElementById('asana-tbody');
         const esc = (s) => String(s == null ? '' : s)
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        // Mapea el nombre del proyecto al modificador CSS del chip y al
+        // texto corto que se muestra (Back Clientes es largo, lo abreviamos).
+        function chipProyecto(t) {
+            const fallback = ASANA_SECCION_META[String(t.seccion_gid || '')] || {};
+            const proyecto = t.proyecto       || fallback.proyecto || '';
+            const seccion  = t.seccion_nombre || fallback.seccion  || '';
+            const n = proyecto.toLowerCase();
+            let cls = 'proy-otro', label = proyecto || '—';
+            if (n.includes('back'))     { cls = 'proy-back'; label = 'Back Clientes'; }
+            else if (n.includes('kds')) { cls = 'proy-kds';  label = 'KDS'; }
+            const tt = (proyecto || '—') + (seccion ? ' · ' + seccion : '');
+            return `<span class="asana-chip ${cls}" title="${esc(tt)}">${esc(label)}</span>`;
+        }
         tbody.innerHTML = asanaTareas.map(t => {
             const chip = t.ya_importado
                 ? `<span class="asana-chip importada" title="${esc(t.numero_doc || '')}">${esc(t.numero_doc || 'Importada')}</span>`
@@ -1295,6 +1349,7 @@
             return `
                 <tr data-gid="${esc(t.gid)}">
                     <td class="ta-name">${nombre}</td>
+                    <td>${chipProyecto(t)}</td>
                     <td class="ta-cli">${esc(t.cliente)}</td>
                     <td class="ta-h">${Number(t.horas_estimadas) || 0} h</td>
                     <td>${chip}</td>
