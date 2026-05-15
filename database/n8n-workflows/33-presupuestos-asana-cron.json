@@ -1,0 +1,293 @@
+{
+  "name": "Yurest - Presupuestos Asana Cron",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/30 9-17 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-schedule",
+      "name": "Schedule (L-V 9:00–17:30 cada 30')",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/sections/1210961912211323/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "opt_fields", "value": "gid,name,completed,permalink_url,custom_fields.name,custom_fields.display_value,tags.name" },
+            { "name": "limit",      "value": "100" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": { "fullResponse": false, "neverError": true }
+          }
+        }
+      },
+      "id": "asa-get-section-a",
+      "name": "GET Asana Section A",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 120],
+      "credentials": {
+        "asanaApi": { "id": "ASANA_CREDENTIAL_ID", "name": "Asana Yurest" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/sections/1204767716226169/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "opt_fields", "value": "gid,name,completed,permalink_url,custom_fields.name,custom_fields.display_value,tags.name" },
+            { "name": "limit",      "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "fullResponse": false, "neverError": true } } }
+      },
+      "id": "asa-get-section-b",
+      "name": "GET Asana Section B",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 240],
+      "credentials": {
+        "asanaApi": { "id": "ASANA_CREDENTIAL_ID", "name": "Asana Yurest" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/sections/1204767716226198/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "opt_fields", "value": "gid,name,completed,permalink_url,custom_fields.name,custom_fields.display_value,tags.name" },
+            { "name": "limit",      "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "fullResponse": false, "neverError": true } } }
+      },
+      "id": "asa-get-section-c",
+      "name": "GET Asana Section C",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 360],
+      "credentials": {
+        "asanaApi": { "id": "ASANA_CREDENTIAL_ID", "name": "Asana Yurest" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/sections/1214118251811646/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "opt_fields", "value": "gid,name,completed,permalink_url,custom_fields.name,custom_fields.display_value,tags.name" },
+            { "name": "limit",      "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "fullResponse": false, "neverError": true } } }
+      },
+      "id": "asa-get-section-d",
+      "name": "GET Asana Section D",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 480],
+      "credentials": {
+        "asanaApi": { "id": "ASANA_CREDENTIAL_ID", "name": "Asana Yurest" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/sections/1204767716226188/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "opt_fields", "value": "gid,name,completed,permalink_url,custom_fields.name,custom_fields.display_value,tags.name" },
+            { "name": "limit",      "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "fullResponse": false, "neverError": true } } }
+      },
+      "id": "asa-get-section-e",
+      "name": "GET Asana Section E",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 600],
+      "credentials": {
+        "asanaApi": { "id": "ASANA_CREDENTIAL_ID", "name": "Asana Yurest" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/sections/1214118251782188/tasks",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "opt_fields", "value": "gid,name,completed,permalink_url,custom_fields.name,custom_fields.display_value,tags.name" },
+            { "name": "limit",      "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "fullResponse": false, "neverError": true } } }
+      },
+      "id": "asa-get-section-f",
+      "name": "GET Asana Section F",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 720],
+      "credentials": {
+        "asanaApi": { "id": "ASANA_CREDENTIAL_ID", "name": "Asana Yurest" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://kyvzrqxicxirnroowriq.supabase.co/rest/v1/presupuestos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "asana_gid",  "value": "not.is.null" },
+            { "name": "deleted_at", "value": "is.null" },
+            { "name": "select",     "value": "id,asana_gid" }
+          ]
+        },
+        "options": { "response": { "response": { "fullResponse": false, "neverError": true } } }
+      },
+      "id": "supa-get-asana-gids",
+      "name": "GET Supabase asana_gids",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 420],
+      "credentials": {
+        "supabaseApi": { "id": "SUPABASE_CREDENTIAL_ID", "name": "Supabase Yurest" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mismo filtro que el GET manual del workflow 31 — sólo importa\n// tareas que cumplen los TRES criterios de custom fields y que aún\n// NO existen en presupuestos.asana_gid en Supabase.\n//\n//   Canal       = 'Cliente'\n//   Tipo        = 'Funcionalidad'\n//   Presupuesto = 'Si'\n//\n// Emite un item por gid nuevo; SplitInBatches los procesará uno a uno.\nconst SECCIONES = [\n  'GET Asana Section A',\n  'GET Asana Section B',\n  'GET Asana Section C',\n  'GET Asana Section D',\n  'GET Asana Section E',\n  'GET Asana Section F'\n];\n\nfunction tasksFrom(resp) {\n  const r = resp || {};\n  if (Array.isArray(r.data)) return r.data;\n  if (Array.isArray(r))      return r;\n  return [];\n}\n\nlet allTasks = [];\nfor (const nodeName of SECCIONES) {\n  let respJson = {};\n  try { respJson = ($(nodeName).first() || {}).json || {}; } catch (e) { respJson = {}; }\n  allTasks = allTasks.concat(tasksFrom(respJson));\n}\n\nconst supaItems = $input.all() || [];\nlet presupuestos = [];\nfor (const it of supaItems) {\n  const j = it.json;\n  if (!j) continue;\n  if (Array.isArray(j)) presupuestos = presupuestos.concat(j);\n  else if (j.id) presupuestos.push(j);\n  else if (Array.isArray(j.data)) presupuestos = presupuestos.concat(j.data);\n}\nconst yaImportados = new Set(presupuestos.filter(p => p && p.asana_gid).map(p => String(p.asana_gid)));\n\nfunction cfDict(task) {\n  const cf = {};\n  (task.custom_fields || []).forEach(c => { if (c && c.name) cf[c.name] = c.display_value; });\n  return cf;\n}\n\nlet descartadasCanal = 0, descartadasTipo = 0, descartadasPres = 0, yaImportadasN = 0;\nconst nuevas = [];\nconst seenGids = new Set();\nfor (const t of allTasks) {\n  if (!t || !t.gid) continue;\n  const gid = String(t.gid);\n  // Dedupe: una tarea puede estar en varias secciones a la vez.\n  if (seenGids.has(gid)) continue;\n  seenGids.add(gid);\n\n  const cf = cfDict(t);\n  const canal = String(cf['Canal']       || '').trim();\n  const tipo  = String(cf['Tipo']        || '').trim();\n  const pres  = String(cf['Presupuesto'] || '').trim();\n  if (canal !== 'Cliente')       { descartadasCanal++; continue; }\n  if (tipo  !== 'Funcionalidad') { descartadasTipo++;  continue; }\n  if (pres  !== 'Si')            { descartadasPres++;  continue; }\n  if (yaImportados.has(gid))     { yaImportadasN++;    continue; }\n\n  nuevas.push({\n    asana_gid: gid,\n    name: t.name || '',\n    permalink_url: t.permalink_url || null\n  });\n}\n\n// Estadísticas para el nodo final 'Resumen'.\nconst _stats = {\n  raw_total: allTasks.length,\n  unicas_tras_dedupe: seenGids.size,\n  ya_importadas: yaImportadasN,\n  descartadas: { canal: descartadasCanal, tipo: descartadasTipo, presupuesto: descartadasPres },\n  nuevas: nuevas.length,\n  ts: new Date().toISOString()\n};\nconsole.log('[cron-presupuestos]', JSON.stringify(_stats));\n\nif (nuevas.length === 0) {\n  // Aún así emitimos un item de control con __empty=true para que el\n  // Resumen pueda loguear el ciclo. SplitInBatches con 1 item lo\n  // procesará una sola vez; el POST detectará __empty y lo saltará.\n  return [{ json: { __empty: true, _stats } }];\n}\nreturn nuevas.map((n, i) => ({ json: Object.assign({}, n, { _stats: i === 0 ? _stats : undefined }) }));"
+      },
+      "id": "filter-new",
+      "name": "Filtrar nuevas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 420]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-batches",
+      "name": "SplitInBatches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1040, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-soporte.data.yurest.dev/webhook/presupuestos-asana",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'import', asana_gid: $json.asana_gid }) }}",
+        "options": {
+          "response": {
+            "response": { "fullResponse": false, "neverError": true }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "post-import",
+      "name": "POST /presupuestos-asana import",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 320],
+      "credentials": {
+        "httpBasicAuth": { "id": "BASIC_AUTH_CREDENTIAL_ID", "name": "Yurest Portal Auth" }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cierre del ciclo: loguea cuántas se intentaron importar, cuántas\n// fueron OK y cuántas fallaron. Es best-effort puramente informativo:\n// los duplicados (importados en una ejecución anterior pero detectados\n// aquí por carrera) cuentan como error porque PostgREST devuelve\n// unique_violation, pero no es un fallo real del cron.\nconst inputs = $input.all() || [];\nlet primero = null;\nlet ok = 0, ko = 0;\nfor (const it of inputs) {\n  const j = it.json || {};\n  if (j._stats && !primero) primero = j._stats;\n  if (j.__empty) continue;\n  if (j.success === true)       ok++;\n  else if (j.success === false) ko++;\n}\nconst stats = primero || { raw_total: 0, unicas_tras_dedupe: 0, descartadas: {}, nuevas: 0 };\nconst resumen = {\n  ts: new Date().toISOString(),\n  raw_total: stats.raw_total,\n  unicas_tras_dedupe: stats.unicas_tras_dedupe,\n  ya_importadas_omitidas: stats.ya_importadas,\n  descartadas_por_filtro: stats.descartadas,\n  candidatas_nuevas: stats.nuevas,\n  importadas_ok: ok,\n  importadas_ko: ko\n};\nconsole.log('[cron-presupuestos resumen]', JSON.stringify(resumen));\nreturn [{ json: resumen }];"
+      },
+      "id": "resumen",
+      "name": "Resumen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 520]
+    }
+  ],
+  "connections": {
+    "Schedule (L-V 9:00–17:30 cada 30')": { "main": [[{ "node": "GET Asana Section A", "type": "main", "index": 0 }]] },
+    "GET Asana Section A": { "main": [[{ "node": "GET Asana Section B", "type": "main", "index": 0 }]] },
+    "GET Asana Section B": { "main": [[{ "node": "GET Asana Section C", "type": "main", "index": 0 }]] },
+    "GET Asana Section C": { "main": [[{ "node": "GET Asana Section D", "type": "main", "index": 0 }]] },
+    "GET Asana Section D": { "main": [[{ "node": "GET Asana Section E", "type": "main", "index": 0 }]] },
+    "GET Asana Section E": { "main": [[{ "node": "GET Asana Section F", "type": "main", "index": 0 }]] },
+    "GET Asana Section F": { "main": [[{ "node": "GET Supabase asana_gids", "type": "main", "index": 0 }]] },
+    "GET Supabase asana_gids": { "main": [[{ "node": "Filtrar nuevas", "type": "main", "index": 0 }]] },
+    "Filtrar nuevas": { "main": [[{ "node": "SplitInBatches", "type": "main", "index": 0 }]] },
+    "SplitInBatches": {
+      "main": [
+        [{ "node": "Resumen", "type": "main", "index": 0 }],
+        [{ "node": "POST /presupuestos-asana import", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST /presupuestos-asana import": { "main": [[{ "node": "SplitInBatches", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid"
+  },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

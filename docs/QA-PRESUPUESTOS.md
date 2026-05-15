@@ -150,8 +150,10 @@ falta migración para exponer el permiso — el admin lo asigna desde
 | `database/migrations/2026-04-23_03_presupuestos.sql` | **Nuevo** — tabla + RLS + índices. |
 | `database/migrations/2026-05-14_01_presupuestos_asana_gid.sql` | **Nuevo** — columna `asana_gid` + UNIQUE parcial. |
 | `database/n8n-workflows/22-presupuestos.json` | **Nuevo** — GET + POST con las 7 acciones (+ acepta `asana_gid` en create/update). |
-| `database/n8n-workflows/31-presupuestos-asana.json` | **Nuevo** — importador desde Asana (GET sección + POST import/refresh). |
-| `presupuestos.html` | **Nuevo** — página completa (tabla + filtros + modal + totales + importador Asana). |
+| `database/n8n-workflows/31-presupuestos-asana.json` | **Nuevo** — importador desde Asana (GET 4 secciones + POST import/refresh). |
+| `database/n8n-workflows/32-presupuestos-asana-attach.json` | **Nuevo** — upload del PDF del presupuesto a la tarea de Asana origen. |
+| `database/n8n-workflows/33-presupuestos-asana-cron.json` | **Nuevo** — cron L-V 9:00–17:30 cada 30 min que importa automáticamente las tareas nuevas que cumplen el filtro. |
+| `presupuestos.html` | **Nuevo** — página completa (tabla + filtros + modal + totales + importador Asana + adjunto PDF). |
 | `sidebar.js` | Añadido icono `producto` + `presupuestos`, grupo `Producto`. |
 | `config.js` | Añadido endpoints `presupuestos` y `presupuestosAsana` + permiso en `PERMISOS_DISPONIBLES`. |
 | `scripts/test-e2e-presupuestos.sh` | **Nuevo** — E2E con ~30 asertos. |
@@ -160,16 +162,18 @@ falta migración para exponer el permiso — el admin lo asigna desde
 
 ## Importador desde Asana
 
-A petición del equipo, se cablean **cuatro secciones** repartidas
-entre dos proyectos de Asana como fuente para crear presupuestos sin
+A petición del equipo, se cablean **seis secciones** repartidas
+entre tres proyectos de Asana como fuente para crear presupuestos sin
 retipear nada de la tarea:
 
-| gid sección          | nombre                       | proyecto       | comentario                                                                                 |
-| ---                  | ---                          | ---            | ---                                                                                        |
-| `1210961912211323`   | Pendiente de presupuesto     | Back Clientes  | flujo principal del backlog presupuestable de Back.                                        |
-| `1204767716226169`   | Pendiente de revisión        | Back Clientes  | el equipo decide caso a caso si presupuestar — entra sólo si pasa el filtro.               |
-| `1214118251811646`   | Presupuesto                  | KDS            | flujo principal del backlog presupuestable de KDS (paralelo a la de Back).                 |
-| `1204767716226198`   | Pendiente de revisión        | KDS            | mismo rol que la de Back, pero del board de KDS.                                           |
+| gid sección          | nombre                       | proyecto          | comentario                                                                                 |
+| ---                  | ---                          | ---               | ---                                                                                        |
+| `1210961912211323`   | Pendiente de presupuesto     | Back Clientes     | flujo principal del backlog presupuestable de Back Clientes.                               |
+| `1204767716226169`   | Pendiente de revisión        | Back Clientes     | el equipo decide caso a caso si presupuestar — entra sólo si pasa el filtro.               |
+| `1214118251811646`   | Presupuesto                  | KDS               | flujo principal del backlog presupuestable de KDS (paralelo a la de Back).                 |
+| `1204767716226198`   | Pendiente de revisión        | KDS               | mismo rol que la de Back, pero del board de KDS.                                           |
+| `1214118251782188`   | Pendiente de presupuesto     | Back Proveedores  | flujo principal del backlog presupuestable de Back Proveedores.                            |
+| `1204767716226188`   | Pendiente de revisión        | Back Proveedores  | mismo rol que la de Back/KDS, pero del board de Back Proveedores.                          |
 
 Cada tarea trae en la respuesta del GET `seccion_gid`, `seccion_nombre`
 y `proyecto` para que el front pueda filtrar / agrupar si lo necesita.
@@ -178,9 +182,11 @@ Sobre la unión de ambas se aplica un **filtro por custom fields** en el
 Code `Formatear GET` para que sólo aparezcan tareas realmente
 presupuestables:
 
-- `Canal = "Cliente"`        — descarta peticiones internas.
-- `Tipo  = "Funcionalidad"`  — descarta errores y otros (los errores se
+- `Canal       = "Cliente"`       — descarta peticiones internas.
+- `Tipo        = "Funcionalidad"` — descarta errores y otros (los errores se
   arreglan, no se presupuestan).
+- `Presupuesto = "Si"`            — sólo las que el equipo ha marcado
+  explícitamente como presupuestables en Asana.
 
 Las tareas que aparezcan en ambas secciones se dedupican por `gid`.
 La respuesta del GET incluye `descartadas: { canal, tipo }` y
@@ -200,9 +206,11 @@ se deriva de la tarea de Asana:
 | `cliente`                 | Tag con prefijo `Cliente: …` (regex). Si no hay tag → `"Sin cliente"`.  |
 | `desarrollo`              | `task.name` quitando el prefijo `( Pagado )` / `( Pago )`.              |
 | `entorno`                 | Heurística por keywords (`app|móvil|notificación|tpv` → `app_cliente`; default `backoffice`). |
-| `quien_abona`             | `( Pagado )` en nombre **o** custom field `Coste = Con coste` → `cliente`; resto `yurest`. |
+| `quien_abona`             | Custom field `Coste = "Sin coste"` → `yurest`. `Coste = "Con coste"` o `( Pagado )` en el nombre → `cliente`. Vacío → `yurest`. |
 | `horas_cliente`           | Custom field `Estimated time` (parseo de `"26h 00m"` → `26`).           |
-| `coste_hora_yurest/cliente`, `descuento_pct` | Defaults (25 / 85 / 0). El usuario los retoca a mano. |
+| `coste_hora_yurest/cliente` | Defaults `25` / `85`. El usuario los retoca a mano si la tarifa pactada difiere. |
+| `descuento_pct`           | Custom field `Coste = "Sin coste"` → `100` (importe al cliente = 0, Yurest absorbe). Resto → `0`. |
+| `coste_cliente`           | `horas_cliente × 85 × (1 − descuento/100)` calculado al importar. Si `Sin coste` queda 0. |
 | `estado`, `estado_entrega`, `enviado` | `en_espera` / `pendiente` / `false` (importación = entrada al pipeline). |
 | `contexto`                | Bloque entre `## 🎯 TAREA` y `Comportamiento actual:`.                   |
 | `objetivo`                | Línea que empieza por `Para ` dentro del bloque de contexto.            |
@@ -233,9 +241,96 @@ Dos endpoints bajo BasicAuth, mismo patrón canónico que el resto:
 
 Tras el upsert se postea siempre un comentario en la tarea de Asana
 (`POST /tasks/{gid}/stories`):
-`[Yurest Portal] Importado al portal como PRES-XXXX el YYYY-MM-DD`. El
-comment es **best-effort** (`continueOnFail`): si Asana rate-limitea o
-falla, la importación se considera exitosa y se devuelve un `warning`.
+`[Yurest Portal] Importado al portal como PRES-XXXX el YYYY-MM-DD. Se adjuntará el PDF del presupuesto a esta tarea automáticamente.`
+(El sufijo del PDF se omite cuando la acción es `refresh`.) El comment
+es **best-effort** (`continueOnFail`): si Asana rate-limitea o falla,
+la importación se considera exitosa y se devuelve un `warning`.
+
+### Adjunto del PDF del presupuesto
+
+Tras una importación exitosa, el portal genera el PDF del presupuesto
+con `html2pdf.js` (CDN, lazy-loaded) sobre el mismo HTML que se ve en
+el modal de previsualización y lo sube a la tarea de Asana origen
+como attachment. Esto cubre dos casos a la vez: el equipo ve el
+comentario textual y abre el PDF directamente desde Asana sin tener
+que volver al portal.
+
+**Workflow `32-presupuestos-asana-attach`** (POST
+`/webhook/presupuestos-asana-attach`, BasicAuth):
+
+  → Webhook recibe `{ asana_gid, filename, pdf_base64 }`.
+  → Code `Preparar binario` valida (gid numérico, base64 presente,
+    tamaño ≤ ~9 MB), decodifica el base64 a un item `binary.file`
+    con `mimeType: 'application/pdf'`.
+  → `httpRequest` POST a `https://app.asana.com/api/1.0/tasks/{gid}/attachments`
+    con `multipart/form-data`, campo `file` referenciando `binary.file`
+    (credencial `asanaApi`).
+  → Code `Formatear respuesta` emite `{ success, attachment: { gid,
+    name, permanent_url }, errores }`.
+
+**Cliente** ([presupuestos.html](../presupuestos.html)):
+
+- Carga `html2pdf.bundle.min.js` con `defer` desde
+  `cdnjs.cloudflare.com` (no bloquea el render inicial).
+- `generarPDFBlob(presupuesto)` renderiza el documento en un contenedor
+  off-screen (`position:fixed; left:-99999px`) reutilizando el mismo
+  `_renderPresupuestoDoc` + `PRESUPUESTO_CSS` que el modal de
+  previsualización. Devuelve `{ blob, base64, filename }`.
+- `adjuntarPDFenAsana(presupuesto, asana_gid)` se llama tras
+  `importarTareaAsana` y dentro del bucle de `importarTodasNuevasAsana`
+  (secuencial para no saturar Asana ni el navegador con varios
+  renders html2pdf en paralelo).
+- Es **best-effort**: si la lib no cargó, falla la red o Asana
+  rechaza, se loguea, se muestra un toast `warn` y el presupuesto
+  sigue creado en BD. El comentario textual del workflow 31 ya deja
+  traza, así que no perdemos información.
+- En `refresh` **no** se vuelve a adjuntar el PDF — se asume que el
+  PDF original ya está en la tarea y el `refresh` sólo trae cambios
+  de descripción/cliente.
+
+### Trigger automático (cron)
+
+Workflow [33-presupuestos-asana-cron.json](../database/n8n-workflows/33-presupuestos-asana-cron.json)
+ejecuta el mismo pipeline de importación de forma desatendida.
+
+- **Cuándo dispara**: cron `*/30 9-17 * * 1-5` con `timezone:
+  Europe/Madrid` en el workflow → de lunes a viernes, cada media hora
+  desde las 9:00 hasta las 17:30 (18 disparos × 5 días = 90/semana).
+  Fuera de ese horario y los fines de semana el cron no corre.
+- **Qué hace**: GET de las 6 secciones de Asana → cross-check con
+  `presupuestos.asana_gid` en Supabase para conocer gids ya en BD →
+  Code `Filtrar nuevas` aplica los tres filtros de custom fields
+  (`Canal=Cliente`, `Tipo=Funcionalidad`, `Presupuesto=Si`) y resta
+  las que ya existen → `SplitInBatches (1)` itera una tarea a la vez
+  → POST al webhook `/presupuestos-asana` con `{ action: 'import',
+  asana_gid }` (BasicAuth `Yurest Portal Auth`) → loop hasta agotar
+  cola → Code `Resumen` loguea estadísticas.
+- **Qué NO hace**:
+    - No refresca tareas ya importadas. Si una descripción cambia en
+      Asana, se queda como estaba en Supabase. El equipo puede
+      pulsar **Refrescar** en el modal manual si lo necesita.
+    - No adjunta el PDF a la tarea de Asana. `html2pdf` es
+      cliente-only; el cron no tiene navegador. El botón 📎 de cada
+      fila en `presupuestos.html` sigue siendo la vía para subir el
+      PDF a Asana on-demand.
+- **Idempotencia**: el `UNIQUE (asana_gid) WHERE asana_gid IS NOT NULL`
+  garantiza que aunque dos ejecuciones se solapen (cosa muy
+  improbable con frecuencia de 30 min y pipelines de pocos segundos)
+  no se crean duplicados. El segundo POST recibe `unique_violation`
+  y queda contado como `ko` en el resumen — informativo, no es
+  fallo real.
+- **Errores aislados**: `continueOnFail: true` en el POST + el bucle
+  de SplitInBatches → si una tarea concreta falla, las demás del
+  mismo ciclo se siguen procesando y al siguiente disparo se
+  reintenta.
+- **Visibilidad**:
+    - El comentario `[Yurest Portal] Importado al portal como
+      PRES-XXXX el YYYY-MM-DD ...` queda en la tarea de Asana, así
+      el equipo lo ve sin entrar al portal.
+    - Cada ejecución del workflow queda en el panel de executions
+      de n8n con su payload de Resumen (raw_total, nuevas, ok, ko).
+- **Cómo desactivarlo**: toggle "Active" del workflow 33 en n8n.
+  El modal manual sigue funcionando exactamente igual.
 
 ### Decisiones de diseño
 

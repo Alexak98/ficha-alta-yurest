@@ -210,14 +210,23 @@
         .asana-chip.importada { background:#e0e7ff;color:#3730a3 }
         /* Chips por proyecto Asana: cada board un color distinto para
            identificar de un vistazo de dónde viene la tarea. */
-        .asana-chip.proy-back { background:#fee2e2;color:#991b1b }
-        .asana-chip.proy-kds  { background:#cffafe;color:#155e75 }
-        .asana-chip.proy-otro { background:#f1f5f9;color:#475569 }
+        .asana-chip.proy-back  { background:#fee2e2;color:#991b1b }
+        .asana-chip.proy-kds   { background:#cffafe;color:#155e75 }
+        .asana-chip.proy-prov  { background:#fef3c7;color:#92400e }
+        .asana-chip.proy-otro  { background:#f1f5f9;color:#475569 }
         .asana-empty { padding:30px;text-align:center;color:#64748b;font-size:.9rem }
         .asana-row-busy { opacity:.6;pointer-events:none }
 
         .row-archivada td { opacity:.55 }
     </style>
+    <!-- html2canvas + jsPDF cargados por separado (en lugar del bundle
+         html2pdf) para tener control directo sobre cada paso del
+         pipeline: HTML → canvas → PDF. El bundle no expone las libs
+         internas como globals, lo que hace imposible diagnosticar
+         dónde falla. Sin `defer` para que estén listos antes de
+         cualquier acción (no cuesta nada por tamaño). -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -229,7 +238,7 @@
         <button class="btn-menu" onclick="openSidebar()" title="Menú">
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <img src="https://www.yurest.com/nuevaweb/wp-content/uploads/2025/03/Yurest-sin-texto2.png" alt="Yurest">
         <h1>Presupuestos</h1>
     </div>
 
@@ -558,6 +567,7 @@
 
     const EP = YurestConfig.ENDPOINTS.presupuestos;
     const EP_ASANA = YurestConfig.ENDPOINTS.presupuestosAsana;
+    const EP_ASANA_ATTACH = YurestConfig.ENDPOINTS.presupuestosAsanaAttach;
     // Defaults sólo para el FORMULARIO de alta (el modal nuevo). En BD
     // cada presupuesto guarda su coste_hora_yurest, coste_hora_cliente y
     // descuento_pct individuales, así que estos números no son la fuente
@@ -753,6 +763,7 @@
                 : `
                     <button onclick='editar(${pjson})' title="Editar">✏️</button>
                     <button onclick='generarPresupuestoPDF(${pjson})' title="Generar presupuesto PDF">📄</button>
+                    ${p.asana_gid ? `<button onclick="enviarPDFAsana('${esc(p.id)}')" title="Enviar PDF del presupuesto a la tarea de Asana de origen">📎</button>` : ''}
                     ${p.estado !== 'aceptado' ? `<button class="ok" onclick="aceptar('${esc(p.id)}')" title="Aceptar">✅</button>` : ''}
                     ${p.estado_entrega !== 'entregado' ? `<button class="ok" onclick="entregar('${esc(p.id)}')" title="Marcar entregado">📦</button>` : ''}
                     <button onclick="toggleEnviado('${esc(p.id)}', ${!p.enviado})" title="${p.enviado ? 'Marcar no enviado' : 'Marcar enviado'}">${p.enviado ? '↺' : '📤'}</button>
@@ -982,6 +993,15 @@
     // tarifa unitaria por defecto es 85 €/h (sin IVA); si hay un
     // `coste_cliente` manual (tarifa pactada), el subtotal respeta ese
     // valor. El IVA 21% va siempre como línea aparte y se suma al total.
+    // Logo Yurest embebido como data: URI (PNG 800x273, 21 KB) para
+    // que el PDF se genere SIN dependencia de red ni CORS. La copia
+    // del servidor en yurest.com no devuelve cabeceras CORS, así que
+    // html2canvas se ahogaría intentando leer la imagen. Inlinarla
+    // resuelve el problema de raíz. Para regenerar:
+    //   curl -s URL_IMAGEN | base64 | tr -d (newline)
+    const LOGO_DATAURI = 'data:image/png;base64,' + 
+        'iVBORw0KGgoAAAANSUhEUgAAAyAAAAERCAYAAAH0zvPfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAydpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMS1jMDAxIDc5LjE0NjI4OTk3NzcsIDIwMjMvMDYvMjUtMjM6NTc6MTQgICAgICAgICI+IDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+IDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkZBQUY4OTg0MTUzNjExRUZBNkE2RTEyQjU4MjlFQjgxIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkZBQUY4OTgzMTUzNjExRUZBNkE2RTEyQjU4MjlFQjgxIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDQyAoTWFjaW50b3NoKSI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjJFRjVBNTE5QzdBNTExRUNCRTI1RTFFMEUyOTdCNDlEIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjJFRjVBNTFBQzdBNTExRUNCRTI1RTFFMEUyOTdCNDlEIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+CQSqrgAAULlJREFUeNrs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';
+
     const PRESUPUESTO_CSS = `
         * { box-sizing: border-box; }
         body {
@@ -995,6 +1015,11 @@
             padding-bottom: 18px; border-bottom: 3px solid #dc2626;
         }
         header.doc-head img { height: 48px }
+        header.doc-head .brand-logo-img {
+            /* PNG embebido como data: URI; altura fija para que el
+               aspect-ratio 800x273 se respete y no estire. */
+            height: 52px; width: auto; display: block;
+        }
         header.doc-head .meta { text-align: right; font-size: 11px; color: #475569 }
         header.doc-head .meta .num { font-size: 18px; font-weight: 800; color: #dc2626; letter-spacing: .02em }
         h1.doc-title { font-size: 22px; font-weight: 800; margin: 22px 0 4px; color: #0f172a }
@@ -1136,7 +1161,7 @@
             html: `
 <div class="sheet">
     <header class="doc-head">
-        <img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest">
+        <img src="${LOGO_DATAURI}" alt="Yurest" class="brand-logo-img">
         <div class="meta">
             <div class="num">${esc(num)}</div>
             <div>Fecha emisión: <strong>${esc(fechaStr)}</strong></div>
@@ -1313,10 +1338,12 @@
     // de origen. Mantener sincronizado con el array SECCIONES del Code
     // node `Formatear GET` en 31-presupuestos-asana.json.
     const ASANA_SECCION_META = {
-        '1210961912211323': { proyecto: 'Back Clientes', seccion: 'Pendiente de presupuesto' },
-        '1204767716226169': { proyecto: 'Back Clientes', seccion: 'Pendiente de revisión'    },
-        '1204767716226198': { proyecto: 'KDS',           seccion: 'Pendiente de revisión'    },
-        '1214118251811646': { proyecto: 'KDS',           seccion: 'Presupuesto'              }
+        '1210961912211323': { proyecto: 'Back Clientes',    seccion: 'Pendiente de presupuesto' },
+        '1204767716226169': { proyecto: 'Back Clientes',    seccion: 'Pendiente de revisión'    },
+        '1204767716226198': { proyecto: 'KDS',              seccion: 'Pendiente de revisión'    },
+        '1214118251811646': { proyecto: 'KDS',              seccion: 'Presupuesto'              },
+        '1204767716226188': { proyecto: 'Back Proveedores', seccion: 'Pendiente de revisión'    },
+        '1214118251782188': { proyecto: 'Back Proveedores', seccion: 'Pendiente de presupuesto' }
     };
 
     function pintarTareasAsana() {
@@ -1331,8 +1358,11 @@
             const seccion  = t.seccion_nombre || fallback.seccion  || '';
             const n = proyecto.toLowerCase();
             let cls = 'proy-otro', label = proyecto || '—';
-            if (n.includes('back'))     { cls = 'proy-back'; label = 'Back Clientes'; }
-            else if (n.includes('kds')) { cls = 'proy-kds';  label = 'KDS'; }
+            // Orden importante: "back proveedores" debe matchear ANTES
+            // que "back" a secas, si no caería en Back Clientes.
+            if (n.includes('proveedores'))   { cls = 'proy-prov'; label = 'Back Proveedores'; }
+            else if (n.includes('kds'))      { cls = 'proy-kds';  label = 'KDS'; }
+            else if (n.includes('back'))     { cls = 'proy-back'; label = 'Back Clientes'; }
             const tt = (proyecto || '—') + (seccion ? ' · ' + seccion : '');
             return `<span class="asana-chip ${cls}" title="${esc(tt)}">${esc(label)}</span>`;
         }
@@ -1373,6 +1403,225 @@
         return data;
     }
 
+    // Genera el PDF del presupuesto recién creado como Blob usando
+    // html2pdf (cargado por CDN al final del <head>). Render off-screen
+    // dentro de un contenedor temporal con el mismo CSS que el preview
+    // del modal, así el adjunto y la versión imprimible quedan idénticas.
+    // Devuelve { blob, filename, base64 } o lanza si falta html2pdf o
+    // el render falla.
+    // Espera a que html2canvas y jsPDF terminen de cargar (CDN puede
+    // tardar un par de cientos de ms). Reintentamos hasta 5s antes de
+    // rendirnos para no bloquear el flujo de import si la lib no llega.
+    async function _esperarPdfLibs(timeoutMs = 5000) {
+        const t0 = Date.now();
+        const ready = () => typeof window.html2canvas === 'function'
+                         && (window.jspdf && typeof window.jspdf.jsPDF === 'function');
+        while (!ready()) {
+            if (Date.now() - t0 > timeoutMs) {
+                throw new Error('html2canvas/jsPDF no cargados (CDN bloqueado o lento).');
+            }
+            await new Promise(r => setTimeout(r, 100));
+        }
+    }
+
+    async function generarPDFBlob(presupuesto) {
+        console.log('[pdf] generarPDFBlob() inicio', { id: presupuesto && presupuesto.id, numero: presupuesto && presupuesto.numero_doc });
+        await _esperarPdfLibs();
+        const { html, num } = _renderPresupuestoDoc(presupuesto);
+        if (!html) throw new Error('_renderPresupuestoDoc devolvió HTML vacío');
+        console.log('[pdf] HTML generado, length=', html.length, 'num=', num);
+        // Estrategia visible-con-overlay: el contenedor está realmente
+        // pintado en pantalla (sin opacity:0 ni off-screen) porque
+        // html2canvas en versiones recientes captura literal lo que ve
+        // el compositor — opacity 0 o left negativo le devuelven un
+        // canvas en blanco. Para que el usuario no vea el flash del
+        // documento, montamos un overlay opaco "Generando PDF…" por
+        // encima del contenedor durante la captura.
+        const overlay = document.createElement('div');
+        overlay.id = '_pdf-overlay';
+        overlay.style.cssText = [
+            'position:fixed', 'inset:0', 'background:rgba(15,23,42,0.85)',
+            'z-index:99999', 'display:flex', 'align-items:center',
+            'justify-content:center', 'color:#fff',
+            'font-family:inherit', 'font-size:1rem', 'font-weight:600'
+        ].join(';');
+        overlay.textContent = 'Generando PDF…';
+        const container = document.createElement('div');
+        container.id = '_pdf-container';
+        container.style.cssText = [
+            'position:fixed', 'top:0', 'left:0', 'width:800px',
+            'background:#ffffff', 'z-index:99998', 'overflow:hidden',
+            // Se queda detrás del overlay; el usuario no lo ve.
+            'pointer-events:none'
+        ].join(';');
+        // Inyectamos el CSS en el <head> en lugar de dentro del div para
+        // que se aplique sin condicionantes y luego lo quitamos al
+        // limpiar. Marcamos el style con id para localizarlo.
+        const styleEl = document.createElement('style');
+        styleEl.id = '_pdf-style';
+        styleEl.textContent = PRESUPUESTO_CSS;
+        document.head.appendChild(styleEl);
+        container.innerHTML = html;
+        document.body.appendChild(container);
+        document.body.appendChild(overlay);
+        try {
+            // Espera a que las imágenes embebidas (logo Yurest desde
+            // dominio externo) terminen de cargar — html2canvas no las
+            // espera y, si dispara antes, captura el documento sin ellas
+            // o, peor, falla en silencio y devuelve un PDF en blanco.
+            const imgs = container.querySelectorAll('img');
+            await Promise.all(Array.from(imgs).map(img => new Promise(resolve => {
+                if (img.complete && img.naturalWidth > 0) return resolve();
+                const done = () => { img.onload = img.onerror = null; resolve(); };
+                img.onload  = done;
+                img.onerror = done;            // no bloqueamos si la img falla
+                setTimeout(done, 6000);        // tope defensivo
+            })));
+            // Un tick adicional para que el browser termine layout/paint
+            // antes de que html2canvas mida.
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+            const opt = {
+                margin: [10, 10, 12, 10],
+                filename: num + '.pdf',
+                image: { type: 'jpeg', quality: 0.95 },
+                // `allowTaint:true` deja capturar la imagen aunque el
+                // servidor no devuelva cabeceras CORS (el canvas se marca
+                // como "tainted" pero el PDF resultante se renderiza
+                // igual porque no estamos leyendo píxeles cliente-side).
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    windowWidth: 800
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css', 'avoid-all'] }
+            };
+            // Pipeline directo HTML → canvas → PDF, sin el wrapper
+            // html2pdf cuyo bundle ocultaba las libs internas e impedía
+            // diagnosticar fallos.
+            console.log('[pdf] llamando html2canvas …');
+            const canvas = await window.html2canvas(container, {
+                scale: opt.html2canvas.scale,
+                useCORS: opt.html2canvas.useCORS,
+                allowTaint: opt.html2canvas.allowTaint,
+                logging: opt.html2canvas.logging,
+                backgroundColor: opt.html2canvas.backgroundColor,
+                windowWidth: opt.html2canvas.windowWidth
+            });
+            console.log('[pdf] canvas', { w: canvas.width, h: canvas.height });
+            if (!canvas.width || !canvas.height) {
+                throw new Error('canvas con dimensiones cero (w=' + canvas.width + ', h=' + canvas.height + ')');
+            }
+            const imgData = canvas.toDataURL('image/jpeg', opt.image.quality);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: opt.jsPDF.unit, format: opt.jsPDF.format, orientation: opt.jsPDF.orientation });
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            // Restamos los márgenes de `opt.margin` ([top, left, bottom, right]).
+            const mT = opt.margin[0], mL = opt.margin[1], mB = opt.margin[2], mR = opt.margin[3];
+            const drawW = pageW - mL - mR;
+            const ratio = canvas.height / canvas.width;
+            const drawH = drawW * ratio;
+            const useableH = pageH - mT - mB;
+            // Si el contenido cabe en una sola página, la pintamos
+            // directa. Si no, troceamos en N páginas A4 con offsets
+            // negativos sucesivos para que jsPDF "scrollee" la imagen.
+            if (drawH <= useableH + 0.5) {
+                pdf.addImage(imgData, 'JPEG', mL, mT, drawW, drawH);
+            } else {
+                let posY = 0;
+                while (posY < drawH) {
+                    pdf.addImage(imgData, 'JPEG', mL, mT - posY, drawW, drawH);
+                    posY += useableH;
+                    if (posY < drawH) pdf.addPage();
+                }
+            }
+            const blob = pdf.output('blob');
+            console.log('[pdf] blob generado', { size: blob && blob.size, type: blob && blob.type, pages: pdf.internal.getNumberOfPages() });
+            if (!blob || blob.size < 200) {
+                throw new Error('PDF generado vacío (size=' + (blob ? blob.size : 0) + ')');
+            }
+            // Convertimos el blob a base64 para mandarlo en JSON al
+            // endpoint de Asana attach (multipart desde el cliente es
+            // más frágil con apiFetch/BasicAuth; n8n hace el multipart).
+            const base64 = await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload  = () => {
+                    const s = String(r.result || '');
+                    const i = s.indexOf(',');
+                    resolve(i >= 0 ? s.slice(i + 1) : s);
+                };
+                r.onerror = () => reject(r.error || new Error('FileReader error'));
+                r.readAsDataURL(blob);
+            });
+            console.log('[pdf] base64 listo, length=', base64.length);
+            return { blob, base64, filename: num + '.pdf', numero_doc: num };
+        } finally {
+            container.remove();
+            overlay.remove();
+            const s = document.getElementById('_pdf-style');
+            if (s) s.remove();
+        }
+    }
+
+    // Sube el PDF del presupuesto recién importado como attachment a la
+    // tarea de Asana original. Best-effort: si falla cualquier paso
+    // (lib no cargada, red, Asana rate-limit) avisamos al usuario con
+    // un toast pero no rompemos la importación — el presupuesto ya
+    // está creado en BD y el comentario en Asana ya se posteó desde
+    // n8n con la traza textual.
+    async function adjuntarPDFenAsana(presupuesto, asana_gid) {
+        console.log('[asana-attach] inicio', { asana_gid, numero_doc: presupuesto && presupuesto.numero_doc });
+        try {
+            if (!asana_gid) throw new Error('asana_gid vacío');
+            if (!presupuesto || !presupuesto.id) throw new Error('presupuesto sin id');
+            const { base64, filename, blob } = await generarPDFBlob(presupuesto);
+            console.log('[asana-attach] subiendo', { filename, base64_len: base64.length, blob_size: blob.size });
+            const res = await YurestConfig.apiFetch(EP_ASANA_ATTACH, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ asana_gid, filename, pdf_base64: base64 })
+            });
+            const text = await res.text();
+            let data; try { data = JSON.parse(text); } catch (e) { data = null; }
+            console.log('[asana-attach] respuesta', { status: res.status, ok: res.ok, data, text_preview: text && text.slice(0, 200) });
+            if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + text.slice(0, 120));
+            if (!data || !data.success) throw new Error((data && data.errores || ['error sin detalle']).join('; '));
+            YurestConfig.toast && YurestConfig.toast('PDF adjuntado en Asana', 'success');
+            return data.attachment;
+        } catch (e) {
+            console.warn('[asana-attach] No se pudo adjuntar PDF:', e);
+            YurestConfig.toast && YurestConfig.toast('Aviso: PDF no se pudo adjuntar en Asana (' + (e.message || e) + ')', 'warn');
+            return null;
+        }
+    }
+
+    // Atajos de diagnóstico — accesibles desde la consola del navegador:
+    //   await yurestPDFTest('<numero_doc>')          → descarga PDF localmente
+    //   await yurestPDFAdjuntar('<numero_doc>')      → genera y sube a Asana
+    // Útil para probar la cadena html2pdf + endpoint sin pasar por el
+    // modal de importación.
+    window.yurestPDFTest = async function(numero_doc) {
+        const p = presupuestos.find(x => x.numero_doc === numero_doc);
+        if (!p) { console.error('No encuentro presupuesto', numero_doc); return; }
+        const { blob, filename } = await generarPDFBlob(p);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return { size: blob.size };
+    };
+    window.yurestPDFAdjuntar = async function(numero_doc) {
+        const p = presupuestos.find(x => x.numero_doc === numero_doc);
+        if (!p) { console.error('No encuentro presupuesto', numero_doc); return; }
+        if (!p.asana_gid) { console.error('Este presupuesto no tiene asana_gid'); return; }
+        return adjuntarPDFenAsana(p, p.asana_gid);
+    };
+
     async function importarTareaAsana(gid) {
         const fila = document.querySelector(`#asana-tbody tr[data-gid="${gid}"]`);
         if (fila) fila.classList.add('asana-row-busy');
@@ -1393,6 +1642,12 @@
             document.getElementById('asana-sum-nuevas').textContent     = asanaTareas.filter(x => !x.ya_importado).length;
             document.getElementById('asana-sum-importadas').textContent = asanaTareas.filter(x =>  x.ya_importado).length;
             document.getElementById('btn-asana-import-all').disabled    = asanaTareas.every(x => x.ya_importado);
+            // (El adjunto del PDF a Asana ya no se dispara automáticamente
+            // al importar — el usuario lo lanza a mano con el botón
+            // "Enviar PDF a Asana" de la fila del presupuesto. Así se
+            // evita generar y subir un PDF cada vez que se importa una
+            // tarea, lo cual es costoso si el equipo aún no ha ajustado
+            // horas/coste reales del presupuesto.)
         } catch (e) {
             YurestConfig.toast && YurestConfig.toast('No se pudo importar: ' + (e.message || e), 'error');
             if (fila) fila.classList.remove('asana-row-busy');
@@ -1432,6 +1687,8 @@
                 t.presupuesto_id = data.presupuesto && data.presupuesto.id;
                 t.numero_doc     = data.presupuesto && data.presupuesto.numero_doc;
                 ok++;
+                // (El adjunto del PDF a Asana se lanza después a mano
+                // desde el botón "Enviar PDF a Asana" de cada fila.)
             } catch (e) {
                 ko++;
             }
@@ -1470,6 +1727,27 @@
     window.generarPresupuestoPDF = generarPresupuestoPDF;
     window.cerrarPresupuestoDoc = cerrarPresupuestoDoc;
     window.descargarPresupuestoPDF = descargarPresupuestoPDF;
+
+    // Botón "📎 Enviar PDF a Asana" de cada fila: genera el PDF del
+    // presupuesto y lo sube como attachment a la tarea Asana de origen
+    // (solo presupuestos con asana_gid muestran el botón).
+    async function enviarPDFAsana(id) {
+        const p = presupuestos.find(x => x.id === id);
+        if (!p)            return YurestConfig.toast('Presupuesto no encontrado', 'error');
+        if (!p.asana_gid)  return YurestConfig.toast('Este presupuesto no viene de Asana', 'error');
+        const btn = event && event.currentTarget;
+        const prev = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+        try {
+            const att = await adjuntarPDFenAsana(p, p.asana_gid);
+            // adjuntarPDFenAsana ya muestra toast success/warn por dentro.
+            // Si devolvió null hubo error y el toast warn ya lo cuenta.
+            return att;
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = prev; }
+        }
+    }
+    window.enviarPDFAsana = enviarPDFAsana;
 
     document.addEventListener('keydown', e => {
         if (e.key !== 'Escape') return;

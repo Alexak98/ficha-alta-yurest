@@ -1471,7 +1471,7 @@ function _calExportarPDF() {
     // las siguientes páginas no la repiten, pero sí el título del mes).
     const cabeceraHtml = `
         <div class="pdf-header">
-            <div class="pdf-logo"><img src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png" alt="Yurest"></div>
+            <div class="pdf-logo"><img src="https://www.yurest.com/nuevaweb/wp-content/uploads/2025/03/Yurest-sin-texto2.png" alt="Yurest"></div>
             <div class="pdf-head-right">
                 <h1>Calendario de sesiones</h1>
                 <div class="pdf-sub">

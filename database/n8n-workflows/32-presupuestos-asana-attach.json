@@ -1,0 +1,119 @@
+{
+  "name": "Yurest - Presupuestos Asana Attach",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "presupuestos-asana-attach",
+        "responseMode": "responseNode",
+        "authentication": "basicAuth",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh-asa-attach",
+      "name": "Webhook POST Attach",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "presupuestos-asana-attach",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "BASIC_AUTH_CREDENTIAL_ID",
+          "name": "Yurest Portal Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Endpoint para adjuntar el PDF del presupuesto a la tarea de Asana\n// que originó la importación. El front genera el PDF con html2pdf, lo\n// codifica a base64 y nos lo manda en JSON. Aquí lo convertimos a un\n// item binario que el nodo httpRequest siguiente envía como\n// multipart/form-data al endpoint /tasks/{gid}/attachments de Asana.\n//\n// Body esperado:\n//   {\n//     asana_gid:   '12345678901234',          // gid de la tarea destino\n//     filename:    'PRES-0042.pdf',           // nombre del archivo\n//     pdf_base64:  '<base64 sin data: prefix>' // contenido del PDF\n//   }\nconst raw = $input.first().json || {};\nconst b = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\nconst asana_gid = String(b.asana_gid || '').trim();\nconst filename  = String(b.filename  || 'presupuesto.pdf').trim();\nlet pdf_base64 = String(b.pdf_base64 || '').trim();\nif (pdf_base64.startsWith('data:')) {\n  // Quita el prefijo \"data:application/pdf;base64,\" si el front no lo limpió.\n  const i = pdf_base64.indexOf(',');\n  if (i >= 0) pdf_base64 = pdf_base64.slice(i + 1);\n}\nconst errores = [];\nif (!asana_gid)                          errores.push('asana_gid obligatorio');\nif (asana_gid && !/^\\d{6,}$/.test(asana_gid)) errores.push('asana_gid debe ser numérico');\nif (!pdf_base64)                         errores.push('pdf_base64 obligatorio');\nif (pdf_base64.length > 12 * 1024 * 1024) errores.push('pdf_base64 supera ~9 MB de PDF (limite por upload)');\nif (errores.length) {\n  return [{ json: { __error: true, __errores: errores } }];\n}\n\nconst buf = Buffer.from(pdf_base64, 'base64');\nreturn [{\n  json: { asana_gid, filename },\n  binary: {\n    file: {\n      data: buf.toString('base64'),\n      mimeType: 'application/pdf',\n      fileName: filename\n    }\n  }\n}];"
+      },
+      "id": "prep-attach",
+      "name": "Preparar binario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://app.asana.com/api/1.0/tasks/{{ $json.asana_gid }}/attachments",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "asa-post-attach",
+      "name": "POST Asana Attachment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "credentials": {
+        "asanaApi": {
+          "id": "ASANA_CREDENTIAL_ID",
+          "name": "Asana Yurest"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la respuesta de Asana al shape contractual\n//   { success, attachment, errores }\n// donde attachment = { gid, name, permanent_url, ... } cuando todo va\n// bien. Si Preparar binario emitió __error, lo propagamos sin tocar Asana.\nconst prep = $('Preparar binario').first().json || {};\nif (prep.__error) {\n  return [{ json: { success: false, attachment: null, errores: prep.__errores || ['validación falló'] } }];\n}\nconst resp = ($input.first() || {}).json || {};\nif (resp && resp.errors && Array.isArray(resp.errors)) {\n  return [{ json: { success: false, attachment: null, errores: resp.errors.map(e => e.message || String(e)) } }];\n}\nconst data = resp.data || resp;\nif (!data || !data.gid) {\n  return [{ json: { success: false, attachment: null, errores: ['Asana no devolvió un attachment válido'] } }];\n}\nreturn [{ json: {\n  success: true,\n  attachment: {\n    gid: data.gid,\n    name: data.name || null,\n    permanent_url: data.permanent_url || data.view_url || null,\n    download_url:  data.download_url || null\n  },\n  errores: []\n} }];"
+      },
+      "id": "fmt-attach",
+      "name": "Formatear respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin",  "value": "*" },
+              { "name": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+              { "name": "Content-Type",                 "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "asa-respond-attach",
+      "name": "Respond Attach",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1040, 300]
+    }
+  ],
+  "connections": {
+    "Webhook POST Attach": { "main": [[{ "node": "Preparar binario", "type": "main", "index": 0 }]] },
+    "Preparar binario":    { "main": [[{ "node": "POST Asana Attachment", "type": "main", "index": 0 }]] },
+    "POST Asana Attachment": { "main": [[{ "node": "Formatear respuesta", "type": "main", "index": 0 }]] },
+    "Formatear respuesta": { "main": [[{ "node": "Respond Attach", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

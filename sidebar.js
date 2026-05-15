@@ -331,7 +331,7 @@
             <div class="sidebar-hd">
                 <div class="sidebar-brand">
                     <img class="sidebar-brand-logo"
-                         src="https://www.yurest.com/wp-content/uploads/2022/10/logotipo-yurest-rojo.png"
+                         src="https://www.yurest.com/nuevaweb/wp-content/uploads/2025/03/Yurest-sin-texto2.png"
                          alt="Yurest">
                 </div>
                 <button class="sidebar-close" onclick="closeSidebar()" aria-label="Cerrar menú">✕</button>

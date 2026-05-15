@@ -296,6 +296,13 @@
         // database/n8n-workflows/31-presupuestos-asana.json.
         presupuestosAsana:    `${WEBHOOK_BASE}/presupuestos-asana`,
 
+        // Adjuntar el PDF del presupuesto generado a la tarea de Asana
+        // de origen. El front genera el PDF con html2pdf, lo codifica a
+        // base64 y lo POSTea aquí; n8n lo sube como attachment via
+        // multipart a /tasks/{gid}/attachments. Workflow n8n en
+        // database/n8n-workflows/32-presupuestos-asana-attach.json.
+        presupuestosAsanaAttach: `${WEBHOOK_BASE}/presupuestos-asana-attach`,
+
         // Ofertas (departamento Comercial): ofertas generadas por el
         // configurador. Listado GET con filtros; GET con ?id=<uuid>
         // devuelve una sola. POST con `action` (create/update/archivar/
