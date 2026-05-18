@@ -233,7 +233,10 @@
         try {
             const qs = verArchivadas ? '?incluir_archivadas=1' : '';
             const res = await YurestConfig.apiFetch(EP + qs, { method: 'GET' });
-            DATA = Array.isArray(res?.ofertas) ? res.ofertas : [];
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            DATA = Array.isArray(data?.ofertas) ? data.ofertas
+                 : Array.isArray(data) ? data : [];
             poblarFiltroComercial();
             poblarChips();
             render();

@@ -4437,11 +4437,14 @@ async function _cfgSaveOferta(action, extras){
       method: 'POST',
       body: JSON.stringify({ action: action, oferta: oferta })
     });
-    if (res && res.success && res.oferta && res.oferta.id) {
-      _cfgOfertaId = res.oferta.id;
-      return res.oferta.id;
+    if (!res.ok) { console.warn('[ofertas] save HTTP', res.status); return null; }
+    var data = null;
+    try { data = await res.json(); } catch(_){}
+    if (data && data.success && data.oferta && data.oferta.id) {
+      _cfgOfertaId = data.oferta.id;
+      return data.oferta.id;
     }
-    if (res && res.errores && res.errores.length) console.warn('[ofertas] save errors:', res.errores);
+    if (data && data.errores && data.errores.length) console.warn('[ofertas] save errors:', data.errores);
     return null;
   } catch (e) {
     console.warn('[ofertas] save error:', e);
