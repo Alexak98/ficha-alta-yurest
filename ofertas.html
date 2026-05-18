@@ -76,6 +76,27 @@
         /* Action button */
         .btn-action { padding:5px 12px;font-size:.78rem;font-weight:600;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;color:#475569;cursor:pointer;transition:all .15s;font-family:inherit }
         .btn-action:hover { border-color:#fc5858;color:#fc5858 }
+        .btn-action.danger:hover { border-color:#dc2626;color:#dc2626 }
+        .btn-action.primary { background:#fc5858;border-color:#fc5858;color:#fff }
+        .btn-action.primary:hover { background:#e64545;border-color:#e64545;color:#fff }
+        .row-actions { display:inline-flex;gap:6px;justify-content:flex-end }
+
+        /* Form editar */
+        .edit-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px 24px }
+        .edit-field { display:flex;flex-direction:column;gap:4px }
+        .edit-field label { font-size:.72rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em }
+        .edit-field input,
+        .edit-field select,
+        .edit-field textarea { width:100%;padding:8px 12px;font-family:inherit;font-size:.88rem;color:#0f172a;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;box-sizing:border-box }
+        .edit-field input:focus,
+        .edit-field select:focus,
+        .edit-field textarea:focus { outline:none;border-color:#fc5858;box-shadow:0 0 0 3px rgba(252,88,88,.12) }
+        .edit-field.full { grid-column:1 / -1 }
+        .edit-field textarea { resize:vertical;min-height:80px;font-family:inherit }
+        .edit-readonly { font-size:.85rem;color:#64748b;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px }
+        .modal-footer { display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid #e2e8f0;background:#fafbfc;border-radius:0 0 14px 14px }
+        .edit-msg { font-size:.82rem;color:#dc2626;margin:8px 0 0;display:none }
+        .edit-msg.show { display:block }
 
         /* Modal detalle */
         .modal-overlay { position:fixed;inset:0;background:rgba(15,20,40,.55);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px }
@@ -185,6 +206,92 @@
                 <button class="modal-close" onclick="cerrarModal()" aria-label="Cerrar">×</button>
             </div>
             <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Modal editar oferta -->
+    <div class="modal-overlay" id="modal-editar" onclick="if(event.target===this)cerrarEdicion()">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="edit-title">Editar oferta</h3>
+                <button class="modal-close" onclick="cerrarEdicion()" aria-label="Cerrar">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-id">
+                <div class="detalle-section-title" style="margin-top:0">Cliente</div>
+                <div class="edit-grid">
+                    <div class="edit-field">
+                        <label for="edit-sociedad">Sociedad</label>
+                        <input id="edit-sociedad" type="text" maxlength="120">
+                    </div>
+                    <div class="edit-field">
+                        <label for="edit-cif">CIF / NIF</label>
+                        <input id="edit-cif" type="text" maxlength="20" style="text-transform:uppercase">
+                    </div>
+                    <div class="edit-field">
+                        <label for="edit-nombre">Contacto</label>
+                        <input id="edit-nombre" type="text" maxlength="120">
+                    </div>
+                    <div class="edit-field">
+                        <label for="edit-email">Email</label>
+                        <input id="edit-email" type="email" maxlength="120">
+                    </div>
+                    <div class="edit-field">
+                        <label for="edit-comercial">Comercial</label>
+                        <select id="edit-comercial">
+                            <option value="">— Selecciona —</option>
+                            <option value="Borja Pastor">Borja Pastor</option>
+                            <option value="Ivan Ramirez">Ivan Ramirez</option>
+                            <option value="Laura Vaquero">Laura Vaquero</option>
+                            <option value="Pedro Martin">Pedro Martin</option>
+                            <option value="Santiago Gonzalez">Santiago Gonzalez</option>
+                            <option value="Springboard Monica">Springboard Monica</option>
+                            <option value="Springboard Pau">Springboard Pau</option>
+                        </select>
+                    </div>
+                    <div class="edit-field">
+                        <label for="edit-tipo">Tipo plan</label>
+                        <select id="edit-tipo">
+                            <option value="">— Selecciona —</option>
+                            <option value="lite">Lite</option>
+                            <option value="planes">Planes (Pro)</option>
+                            <option value="corporate">Corporate</option>
+                            <option value="corporate_cp">Corporate CP</option>
+                            <option value="corp_cocina">Corp Cocina</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="detalle-section">
+                    <div class="detalle-section-title">Estado y notas</div>
+                    <div class="edit-grid">
+                        <div class="edit-field">
+                            <label for="edit-estado">Estado</label>
+                            <select id="edit-estado">
+                                <option value="borrador">Borrador</option>
+                                <option value="enviada">Enviada</option>
+                                <option value="aceptada">Aceptada</option>
+                                <option value="rechazada">Rechazada</option>
+                                <option value="caducada">Caducada</option>
+                            </select>
+                        </div>
+                        <div class="edit-field">
+                            <label>Snapshot</label>
+                            <div class="edit-readonly" id="edit-snapshot">—</div>
+                        </div>
+                        <div class="edit-field full">
+                            <label for="edit-notas">Notas internas</label>
+                            <textarea id="edit-notas" maxlength="2000" placeholder="Comentarios para el equipo, contexto de la negociación, etc."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="edit-msg" id="edit-msg"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-action" onclick="cerrarEdicion()">Cancelar</button>
+                <button class="btn-action primary" id="edit-save-btn" onclick="guardarEdicion()">Guardar cambios</button>
+            </div>
         </div>
     </div>
 
@@ -326,7 +433,13 @@
                 <td class="num">${fmtEur(o.final_amount)}</td>
                 <td><span class="badge-estado estado-${esc(o.estado)}">${esc(o.estado)}</span></td>
                 <td style="text-align:right">
-                    <button class="btn-action" onclick="verDetalle('${esc(o.id)}')">Ver detalle</button>
+                    <div class="row-actions">
+                        <button class="btn-action" onclick="verDetalle('${esc(o.id)}')" title="Ver detalle">Ver</button>
+                        ${o.deleted_at
+                            ? `<button class="btn-action" onclick="reactivarOferta('${esc(o.id)}')" title="Restaurar">Reactivar</button>`
+                            : `<button class="btn-action" onclick="editarOferta('${esc(o.id)}')" title="Editar">Editar</button>
+                               <button class="btn-action danger" onclick="archivarOferta('${esc(o.id)}')" title="Archivar (soft-delete)">Archivar</button>`}
+                    </div>
                 </td>
             </tr>`;
         }).join('');
@@ -384,6 +497,117 @@
         document.getElementById('modal-oferta').classList.add('open');
     }
     function cerrarModal() { document.getElementById('modal-oferta').classList.remove('open'); }
+
+    // ── Editar oferta ────────────────────────────────────────────────────
+    function editarOferta(id) {
+        const o = DATA.find(x => String(x.id) === String(id));
+        if (!o) return;
+        document.getElementById('edit-id').value       = o.id;
+        document.getElementById('edit-sociedad').value = o.cliente_sociedad || '';
+        document.getElementById('edit-cif').value      = o.cliente_cif || '';
+        document.getElementById('edit-nombre').value   = o.cliente_nombre || '';
+        document.getElementById('edit-email').value    = o.cliente_email || '';
+        document.getElementById('edit-comercial').value= o.comercial || '';
+        document.getElementById('edit-tipo').value     = o.tipo_plan || '';
+        document.getElementById('edit-estado').value   = o.estado || 'borrador';
+        document.getElementById('edit-notas').value    = o.notas || '';
+        const planLbl = PLAN_DISPLAY_NAMES[o.plan] || o.plan || '—';
+        const billing = o.billing === 'annual' ? 'anual' : 'mensual';
+        document.getElementById('edit-snapshot').textContent =
+            `${planLbl} · ${billing} · ${o.locales || 1} local${(o.locales || 1) > 1 ? 'es' : ''} · ${fmtEur(o.final_amount)}`;
+        document.getElementById('edit-msg').classList.remove('show');
+        document.getElementById('edit-msg').textContent = '';
+        document.getElementById('edit-title').textContent =
+            `Editar oferta · ${o.cliente_sociedad || o.cliente_nombre || 'Sin cliente'}`;
+        document.getElementById('modal-editar').classList.add('open');
+    }
+    function cerrarEdicion() { document.getElementById('modal-editar').classList.remove('open'); }
+
+    function _editError(msg) {
+        const el = document.getElementById('edit-msg');
+        el.textContent = msg;
+        el.classList.add('show');
+    }
+
+    async function guardarEdicion() {
+        const id = document.getElementById('edit-id').value;
+        if (!id) return;
+        const email = document.getElementById('edit-email').value.trim();
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            _editError('Email no válido.');
+            return;
+        }
+        const oferta = {
+            id,
+            cliente_sociedad: document.getElementById('edit-sociedad').value.trim() || null,
+            cliente_cif:      document.getElementById('edit-cif').value.trim().toUpperCase() || null,
+            cliente_nombre:   document.getElementById('edit-nombre').value.trim() || null,
+            cliente_email:    email || null,
+            comercial:        document.getElementById('edit-comercial').value || null,
+            tipo_plan:        document.getElementById('edit-tipo').value || null,
+            estado:           document.getElementById('edit-estado').value,
+            notas:            document.getElementById('edit-notas').value.trim() || null
+        };
+        const btn = document.getElementById('edit-save-btn');
+        const lbl = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Guardando…';
+        try {
+            const res = await YurestConfig.apiFetch(EP, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'update', oferta })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            if (!data || !data.success) {
+                throw new Error((data && data.errores && data.errores.join(' · ')) || 'No se pudo guardar');
+            }
+            cerrarEdicion();
+            await cargar();
+        } catch (err) {
+            _editError('Error al guardar: ' + (err.message || err));
+        } finally {
+            btn.disabled = false; btn.textContent = lbl;
+        }
+    }
+
+    // ── Archivar / Reactivar ─────────────────────────────────────────────
+    async function archivarOferta(id) {
+        const o = DATA.find(x => String(x.id) === String(id));
+        if (!o) return;
+        const label = o.cliente_sociedad || o.cliente_nombre || 'sin cliente';
+        if (!window.confirm(`¿Archivar la oferta de "${label}"?\n\nDeja de contar en los KPIs y desaparece del listado por defecto. Puedes restaurarla activando "Mostrar archivadas".`)) return;
+        try {
+            const res = await YurestConfig.apiFetch(EP, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'archivar', oferta: { id } })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            if (!data || !data.success) {
+                throw new Error((data && data.errores && data.errores.join(' · ')) || 'No se pudo archivar');
+            }
+            await cargar();
+        } catch (err) {
+            alert('Error al archivar: ' + (err.message || err));
+        }
+    }
+
+    async function reactivarOferta(id) {
+        try {
+            const res = await YurestConfig.apiFetch(EP, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'reactivar', oferta: { id } })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            if (!data || !data.success) {
+                throw new Error((data && data.errores && data.errores.join(' · ')) || 'No se pudo reactivar');
+            }
+            await cargar();
+        } catch (err) {
+            alert('Error al reactivar: ' + (err.message || err));
+        }
+    }
 
     cargar();
     </script>
