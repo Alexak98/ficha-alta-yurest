@@ -74,7 +74,7 @@
         .empty p { margin:0 }
 
         /* Action button */
-        .btn-action { padding:5px 12px;font-size:.78rem;font-weight:600;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;color:#475569;cursor:pointer;transition:all .15s;font-family:inherit }
+        .btn-action { display:inline-block;padding:5px 12px;font-size:.78rem;font-weight:600;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;color:#475569;cursor:pointer;transition:all .15s;font-family:inherit;text-decoration:none;line-height:1.4 }
         .btn-action:hover { border-color:#fc5858;color:#fc5858 }
         .btn-action.danger:hover { border-color:#dc2626;color:#dc2626 }
         .btn-action.primary { background:#fc5858;border-color:#fc5858;color:#fff }
@@ -434,7 +434,8 @@
                 <td><span class="badge-estado estado-${esc(o.estado)}">${esc(o.estado)}</span></td>
                 <td style="text-align:right">
                     <div class="row-actions">
-                        <button class="btn-action" onclick="verDetalle('${esc(o.id)}')" title="Ver detalle">Ver</button>
+                        <a class="btn-action" href="configurador.html?oferta=${esc(o.id)}" title="Abrir la oferta en el configurador">Ver</a>
+                        <button class="btn-action" onclick="verDetalle('${esc(o.id)}')" title="Resumen rápido en modal">Resumen</button>
                         ${o.deleted_at
                             ? `<button class="btn-action" onclick="reactivarOferta('${esc(o.id)}')" title="Restaurar">Reactivar</button>`
                             : `<button class="btn-action" onclick="editarOferta('${esc(o.id)}')" title="Editar">Editar</button>

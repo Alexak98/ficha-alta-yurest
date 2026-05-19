@@ -4631,6 +4631,89 @@ function _cfgPersistDraft(){
   _cfgOfertaSavePromise = _cfgSaveOferta(action, extras);
 }
 
+/* ═══ Cargar oferta existente vía ?oferta=<uuid> ═══
+   Permite que el botón "Ver" del listado de ofertas reabra la oferta tal
+   como se generó en el configurador (no sólo el resumen). Restaura la
+   configuración numérica (billing/plan/locales/addons/impl) y mantiene
+   el id en `_cfgOfertaId` para que futuras ediciones HAGAN UPDATE en vez
+   de crear una nueva fila. La baseline se stub-ea con placeholders neutros
+   — el snapshot original no guarda employees/facturación, pero estos campos
+   sólo afectan a los cuadros de "ahorro proyectado", no al pricing. */
+async function _cfgLoadFromUrl(){
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('oferta');
+    if (!id) return;
+    if (!window.YurestConfig || !YurestConfig.apiFetch) return;
+
+    var res = await YurestConfig.apiFetch(
+      YurestConfig.ENDPOINTS.ofertas + '?id=' + encodeURIComponent(id),
+      { method: 'GET' }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    var o = data && data.oferta;
+    if (!o) { alert('Oferta no encontrada (id=' + id + ')'); return; }
+
+    // Restaurar id para que toda mutación posterior sea UPDATE (sin duplicar fila).
+    _cfgOfertaId = o.id;
+
+    // Configuración numérica — exactamente la del snapshot original.
+    billing = (o.billing === 'monthly') ? 'monthly' : 'annual';
+    if (o.plan) plan = o.plan;
+    locales = parseInt(o.locales, 10) || 1;
+    if (o.impl) impl = o.impl;
+    if (o.addons && typeof o.addons === 'object') {
+      Object.keys(addons).forEach(function(k){ addons[k] = !!o.addons[k]; });
+    }
+
+    // Pre-fill ficha popup con los datos del cliente si los hubiera.
+    function _setVal(id, val){ var el=document.getElementById(id); if(el && val!=null) el.value = val; }
+    _setVal('fk-sociedad',  o.cliente_sociedad);
+    _setVal('fk-cif',       o.cliente_cif);
+    _setVal('fk-nombre',    o.cliente_nombre);
+    _setVal('fk-email',     o.cliente_email);
+    _setVal('fk-comercial', o.comercial);
+    _setVal('fk-tipo',      o.tipo_plan);
+
+    // Placeholders baseline para no bloquear showOffer(). No condicionan el
+    // pricing — sólo los cuadros de ROI proyectado (muestran cifras
+    // aproximadas si no se rellenan; el comercial puede ajustarlas).
+    if (employees == null) employees = 5;
+    if (baseline.facturacion == null) baseline.facturacion = 250000;
+    if (baseline.compras    == null) baseline.compras = 30;
+    if (baseline.rrhh       == null) baseline.rrhh = 30;
+
+    // Sincronizar inputs visibles del paso 1 con los placeholders, por si el
+    // comercial vuelve atrás a editar la baseline real.
+    _setVal('emp-input', employees);
+    _setVal('bl-facturacion', baseline.facturacion);
+    _setVal('bl-compras',     baseline.compras);
+    _setVal('bl-rrhh',        baseline.rrhh);
+
+    // Refrescar selectores y precios antes de pintar la vista.
+    if (typeof updPlanPrices === 'function')      updPlanPrices();
+    if (typeof updAddonPrices === 'function')     updAddonPrices();
+    if (typeof updImplItems === 'function')       updImplItems();
+    if (typeof updImplLock === 'function')        updImplLock();
+    if (typeof updatePlanGating === 'function')   updatePlanGating();
+    if (typeof updBar === 'function')             updBar();
+
+    // Saltar directo a la vista 4 (oferta).
+    if (typeof showOffer === 'function') showOffer();
+  } catch (err) {
+    console.warn('[configurador] no se pudo cargar la oferta:', err);
+    alert('No se pudo cargar la oferta: ' + (err.message || err));
+  }
+}
+
+// Disparar al cargar la página. Si el DOM aún no está listo, esperar.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _cfgLoadFromUrl);
+} else {
+  _cfgLoadFromUrl();
+}
+
 /* ═══ Flow: Configurador → Solicitud de Ficha ═══ */
 function _fkMapPlanToTipo(p){
   if(p==='lite')  return 'lite';
