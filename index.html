@@ -118,15 +118,18 @@
             <a href="#distribuidor-section"   data-target="distribuidor-section" class="fn-item fn-item-distribuidor"><span class="fn-num">04</span>Distribuidor</a>
             <a href="#jefe-proyecto-section"  data-target="jefe-proyecto-section" class="fn-item"><span class="fn-num">05</span>Jefe de Proyecto</a>
             <a href="#firmante-section"       data-target="firmante-section"     class="fn-item"><span class="fn-num">06</span>Firmante</a>
-            <a href="#tpv-section"            data-target="tpv-section"          class="fn-item"><span class="fn-num">07</span>TPV</a>
-            <a href="#financiero-section"     data-target="financiero-section"   class="fn-item"><span class="fn-num">08</span>Financiero</a>
-            <a href="#intfin-section"         data-target="intfin-section"       class="fn-item"><span class="fn-num">09</span>Integración financiera</a>
-            <a href="#credenciales-section"   data-target="credenciales-section" class="fn-item"><span class="fn-num">10</span>Credenciales</a>
+            <!-- Locales se promocionó al paso 07 porque el siguiente paso (TPV)
+                 ahora pide integración por local — necesitamos saber los locales
+                 antes de poder asignarles TPV. -->
+            <a href="#locales-container"      data-target="locales-container"    class="fn-item"><span class="fn-num">07</span>Locales</a>
+            <a href="#tpv-section"            data-target="tpv-section"          class="fn-item"><span class="fn-num">08</span>TPV</a>
+            <a href="#financiero-section"     data-target="financiero-section"   class="fn-item"><span class="fn-num">09</span>Financiero</a>
+            <a href="#intfin-section"         data-target="intfin-section"       class="fn-item"><span class="fn-num">10</span>Integración financiera</a>
+            <a href="#credenciales-section"   data-target="credenciales-section" class="fn-item"><span class="fn-num">11</span>Credenciales</a>
             <!-- Módulos se mantiene en DOM como checklist oculto (se rellena
                  automáticamente desde los paquetes del carrito) pero ya no
                  aparece en el nav lateral ni como card visible — el comercial
                  no tiene que seleccionar módulos a mano. -->
-            <a href="#locales-container"      data-target="locales-container"    class="fn-item"><span class="fn-num">11</span>Locales</a>
             <a href="#comentarios-section"    data-target="comentarios-section"  class="fn-item"><span class="fn-num">12</span>Comentarios</a>
             <a href="#sepa-section"           data-target="sepa-section"         class="fn-item"><span class="fn-num">13</span>SEPA</a>
             <a href="#documentos-section"     data-target="documentos-section"   class="fn-item"><span class="fn-num">14</span>Documentos</a>
@@ -604,66 +607,35 @@
         </div>
     </div>
 
+    <!-- Locales (paso 07): bloques dinámicos creados desde local-template.
+         Promocionado desde paso 11 para que el siguiente (TPV) pueda asignar
+         integración por local. El badge numérico va dentro de cada local-card
+         renumerado dinámicamente por actualizarNumeracion(). -->
+    <div id="locales-container"></div>
+
+    <!-- TPV (paso 08): integración por local. La sección no tiene campos
+         propios; renderTpvPerLocal() pinta un bloque por cada .local-card
+         existente con su select de TPV + contacto + email + toggle "no
+         integrado". Si dos locales usan distinto TPV (caso multi-marca),
+         cada uno se asigna por separado. -->
     <div class="card" id="tpv-section">
         <div class="card-header">
-            <span class="section-num">07</span>
-            <h3>Integración TPV</h3>
-            <label class="toggle-tpv-no-int" title="Marcar si el TPV no está integrado">
-                <input type="checkbox" id="tpv_no_integrado_check" onchange="toggleTpvNoIntegrado(this.checked)">
-                <span>TPV no integrado</span>
-            </label>
+            <span class="section-num">08</span>
+            <h3>Integración TPV (por local)</h3>
         </div>
-        <div class="form-grid" id="tpv-integrado-fields">
-            <div class="form-group col-4">
-                <label for="tpv">Sistema TPV</label>
-                <select id="tpv">
-                    <option value="">— Selecciona un TPV —</option>
-                    <option value="Agora">Agora</option>
-                    <option value="BDP">BDP</option>
-                    <option value="Camarero10">Camarero10</option>
-                    <option value="Central Cash">Central Cash</option>
-                    <option value="DSTNet">DSTNet</option>
-                    <option value="Firesfot">Firesfot</option>
-                    <option value="Glop">Glop</option>
-                    <option value="Hosteltactil">Hosteltactil</option>
-                    <option value="Lastapp">Lastapp</option>
-                    <option value="Neo">Neo</option>
-                    <option value="Numier">Numier</option>
-                    <option value="Revo">Revo</option>
-                    <option value="Square">Square</option>
-                    <option value="Thac4">Thac4</option>
-                    <option value="Yantar">Yantar</option>
-                </select>
-            </div>
-            <div class="form-group col-4">
-                <label for="tpv_contacto">Persona de contacto</label>
-                <input type="text" id="tpv_contacto" placeholder="Nombre completo">
-            </div>
-            <div class="form-group col-4">
-                <label for="tpv_email">Email</label>
-                <input type="email" id="tpv_email" placeholder="contacto@tpv.com">
-            </div>
+        <p class="tpv-section-hint" id="tpv-section-hint" style="margin:0 0 14px;color:#64748b;font-size:0.86rem;line-height:1.5">
+            Asigna a cada local el sistema TPV con el que está integrado. Si en un local el TPV no está integrado, marca el toggle correspondiente. Si dos locales comparten TPV, basta con seleccionarlo igual en ambos.
+        </p>
+        <div id="tpv-empty-hint" class="hidden" style="text-align:center;padding:22px 16px;color:#94a3b8;font-size:0.86rem;background:#f8fafc;border:1px dashed #e2e8f0;border-radius:8px">
+            Crea al menos un local en el paso 07 para poder asignarle integración.
         </div>
-        <div class="form-grid hidden" id="tpv-no-integrado-fields">
-            <div class="form-group col-4">
-                <label for="tpv_ni_nombre">Nombre del TPV</label>
-                <input type="text" id="tpv_ni_nombre" placeholder="Nombre del TPV no integrado">
-            </div>
-            <div class="form-group col-4">
-                <label for="tpv_ni_contacto">Persona de referencia</label>
-                <input type="text" id="tpv_ni_contacto" placeholder="Nombre completo">
-            </div>
-            <div class="form-group col-4">
-                <label for="tpv_ni_email">Email de referencia</label>
-                <input type="email" id="tpv_ni_email" placeholder="contacto@ejemplo.com">
-            </div>
-        </div>
+        <div id="tpv-per-local-container"></div>
     </div>
 
     <div class="card" id="financiero-section">
         <div class="card-header card-header--collapsible" onclick="toggleFinanciero()">
             <div style="display:flex;align-items:center;gap:12px">
-                <span class="section-num">08</span>
+                <span class="section-num">09</span>
                 <h3>Datos Financieros</h3>
             </div>
             <svg aria-hidden="true" id="fin-chevron" class="fin-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -862,7 +834,7 @@
     -->
     <div class="card" id="intfin-section">
         <div class="card-header">
-            <span class="section-num">09</span>
+            <span class="section-num">10</span>
             <h3>Integración financiera</h3>
         </div>
         <div class="form-grid">
@@ -892,7 +864,7 @@
 
     <div class="card" id="credenciales-section">
         <div class="card-header">
-            <span class="section-num">10</span>
+            <span class="section-num">11</span>
             <h3>Credenciales</h3>
         </div>
         <div class="form-grid">
@@ -938,7 +910,8 @@
         </div>
     </div>
 
-    <div id="locales-container"></div>
+    <!-- (el #locales-container original vivía aquí — promocionado al paso 07,
+         entre Firmante y TPV. El comentarios-section queda como paso 12.) -->
 
     <div class="card" id="comentarios-section">
         <div class="card-header">
@@ -1015,7 +988,7 @@
         <div class="form-grid">
             <div class="form-group col-6">
                 <label>Nombre del Local *</label>
-                <input type="text" data-field="nombre" placeholder="Ej: Sucursal Centro" oninput="sincronizarRecurrenciaMensual(); actualizarCorpModuleLocales()" aria-label="Nombre del Local">
+                <input type="text" data-field="nombre" placeholder="Ej: Sucursal Centro" oninput="sincronizarRecurrenciaMensual(); actualizarCorpModuleLocales(); if(typeof renderTpvPerLocal==='function') renderTpvPerLocal();" aria-label="Nombre del Local">
             </div>
             <div class="form-group col-6">
                 <label>Email de contacto</label>
@@ -1177,6 +1150,10 @@
         if (esCorp(_tipoActual)) recalcularCarrito(_tipoActual);
         // La recurrencia de Planes se cobra por local: re-render al añadir/quitar.
         if (_tipoActual === 'planes') sincronizarPlanesRecurrencia();
+        // El paso 08 (TPV) ahora renderiza una entrada por cada .local-card:
+        // cualquier alta/baja/renombre de local debe propagarse a la sección
+        // de integración para que el comercial vea aparecer/desaparecer cards.
+        if (typeof renderTpvPerLocal === 'function') renderTpvPerLocal();
     }
 
     function toggleFinanciero() {
@@ -2209,21 +2186,131 @@
     }
 
     // ── TPV no integrado ──────────────────────────────────────────────────────
-    function toggleTpvNoIntegrado(noIntegrado) {
-        document.getElementById('tpv-integrado-fields').classList.toggle('hidden', noIntegrado);
-        document.getElementById('tpv-no-integrado-fields').classList.toggle('hidden', !noIntegrado);
-        if (noIntegrado) {
-            // Limpiar campos TPV integrado
-            document.getElementById('tpv').value = '';
-            document.getElementById('tpv_contacto').value = '';
-            document.getElementById('tpv_email').value = '';
-        } else {
-            // Limpiar campos TPV no integrado
-            document.getElementById('tpv_ni_nombre').value = '';
-            document.getElementById('tpv_ni_contacto').value = '';
-            document.getElementById('tpv_ni_email').value = '';
-        }
+    // ── TPV por local ───────────────────────────────────────────────────
+    // El paso 08 ahora renderiza un bloque por cada .local-card existente
+    // con su propio sistema TPV + contacto + email + toggle "no integrado",
+    // pensado para clientes multi-local con vendor distinto por local
+    // (típico en grupos hosteleros que crecen por adquisición).
+    const TPV_OPCIONES = ['Agora','BDP','Camarero10','Central Cash','DSTNet','Firesfot','Glop','Hosteltactil','Lastapp','Neo','Numier','Revo','Square','Thac4','Yantar'];
+
+    function _tpvEscAttr(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
+
+    // Captura el estado actual de los inputs TPV por local. Lo usamos para
+    // preservar lo escrito al re-renderizar (cuando cambia el número o
+    // nombre de locales). Devuelve un array indexado por posición de local.
+    function _captureTpvPorLocal() {
+        const blocks = document.querySelectorAll('#tpv-per-local-container .tpv-local-block');
+        return Array.from(blocks).map(b => ({
+            tpv:              (b.querySelector('.tpv-select')?.value || '').trim(),
+            tpv_contacto:     (b.querySelector('.tpv-contacto-input')?.value || '').trim(),
+            tpv_email:        (b.querySelector('.tpv-email-input')?.value || '').trim(),
+            tpv_no_integrado: !!(b.querySelector('.tpv-no-int-cb')?.checked),
+            tpv_ni_nombre:    (b.querySelector('.tpv-ni-nombre-input')?.value || '').trim(),
+            tpv_ni_contacto:  (b.querySelector('.tpv-ni-contacto-input')?.value || '').trim(),
+            tpv_ni_email:     (b.querySelector('.tpv-ni-email-input')?.value || '').trim()
+        }));
+    }
+
+    // Pinta el contenedor tpv-per-local-container con un bloque por local.
+    // Si `presetData` viene definido (array), lo usa como fuente — útil
+    // al cargar una ficha existente. Si no, captura los valores actuales
+    // y los preserva en el re-render.
+    function renderTpvPerLocal(presetData) {
+        const container = document.getElementById('tpv-per-local-container');
+        const empty     = document.getElementById('tpv-empty-hint');
+        if (!container) return;
+
+        const previo  = Array.isArray(presetData) ? presetData : _captureTpvPorLocal();
+        const locales = (typeof getLocales === 'function') ? getLocales() : [];
+        container.innerHTML = '';
+
+        if (!locales.length) {
+            if (empty) empty.classList.remove('hidden');
+            return;
+        }
+        if (empty) empty.classList.add('hidden');
+
+        const optsHtml = ['<option value="">— Selecciona un TPV —</option>']
+            .concat(TPV_OPCIONES.map(o => `<option value="${o}">${o}</option>`)).join('');
+
+        locales.forEach((loc, i) => {
+            const d = previo[i] || {};
+            const noInt = !!d.tpv_no_integrado;
+            const block = document.createElement('div');
+            block.className = 'tpv-local-block';
+            block.dataset.localIdx = String(i);
+            block.style.cssText = 'border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:12px;background:#fff';
+            block.innerHTML = `
+                <div class="tpv-local-header" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+                    <span class="section-num" style="background:#fc5858;color:#fff;flex-shrink:0">${String(i+1).padStart(2,'0')}</span>
+                    <h4 style="margin:0;font-size:0.95rem;font-weight:700;color:#0f172a">${_tpvEscAttr(loc.nombre || ('Local ' + (i+1)))}</h4>
+                    <label class="toggle-tpv-no-int" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:0.82rem;color:#64748b;font-weight:600" title="Marca si este local opera con un TPV no integrado con Yurest">
+                        <input type="checkbox" class="tpv-no-int-cb" data-local-idx="${i}" ${noInt ? 'checked' : ''} onchange="onTpvNoIntegradoChange(this)">
+                        <span>TPV no integrado</span>
+                    </label>
+                </div>
+                <div class="form-grid tpv-integ-fields" ${noInt ? 'style="display:none"' : ''}>
+                    <div class="form-group col-4">
+                        <label>Sistema TPV</label>
+                        <select class="tpv-select" data-local-idx="${i}">${optsHtml}</select>
+                    </div>
+                    <div class="form-group col-4">
+                        <label>Persona de contacto</label>
+                        <input type="text" class="tpv-contacto-input" data-local-idx="${i}" placeholder="Nombre completo">
+                    </div>
+                    <div class="form-group col-4">
+                        <label>Email</label>
+                        <input type="email" class="tpv-email-input" data-local-idx="${i}" placeholder="contacto@tpv.com">
+                    </div>
+                </div>
+                <div class="form-grid tpv-noint-fields" ${noInt ? '' : 'style="display:none"'}>
+                    <div class="form-group col-4">
+                        <label>Nombre del TPV</label>
+                        <input type="text" class="tpv-ni-nombre-input" data-local-idx="${i}" placeholder="Nombre del TPV no integrado">
+                    </div>
+                    <div class="form-group col-4">
+                        <label>Persona de referencia</label>
+                        <input type="text" class="tpv-ni-contacto-input" data-local-idx="${i}" placeholder="Nombre completo">
+                    </div>
+                    <div class="form-group col-4">
+                        <label>Email de referencia</label>
+                        <input type="email" class="tpv-ni-email-input" data-local-idx="${i}" placeholder="contacto@ejemplo.com">
+                    </div>
+                </div>
+            `;
+            container.appendChild(block);
+
+            // Restaurar valores tras inyectar el DOM. Los select y los inputs
+            // de texto aceptan value asignado vía propiedad (sin atributo).
+            const setVal = (cls, v) => { const el = block.querySelector(cls); if (el && v != null) el.value = v; };
+            setVal('.tpv-select',           d.tpv);
+            setVal('.tpv-contacto-input',   d.tpv_contacto);
+            setVal('.tpv-email-input',      d.tpv_email);
+            setVal('.tpv-ni-nombre-input',  d.tpv_ni_nombre);
+            setVal('.tpv-ni-contacto-input',d.tpv_ni_contacto);
+            setVal('.tpv-ni-email-input',   d.tpv_ni_email);
+        });
+    }
+    window.renderTpvPerLocal = renderTpvPerLocal;
+
+    function onTpvNoIntegradoChange(cb) {
+        const block = cb.closest('.tpv-local-block');
+        if (!block) return;
+        const integ = block.querySelector('.tpv-integ-fields');
+        const noint = block.querySelector('.tpv-noint-fields');
+        if (integ) integ.style.display = cb.checked ? 'none' : '';
+        if (noint) noint.style.display = cb.checked ? ''     : 'none';
+    }
+    window.onTpvNoIntegradoChange = onTpvNoIntegradoChange;
+
+    // Stub backwards-compat: el flujo de reset y cargarFicha aún llaman
+    // toggleTpvNoIntegrado(boolean) heredado del modelo global. Lo dejamos
+    // como no-op para no romper esos paths; la lógica per-local va aparte.
+    function toggleTpvNoIntegrado(_) { /* per-local ahora; no-op */ }
 
     function toggleLite(isLite) {
         // Mostrar/ocultar pregunta de tablet
@@ -2721,13 +2808,19 @@
             'Firmante Mail':      document.getElementById('firm_mail').value.trim(),
             'Firmante DNI':       document.getElementById('firm_dni').value.trim().toUpperCase(),
             'Firmante Puesto':    document.getElementById('firm_puesto').value.trim(),
-            'TPV':            document.getElementById('tpv').value,
-            'TPV Contacto':   document.getElementById('tpv_contacto').value.trim(),
-            'TPV Email':      document.getElementById('tpv_email').value.trim(),
-            'TPV No Integrado': document.getElementById('tpv_no_integrado_check').checked ? 'Sí' : '',
-            'TPV NI Nombre':    document.getElementById('tpv_ni_nombre').value.trim(),
-            'TPV NI Contacto':  document.getElementById('tpv_ni_contacto').value.trim(),
-            'TPV NI Email':     document.getElementById('tpv_ni_email').value.trim(),
+            // TPV: ahora por local (paso 08 renderiza un bloque por .local-card).
+            // Las claves globales 'TPV', 'TPV Contacto', etc. siguen en el payload
+            // pero las derivamos del primer local — backwards-compat para reports
+            // y consumidores externos que leen fichas_alta.tpv*; el detalle
+            // por local se persiste dentro de cada locales[i].tpv*.
+            // Los valores reales por local se inyectan más abajo en data.locales[i].
+            'TPV':              '',  // placeholder; sobrescrito tras leer locales
+            'TPV Contacto':     '',
+            'TPV Email':        '',
+            'TPV No Integrado': '',
+            'TPV NI Nombre':    '',
+            'TPV NI Contacto':  '',
+            'TPV NI Email':     '',
             'Lite':           isLite ? 'Sí' : '',
             // Lite: necesidad de envío de tablet
             'Necesita Tablet': isLite ? (hasTablet ? 'Sí' : 'No') : '',
@@ -2809,6 +2902,38 @@
             }
             data.locales.push(local);
         });
+
+        // Inyectar TPV por local desde la sección paso 08. El índice del
+        // .tpv-local-block se alinea con el orden de .local-card (mismo
+        // 0-based getLocales()). Si en algún momento se desincronizan
+        // (raro, sólo si alguien manipula DOM a mano), los pares sobrantes
+        // se ignoran sin reventar.
+        const _tpvSnap = (typeof _captureTpvPorLocal === 'function') ? _captureTpvPorLocal() : [];
+        data.locales.forEach((loc, i) => {
+            const t = _tpvSnap[i] || {};
+            loc.tpv              = t.tpv              || '';
+            loc.tpv_contacto     = t.tpv_contacto     || '';
+            loc.tpv_email        = t.tpv_email        || '';
+            loc.tpv_no_integrado = !!t.tpv_no_integrado;
+            loc.tpv_ni_nombre    = t.tpv_ni_nombre    || '';
+            loc.tpv_ni_contacto  = t.tpv_ni_contacto  || '';
+            loc.tpv_ni_email     = t.tpv_ni_email     || '';
+        });
+
+        // Backwards-compat: las columnas globales tpv* en fichas_alta se
+        // mantienen para reports/integraciones externas. Las derivamos del
+        // primer local (el "principal") — si en el futuro borramos esas
+        // columnas, esta sección desaparece sin tocar nada más.
+        const _l0 = data.locales[0];
+        if (_l0) {
+            data['TPV']              = _l0.tpv || '';
+            data['TPV Contacto']     = _l0.tpv_contacto || '';
+            data['TPV Email']        = _l0.tpv_email || '';
+            data['TPV No Integrado'] = _l0.tpv_no_integrado ? 'Sí' : '';
+            data['TPV NI Nombre']    = _l0.tpv_ni_nombre || '';
+            data['TPV NI Contacto']  = _l0.tpv_ni_contacto || '';
+            data['TPV NI Email']     = _l0.tpv_ni_email || '';
+        }
 
         return data;
     }
@@ -3261,7 +3386,8 @@
          'email','email_factura','email_cc',
          'jp_nombre','jp_apellidos','jp_rol','jp_telefono','jp_mail',
          'firm_nombre','firm_apellidos','firm_mail','firm_dni','firm_puesto',
-         'tpv_contacto','tpv_email','tpv_ni_nombre','tpv_ni_contacto','tpv_ni_email',
+         // TPV pasó a ser per-local (paso 08, renderizado dinámico);
+         // resetForm() ya no necesita limpiar inputs globales que ya no existen.
          'entrega_calle','entrega_numero','entrega_cp','entrega_municipio','entrega_provincia',
          'contacto_nombre','contacto_email','contacto_telefono',
          'dist_empresa','dist_cif','dist_direccion','dist_cp','dist_contacto','dist_mail','dist_telefono',
@@ -3272,11 +3398,11 @@
         document.getElementById('firmas_no').checked = true;
         toggleFirmas(false);
         document.querySelectorAll('input[name="firmas"]').forEach(r => r.checked = false);
-        document.getElementById('tpv').value = '';
+        // TPV ya no tiene inputs globales; renderTpvPerLocal() repintará el
+        // contenedor vacío en cuanto se eliminen los .local-card via reset.
         document.getElementById('dist_check').checked = false;
         toggleSeccionDistribuidor(false);
-        document.getElementById('tpv_no_integrado_check').checked = false;
-        toggleTpvNoIntegrado(false);
+        if (typeof renderTpvPerLocal === 'function') renderTpvPerLocal([]);
         document.getElementById('lite_check').checked = false;
         toggleLite(false);
         document.getElementById('pct_30').checked = true;
@@ -3401,17 +3527,21 @@
         set('firm_mail',      'Firmante Mail', 'firm_mail');
         set('firm_dni',       'Firmante DNI', 'firm_dni');
         set('firm_puesto',    'Firmante Puesto', 'firm_puesto');
-        set('tpv',            'TPV', 'tpv');
-        set('tpv_contacto',   'TPV Contacto', 'tpv_contacto');
-        set('tpv_email',      'TPV Email', 'tpv_email');
-        set('tpv_ni_nombre',   'TPV NI Nombre', 'tpv_ni_nombre');
-        set('tpv_ni_contacto', 'TPV NI Contacto', 'tpv_ni_contacto');
-        set('tpv_ni_email',    'TPV NI Email', 'tpv_ni_email');
-        // TPV no integrado
-        if (f['TPV No Integrado'] === 'Sí' || f.tpv_no_integrado === true || f.tpv_no_integrado === 'true') {
-            document.getElementById('tpv_no_integrado_check').checked = true;
-            toggleTpvNoIntegrado(true);
-        }
+        // TPV: ya no hay inputs globales — el contenedor del paso 08 se
+        // poblará desde data.locales[].tpv* en cuanto cargarLocales() pinte
+        // las .local-card. _renderTpvDesdeLocales() coge esos datos y los
+        // pasa a renderTpvPerLocal(). Si una ficha legacy no trae TPV
+        // por local pero sí trae tpv* global en fichas_alta, los hereda al
+        // primer local para no perder la info en la primera apertura.
+        window._fichaPendingTpvLegacy = {
+            tpv:              f['TPV']              || f.tpv              || '',
+            tpv_contacto:     f['TPV Contacto']     || f.tpv_contacto     || '',
+            tpv_email:        f['TPV Email']        || f.tpv_email        || '',
+            tpv_no_integrado: f['TPV No Integrado'] === 'Sí' || f.tpv_no_integrado === true || f.tpv_no_integrado === 'true',
+            tpv_ni_nombre:    f['TPV NI Nombre']    || f.tpv_ni_nombre    || '',
+            tpv_ni_contacto:  f['TPV NI Contacto']  || f.tpv_ni_contacto  || '',
+            tpv_ni_email:     f['TPV NI Email']     || f.tpv_ni_email     || ''
+        };
         set('dist_empresa',   'Dist. Empresa', 'dist_empresa');
         set('dist_cif',       'Dist. CIF', 'dist_cif');
         set('dist_direccion', 'Dist. Dirección', 'Dist. Direccion', 'dist_direccion');
@@ -3505,6 +3635,32 @@
                     }
                 });
             });
+
+            // TPV per-local: construir el preset desde lo que cada local
+            // trae embebido. Si un local viene sin tpv* (ficha legacy
+            // anterior a la migración 2026-05-19_01), el primer local
+            // hereda los campos globales tpv* de la ficha (capturados en
+            // window._fichaPendingTpvLegacy unas líneas más arriba).
+            const _legacy = window._fichaPendingTpvLegacy || {};
+            const _tpvPreset = locales.map((l, i) => {
+                const hasOwn = l && (l.tpv || l.tpv_no_integrado || l.tpv_ni_nombre);
+                if (hasOwn) {
+                    return {
+                        tpv:              l.tpv              || '',
+                        tpv_contacto:     l.tpv_contacto     || '',
+                        tpv_email:        l.tpv_email        || '',
+                        tpv_no_integrado: l.tpv_no_integrado === true || l.tpv_no_integrado === 'true',
+                        tpv_ni_nombre:    l.tpv_ni_nombre    || '',
+                        tpv_ni_contacto:  l.tpv_ni_contacto  || '',
+                        tpv_ni_email:     l.tpv_ni_email     || ''
+                    };
+                }
+                // Fallback legacy SÓLO para el primer local — los siguientes
+                // quedan vacíos para que el comercial los rellene.
+                return (i === 0) ? _legacy : {};
+            });
+            if (typeof renderTpvPerLocal === 'function') renderTpvPerLocal(_tpvPreset);
+            window._fichaPendingTpvLegacy = null;
         } catch (_) {}
 
         // ── Carrito completo (items + precios + descuentos + periodos) ───────
@@ -3892,17 +4048,27 @@
         },
         'tpv-section': {
             custom() {
-                const tpvEl = document.getElementById('tpv');
-                const tpv = tpvEl ? String(tpvEl.value || '').trim() : '';
-                const niCheck = document.getElementById('tpv_no_integrado_check');
-                if (niCheck && niCheck.checked) {
-                    // TPV no integrado: exige nombre del TPV + un contacto (email o teléfono)
-                    const niNom = (document.getElementById('tpv_ni_nombre')?.value || '').trim();
-                    const niEm  = (document.getElementById('tpv_ni_email')?.value  || '').trim();
-                    const niCo  = (document.getElementById('tpv_ni_contacto')?.value || '').trim();
-                    return !!niNom && (!!niEm || !!niCo);
+                // TPV ahora es per-local: el paso se considera completo si
+                // TODOS los locales tienen su integración rellenada (sea TPV
+                // integrado con su sistema seleccionado, o TPV no integrado
+                // con al menos el nombre del TPV). Si no hay locales, no
+                // contamos el paso como completo (el comercial debe crearlos
+                // en el paso 07 primero).
+                const blocks = document.querySelectorAll('#tpv-per-local-container .tpv-local-block');
+                if (!blocks.length) return false;
+                for (const b of blocks) {
+                    const noInt = !!(b.querySelector('.tpv-no-int-cb')?.checked);
+                    if (noInt) {
+                        const niNom = (b.querySelector('.tpv-ni-nombre-input')?.value || '').trim();
+                        const niEm  = (b.querySelector('.tpv-ni-email-input')?.value  || '').trim();
+                        const niCo  = (b.querySelector('.tpv-ni-contacto-input')?.value || '').trim();
+                        if (!niNom || (!niEm && !niCo)) return false;
+                    } else {
+                        const tpv = (b.querySelector('.tpv-select')?.value || '').trim();
+                        if (!tpv) return false;
+                    }
                 }
-                return !!tpv;
+                return true;
             }
         },
         'financiero-section': {
