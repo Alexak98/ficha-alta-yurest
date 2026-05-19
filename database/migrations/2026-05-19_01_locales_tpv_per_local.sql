@@ -42,9 +42,10 @@ NOTIFY pgrst, 'reload schema';
 
 -- Verificación: locales sin TPV asignado (esperado en fichas previas a esta
 -- migración — el front las pintará vacías y el comercial puede rellenarlas).
+-- Nota: la tabla `locales` usa borrado físico (DELETE), no soft-delete, así
+-- que no filtramos por deleted_at — esa columna no existe en esta tabla.
 SELECT
     COUNT(*)                                       AS locales_totales,
     COUNT(*) FILTER (WHERE tpv IS NOT NULL)        AS con_tpv_integrado,
     COUNT(*) FILTER (WHERE tpv_no_integrado=true)  AS con_tpv_no_integrado
-FROM locales
-WHERE deleted_at IS NULL;
+FROM locales;
