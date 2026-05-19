@@ -287,13 +287,16 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .bar-cta:disabled{opacity:.3;cursor:not-allowed;box-shadow:none;transform:none}
 
 /* ── OFFER VIEW ── */
+/* padding-left ampliado: la hamburguesa flotante (.cfg-menu-btn) vive en
+   left:14px + 38px de ancho → reservamos ~66px para que el .ofr-back no
+   quede tapado al desplazarse o al cargar la vista. */
 .ofr-topbar{
   position:sticky;top:0;z-index:100;
   background:rgba(255,255,255,.78);
   -webkit-backdrop-filter:saturate(1.6) blur(20px);
   backdrop-filter:saturate(1.6) blur(20px);
   border-bottom:1px solid rgba(42,53,84,.08);
-  padding:0 24px;height:60px;
+  padding:0 24px 0 66px;height:60px;
   display:flex;align-items:center;justify-content:space-between;gap:12px;
   flex-wrap:nowrap;min-width:0;
 }
@@ -863,8 +866,8 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
   .impl-wrap{padding:18px 14px}
   .impl-name{font-size:15.5px}
 
-  /* Topbar oferta */
-  .ofr-topbar{padding:0 12px;height:54px;gap:6px}
+  /* Topbar oferta — left padding reservado para la hamburguesa (44px en mobile) */
+  .ofr-topbar{padding:0 12px 0 64px;height:54px;gap:6px}
   .ofr-back{font-size:13px}
   .ofr-btn{padding:5px 12px;font-size:12px}
   .ofr-logo{font-size:14px}
@@ -997,7 +1000,7 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
   .b-name{font-size:12.5px}
   .stack-total-new{font-size:24px}
   .ck-total-val{font-size:20px}
-  .ofr-topbar{padding:0 10px}
+  .ofr-topbar{padding:0 10px 0 62px}
   .ofr-back{font-size:12px}
   .ofr-btn{padding:5px 10px;font-size:11.5px}
 }
