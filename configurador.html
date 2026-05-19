@@ -314,6 +314,11 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .ofr-eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(42,53,84,.55);margin-bottom:10px}
 .ofr-h1{font-family:var(--font-system);font-size:clamp(22px,5vw,30px);font-weight:900;color:var(--navy);line-height:1.15;margin-bottom:6px}
 .ofr-sub{font-size:14px;color:var(--muted)}
+/* Header del v-summary (paso 5) — necesita aire respecto a la tabla de abajo */
+.ofr-hd{margin-bottom:32px}
+.ofr-hd .ofr-eyebrow{margin-bottom:14px}
+.ofr-hd .ofr-title{font-family:var(--font-system);font-size:clamp(28px,5vw,40px);font-weight:900;color:var(--navy);line-height:1.1;letter-spacing:-.02em;margin:0 0 12px}
+.ofr-hd .ofr-sub{font-size:15px;color:var(--muted);line-height:1.5;margin:0}
 
 /* Locales - compact */
 .locales-compact{
@@ -332,6 +337,31 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 .ofr-stack{background:#fff;border:2px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:22px}
 .ofr-stack-hd{background:var(--navy);padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
 .ofr-stack-lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+
+/* ── Stack 2 (Implementación + Bonus) — diferenciación visual fuerte ── */
+.ofr-stack-banner{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  background:linear-gradient(90deg,#F95A5C 0%,#d97706 100%);
+  color:#fff;font-family:var(--font-system);
+  font-size:12.5px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;
+  padding:11px 20px;border-radius:14px 14px 0 0;
+  box-shadow:0 4px 16px -4px rgba(249,90,92,.35);
+  margin-bottom:-2px;position:relative;z-index:2;
+}
+.ofr-stack-banner .ofr-stack-banner-star{font-size:14px;line-height:1;color:#fff}
+.ofr-stack.ofr-stack-bonus{
+  border:2px solid var(--red);
+  border-top-left-radius:0;border-top-right-radius:0;
+  box-shadow:
+    0 18px 40px -16px rgba(249,90,92,.30),
+    0 0 0 6px rgba(249,90,92,.06),
+    0 1px 3px rgba(42,53,84,.06);
+  background:linear-gradient(180deg,rgba(249,90,92,.025) 0%,#fff 90%);
+}
+.ofr-stack.ofr-stack-bonus .ofr-stack-hd{
+  background:linear-gradient(135deg,#2a3554 0%,#3b2a4a 100%);
+  padding:14px 22px 13px;
+}
 
 .ofr-item{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--border);gap:12px}
 .ofr-item:last-child{border-bottom:none}
@@ -431,14 +461,49 @@ body{font-family:var(--font-system);background:var(--bg);color:var(--navy);font-
 }
 
 /* Checkout section */
-.checkout{background:#fff;border:2px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px}
-.checkout-hd{background:var(--navy);padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
-.checkout-title{font-family:var(--font-system);font-size:15px;font-weight:900;color:#fff}
-.checkout-note{font-size:11px;color:rgba(255,255,255,.45)}
+.checkout{background:#fff;border:2px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:24px}
+.checkout-hd{background:var(--navy);padding:18px 26px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.checkout-title{font-family:var(--font-system);font-size:15px;font-weight:900;color:#fff;letter-spacing:-.005em}
+.checkout-note{font-size:11.5px;color:rgba(255,255,255,.55);font-weight:500}
 
 .ck-section{padding:18px 22px;border-bottom:1px solid var(--border)}
 .ck-section:last-child{border-bottom:none}
 .ck-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+/* Inversión hoy — al pie, justo debajo del valor total tachado */
+.ck-total-line{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  background:var(--navy);color:#fff;
+  padding:20px 26px 22px;
+}
+.ck-total-line-l{display:flex;flex-direction:column;line-height:1.25;gap:5px}
+.ck-total-line-lbl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.ck-total-line-sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;letter-spacing:.01em;line-height:1.4}
+.ck-total-line-val{font-family:var(--font-system);font-size:34px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;white-space:nowrap}
+
+.ck-items-list{padding:14px 26px 4px}
+.ck-items-list .ck-row{padding:9px 0;border-bottom:1px solid rgba(42,53,84,.07)}
+.ck-items-list .ck-row:last-child{border-bottom:none}
+.ck-items-list .ck-name{font-size:13.5px;line-height:1.35;display:flex;align-items:center;gap:9px}
+.ck-items-list .ck-val{font-size:14.5px}
+.ck-icon{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;font-size:10px;font-weight:900;flex-shrink:0;line-height:1}
+.ck-icon.check{background:rgba(22,163,74,.13);color:var(--green)}
+.ck-icon.star{background:rgba(255,193,7,.20);color:#b45309;font-size:11px}
+
+/* Valor total tachado al pie */
+.ck-value-total{
+  display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  padding:18px 26px 20px;
+  border-top:2px solid var(--navy);
+  background:rgba(42,53,84,.04);
+}
+.ck-value-total-lbl{font-family:var(--font-system);font-size:13px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em}
+.ck-value-total-val{
+  font-family:var(--font-system);font-size:30px;font-weight:900;
+  color:var(--navy);
+  text-decoration:line-through;text-decoration-thickness:3px;text-decoration-color:var(--red);
+  font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.015em;line-height:1;
+}
 .ck-bonus-section{background:rgba(22,163,74,.04);border-top:2px dashed rgba(22,163,74,.2)!important}
 .ck-bonus-section .ck-section-title{color:var(--green)}
 .ck-bonus-section .ck-row{border-bottom-color:rgba(22,163,74,.1)}
@@ -2288,7 +2353,7 @@ body{font-feature-settings:"ss01"}
     </div>
   </div>
 
-  <!-- Stack 1: Plan (mensualidad) -->
+  <!-- Stack 1: Plan (mensualidad + implementación + servicios contratados) -->
   <div class="ofr-stack">
     <div class="ofr-stack-hd">
       <span class="ofr-stack-lbl">Lo que incluye tu plan</span>
@@ -2297,18 +2362,25 @@ body{font-feature-settings:"ss01"}
     <div id="ofr-items-plan"></div>
   </div>
 
-  <!-- Stack 2: Implementación y bonus -->
+  <!-- Stack 2: Otros servicios contratados (implementación + servicios pago único) -->
   <div class="ofr-stack">
     <div class="ofr-stack-hd">
-      <span class="ofr-stack-lbl">Implementación y bonus</span>
+      <span class="ofr-stack-lbl">Otros servicios contratados</span>
+      <span class="ofr-stack-lbl">Pago único</span>
+    </div>
+    <div id="ofr-items-services"></div>
+  </div>
+
+  <!-- Stack 3: Bonus exclusivos — diferenciado con banner coral arriba -->
+  <div class="ofr-stack-banner"><span class="ofr-stack-banner-star">★</span> Tus regalos exclusivos · GRATIS con tu plan anual</div>
+  <div class="ofr-stack ofr-stack-bonus">
+    <div class="ofr-stack-hd">
+      <span class="ofr-stack-lbl">Bonus exclusivos</span>
       <span class="ofr-stack-lbl">Valor</span>
     </div>
     <div id="ofr-items-bonus"></div>
     <div id="stack-footer-bonus"></div>
   </div>
-
-  <!-- Checkout / payment section -->
-  <div class="checkout" id="checkout-wrap"></div>
 
   <!-- ROI box (aparece solo si el baseline está rellenado) -->
   <div class="roi-box" id="offer-roi-box" style="display:none">
@@ -2335,14 +2407,41 @@ body{font-feature-settings:"ss01"}
     </div>
   </div>
 
-  <button class="cta-big" onclick="showBudget()">🚀 Quiero empezar con yurest</button>
+  <button class="cta-big" onclick="showSummary()">Ver el resumen de mi pedido →</button>
 </div>
 </div><!-- /v-offer -->
+
+<!-- ═══════════════ SUMMARY VIEW (paso 5 — resumen final) ═══════════════ -->
+<div class="view" id="v-summary">
+<div class="ofr-topbar">
+  <button class="ofr-back" onclick="showOffer()">← Volver a la oferta</button>
+  <div class="ofr-logo">yurest</div>
+  <span style="width:80px"></span>
+</div>
+
+<div class="ofr-wrap">
+  <div class="ofr-hd">
+    <div class="ofr-eyebrow">★ Tu pedido</div>
+    <h1 class="ofr-title">Resumen final de tu pedido</h1>
+    <p class="ofr-sub">Esto es <strong>exactamente</strong> lo que pagas hoy y lo que recibes con tu suscripción.</p>
+  </div>
+
+  <!-- Product mockup -->
+  <div class="product-mockup-card">
+    <img src="https://assets.cdn.filesafe.space/achTugLAig9SKoera9BS/media/6808f1cf0ddda08478e37058.png" alt="yurest dashboard" loading="eager">
+  </div>
+
+  <!-- Checkout / Resumen de tu pedido (movido desde v-offer) -->
+  <div class="checkout" id="checkout-wrap"></div>
+
+  <button class="cta-big" onclick="showBudget()">🚀 Quiero empezar con yurest</button>
+</div>
+</div><!-- /v-summary -->
 
 <!-- 3. BUDGET VIEW -->
 <div class="view" id="v-budget">
 <div class="ofr-topbar">
-  <button class="ofr-back" onclick="showOffer()">← Volver a la oferta</button>
+  <button class="ofr-back" onclick="showSummary()">← Volver al resumen</button>
   <div class="ofr-logo">yurest</div>
   <span style="width:80px"></span>
 </div>
@@ -2928,11 +3027,13 @@ function updStepBar(){
   if(v){
     if(v.id==='v-config')      step=2;
     else if(v.id==='v-method') step=3;
-    else if(v.id==='v-offer' || v.id==='v-budget') step=4;
+    else if(v.id==='v-offer')  step=4;
+    else if(v.id==='v-summary' || v.id==='v-budget') step=5;
   }
-  var baseOK  = baselineComplete();
-  var planOK  = baseOK && (employees!=null) && plan && impl;
-  [1,2,3,4].forEach(function(n){
+  var baseOK   = baselineComplete();
+  var planSel  = baseOK && (employees!=null) && plan;   // basta plan elegido para método
+  var planOK   = planSel && impl;                       // impl además para oferta/pedido
+  [1,2,3,4,5].forEach(function(n){
     var el = document.getElementById('step-'+n);
     if(!el) return;
     el.classList.remove('current','done','locked');
@@ -2940,7 +3041,8 @@ function updStepBar(){
     if(n < step){   el.classList.add('done');    return; }
     // Future steps — locking en cascada
     if(n>=2 && !baseOK) el.classList.add('locked');
-    else if(n===4 && !planOK) el.classList.add('locked');
+    else if(n===3 && !planSel) el.classList.add('locked');
+    else if((n===4||n===5) && !planOK) el.classList.add('locked');
   });
 }
 
@@ -2951,17 +3053,24 @@ function goToStep(n){
     return;
   }
   if(n === 2){ showConfig(); return; }
-  if(n === 3){ showMethod(); return; }
-  if(n === 4){
+  // Para pasar al paso 3 (método) ya hace falta haber elegido empleados y plan.
+  if(n === 3){
+    if(employees==null){alert('Introduce el número de empleados primero');return;}
+    if(!plan){alert('Elige un plan primero');return;}
+    showMethod();
+    return;
+  }
+  if(n === 4 || n === 5){
     if(employees==null){alert('Introduce el número de empleados primero');return;}
     if(!plan){alert('Elige un plan primero');return;}
     if(!impl){alert('Selecciona la implementación primero');return;}
-    showOffer();
+    if(n === 4) showOffer();
+    else        showSummary();
   }
 }
 
 function deactivateAllViews(){
-  ['v-baseline','v-config','v-method','v-offer','v-budget'].forEach(function(id){
+  ['v-baseline','v-config','v-method','v-offer','v-summary','v-budget'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.classList.remove('active');
   });
 }
@@ -3004,6 +3113,22 @@ function showConfig(){
   if(!baselineComplete()){ showBaseline(); return; }
   deactivateAllViews();
   document.getElementById('v-config').classList.add('active');
+  window.scrollTo(0,0);
+  updStepBar();
+}
+function showSummary(){
+  if(!baselineComplete()){ showBaseline(); return; }
+  if(employees==null || !plan || !impl) return;
+  renderOffer(); // renderOffer también rellena #checkout-wrap, que ahora vive en v-summary
+  deactivateAllViews();
+  var v=document.getElementById('v-summary');
+  v.classList.add('active');
+  var w=v.querySelector('.ofr-wrap');
+  if(w && !REDUCED_MOTION){
+    w.classList.remove('ofr-just-revealed');
+    void w.offsetWidth;
+    w.classList.add('ofr-just-revealed');
+  }
   window.scrollTo(0,0);
   updStepBar();
 }
@@ -3309,22 +3434,51 @@ function renderOffer(){
     +'</div>';
   planHTML+=monthlySubtotalRow;
 
-  // ── Stack 2: Implementación + Bonus ──
-  // Implementation
-  if(impl){
-    bonusHTML+=divider('Implementación');
-    if(impl==='grupal'){
-      bonusHTML+=brunsonRow('impl','Implementación grupal',
-        'Onboarding · Compras · Finanzas'+(addons.cocina?' · Cocina':'')+(addons.stocks?' · Stocks':'')+' · PyR · Academy',
-        '1.700 €','GRATIS','v-bonus');
-    } else {
-      bonusHTML+=brunsonRow('impl','Consultoría personalizada',
-        '1 a 1 con experto hostelero'+(addons.cocina?' · Cocina':'')+(addons.stocks?' · Stocks':'')+' · Academy',
-        '5.000 €','1.500 €','v-plan');
-    }
+  // ── Stack 2: Otros servicios contratados (implementación + servicios pago único) ──
+  // Todo lo que el cliente "ha clicado" o se le añade al activar un addon va aquí.
+  // Los bonus regalos van separados en el Stack 3.
+  var servicesHTML='';
+  // Implementación (siempre — default grupal)
+  if(impl==='grupal'){
+    servicesHTML+=brunsonRow('impl','Implementación grupal',
+      'Onboarding · Compras · Finanzas'+(addons.cocina?' · Cocina':'')+(addons.stocks?' · Stocks':'')+' · PyR · Academy',
+      '1.700 €','GRATIS','v-impl');
+  } else if(impl==='personalizada'){
+    servicesHTML+=brunsonRow('impl','Consultoría personalizada',
+      '1 a 1 con tu consultor experto'+(addons.cocina?' · Cocina':'')+(addons.stocks?' · Stocks':'')+' · Academy',
+      '5.000 €','1.500 €','v-impl');
+  }
+  // Carga masiva — promo siempre activa
+  servicesHTML+=brunsonRow('addon',
+    'Carga masiva de datos <span class="row-link">— Promoción</span>',
+    'Migramos toda tu base de proveedores y productos. Sin que muevas un dedo.',
+    '397 €','GRATIS','v-bonus',false);
+  // Pack consultoría (si activado)
+  if(addons.consultoria){
+    servicesHTML+=brunsonRow('addon','Pack consultoría',
+      '3 sesiones de 60 min con consultor experto. Tienes 1 año para gastarlas.',
+      null,'497 €','v-impl');
+  }
+  // Firma digital (si activado)
+  if(addons.firma){
+    servicesHTML+=brunsonRow('addon','Firma digital',
+      'Pack de 100 firmas. Ampliable.',
+      null,'30 €','v-impl');
+  }
+  // Stocksadv 3 sesiones obligatorias (si stocksadv activado)
+  if(addons.stocksadv){
+    servicesHTML+=brunsonRow('addon','3 sesiones Stocks Avanzado',
+      'Sesiones obligatorias para garantizar la implantación.',
+      null,'497 €','v-impl');
+  }
+  // Auditorías 2 sesiones obligatorias (si auditorías activado)
+  if(addons.auditorias){
+    servicesHTML+=brunsonRow('addon','2 sesiones Auditorías',
+      'Sesiones obligatorias para garantizar la implantación.',
+      null,'397 €','v-impl');
   }
 
-  // Bonuses — always shown, dimmed when monthly
+  // ── Stack 3: Bonus exclusivos (regalos puros — sin implementación, sin carga masiva) ──
   bonusHTML+=divider('★ Bonus exclusivos');
   bonusHTML+=brunsonRow('bonus',
     'Master Rentabilidad y Control <span class="row-link">— ver programa →</span>',
@@ -3353,15 +3507,7 @@ function renderOffer(){
     "document.getElementById('checklist-popup').classList.add('open')"
   );
 
-  // Carga masiva — promoción siempre activa (mensual + anual)
-  bonusHTML+=brunsonRow('bonus',
-    'Carga masiva de datos <span class="row-link">— Promoción</span>',
-    addons.carga?'Servicio activado · Migramos toda tu base de proveedores y productos':'Migramos toda tu base de proveedores y productos. Sin que muevas un dedo.',
-    '397 €',
-    'GRATIS',
-    'v-bonus',
-    false
-  );
+  // (Carga masiva movida al Stack 2 'Otros servicios contratados' — ya no se muestra aquí.)
 
   // Bonus de Acción Rápida — SIEMPRE visible si plan != pro (el timer 24h es solo cosmético para demos).
   // dimmed en mensual.
@@ -3391,87 +3537,104 @@ function renderOffer(){
   );
 
   document.getElementById('ofr-items-plan').innerHTML=planHTML;
+  var srvEl=document.getElementById('ofr-items-services');
+  if(srvEl) srvEl.innerHTML=servicesHTML;
   document.getElementById('ofr-items-bonus').innerHTML=bonusHTML;
 
-  // Stack 2 footer: valor total impl+bonus tachado + precio
+  // Stack 3 footer: SOLO regalos puros — sin impl, sin carga masiva (ahora viven en Stack 2 'servicios contratados').
   var discPct=Math.round(localeDiscount()*100);
   var implRetail=impl==='grupal'?1700:(impl==='personalizada'?5000:0);
   // Master 4500 + Pack Checklist Pro 797 (solo si addons.checklist=true; el montante mostrado en la fila es siempre 797 €).
-  var bonusVal=(isA?(4500+(addons.checklist?797:0)+fastActionVal):0)+397;
-  var saasRetailPerLocal=PM[plan]*12+Object.keys(ADM).reduce(function(s,k){return addons[k]?s+ADM[k]:s;},0)*12;
+  // Carga masiva (397 €) movida al Stack 2 — ya no entra en bonusVal.
+  var bonusVal=(isA?(4500+(addons.checklist?797:0)+fastActionVal):0);
+  var CARGA_PROMO_VAL=397; // valor retail de Carga masiva, contado en fullVal (lo recibe el cliente aunque ahora viva en Stack 2)
   var onetimesRetail=onetimes.reduce(function(s,i){return s+(i.old||i.p);},0);
-  var bonusTotalRetail=implRetail+bonusVal;
-  var fullVal=saasRetailPerLocal*locales+implRetail+onetimesRetail+bonusVal; // usado por el checkout abajo
-  var implPaidPrice=impl==='personalizada'?1500:0;
-  var bonusPriceLabel=implPaidPrice>0?fmt(implPaidPrice)+' €':'GRATIS';
-  var bonusPriceColor=implPaidPrice>0?'var(--navy)':'var(--green)';
+  var bonusTotalRetail=bonusVal; // solo regalos del Stack 3
+  // fullVal = exactamente la suma de las filas visibles del checkout (para que el "Valor total" tachado cuadre).
+  // En anual: precio anual real del plan+addons (monthlyTot*12) + impl retail + onetimes + bonus + carga.
+  // En mensual: primer mes + impl retail + onetimes + bonus(0) + carga.
+  var saasPaidValue=isA?(monthlyTot*12):monthlyTot;
+  var fullVal=saasPaidValue+implRetail+onetimesRetail+bonusVal+CARGA_PROMO_VAL;
   document.getElementById('stack-footer-bonus').innerHTML=
     '<div style="display:flex;justify-content:flex-end;align-items:flex-start;padding:18px 22px;background:var(--surface);border-top:2px dashed var(--border)">'
     +'<div style="text-align:right">'
-    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Valor total</div>'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Valor de los bonus</div>'
     +'<div style="font-family:var(--font-system);font-size:22px;font-weight:900;color:rgba(42,53,84,.75);text-decoration:line-through;text-decoration-thickness:2.5px;text-decoration-color:rgba(42,53,84,.55);line-height:1;margin-bottom:10px">'+fmt(bonusTotalRetail)+' €</div>'
-    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin-bottom:4px">Precio</div>'
-    +'<div style="font-family:var(--font-system);font-size:28px;font-weight:900;color:'+bonusPriceColor+';line-height:1">'+bonusPriceLabel+'</div>'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin-bottom:4px">Lo que pagas</div>'
+    +'<div style="font-family:var(--font-system);font-size:28px;font-weight:900;color:var(--green);line-height:1">GRATIS</div>'
     +'</div>'
     +'</div>';
 
-  // Checkout
-  var stackedGratis=function(oldStr,lbl,color){color=color||'var(--green)';return '<div style="text-align:right;line-height:1.2"><div style="text-decoration:line-through;color:var(--muted);font-size:12px;font-weight:700">'+oldStr+'</div><div style="color:'+color+';font-weight:700;font-size:14px;margin-top:2px">'+lbl+'</div></div>';};
+  // Checkout · COMPACTO: total arriba + items sin secciones ni subheadlines.
+  // Helpers para iconos (check = lo que compras · star = bonus regalo) y para GRATIS con tachado inline.
+  var ckIcon=function(t){return '<span class="ck-icon '+t+'">'+(t==='star'?'★':'✓')+'</span>';};
+  var freeWithStrike=function(retail){
+    return '<span style="text-decoration:line-through;color:rgba(42,53,84,.45);font-size:12px;font-weight:600;margin-right:7px">'+retail+'</span><span style="color:var(--green);font-weight:700">GRATIS</span>';
+  };
   var ckHTML='<div class="checkout-hd"><span class="checkout-title">Resumen de tu pedido</span><span class="checkout-note">Sin permanencia · Cancela cuando quieras</span></div>';
   if(isA){
     var annualSub=monthlyTot*12;
-    ckHTML+='<div class="ck-section"><div class="ck-section-title">Suscripción anual</div>';
-    ckHTML+=ckRow('Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),fmt(PA[plan])+' €/mes · precio plan anual',fmt(applyDiscount(planM)*locales*12)+' €');
+    var annualFinal=annualSub+onetimeTotal;
+    var perLocalAnnual=locales>1?' · '+fmt(monthlyPerLocal*12)+' €/local/año':'';
+    // ITEMS COMPACTOS (check = lo que compras · star = bonus regalo)
+    ckHTML+='<div class="ck-items-list">';
+    ckHTML+=ckRow(ckIcon('check')+'Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),null,fmt(applyDiscount(planM)*locales*12)+' €');
     Object.keys(ADM).forEach(function(k){
       if(!addons[k]) return;
-      if(adPrice(k)===0){ckHTML+=ckRow(ADN[k],'<span style="color:var(--green);font-weight:700">3 meses gratis</span> <span style="color:var(--navy);font-weight:600">· luego '+ADM[k]+' €/mes</span>','<span style="color:var(--green);font-weight:700">0 €</span>','');return;}
-      ckHTML+=ckRow(ADN[k],fmt(ADA[k]||ADM[k])+' €/mes · precio anual',fmt(applyDiscount(ADA[k]||ADM[k])*locales*12)+' €','');
+      if(adPrice(k)===0){ ckHTML+=ckRow(ckIcon('check')+ADN[k],null,'0 €','green'); return; }
+      ckHTML+=ckRow(ckIcon('check')+ADN[k],null,fmt(applyDiscount(ADA[k]||ADM[k])*locales*12)+' €','');
     });
-    ckHTML+='<div class="ck-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px"><div class="ck-name" style="font-weight:700">Subtotal anual</div><div class="ck-val">'+fmt(annualSub)+' €</div></div></div>';
-    ckHTML+='<div class="ck-section"><div class="ck-section-title">Servicios adicionales · pago único</div>';
-    if(impl==='grupal'){
-      ckHTML+=ckRow('Implementación grupal',null,stackedGratis('1.700 €','GRATIS'),'');
+    if(impl==='grupal') ckHTML+=ckRow(ckIcon('check')+'Implementación grupal',null,freeWithStrike('1.700 €'),'');
+    else if(impl==='personalizada') ckHTML+=ckRow(ckIcon('check')+'Consultoría personalizada',null,'<span style="text-decoration:line-through;color:rgba(42,53,84,.45);font-size:12px;font-weight:600;margin-right:7px">5.000 €</span>'+fmt(1500)+' €','');
+    onetimes.forEach(function(i){
+      if(i.n==='Implementación personalizada') return; // ya rendido arriba
+      ckHTML+=ckRow(ckIcon('check')+i.n,null,fmt(i.p)+' €','');
+    });
+    ckHTML+=ckRow(ckIcon('star')+'Master Rentabilidad y Control',null,freeWithStrike('4.500 €'),'');
+    if(addons.checklist) ckHTML+=ckRow(ckIcon('star')+'Pack Checklist Pro',null,freeWithStrike('797 €'),'');
+    ckHTML+=ckRow(ckIcon('star')+'Carga masiva de datos',null,freeWithStrike('397 €'),'');
+    if(fastActionVal>0) ckHTML+=ckRow(ckIcon('star')+'Upgrade a Plan Corporate',null,freeWithStrike(fmt(fastActionVal)+' €'),'');
+    ckHTML+=ckRow(ckIcon('star')+'Garantía de éxito yurest',null,'INCLUIDA','green');
+    ckHTML+='</div>';
+    // Valor total tachado y luego Inversión hoy (ambos al pie · estilo Brunson stack)
+    if(fullVal>annualFinal){
+      ckHTML+='<div class="ck-value-total"><span class="ck-value-total-lbl">Valor total</span><span class="ck-value-total-val">'+fmt(fullVal)+' €</span></div>';
     }
-    onetimes.forEach(function(i){var v=i.old?stackedGratis(fmt(i.old)+' €','GRATIS'):fmt(i.p)+' €';ckHTML+=ckRow(i.n,null,v,i.old?'':'purple');});
-    ckHTML+='</div>';
-    // Bonuses (mismo orden que stack arriba)
-    ckHTML+='<div class="ck-section ck-bonus-section"><div class="ck-section-title">★ Bonus exclusivos · Solo con pago anual</div>';
-    ckHTML+=ckRow('Master Rentabilidad y Control',null,stackedGratis('4.500 €','GRATIS'),'');
-    ckHTML+=ckRow('Pack Checklist Pro'+(addons.checklist?'':' <span style="color:var(--muted);font-weight:500">· sin módulo</span>'),null,stackedGratis('797 €','GRATIS'),'');
-    ckHTML+=ckRow('Carga masiva de datos · Promoción',null,stackedGratis('397 €','GRATIS'),'');
-    if(fastActionVal>0){
-      ckHTML+=ckRow('⚡ Upgrade a Plan Corporate · Bonus 24h',null,stackedGratis(fmt(fastActionVal)+' €','GRATIS'),'');
-    }
-    ckHTML+='</div>';
-    // Garantía — sección propia
-    ckHTML+='<div class="ck-section ck-garantia-section"><div class="ck-section-title">🛡 Garantía de éxito · Solo con pago anual</div>';
-    ckHTML+=ckRow('Garantía de éxito yurest',null,'INCLUIDA','green');
-    ckHTML+='</div>';
-    var perLocalAnnual=locales>1?'<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">'+fmt(monthlyPerLocal*12)+' €/local/año</div>':'';
-    var annualFinal=annualSub+onetimeTotal;
-    // Tachado = mismo fullVal que en stack (incluye SaaS retail*locales + impl retail + onetimes retail + bonuses)
-    var annualOldStrike=fullVal>annualFinal?'<div class="ck-total-old">'+fmt(fullVal)+' €</div>':'';
-    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">Inversión hoy</div><div class="ck-freq">Suscripción anual'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+annualOldStrike+'<div class="ck-total-val">'+fmt(annualFinal)+' €</div>'+perLocalAnnual+'</div></div>';
+    ckHTML+='<div class="ck-total-line">'
+      +'<div class="ck-total-line-l">'
+        +'<span class="ck-total-line-lbl">Inversión hoy</span>'
+        +'<span class="ck-total-line-sub">Suscripción anual'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+perLocalAnnual+'</span>'
+      +'</div>'
+      +'<div class="ck-total-line-val">'+fmt(annualFinal)+' €</div>'
+      +'</div>';
   } else {
-    ckHTML+='<div class="ck-section"><div class="ck-section-title">Primer mes</div>';
-    ckHTML+=ckRow('Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),fmt(PM[plan])+' €/mes · pago mensual',fmt(applyDiscount(planM)*locales)+' €');
-    Object.keys(ADM).forEach(function(k){if(!addons[k]) return; ckHTML+=ckRow(ADN[k],null,fmt(applyDiscount(ADM[k])*locales)+' €/mes','');});
-    ckHTML+='<div class="ck-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px"><div class="ck-name" style="font-weight:700">Mensualidad</div><div class="ck-val">'+fmt(monthlyTot)+' €/mes</div></div></div>';
-    ckHTML+='<div class="ck-section"><div class="ck-section-title">Servicios adicionales · pago único</div>';
-    if(impl==='grupal'){
-      ckHTML+=ckRow('Implementación grupal',null,stackedGratis('1.700 €','GRATIS'),'');
-    }
-    onetimes.forEach(function(i){var v=i.old?stackedGratis(fmt(i.old)+' €','GRATIS'):fmt(i.p)+' €';ckHTML+=ckRow(i.n,null,v,i.old?'':'purple');});
-    ckHTML+='</div>';
-    // Bonus en mensual: solo Carga masiva activa
-    ckHTML+='<div class="ck-section ck-bonus-section"><div class="ck-section-title">★ Bonus incluidos</div>';
-    ckHTML+=ckRow('Carga masiva de datos · Promoción',null,stackedGratis('397 €','GRATIS'),'');
-    ckHTML+='</div>';
-    var perLocalMonthly=locales>1?'<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">'+fmt(monthlyPerLocal)+' €/local/mes</div>':'';
     var monthlyFinal=monthlyTot+onetimeTotal;
-    // Tachado = fullVal (consistente con stack arriba)
-    var monthlyOldStrike=fullVal>monthlyFinal?'<div class="ck-total-old">'+fmt(fullVal)+' €</div>':'';
-    ckHTML+='<div class="ck-total-row"><div><div class="ck-total-lbl">Inversión hoy</div><div class="ck-freq">Primer mes'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+'</div></div><div style="text-align:right">'+monthlyOldStrike+'<div class="ck-total-val">'+fmt(monthlyFinal)+' €</div>'+perLocalMonthly+'</div></div>';
+    var perLocalMonthly=locales>1?' · '+fmt(monthlyPerLocal)+' €/local/mes':'';
+    // Items mensuales (check = lo que compras · star = bonus regalo)
+    ckHTML+='<div class="ck-items-list">';
+    ckHTML+=ckRow(ckIcon('check')+'Plan '+PNAMES[plan]+' · '+locales+' local'+(locales>1?'es':''),null,fmt(applyDiscount(planM)*locales)+' €/mes');
+    Object.keys(ADM).forEach(function(k){
+      if(!addons[k]) return;
+      ckHTML+=ckRow(ckIcon('check')+ADN[k],null,fmt(applyDiscount(ADM[k])*locales)+' €/mes','');
+    });
+    if(impl==='grupal') ckHTML+=ckRow(ckIcon('check')+'Implementación grupal',null,freeWithStrike('1.700 €'),'');
+    else if(impl==='personalizada') ckHTML+=ckRow(ckIcon('check')+'Consultoría personalizada',null,'<span style="text-decoration:line-through;color:rgba(42,53,84,.45);font-size:12px;font-weight:600;margin-right:7px">5.000 €</span>'+fmt(1500)+' €','');
+    onetimes.forEach(function(i){
+      if(i.n==='Implementación personalizada') return;
+      ckHTML+=ckRow(ckIcon('check')+i.n,null,fmt(i.p)+' €','');
+    });
+    ckHTML+=ckRow(ckIcon('star')+'Carga masiva de datos',null,freeWithStrike('397 €'),'');
+    ckHTML+='</div>';
+    if(fullVal>monthlyFinal){
+      ckHTML+='<div class="ck-value-total"><span class="ck-value-total-lbl">Valor total</span><span class="ck-value-total-val">'+fmt(fullVal)+' €</span></div>';
+    }
+    ckHTML+='<div class="ck-total-line">'
+      +'<div class="ck-total-line-l">'
+        +'<span class="ck-total-line-lbl">Inversión hoy</span>'
+        +'<span class="ck-total-line-sub">Primer mes'+(onetimes.length?' + servicios únicos':'')+(discPct>0?' · dto. −'+discPct+'%':'')+perLocalMonthly+'</span>'
+      +'</div>'
+      +'<div class="ck-total-line-val">'+fmt(monthlyFinal)+' €</div>'
+      +'</div>';
   }
   document.getElementById('checkout-wrap').innerHTML=ckHTML;
   updateROIBoxes();
@@ -3688,12 +3851,14 @@ function renderBudget(){
   document.getElementById('bp-cover-expiry').textContent='hasta el '+expStr;
 
   // ───── PAGE 2 — Oferta ─────
-  // Valor total vs inversión (Brunson stack en PDF) — mismo cálculo que renderOffer.
-  var saasRetailPerLocal=PM[plan]*12+Object.keys(ADM).reduce(function(s,k){return addons[k]?s+ADM[k]:s;},0)*12;
+  // Valor total vs inversión (Brunson stack en PDF) — mismo cálculo que renderOffer:
+  // suma de lo que el cliente realmente paga (sin discounts ocultos) + retail de gratis.
   var implRetail=(impl==='grupal'?1700:(impl==='personalizada'?5000:0));
   // Pack Checklist Pro: 797 € constante, solo se suma si addons.checklist=true (en anual).
-  var bonusVal=(d.isA?(4500+(addons.checklist?797:0)+d.fastActionVal):0)+397;
-  var fullVal=saasRetailPerLocal*locales+implRetail+d.onetimeTotal+bonusVal;
+  // bonusVal = SOLO regalos puros (Master + Checklist + Upgrade). Carga masiva (397 €) cuenta aparte.
+  var bonusVal=(d.isA?(4500+(addons.checklist?797:0)+d.fastActionVal):0);
+  var saasPaidValue=d.isA?(d.monthlyTot*12):d.monthlyTot;
+  var fullVal=saasPaidValue+implRetail+d.onetimeTotal+bonusVal+397;
   var todayAmount=(d.isA?d.monthlyTot*12:d.monthlyTot)+d.onetimeTotal;
   var saving=Math.max(0, fullVal-todayAmount);
   var vbHTML=''
@@ -4270,6 +4435,14 @@ updPlanPrices(); updAddonPrices(); updImplItems(); updImplLock(); updatePlanGati
     <span class="step-info">
       <span class="step-label">Tu oferta</span>
       <span class="step-detail">Tu propuesta final</span>
+    </span>
+  </div>
+  <span class="step-connector" aria-hidden="true"></span>
+  <div class="step-item" id="step-5" onclick="goToStep(5)">
+    <span class="step-num">5</span>
+    <span class="step-info">
+      <span class="step-label">Tu pedido</span>
+      <span class="step-detail">Resumen final</span>
     </span>
   </div>
 </div>
